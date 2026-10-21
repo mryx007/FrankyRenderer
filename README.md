@@ -8,6 +8,8 @@ So I thought: Why not take the core functionality of MPC Video Renderer, build m
 
 And that's exactly what I did.
 
+I decided to call my renderer Franky, inspired by Frankenstein, who pieced together different body parts to create something entirely new. Since my renderer is also built by combining different components into something new, I thought the name was quite fitting.
+
 My renderer uses only about half the VRAM that madVR does, and so far, it runs pretty solidly on my system.
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
