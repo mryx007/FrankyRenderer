@@ -450,7 +450,7 @@ struct PlaceboBackend::State {
         }
         if(showStatistics.load()){
             UpdateStatistics(target);
-            if(statisticsBitmap.Update(d3d->gpu,statisticsText,target.planes[0].texture->params.w,target.planes[0].texture->params.h)){
+            if(statisticsBitmap.Update(d3d->gpu,statisticsText,target.planes[0].texture->params.w,target.planes[0].texture->params.h,window)){
                 const int index=target.num_overlays;statisticsBitmap.Describe(overlays[index],parts[index]);target.overlays=overlays;target.num_overlays=index+1;
             }
         }

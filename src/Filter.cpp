@@ -6,6 +6,7 @@
 #include "SideDataAllocator.h"
 #include "MotionTiming.h"
 #include "StatisticsKey.h"
+#include "StatisticsRasterizer.h"
 #include "VideoBackground.h"
 #include <wrl/client.h>
 #include <dxgi1_2.h>
@@ -100,6 +101,12 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next){
 INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
     if(msg==WM_KEYDOWN&&w=='J'&&(GetKeyState(VK_CONTROL)&0x8000)&&!(GetKeyState(VK_MENU)&0x8000)&&!(GetKeyState(VK_SHIFT)&0x8000)){if(!(l&(1LL<<30)))owner->ToggleStatistics();return 0;}
     if(msg==StatisticsKey::ToggleMessage){owner->ToggleStatistics();return 0;}
+    if(msg==StatisticsRasterizer::ReadyMessage){
+        FILTER_STATE state=State_Stopped;owner->GetState(0,&state);
+        // Running playback consumes the bitmap on its next scheduled frame.
+        // Only a paused image needs an additional repaint after text is ready.
+        if(state==State_Paused&&owner->backend.StatisticsVisible())owner->Repaint();return 0;
+    }
     if(msg==WM_ERASEBKGND){owner->backend.PaintLoadingBackground(reinterpret_cast<HDC>(w));return TRUE;}
     if(msg==WM_PAINT){PAINTSTRUCT ps;BeginPaint(hwnd,&ps);owner->backend.PaintLoadingBackground(ps.hdc);EndPaint(hwnd,&ps);owner->Repaint();return 0;}
     if(msg==WM_DISPLAYCHANGE){owner->refreshDirty=true;owner->Repaint();return 0;}
@@ -211,8 +218,10 @@ HRESULT Renderer::DeliverQueuedMotion() try{
     auto temporal=std::make_shared<std::vector<TemporalFrame>>();
     {CAutoLock lock(&m_RendererLock);if(motionQueue.empty())return S_OK;
         frame=motionQueue.front();past=motionPast.empty()?0:motionPast.back().id;future=motionQueue.size()>1?motionQueue[1].id:0;later=motionQueue.size()>2?motionQueue[2].id:0;
+        if(motionQueue.size()>1)frame.stop=MotionIntervalEnd(frame.start,frame.stop,motionQueue[1].start);
         for(const auto& f:motionPast)temporal->push_back({f.id,f.start,f.stop,f.first});
         for(const auto& f:motionQueue)temporal->push_back({f.id,f.start,f.stop,f.first});
+        for(size_t i=0;i+1<temporal->size();i++){auto& f=(*temporal)[i];f.stop=MotionIntervalEnd(f.start,f.stop,(*temporal)[i+1].start);}
     }
     HRESULT hr=DeliverMotion(frame,past,future,later,temporal);
     if(SUCCEEDED(hr)){CAutoLock lock(&m_RendererLock);if(motionQueue.empty()||motionQueue.front().id!=frame.id)return S_FALSE;motionQueue.erase(motionQueue.begin());motionPast.push_back(frame);while(motionPast.size()>static_cast<size_t>(bufferedLookahead))motionPast.erase(motionPast.begin());previous=frame;}

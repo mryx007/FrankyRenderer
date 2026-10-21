@@ -17,6 +17,12 @@ inline double MonitorPeriod(HWND window){
     DEVMODEW mode={};mode.dmSize=sizeof(mode);if(EnumDisplaySettingsW(info.szDevice,ENUM_CURRENT_SETTINGS,&mode)&&mode.dmDisplayFrequency>=20&&mode.dmDisplayFrequency<=1000)return 1e7/mode.dmDisplayFrequency;return 0;
 }
 struct MotionTick {LONGLONG start,stop;float position,duration;};
+// A nominal sample duration can overlap the next millisecond-rounded PTS.
+// Use the already buffered next frame to partition the output timeline; keep
+// genuine discontinuities and the final frame's nominal end unchanged.
+inline LONGLONG MotionIntervalEnd(LONGLONG start,LONGLONG stop,LONGLONG nextStart){
+    return stop>start&&nextStart>start&&std::abs(double(nextStart)-double(stop))<=20000?nextStart:stop;
+}
 inline std::vector<MotionTick> MotionTicks(LONGLONG start,LONGLONG stop,double period){
     std::vector<MotionTick> result;const auto span=stop-start;
     if(span<=0||span>10000000||!std::isfinite(period)||period<10000||period>500000||span<period*.98)return result;
