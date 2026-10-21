@@ -1,8 +1,20 @@
 # FrankyRenderer
 
-A standalone Windows x64 DirectShow video renderer, based on MPC Video Renderer components, using **libplacebo** for image processing and **Direct3D 11 / DXGI** for presentation.
+I've been using the madVR renderer for many years now. Unfortunately, updates have become quite rare, with what feels like only one update per year.
 
-FrankyRenderer is a development project. Synthetic GPU and DirectShow regression tests cover its main paths; compatibility and image quality still depend on the player, decoder, graphics driver and display.
+Meanwhile, MPC Video Renderer is still being actively developed, and libplacebo, which also continues to receive regular updates, has built a very good reputation for its image processing capabilities.
+
+So I thought: Why not take the core functionality of MPC Video Renderer, build my own renderer around it, and let libplacebo handle the image processing?
+
+And that's exactly what I did.
+
+My renderer uses only about half the VRAM that madVR does, and so far, it runs pretty solidly on my system.
+
+It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
+
+At the moment, it only works with PotPlayer. It currently uses the same identifier as MPC Video Renderer, but I'm working on giving it its own unique identifier.
+
+Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
 ## Screenshots
 
@@ -150,24 +162,6 @@ python src/package.py
 Dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
-
-## Tests
-
-```powershell
-.\src\build_tests.cmd
-python src/run_tests.py
-python src/run_tests.py --live-ui
-.\src\build_sdr_target.cmd
-python src/run_tests.py --sdr-target
-.\src\build_sdr_present.cmd
-python src/run_tests.py --sdr-present
-.\src\build_tonal.cmd
-python src/run_tests.py --tonal
-```
-
-Tests use disposable settings roots and do not inherit the normal user's Auto HDR setting. The default test covers DirectShow, menus and GPU readback. `--live-ui` separately exercises immediate changes and Cancel/OK behavior. Targeted tests cover the SDR luminance boundary, the actual 10-bit presentation signal across 203 nits, and HDR tonal controls. These tests do not replace real playback and display calibration.
-
-The settings and shader-cache storage names from the earlier development build are retained, so upgrading does not discard existing settings.
 
 ## License and credits
 
