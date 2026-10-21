@@ -6,16 +6,77 @@ FrankyRenderer is a development project. Synthetic GPU and DirectShow regression
 
 ## Features
 
-- Native D3D11 decoder textures and CPU video input.
-- Image and chroma scaling, custom filter configuration and temporal frame mixing.
-- Debanding, dithering, Bwdif / Yadif deinterlacing and sharpening.
-- Color adjustment, SDR ICC profiles and `.cube` LUTs.
-- HDR passthrough and HDR-to-SDR tone mapping, gamut mapping and peak detection.
-- Separate HDR Shadows, Midtones and Highlights controls.
-- An adjustable mpv-compatible shader chain, including bundled PlayKit shaders with their original notices.
-- Experimental black bar detection and zoom controls.
+### Video input and output
+
+- DirectShow video rendering for Windows x64, with libplacebo image processing and Direct3D 11 / DXGI presentation.
+- Native D3D11 decoder textures and CPU video input, with the active transfer path shown in the statistics overlay.
+- Support for 8-, 10-, 12- and 16-bit input layouts, including NV12, P010/P012/P016, planar YUV, packed YUV, RGB and grayscale formats. Native GPU input depends on the decoder's texture format and device capabilities.
+- Selectable output texture format: automatic, 8-bit integer, preferred 10-bit integer or preferred 16-bit float.
+- Configurable RGB output levels, dither target bit depth and maximum frames in flight.
+- D3D11 subtitle composition through compatible host callbacks.
+
+### Scaling and Smooth Motion
+
+- Separate image upscaling, image downscaling, chroma/alpha upscaling and chroma/alpha downscaling filters.
+- EWA Lanczos / Jinc, EWA Lanczos Sharp, Lanczos, Spline16/36/64, Mitchell, Bicubic, Robidoux and additional libplacebo filters.
+- Custom filter editor with a starting filter, kernel, window, radius, clamp, blur, taper, anti-ringing, kernel/window parameters and EWA mode.
+- Global anti-ringing strength and configurable downscaling anti-aliasing behavior.
+- Smooth Motion through temporal frame mixing, with selectable and customizable frame mixer filters.
+
+### Image processing
+
+- Debanding with adjustable iterations, threshold, radius and grain.
+- Adaptive Sharpen with adjustable strength.
+- Bwdif and Yadif deinterlacing with temporal references, automatic field order and manual top/bottom-field overrides.
+- Blue-noise, ordered and random dithering, with optional temporal dithering.
+
+### HDR and color mapping
+
+- Automatic HDR handling, HDR passthrough and GPU tone mapping from HDR to SDR.
+- Tone mapping functions including Spline, BT.2390, BT.2446A, Reinhard, Mobius, Hable and ST 2094 curves.
+- Adjustable SDR target brightness and HDR peak override.
+- HDR peak detection with smoothing, scene-change thresholds, percentile selection, black cutoff and delayed peak detection control.
+- Detailed tone curve controls for knee adaptation, Spline slope/contrast and other function-specific parameters.
+- Local contrast recovery with adjustable strength and smoothness.
+- Perceptual, relative/absolute colorimetric, softclip, saturation and additional gamut mapping methods.
+- Gamut compression controls, internal LUT resolution and optional tricubic gamut interpolation.
+- Separate HDR Shadows, Midtones and Highlights controls, each with exposure, contrast and saturation adjustments.
+- Inverse tone mapping, gamut expansion, metadata selection and clipping/LUT visualization controls.
+
+### Color adjustment and management
+
+- Brightness, contrast, saturation, gamma, hue and color temperature controls.
+- SDR ICC profile support with selectable rendering intent.
+- Custom `.cube` LUT loading and LUT interpretation controls.
+
+### Shader chain
+
+- 21 bundled mpv-compatible GLSL shaders from the PlayKit collection, with original authorship and license notices preserved.
+- Neural/adaptive upscaling options: FSRCNNX 2x, AiUpscale Photo 2x and RAVU Zoom.
+- Animation-oriented upscaling: Anime4K CNN 2x M, ArtCNN C4F16 and CuNNy 2x12 DS.
+- Chroma reconstruction: KrigBilateral and CfL Prediction.
+- Sharpening, detail and local contrast: AMD CAS, Guided Detail Enhance and Clarity.
+- Edge cleanup: FineDehalo, Anti-Ringing and PixelClipper.
+- Denoising and debanding: NLMeans, Bilateral Denoise, Chroma Denoise, hdeband and neo-f3kdb.
+- Detail-aware downscaling: SSimDownscaler and DPID.
+- Per-shader parameters, configurable processing order and double-click enable/disable controls.
+
+### Black bars and zoom
+
+- Automatic detection of hardcoded black bars from video pixels.
+- Crop and zoom controls to fit active content or fill the output.
+- Adjustable detection threshold, switching delay and stable zoom behavior.
+- Protection for detected subtitle content in the black bars.
+
+### Settings, presentation and diagnostics
+
+- English settings pages grouped by Processing, Scaling, Color Adjustment, Color Management, HDR and Color Mapping, and Shaders.
 - Live settings preview: valid changes appear immediately; OK keeps them and Cancel restores the dialog's opening values.
-- Ctrl+J statistics and a persistent shader cache.
+- Numeric entry, fine adjustment steps, reset controls and contextual descriptions.
+- Configurable background color, transparency and rendering quality/performance options.
+- PotPlayer fullscreen playlist-transition handling.
+- Ctrl+J statistics with display/video information, active processing settings, frame counters, presentation timing and CPU/GPU render timings.
+- Persistent shader cache for reusing compiled processing work across playback sessions.
 
 Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision support relies on metadata provided by the decoder; this is not Dolby Vision HDMI tunneling or FEL reconstruction.
 
