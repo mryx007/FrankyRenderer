@@ -3,13 +3,9 @@
 #include "UserShaderSource.h"
 #include <cwctype>
 #include <algorithm>
+#include "ShaderParameterLabels.h"
 static std::wstring Number(float n){wchar_t text[64];swprintf_s(text,L"%.6g",double(n));return text;}
 static std::wstring Wide(const char* t){std::wstring s;for(;*t;t++)s+=wchar_t(static_cast<unsigned char>(*t));return s;}
-static std::wstring ParameterLabel(const char* key){
-    struct Label{const char* key;const wchar_t* text;};
-    for(const auto& p:{Label{"STR",L"Strength"},Label{"RAD",L"Radius"},Label{"RADIUS",L"Radius"},Label{"RX",L"Horizontal Radius"},Label{"RY",L"Vertical Radius"},Label{"STR_D",L"Dark Halo Strength"},Label{"STR_B",L"Bright Halo Strength"},Label{"STRD",L"Shadow Strength"},Label{"STRL",L"Highlight Strength"},Label{"DEBUG",L"Debug View"},Label{"GRAIN",L"Grain"},Label{"THR",L"Threshold"},Label{"TAP",L"Sample Taps"},Label{"SHARP",L"Sharpen"},Label{"REF",L"Reference Mode"},Label{"SUBSAM",L"Subsampling"},Label{"THMI",L"Strong Edge Low"},Label{"THMA",L"Strong Edge High"},Label{"THLIMI",L"Light Edge Low"},Label{"THLIMA",L"Light Edge High"},Label{"SENS_L",L"Low Sensitivity"},Label{"SENS_H",L"High Sensitivity"},Label{"EPS",L"Regularization"},Label{"TAPS_scale",L"Image Sampling Mode"},Label{"TAPS_cscale",L"Chroma Sampling Mode"},Label{"CLIP_scale",L"Upscaling Limit"},Label{"CLIP_cscale",L"Chroma Limit"},Label{"CLIP_dscale",L"Downscaling Limit"},Label{"THR_AVG",L"Average Threshold"},Label{"THR_MAX",L"Maximum Threshold"},Label{"THR_MID",L"Middle Threshold"},Label{"THR_ALL",L"Combined Threshold"}})if(!strcmp(key,p.key))return p.text;
-    auto s=Wide(key);for(auto& c:s)if(c==L'_')c=L' ';return s;
-}
 static std::wstring Text(HWND d,int id){wchar_t text[128]={};GetDlgItemTextW(d,id,text,128);return text;}
 ShaderPage::ShaderPage(IUnknown* outer,HRESULT* hr):CBasePropertyPage(NAME("FrankyRenderer shaders"),outer,112,210){*hr=S_OK;background=CreateSolidBrush(RGB(248,250,252));}
 ShaderPage::~ShaderPage(){if(title)DeleteObject(title);if(background)DeleteObject(background);}
@@ -18,13 +14,13 @@ HRESULT ShaderPage::OnDisconnect(){if(config){config->Release();config=nullptr;}
 void ShaderPage::Dirty(){m_bDirty=TRUE;if(m_pPageSite)m_pPageSite->OnStatusChange(PROPPAGESTATUS_DIRTY);}
 int ShaderPage::Position()const{for(int n=0;n<ShaderCount;n++)if(draft.order[n]==selected)return n;return 0;}
 void ShaderPage::List(){loading=true;SendDlgItemMessageW(m_Dlg,1500,LB_RESETCONTENT,0,0);for(int id:draft.order){const auto& s=ShaderCatalog[id];std::wstring label=draft.shaders[id].enabled?L"[On] ":L"[Off] ";label+=s.label;SendDlgItemMessageW(m_Dlg,1500,LB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));}SendDlgItemMessageW(m_Dlg,1500,LB_SETCURSEL,Position(),0);loading=false;}
-void ShaderPage::Help(int p){const auto& s=ShaderCatalog[selected];if(p<0||p>=s.count)return;const auto& f=s.parameters[p];std::wstring text=ParameterLabel(f.name)+L" ("+Wide(f.name)+L"): Default "+Number(f.initial);if(std::abs(f.minimum)<1e30f&&std::abs(f.maximum)<1e30f)text+=L"; range "+Number(f.minimum)+L" to "+Number(f.maximum);if(f.integer)text+=L"; whole numbers only";SetDlgItemTextW(m_Dlg,1590,text.c_str());}
+void ShaderPage::Help(int p){const auto& s=ShaderCatalog[selected];if(p<0||p>=s.count)return;const auto& f=s.parameters[p];std::wstring text=ShaderParameterLabel(f.name)+L" ("+Wide(f.name)+L"): Default "+Number(f.initial);if(std::abs(f.minimum)<1e30f&&std::abs(f.maximum)<1e30f)text+=L"; range "+Number(f.minimum)+L" to "+Number(f.maximum);if(f.integer)text+=L"; whole numbers only";SetDlgItemTextW(m_Dlg,1590,text.c_str());}
 void ShaderPage::Editor(){
  loading=true;const auto& s=ShaderCatalog[selected];const auto& c=draft.shaders[selected];
  std::wstring info=s.category;info+=L": ";info+=s.help;SetDlgItemTextW(m_Dlg,1502,info.c_str());SetDlgItemTextW(m_Dlg,1503,s.label);
  for(int p=0;p<ShaderParameterLimit;p++){
   const bool visible=p<s.count;for(int id:{1510+p,1530+p,1550+p,1570+p})ShowWindow(GetDlgItem(m_Dlg,id),visible?SW_SHOW:SW_HIDE);
-  if(visible){SetDlgItemTextW(m_Dlg,1510+p,ParameterLabel(s.parameters[p].name).c_str());SetDlgItemTextW(m_Dlg,1530+p,Number(c.overrides&(1u<<p)?c.values[p]:s.parameters[p].initial).c_str());}
+  if(visible){SetDlgItemTextW(m_Dlg,1510+p,ShaderParameterLabel(s.parameters[p].name).c_str());SetDlgItemTextW(m_Dlg,1530+p,Number(c.overrides&(1u<<p)?c.values[p]:s.parameters[p].initial).c_str());}
  }
  EnableWindow(GetDlgItem(m_Dlg,1504),Position()>0);EnableWindow(GetDlgItem(m_Dlg,1505),Position()<ShaderCount-1);EnableWindow(GetDlgItem(m_Dlg,1506),s.count>0);
  SetDlgItemTextW(m_Dlg,1590,s.count?L"Select a parameter to see its default and range. Changes take effect immediately.":L"No adjustable parameters. Double-click the shader to toggle it; Changes take effect immediately.");loading=false;

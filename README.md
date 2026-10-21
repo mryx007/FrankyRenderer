@@ -70,7 +70,9 @@ FrankyRenderer is a development project. Synthetic GPU and DirectShow regression
 
 ### Settings, presentation and diagnostics
 
-- English settings pages grouped by Processing, Scaling, Color Adjustment, Color Management, HDR and Color Mapping, and Shaders.
+- Native dark settings interface drawn with Direct2D and DirectWrite, with English sections for General, Processing, Scaling, Black Bars / Zoom, Color Adjustment, Color Management, HDR and Color Mapping, and Shaders.
+- Search across settings, scrollable pages, readable descriptions and explicit default values and ranges.
+- Compact shader list with double-click enable/disable and a parameter editor for the selected shader.
 - Live settings preview: valid changes appear immediately; OK keeps them and Cancel restores the dialog's opening values.
 - Numeric entry, fine adjustment steps, reset controls and contextual descriptions.
 - Configurable background color, transparency and rendering quality/performance options.
