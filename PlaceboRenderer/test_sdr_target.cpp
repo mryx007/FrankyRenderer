@@ -13,5 +13,7 @@ int main(){
     for(float metadata:{0.f,100.f,203.f}){f.color.hdr.max_luma=metadata;upload();auto base=draw(203);for(float n:{40.f,100.f,120.f,199.f,200.f,202.f,203.f,204.f,210.f,300.f,1000.f}){auto delta=Delta(base,draw(n));printf("SDR source peak %.0f target %.0f pixel delta %lld\n",metadata,n,delta);Check(delta==0,"SDR output stays unchanged across 203 nits");}}
     f.color=pl_color_space_hdr10;f.color.hdr.max_luma=4000;f.matrix=PL_COLOR_SYSTEM_BT_2020_NC;upload();
     Check(Delta(draw(120),draw(300))>100,"HDR to SDR still uses target nits");
+    auto previous=draw(190);for(float n:{199.f,200.f,202.f,203.f,204.f,210.f,220.f,250.f,300.f,400.f,1000.f}){auto pixels=draw(n);long long sum=0;for(size_t i=0;i<pixels.size();i+=4)sum+=pixels[i];printf("HDR to SDR target %.0f average code %.4f adjacent delta %lld\n",n,double(sum)/4096,Delta(previous,pixels));previous=pixels;}
+
     puts("PASS SDR target: unchanged SDR at 40..1000 nits, including 203 boundary and source metadata variants; HDR to SDR target remains active");
 }

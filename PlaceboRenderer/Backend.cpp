@@ -88,6 +88,7 @@ struct PlaceboBackend::State {
     void DestroySwapchain(){pl_swapchain_destroy(&swapchain);presentation.Reset(false);presentationTimed=false;periodUpdated=0;measuredWidth=measuredHeight=0;lastSyncQpc=0;lastSyncRefresh=0;stableCadence=true;}
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     std::function<void(ID3D11Texture2D*)> presentProbe;
+    std::function<void(const pl_color_space&)> presentColorProbe;
     void ProbePresent(){if(presentProbe){ComPtr<IDXGISwapChain> native;native.Attach(pl_d3d11_swapchain_unwrap(swapchain));ComPtr<ID3D11Texture2D> buffer;if(native&&SUCCEEDED(native->GetBuffer(0,IID_PPV_ARGS(&buffer))))presentProbe(buffer.Get());}}
 #endif
     std::string actualTone="n/a";float actualTarget=0;
@@ -667,11 +668,18 @@ HRESULT PlaceboBackend::Present(){
     if(width!=s.measuredWidth||height!=s.measuredHeight){s.presentation.Reset(false);s.measuredWidth=width;s.measuredHeight=height;}
     if(!pl_swapchain_resize(s.swapchain,&width,&height))return E_FAIL;
     const bool hdr=s.settings.hdrMode!=2&&s.settings.hdrPassthrough&&s.HdrActive()&&pl_color_space_is_hdr(&s.image.color);
-    pl_color_space hint=hdr?s.image.color:pl_color_space_srgb;if(!hdr)hint.hdr.max_luma=s.SdrTargetNits();
+    // The swapchain hint selects the signal format, not the tone-map peak.
+    // libplacebo 7.360.1 treats SDR hints above 203 nits as HDR and may select
+    // PQ on 10-bit buffers. Keep SDR signalling fixed; apply the user's peak
+    // only to the render target below, after its SDR transfer is established.
+    pl_color_space hint=hdr?s.image.color:pl_color_space_srgb;if(!hdr)hint.hdr.max_luma=PL_COLOR_SDR_WHITE;
     if(hdr&&s.settings.hdrMode!=1&&s.settings.hdrNits>0)hint.hdr.max_luma=s.settings.hdrNits;
     pl_swapchain_colorspace_hint(s.swapchain,&hint);pl_swapchain_frame frame={};if(!pl_swapchain_start_frame(s.swapchain,&frame))return E_FAIL;
     pl_frame target={};pl_frame_from_swapchain(&target,&frame);if(!hdr)target.color.hdr.max_luma=s.SdrTargetNits();
     if(hdr&&s.settings.hdrMode!=1&&s.settings.hdrNits>0)target.color.hdr.max_luma=s.settings.hdrNits;
+#ifdef PLACEBO_TEST_PRESENT_PIXELS
+    if(s.presentColorProbe)s.presentColorProbe(target.color);
+#endif
     const auto format=target.planes[0].texture->params.format;
     const int textureFormat=format->component_depth[0]*(format->type==PL_FMT_FLOAT?-1:1);
     LARGE_INTEGER begin={},end={},frequency={};QueryPerformanceFrequency(&frequency);
@@ -718,6 +726,7 @@ HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty){
 }
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
 void PlaceboBackend::SetPresentProbeForTest(std::function<void(ID3D11Texture2D*)> probe){state->presentProbe=std::move(probe);}
+void PlaceboBackend::SetPresentColorProbeForTest(std::function<void(const pl_color_space&)> probe){state->presentColorProbe=std::move(probe);}
 #endif
 // Before the swapchain exists, GDI owns the loading background. Once DXGI
 // presents, leave its surface alone; never wait for the rendering thread here.

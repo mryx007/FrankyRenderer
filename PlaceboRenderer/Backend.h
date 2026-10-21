@@ -95,6 +95,7 @@ public:
     HRESULT TryPresent(bool blackWhenEmpty=false);
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     void SetPresentProbeForTest(std::function<void(ID3D11Texture2D*)>);
+    void SetPresentColorProbeForTest(std::function<void(const pl_color_space&)>);
 #endif
     bool PaintLoadingBackground(HDC dc);
     void SetGeometry(const RECT& source,const RECT& target);

@@ -57,11 +57,13 @@ python PlaceboRenderer/run_tests.py
 python PlaceboRenderer/run_tests.py --live-ui
 .\PlaceboRenderer\build_sdr_target.cmd
 python PlaceboRenderer/run_tests.py --sdr-target
+.\PlaceboRenderer\build_sdr_present.cmd
+python PlaceboRenderer/run_tests.py --sdr-present
 .\PlaceboRenderer\build_tonal.cmd
 python PlaceboRenderer/run_tests.py --tonal
 ```
 
-Tests use disposable settings roots and do not inherit the normal user's Auto HDR setting. The default test covers DirectShow, menus and GPU readback. `--live-ui` separately exercises immediate changes and Cancel/OK behavior. Targeted tests cover the SDR luminance boundary and HDR tonal controls. These tests do not replace real playback and display calibration.
+Tests use disposable settings roots and do not inherit the normal user's Auto HDR setting. The default test covers DirectShow, menus and GPU readback. `--live-ui` separately exercises immediate changes and Cancel/OK behavior. Targeted tests cover the SDR luminance boundary, the actual 10-bit presentation signal across 203 nits, and HDR tonal controls. These tests do not replace real playback and display calibration.
 
 The settings and shader-cache storage names from the earlier development build are retained, so upgrading does not discard existing settings.
 
