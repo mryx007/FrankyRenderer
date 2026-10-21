@@ -10,33 +10,21 @@ General and presentation settings:
 
 ![FrankyRenderer General and Presentation settings](docs/screenshots/general.png)
 
-<details>
-<summary>Processing — debanding, sharpening, deinterlacing and dithering</summary>
+Processing — debanding, sharpening, deinterlacing and dithering:
 
 ![FrankyRenderer Processing settings](docs/screenshots/processing.png)
 
-</details>
-
-<details>
-<summary>HDR and Color Mapping</summary>
+HDR and Color Mapping:
 
 ![FrankyRenderer HDR and Color Mapping settings](docs/screenshots/hdr-color-mapping.png)
 
-</details>
-
-<details>
-<summary>Color Management — ICC profiles and 3D LUTs</summary>
+Color Management — ICC profiles and 3D LUTs:
 
 ![FrankyRenderer Color Management settings](docs/screenshots/color-management.png)
 
-</details>
-
-<details>
-<summary>Shader Chain</summary>
+Shader Chain:
 
 ![FrankyRenderer Shader Chain settings](docs/screenshots/shaders.png)
-
-</details>
 
 The screenshots show example settings, not recommended presets.
 
