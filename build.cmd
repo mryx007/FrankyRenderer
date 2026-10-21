@@ -1,3 +1,3 @@
 @echo off
-call "%~dp0PlaceboRenderer\build.cmd"
+call "%~dp0src\build.cmd"
 exit /b %errorlevel%

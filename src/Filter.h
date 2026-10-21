@@ -1,14 +1,14 @@
-﻿#pragma once
+#pragma once
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include "../MPCVideoRenderer/external/BaseClasses/streams.h"
+#include "DirectShow/external/BaseClasses/streams.h"
 #include <d3d11.h>
-#include "../MPCVideoRenderer/Include/ID3DVideoMemoryConfiguration.h"
-#include "../MPCVideoRenderer/Include/ISubRender11.h"
-#include "../MPCVideoRenderer/Include/FilterInterfaces.h"
-#include "../MPCVideoRenderer/Include/FilterInterfacesImpl.h"
+#include "DirectShow/Include/ID3DVideoMemoryConfiguration.h"
+#include "DirectShow/Include/ISubRender11.h"
+#include "DirectShow/Include/FilterInterfaces.h"
+#include "DirectShow/Include/FilterInterfacesImpl.h"
 #include "MediaFormat.h"
 #include "Settings.h"
 #include "FieldSample.h"

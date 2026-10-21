@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include "../MPCVideoRenderer/external/BaseClasses/streams.h"
-#include "../MPCVideoRenderer/Include/IMediaSideData.h"
+#include "DirectShow/external/BaseClasses/streams.h"
+#include "DirectShow/Include/IMediaSideData.h"
 #include <map>
 
 struct SideDataGUIDComparer

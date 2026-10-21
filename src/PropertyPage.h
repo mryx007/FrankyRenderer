@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Filter.h"
 class SettingsPage:public CBasePropertyPage {
     IPlaceboSettings* config=nullptr;PlaceboSettings settings;bool loading=false,processing=false,color=false,hdrDetails=false,effects=false,debanding=false,adjustments=false;

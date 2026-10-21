@@ -6,7 +6,7 @@
 #include <mfobjects.h>
 #include <wrl/client.h>
 #include <initguid.h>
-#include "../MPCVideoRenderer/Include/IMediaSideData.h"
+#include "DirectShow/Include/IMediaSideData.h"
 #include <algorithm>
 #include <limits>
 #include <cmath>

@@ -1,7 +1,7 @@
 #include "Diagnostics.h"
 #define NOMINMAX
 #include <windows.h>
-#include "../MPCVideoRenderer/external/BaseClasses/streams.h"
+#include "DirectShow/external/BaseClasses/streams.h"
 #include <dvdmedia.h>
 #include <wrl/client.h>
 #include "Settings.h"
@@ -10,14 +10,14 @@
 #include "UiHelp.h"
 #include "StatisticsKey.h"
 #include <commctrl.h>
-#include "../MPCVideoRenderer/Include/FilterInterfaces.h"
-#include "../MPCVideoRenderer/Include/ISubRender11.h"
+#include "DirectShow/Include/FilterInterfaces.h"
+#include "DirectShow/Include/ISubRender11.h"
 #include <atomic>
 #include <thread>
 #include <d3d11.h>
-#include "../MPCVideoRenderer/Include/ID3DVideoMemoryConfiguration.h"
+#include "DirectShow/Include/ID3DVideoMemoryConfiguration.h"
 #include <initguid.h>
-#include "../MPCVideoRenderer/Include/IMediaSideData.h"
+#include "DirectShow/Include/IMediaSideData.h"
 #include <cstdio>
 #include <vector>
 #include <algorithm>
@@ -129,7 +129,7 @@ static void TestPage(IClassFactory* factory,IBaseFilter* renderer,IPlaceboSettin
     PROPPAGEINFO info={};info.cb=sizeof(info);Check(page->GetPageInfo(&info),"page metadata");CoTaskMemFree(info.pszTitle);CoTaskMemFree(info.pszDocString);CoTaskMemFree(info.pszHelpFile);
     HWND parent=CreateWindowExW(0,L"STATIC",L"Internal settings test",WS_POPUP,0,0,1100,800,nullptr,nullptr,g_hInst,nullptr);if(!parent)exit(9);RECT bounds={0,0,1100,800};Check(page->Activate(parent,&bounds,FALSE),"page activation");HWND dialog=GetWindow(parent,GW_CHILD);
     for(int id:{110,111,112,113,720,730,731,735})if(!GetDlgItem(dialog,id)){printf("FAIL missing settings control %d\n",id);exit(10);}
-    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"adjustment preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"PlaceboRenderer/build/color-adjustment-preview.bmp");ShowWindow(parent,SW_HIDE);
+    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"adjustment preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"src/build/color-adjustment-preview.bmp");ShowWindow(parent,SW_HIDE);
     PlaceboSettings before,after;Check(config->GetSettings(&before),"settings snapshot");CheckNumberButtons(dialog);if(std::abs(NumberText(dialog,110)-(before.saturation-1))>.00001f||std::abs(NumberText(dialog,111)-(before.contrast-1))>.00001f||std::abs(NumberText(dialog,113)-(before.gamma-1))>.00001f)exit(86);
     if(std::abs(StepNumber(NumberControls[0],-.5,true)+.495)>.00001)exit(87);
     SetDlgItemTextW(dialog,110,L"0");for(int i=0;i<3;i++)NumberClick(dialog,110,true);if(std::abs(NumberText(dialog,110)-.015f)>.00001f)exit(70);
@@ -150,7 +150,7 @@ static void TestPage(IClassFactory* factory,IBaseFilter* renderer,IPlaceboSettin
     SetDlgItemTextW(dialog,110,L"invalid");if(SUCCEEDED(page->Apply())){printf("FAIL invalid setting accepted\n");exit(12);}Check(config->SetSettings(&before),"restore settings");
     HWND oldTip=HelpWindow(dialog);Check(page->Deactivate(),"page deactivation");if(IsWindow(oldTip))exit(91);Check(page->SetObjects(0,nullptr),"page disconnect");Check(page->SetPageSite(nullptr),"page detach site");DestroyWindow(parent);printf("PASS settings page: neutral zero display, correction conversion, unapplied/applied reset, contextual help lifetime, arrows, scalers and validation\n");
 }
-static void SaveHdrPreview(HWND dialog,const char* filename="PlaceboRenderer/build/hdr-menu-preview.bmp"){
+static void SaveHdrPreview(HWND dialog,const char* filename="src/build/hdr-menu-preview.bmp"){
     RECT r={};GetClientRect(dialog,&r);const int w=r.right,h=r.bottom;
     HDC screen=GetDC(dialog),dc=CreateCompatibleDC(screen);HBITMAP bitmap=CreateCompatibleBitmap(screen,w,h);auto old=SelectObject(dc,bitmap);
     HBRUSH brush=CreateSolidBrush(RGB(248,250,252));RECT area={0,0,w,h};FillRect(dc,&area,brush);DeleteObject(brush);
@@ -172,7 +172,7 @@ static BOOL CALLBACK BarsWindow(HWND window,LPARAM timer){
     KillTimer(nullptr,static_cast<UINT_PTR>(timer));barsSeen=true;
     for(int id:{701,702,703,704,705,706,707,708,11410,11411,11412,11413})if(!GetDlgItem(window,id))exit(180);
     if(barsAction==1){SetDlgItemTextW(window,705,L"8");SendMessageW(window,WM_COMMAND,IDCANCEL,0);return FALSE;}
-    if(barsAction==2){CheckDlgButton(window,701,BST_CHECKED);CheckDlgButton(window,703,BST_UNCHECKED);CheckDlgButton(window,708,BST_UNCHECKED);SendDlgItemMessageW(window,704,CB_SETCURSEL,1,0);SetDlgItemTextW(window,705,L"1,5");SetDlgItemTextW(window,706,L"3");SendMessageW(window,WM_COMMAND,MAKEWPARAM(11413,BN_CLICKED),0);ShowWindow(window,SW_SHOWNOACTIVATE);UpdateWindow(window);SaveHdrPreview(window,"PlaceboRenderer/build/black-bars-menu-preview.bmp");}
+    if(barsAction==2){CheckDlgButton(window,701,BST_CHECKED);CheckDlgButton(window,703,BST_UNCHECKED);CheckDlgButton(window,708,BST_UNCHECKED);SendDlgItemMessageW(window,704,CB_SETCURSEL,1,0);SetDlgItemTextW(window,705,L"1,5");SetDlgItemTextW(window,706,L"3");SendMessageW(window,WM_COMMAND,MAKEWPARAM(11413,BN_CLICKED),0);ShowWindow(window,SW_SHOWNOACTIVATE);UpdateWindow(window);SaveHdrPreview(window,"src/build/black-bars-menu-preview.bmp");}
     if(barsAction==3)SendMessageW(window,WM_COMMAND,MAKEWPARAM(707,BN_CLICKED),0);
     SendMessageW(window,WM_COMMAND,IDOK,0);return FALSE;
 }
@@ -196,7 +196,7 @@ static void TestScaling(IClassFactory* factory,IBaseFilter* renderer,IPlaceboSet
     ComPtr<IPropertyPage> page;Check(factory->CreateInstance(nullptr,IID_PPV_ARGS(&page)),"scaling factory");ComPtr<PageSite> site;site.Attach(new PageSite);Check(page->SetPageSite(site.Get()),"scaling site");IUnknown* object=renderer;Check(page->SetObjects(1,&object),"scaling object");
     HWND parent=CreateWindowExW(0,L"STATIC",L"Scaling Test",WS_POPUP,-10000,-10000,1100,850,nullptr,nullptr,g_hInst,nullptr);RECT bounds={0,0,1100,850};Check(page->Activate(parent,&bounds,FALSE),"scaling activation");HWND dialog=GetWindow(parent,GW_CHILD);
     for(int id:{600,601,602,603,604,605,610,611,612,613,620,621,622,623,624,625,626,627,628,630,640,240})if(!GetDlgItem(dialog,id))exit(101);
-    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"scaling preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"PlaceboRenderer/build/scaling-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
+    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"scaling preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"src/build/scaling-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
     TestBarsDialog(dialog,page.Get(),config);
     auto select=[&](int id,int at){SendDlgItemMessageW(dialog,id,CB_SETCURSEL,at,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(id,CBN_SELCHANGE),reinterpret_cast<LPARAM>(GetDlgItem(dialog,id)));};
     for(int role=0;role<5;role++){
@@ -214,7 +214,7 @@ static void TestScaling(IClassFactory* factory,IBaseFilter* renderer,IPlaceboSet
     if(!IsWindowEnabled(GetDlgItem(dialog,622))||IsWindowEnabled(GetDlgItem(dialog,641)))exit(193);
     Check(page->Apply(),"Customize apply");Check(config->GetSettings(&customized),"Customize readback");
     if(strcmp(customized.scaling.filters[0].filter,"custom")||strcmp(customized.scaling.filters[0].preset,"lanczos")||customized.scaling.filters[0].overrides)exit(194);
-    ShowWindow(parent,SW_SHOWNOACTIVATE);UpdateWindow(dialog);SaveHdrPreview(dialog,"PlaceboRenderer/build/scaling-customize-preview.bmp");ShowWindow(parent,SW_HIDE);
+    ShowWindow(parent,SW_SHOWNOACTIVATE);UpdateWindow(dialog);SaveHdrPreview(dialog,"src/build/scaling-customize-preview.bmp");ShowWindow(parent,SW_HIDE);
     select(600,2);SetDlgItemTextW(dialog,621,L"0.25");SetDlgItemTextW(dialog,622,L"0.8");Check(page->Apply(),"custom parameter apply");
     PlaceboSettings value;Check(config->GetSettings(&value),"custom readback");if(strcmp(value.scaling.filters[0].filter,"custom")||value.scaling.filters[0].values[1]!=.25f||value.scaling.filters[0].values[2]!=.8f)exit(103);
     SetDlgItemTextW(dialog,621,L"Auto");Check(page->Apply(),"custom auto restore");Check(config->GetSettings(&value),"auto readback");if(value.scaling.filters[0].overrides&2)exit(104);
@@ -230,7 +230,7 @@ static BOOL CALLBACK OutputWindow(HWND window,LPARAM timer){
     wchar_t title[128];GetWindowTextW(window,title,128);if(wcscmp(title,L"Output Background and Advanced"))return TRUE;
     KillTimer(nullptr,static_cast<UINT_PTR>(timer));outputSeen=true;
     if(outputAction==1){SetDlgItemTextW(window,1100,L"0.8");SendMessageW(window,WM_COMMAND,IDCANCEL,0);return FALSE;}
-    if(outputAction==2){SetDlgItemTextW(window,1100,L"0,25");SetDlgItemTextW(window,1113,L"16");SaveHdrPreview(window,"PlaceboRenderer/build/output-background-menu-preview.bmp");}
+    if(outputAction==2){SetDlgItemTextW(window,1100,L"0,25");SetDlgItemTextW(window,1113,L"16");SaveHdrPreview(window,"src/build/output-background-menu-preview.bmp");}
     if(outputAction==3)SendMessageW(window,WM_COMMAND,MAKEWPARAM(1140,BN_CLICKED),0);
     SendMessageW(window,WM_COMMAND,IDOK,0);return FALSE;
 }
@@ -249,7 +249,7 @@ static void TestDebanding(IClassFactory* factory,IBaseFilter* renderer,IPlaceboS
     PlaceboSettings before;Check(config->GetSettings(&before),"debanding snapshot");ComPtr<IPropertyPage> page;Check(factory->CreateInstance(nullptr,IID_PPV_ARGS(&page)),"debanding factory");ComPtr<PageSite> site;site.Attach(new PageSite);Check(page->SetPageSite(site.Get()),"debanding site");IUnknown* object=renderer;Check(page->SetObjects(1,&object),"debanding object");
     HWND parent=CreateWindowExW(0,L"STATIC",L"Debanding Test",WS_POPUP,-10000,-10000,1100,850,nullptr,nullptr,g_hInst,nullptr);RECT bounds={0,0,1100,850};Check(page->Activate(parent,&bounds,FALSE),"debanding activate");HWND dialog=GetWindow(parent,GW_CHILD);CheckNumberButtons(dialog);CheckHelp(dialog);
     for(int id:{210,211,212,213,220,700,711,712,713,714})if(!GetDlgItem(dialog,id))exit(113);
-    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"debanding preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"PlaceboRenderer/build/debanding-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
+    ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"debanding preview show");UpdateWindow(dialog);SaveHdrPreview(dialog,"src/build/debanding-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
     auto mode=[&](int at){SendDlgItemMessageW(dialog,220,CB_SETCURSEL,at,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(220,CBN_SELCHANGE),0);};
     mode(1);for(int id:{210,211,212,213})if(!IsWindowEnabled(GetDlgItem(dialog,id)))exit(114);
     SetDlgItemTextW(dialog,210,L"0");SetDlgItemTextW(dialog,211,L"4,5");SetDlgItemTextW(dialog,212,L"100");SetDlgItemTextW(dialog,213,L"0");Check(page->Apply(),"debanding zero/manual apply");PlaceboSettings value;Check(config->GetSettings(&value),"debanding readback");if(value.deband!=1||value.debandIterations!=0||value.debandThreshold!=4.5f||value.debandRadius!=100||value.debandGrain!=0)exit(115);
@@ -280,7 +280,7 @@ static void TestShaderPage(IClassFactory* factory,IBaseFilter* renderer,IPlacebo
  SendMessageW(d,WM_COMMAND,MAKEWPARAM(1506,BN_CLICKED),0);Check(page->Apply(),"shader parameters reset");Check(config->GetSettings(&value),"shader reset readback");if(value.userShaders.shaders[0].overrides||!value.userShaders.shaders[0].enabled)exit(206);
  for(int pos=0;pos<ShaderCount;pos++){SendDlgItemMessageW(d,1500,LB_SETCURSEL,pos,0);SendMessageW(d,WM_COMMAND,MAKEWPARAM(1500,LBN_SELCHANGE),0);const int id=value.userShaders.order[pos];for(int p=0;p<ShaderCatalog[id].count;p++)if(std::abs(NumberText(d,1530+p)-ShaderCatalog[id].parameters[p].initial)>1e-5)exit(207);}
  // Largest parameter set must remain inside the compact panel.
- SendDlgItemMessageW(d,1500,LB_SETCURSEL,2,0);SendMessageW(d,WM_COMMAND,MAKEWPARAM(1500,LBN_SELCHANGE),0);ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"shader preview show");UpdateWindow(d);SaveHdrPreview(d,"PlaceboRenderer/build/shaders-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
+ SendDlgItemMessageW(d,1500,LB_SETCURSEL,2,0);SendMessageW(d,WM_COMMAND,MAKEWPARAM(1500,LBN_SELCHANGE),0);ShowWindow(parent,SW_SHOWNOACTIVATE);Check(page->Show(SW_SHOW),"shader preview show");UpdateWindow(d);SaveHdrPreview(d,"src/build/shaders-menu-preview.bmp");ShowWindow(parent,SW_HIDE);
  SendMessageW(d,WM_COMMAND,MAKEWPARAM(1507,BN_CLICKED),0);Check(page->Apply(),"all shaders off");Check(config->GetSettings(&value),"all off readback");for(const auto& c:value.userShaders.shaders)if(c.enabled)exit(208);
  auto invalid=value;invalid.userShaders.order[0]=invalid.userShaders.order[1];if(SUCCEEDED(config->SetSettings(&invalid)))exit(209);
  Check(page->Deactivate(),"shader deactivate");Check(page->Activate(parent,&bounds,FALSE),"shader reopen");Check(page->Apply(),"shader reopened apply");Check(config->GetSettings(&value),"shader persisted order");if(value.userShaders.order[1]!=0)exit(210);
@@ -298,17 +298,17 @@ static void TestProcessing(IClassFactory* mainFactory,IClassFactory* processingF
     ShowWindow(parents[3],SW_SHOWNOACTIVATE);Check(pages[3]->Show(SW_SHOW),"HDR preview page show");
     const int primary[]={114,115,121,122,400};
     auto checkPrimary=[&](){for(int id:primary)if(!IsWindowVisible(GetDlgItem(dialogs[3],id)))exit(126);};checkPrimary();
-    UpdateWindow(dialogs[3]);SaveHdrPreview(dialogs[3],"PlaceboRenderer/build/hdr-main.bmp");
+    UpdateWindow(dialogs[3]);SaveHdrPreview(dialogs[3],"src/build/hdr-main.bmp");
     for(int section=1;section<=1;section++){
         SendMessageW(dialogs[3],WM_COMMAND,MAKEWPARAM(800+section,BN_CLICKED),0);checkPrimary();
         const int visibleIds[]={410,440,450};for(int i=0;i<3;i++)if(!!IsWindowVisible(GetDlgItem(dialogs[3],visibleIds[i]))!=(i==section-1))exit(126);
         for(HWND child=GetWindow(dialogs[3],GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT))if(IsWindowVisible(child)&&GetDlgCtrlID(child)!=140&&GetDlgCtrlID(child)!=141){RECT rect,footer;GetWindowRect(child,&rect);GetWindowRect(GetDlgItem(dialogs[3],140),&footer);if(rect.bottom>footer.top)exit(127);}
-        UpdateWindow(dialogs[3]);char filename[160];sprintf_s(filename,"PlaceboRenderer/build/hdr-advanced-%d.bmp",section);SaveHdrPreview(dialogs[3],filename);
+        UpdateWindow(dialogs[3]);char filename[160];sprintf_s(filename,"src/build/hdr-advanced-%d.bmp",section);SaveHdrPreview(dialogs[3],filename);
         SendMessageW(dialogs[3],WM_COMMAND,MAKEWPARAM(800+section,BN_CLICKED),0);checkPrimary();if(IsWindowVisible(GetDlgItem(dialogs[3],visibleIds[section-1])))exit(128);
     }
     SendMessageW(dialogs[3],WM_COMMAND,MAKEWPARAM(801,BN_CLICKED),0);UpdateWindow(dialogs[3]);SaveHdrPreview(dialogs[3]);ShowWindow(parents[3],SW_HIDE);
-    SetWindowPos(parents[0],nullptr,-10000,-10000,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);ShowWindow(parents[0],SW_SHOWNOACTIVATE);Check(pages[0]->Show(SW_SHOW),"image preview show");UpdateWindow(dialogs[0]);SaveHdrPreview(dialogs[0],"PlaceboRenderer/build/image-menu-preview.bmp");ShowWindow(parents[0],SW_HIDE);
-    for(int index:{1,2}){SetWindowPos(parents[index],nullptr,-10000,-10000,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);ShowWindow(parents[index],SW_SHOWNOACTIVATE);Check(pages[index]->Show(SW_SHOW),"translated preview show");UpdateWindow(dialogs[index]);SaveHdrPreview(dialogs[index],index==1?"PlaceboRenderer/build/processing-menu-preview.bmp":"PlaceboRenderer/build/color-menu-preview.bmp");ShowWindow(parents[index],SW_HIDE);}
+    SetWindowPos(parents[0],nullptr,-10000,-10000,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);ShowWindow(parents[0],SW_SHOWNOACTIVATE);Check(pages[0]->Show(SW_SHOW),"image preview show");UpdateWindow(dialogs[0]);SaveHdrPreview(dialogs[0],"src/build/image-menu-preview.bmp");ShowWindow(parents[0],SW_HIDE);
+    for(int index:{1,2}){SetWindowPos(parents[index],nullptr,-10000,-10000,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);ShowWindow(parents[index],SW_SHOWNOACTIVATE);Check(pages[index]->Show(SW_SHOW),"translated preview show");UpdateWindow(dialogs[index]);SaveHdrPreview(dialogs[index],index==1?"src/build/processing-menu-preview.bmp":"src/build/color-menu-preview.bmp");ShowWindow(parents[index],SW_HIDE);}
     for(int id:{132,133,210,211,212,213,220,230,231,500,510,236,237,238,239})if(!GetDlgItem(dialogs[1],id))exit(158);
     for(int id:{150,151,230,231,236,237,238,239})if(!GetDlgItem(dialogs[1],id))exit(26);
     if(SendDlgItemMessageW(dialogs[1],239,CB_GETCOUNT,0,0)!=17)exit(92);
@@ -357,7 +357,7 @@ static BOOL CALLBACK TonalWindow(HWND d,LPARAM){
     tonalSeen=true;
     if(tonalAction==0){
         for(int i=0;i<9;i++)if(!IsWindowVisible(GetDlgItem(d,1600+i)))exit(210);
-        SaveHdrPreview(d,"PlaceboRenderer/build/hdr-tonal-dialog.bmp");
+        SaveHdrPreview(d,"src/build/hdr-tonal-dialog.bmp");
         SetDlgItemTextW(d,1600,L"0.5");SendMessageW(d,WM_COMMAND,IDCANCEL,0);
     }else if(tonalAction==1){
         for(int i=0;i<9;i++){SetDlgItemTextW(d,1600+i,L"0");SendMessageW(d,WM_COMMAND,MAKEWPARAM(1701+i*2,BN_CLICKED),0);if(std::abs(NumberText(d,1600+i)-.005f)>1e-7)exit(238);SendMessageW(d,WM_COMMAND,MAKEWPARAM(1700+i*2,BN_CLICKED),0);if(std::abs(NumberText(d,1600+i))>1e-7)exit(239);}
@@ -393,7 +393,7 @@ static void TestMapping(IClassFactory* factory,IClassFactory* hdrFactory,IBaseFi
     for(int group=0;group<8;group++){
         SendDlgItemMessageW(dialog,900,CB_SETCURSEL,group,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(900,CBN_SELCHANGE),0);if(page->IsPageDirty()!=S_FALSE)exit(141);
         for(int id:{114,115,121,122,400,434,430,900,460})if(!IsWindowVisible(GetDlgItem(dialog,id)))exit(142);
-        char path[180];sprintf_s(path,"PlaceboRenderer/build/color-mapping-%d.bmp",group);SaveHdrPreview(dialog,path);
+        char path[180];sprintf_s(path,"src/build/color-mapping-%d.bmp",group);SaveHdrPreview(dialog,path);
         for(int row=0;row<8;row++)if(IsWindowVisible(GetDlgItem(dialog,920+row))){RECT r,footer;GetWindowRect(GetDlgItem(dialog,920+row),&r);GetWindowRect(GetDlgItem(dialog,970),&footer);if(r.bottom>footer.top)exit(143);}
     }
     SendDlgItemMessageW(dialog,900,CB_SETCURSEL,1,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(900,CBN_SELCHANGE),0);SetDlgItemTextW(dialog,925,L"0,75");SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(925,CBN_EDITCHANGE),0);Check(page->Apply(),"mapping decimal apply");PlaceboSettings after;Check(config->GetSettings(&after),"mapping readback");if(strcmp(after.colorMapping.values[MappingIndex("exposure")],"0.75"))exit(144);

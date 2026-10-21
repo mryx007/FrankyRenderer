@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Filter.h"
 #include <map>
 #include <vector>

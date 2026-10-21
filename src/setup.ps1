@@ -81,8 +81,8 @@ try {
         $message='Installiert. PotPlayer normal starten und unter Video-Renderer "MPC Video Renderer" waehlen. Der aktive Filter heisst "FrankyRenderer". Diesen Ordner bitte behalten.'
     } else {Register $true;RestoreBackup $state;$message='Renderer entfernt. PotPlayer kann nun wieder einen anderen Renderer verwenden.'}
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
-    if($Quiet){Write-Output $message}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($message,'libplacebo Renderer') | Out-Null}
+    if($Quiet){Write-Output $message}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($message,'FrankyRenderer') | Out-Null}
 } catch {
-    if($Quiet){Write-Error $_.Exception.Message -ErrorAction Continue}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($_.Exception.Message,'libplacebo Renderer - Fehler','OK','Error') | Out-Null}
+    if($Quiet){Write-Error $_.Exception.Message -ErrorAction Continue}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($_.Exception.Message,'FrankyRenderer - Fehler','OK','Error') | Out-Null}
     exit 1
 }
