@@ -18,7 +18,7 @@ def main(out=OUT):
                 dependency=entry.dll.decode().lower()
                 if dependency in available:pending.append(dependency)
         pe.close();shutil.copy2(path,out/path.name)
-    for name in ('setup.ps1','Installieren.cmd','Entfernen.cmd','Installieren.vbs','Entfernen.vbs'):shutil.copy2(ROOT/name,out/name)
+    for name in ('setup.ps1','Install.cmd','Uninstall.cmd','Install.vbs','Uninstall.vbs'):shutil.copy2(ROOT/name,out/name)
     shutil.copytree(ROOT/'shaders',out/'shaders',dirs_exist_ok=True)
     licenses=out/'licenses';licenses.mkdir(exist_ok=True)
     shutil.copy2(ROOT.parent/'LICENSE',licenses/'FrankyRenderer-GPLv3.txt')
@@ -29,6 +29,8 @@ def main(out=OUT):
     shutil.copy2(ROOT.parent/'README.md',out/'README.md')
     screenshots=ROOT.parent/'docs/screenshots'
     if screenshots.is_dir():shutil.copytree(screenshots,out/'docs/screenshots',dirs_exist_ok=True)
+    for name in ('dependency-sources.md','dependency-sources.json'):
+        shutil.copy2(ROOT.parent/'docs'/name,out/'docs'/name)
     shutil.copy2(ROOT.parent/'LICENSE',out/'LICENSE')
     shutil.copy2(ROOT.parent/'THIRD_PARTY.md',out/'THIRD_PARTY.md')
     manifest={str(p.relative_to(out)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file() and 'registration-backup' not in p.parts and p.name!='build-manifest.json'}

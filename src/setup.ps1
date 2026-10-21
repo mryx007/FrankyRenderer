@@ -13,24 +13,24 @@ function AssertOwnership {
     foreach($id in $taskIds){foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){
         $path=RegisteredPath $id $hive
         if($path -and ![string]::Equals([IO.Path]::GetFullPath($path),$taskAx,[StringComparison]::OrdinalIgnoreCase)){
-            throw "Andere Registrierung vorhanden: $id -> $path. Es wurde nichts geaendert."
+            throw "Another renderer registration exists: $id -> $path. No changes were made."
         }
     }}
 }
 function Register([bool]$remove) {
     $taskArgs=if($remove){'/s /u "'+$taskAx+'"'}else{'/s "'+$taskAx+'"'}
     $p=Start-Process -FilePath "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList $taskArgs -WindowStyle Hidden -Wait -PassThru
-    if($p.ExitCode -ne 0){throw "Registrierung fehlgeschlagen. regsvr32-Code: $($p.ExitCode)"}
+    if($p.ExitCode -ne 0){throw "Registration failed. regsvr32 exit code: $($p.ExitCode)"}
 }
 function RestoreBackup($state) {
     foreach($entry in $state.entries){if($entry.existed){
         $file=Join-Path (Split-Path $taskManifest) $entry.file
         & "$env:SystemRoot\System32\reg.exe" import $file /reg:64 | Out-Null
-        if($LASTEXITCODE -ne 0){throw "Sicherung konnte nicht wiederhergestellt werden: $file"}
+        if($LASTEXITCODE -ne 0){throw "Could not restore the registration backup: $file"}
     }}
 }
 try {
-    if(!(Test-Path -LiteralPath $taskAx)){throw "Rendererdatei fehlt: $taskAx"}
+    if(!(Test-Path -LiteralPath $taskAx)){throw "Renderer file is missing: $taskAx"}
     AssertOwnership
     if($Action -eq 'Check') {
         foreach($id in $taskIds){[pscustomobject]@{CLSID=$id;Machine=(RegisteredPath $id);User=(RegisteredPath $id 'HKEY_CURRENT_USER')}}
@@ -46,13 +46,13 @@ try {
     }
     # A running player can retain the old DLL even after registration changes.
     $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64 -ErrorAction SilentlyContinue
-    if($taskPlayers){throw 'PotPlayer bitte zuerst schliessen. Es wurde nichts geaendert.'}
+    if($taskPlayers){throw 'Please close PotPlayer first. No changes were made.'}
     if(Test-Path -LiteralPath $taskManifest){
         $state=Get-Content -LiteralPath $taskManifest -Raw | ConvertFrom-Json
-        if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw 'Die Registrierungssicherung gehoert zu einem anderen Ordner.'}
-    } elseif($Action -eq 'Remove') {throw 'Keine Installationssicherung vorhanden. Es wurde nichts geaendert.'}
+        if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw 'The registration backup belongs to another directory.'}
+    } elseif($Action -eq 'Remove') {throw 'No installation backup was found. No changes were made.'}
     else {
-        if(RegisteredPath $taskIds[0]){throw 'Renderer ist bereits registriert, aber seine Sicherung fehlt. Es wurde nichts geaendert.'}
+        if(RegisteredPath $taskIds[0]){throw 'The renderer is already registered, but its backup is missing. No changes were made.'}
         $null=New-Item -ItemType Directory -Path (Split-Path $taskManifest) -Force
         $paths=@();foreach($id in $taskIds){$paths+="HKLM\SOFTWARE\Classes\CLSID\$id"}
         $paths+="HKLM\SOFTWARE\Classes\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\$($taskIds[0])"
@@ -60,7 +60,7 @@ try {
         foreach($path in $paths){
             $exists=Test-Path -LiteralPath ('Registry::'+$path.Replace('HKLM','HKEY_LOCAL_MACHINE'))
             $name="key-$index.reg";$index++
-            if($exists){& "$env:SystemRoot\System32\reg.exe" export $path (Join-Path (Split-Path $taskManifest) $name) /y /reg:64 | Out-Null;if($LASTEXITCODE -ne 0){throw "Sicherung fehlgeschlagen: $path"}}
+            if($exists){& "$env:SystemRoot\System32\reg.exe" export $path (Join-Path (Split-Path $taskManifest) $name) /y /reg:64 | Out-Null;if($LASTEXITCODE -ne 0){throw "Registration backup failed: $path"}}
             $entries+=@{path=$path;existed=$exists;file=$name}
         }
         $state=@{renderer=$taskAx;entries=$entries;created=(Get-Date).ToString('o')}
@@ -76,13 +76,13 @@ try {
             }
         }
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskManifest -Encoding UTF8
-        try {Register $false;foreach($id in $taskIds){if(!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id),$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw "Registrierter Pfad stimmt nicht: $id"}}}
-        catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation und Ruecknahme fehlgeschlagen: $taskFailure / $_"};throw $taskFailure}
-        $message='Installiert. PotPlayer normal starten und unter Video-Renderer "MPC Video Renderer" waehlen. Der aktive Filter heisst "FrankyRenderer". Diesen Ordner bitte behalten.'
-    } else {Register $true;RestoreBackup $state;$message='Renderer entfernt. PotPlayer kann nun wieder einen anderen Renderer verwenden.'}
+        try {Register $false;foreach($id in $taskIds){if(!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id),$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw "Registered path does not match: $id"}}}
+        catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
+        $message='Installed. Start PotPlayer normally and select "MPC Video Renderer" under Video Renderer. The active filter is named "FrankyRenderer". Keep this directory in its permanent location.'
+    } else {Register $true;RestoreBackup $state;$message='Renderer removed. PotPlayer can now use another renderer.'}
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
     if($Quiet){Write-Output $message}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($message,'FrankyRenderer') | Out-Null}
 } catch {
-    if($Quiet){Write-Error $_.Exception.Message -ErrorAction Continue}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($_.Exception.Message,'FrankyRenderer - Fehler','OK','Error') | Out-Null}
+    if($Quiet){Write-Error $_.Exception.Message -ErrorAction Continue}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($_.Exception.Message,'FrankyRenderer - Error','OK','Error') | Out-Null}
     exit 1
 }
