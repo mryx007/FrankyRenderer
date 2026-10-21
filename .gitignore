@@ -10,3 +10,4 @@ src/tools-runtime/
 *.log
 __pycache__/
 dist/
+releases/

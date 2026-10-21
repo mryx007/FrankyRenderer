@@ -82,16 +82,20 @@ Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed fr
 
 ## PotPlayer installation
 
-After building, run `python src/package.py`. The complete installable package is created in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
+> **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but PotPlayer does not yet offer native selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
 
-1. Keep the `dist` directory at a permanent location and close PotPlayer.
-2. Run `Installieren.cmd` inside `dist`, or run `.\setup.ps1 -Action Install` from that directory. Windows requests administrator permission for COM registration.
+Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts; no compilation is required to test a release.
+
+For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
+
+1. Keep the extracted package directory at a permanent location and close PotPlayer.
+2. Run `Installieren.cmd` inside the extracted package (or `dist` for a local build), or run `.\setup.ps1 -Action Install` from that directory. Windows requests administrator permission for COM registration.
 3. In PotPlayer, select **MPC Video Renderer** under Video Renderer. This is PotPlayer's fixed menu label; the loaded filter is FrankyRenderer.
 4. Open the filter's settings to configure it.
 
 FrankyRenderer currently uses the MPC Video Renderer CLSID for PotPlayer discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
 
-Do not move or delete the installed `dist` directory. Uninstall using its removal launcher or `setup.ps1 -Action Remove`.
+Do not move or delete the installed package directory. Uninstall using its removal launcher or `setup.ps1 -Action Remove`.
 
 ## Project layout
 
