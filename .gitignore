@@ -1,0 +1,11 @@
+PlaceboRenderer/build/
+PlaceboRenderer/deps/packages/
+PlaceboRenderer/deps/msys/
+PlaceboRenderer/PotPlayer-Testbuild/
+PlaceboRenderer/last-*.log
+PlaceboRenderer/tools-runtime/
+*.dmp
+*.pdb
+*.obj
+*.log
+__pycache__/

@@ -1,0 +1,137 @@
+{
+  "commit": "4921c6796620a13c2c03266f368d59d354a67b72",
+  "files": [
+    {
+      "path": "portable_config/shaders/AMD/AMD_CAS_scl_RT.glsl",
+      "file": "AMD_CAS_scl_RT.glsl",
+      "sha256": "e8228e7f12595e7e0dde836ad296230446390514d7bb815a462ae8e0b4822249",
+      "size": 3303
+    },
+    {
+      "path": "portable_config/shaders/Adaptive_sharpen/Adaptive_sharpen_RT.glsl",
+      "file": "Adaptive_sharpen_RT.glsl",
+      "sha256": "d28213793416ca29959417fbf016561f1cb3d510abc55eaedeeedca81cfe5b55",
+      "size": 15202
+    },
+    {
+      "path": "portable_config/shaders/AiUpscale/AiUpscale_Fast_2x_Photo_RT.glsl",
+      "file": "AiUpscale_Fast_2x_Photo_RT.glsl",
+      "sha256": "2bb58de5cc76fa3e53e014213808fafcd0d7b93fd02495a1c3bc78069933d9ed",
+      "size": 269522
+    },
+    {
+      "path": "portable_config/shaders/Anime4K/Anime4K_Upscale_CNN_x2_M.glsl",
+      "file": "Anime4K_Upscale_CNN_x2_M.glsl",
+      "sha256": "5606b12ad3c3b31bfcdae28fe38216f9a02b4342d1a7ef03beb3a71646056a87",
+      "size": 37757
+    },
+    {
+      "path": "portable_config/shaders/ArtCNN/ArtCNN_C4F16.glsl",
+      "file": "ArtCNN_C4F16.glsl",
+      "sha256": "f855490a508fab47082ad3d99cc0296bcbab11ce91e487fece38382c31b35c71",
+      "size": 213016
+    },
+    {
+      "path": "portable_config/shaders/CfL/CfL_Prediction_RT.glsl",
+      "file": "CfL_Prediction_RT.glsl",
+      "sha256": "8a3bca456ced964ad3f98e704c261d4c941dde7044d38a9b95da533d562e91cb",
+      "size": 12467
+    },
+    {
+      "path": "portable_config/shaders/CfL/KrigBilateral.glsl",
+      "file": "KrigBilateral.glsl",
+      "sha256": "dced7aef1966c5efc40bc4d103c75fcb4114188a68c84f4c981f82ff8b01ef54",
+      "size": 12257
+    },
+    {
+      "path": "portable_config/shaders/CuNNy/CuNNy_2x12_DS.glsl",
+      "file": "CuNNy_2x12_DS.glsl",
+      "sha256": "4bb4898fd7411cdcda0b837abe4d2ee29c131b15aa8d7bb7ffd784d25ce2ee0a",
+      "size": 51768
+    },
+    {
+      "path": "portable_config/shaders/DPID/DPID_RT.glsl",
+      "file": "DPID_RT.glsl",
+      "sha256": "fddf66b3a1665e3a5e20ad8cdaa21476a763a8456c2023e2b916d6505631a55b",
+      "size": 4016
+    },
+    {
+      "path": "portable_config/shaders/Deband/hdeband_rgb_RT.glsl",
+      "file": "hdeband_rgb_RT.glsl",
+      "sha256": "5049c09fb04fb7f88ff75eae3a1d92f07dec6f1d2f8720f3e50948eeaf35569e",
+      "size": 2430
+    },
+    {
+      "path": "portable_config/shaders/Deband/neo_f3kdb_rgb_RT.glsl",
+      "file": "neo_f3kdb_rgb_RT.glsl",
+      "sha256": "58e5384a8c8bb674094a76e3278089cd2522d4826a5602b2eb2367abd85b0f28",
+      "size": 4412
+    },
+    {
+      "path": "portable_config/shaders/ETC/FineDehalo_lite_RT.glsl",
+      "file": "FineDehalo_lite_RT.glsl",
+      "sha256": "5f1f63a6a6742a6f1b76a24101e7d3e2da679976ee5a637be4655b8980b6b610",
+      "size": 15303
+    },
+    {
+      "path": "portable_config/shaders/ETC/PixelClipper_RT.glsl",
+      "file": "PixelClipper_RT.glsl",
+      "sha256": "7a7ede176a367187b1db87921f2b30910d6df0110b00813a9a1ad15897482357",
+      "size": 6964
+    },
+    {
+      "path": "portable_config/shaders/ETC/kBFDN_RT.glsl",
+      "file": "kBFDN_RT.glsl",
+      "sha256": "63ff4028142c50c14b072246cbc0396e51fb98c3c5b06f60a3a941a7d97ef4bc",
+      "size": 3847
+    },
+    {
+      "path": "portable_config/shaders/ETC/kCCD_RT.glsl",
+      "file": "kCCD_RT.glsl",
+      "sha256": "305caa40458cf4fe49ddde66400aef8127809d4d4f0df4375ec9bf7045ef1b50",
+      "size": 969
+    },
+    {
+      "path": "portable_config/shaders/ETC/kantiring_ms_RT.glsl",
+      "file": "kantiring_ms_RT.glsl",
+      "sha256": "0feeb28d9b3bce27a1981299f02b9eb7df49386bde29d905ebf47c7eecd8fc00",
+      "size": 1599
+    },
+    {
+      "path": "portable_config/shaders/FSRCNNX/FSRCNNX_x2_8_0_4_1.glsl",
+      "file": "FSRCNNX_x2_8_0_4_1.glsl",
+      "sha256": "9a08199341352379692dfff442f36c7f69f1c4f7043039a55ecb75da556bdc84",
+      "size": 71653
+    },
+    {
+      "path": "portable_config/shaders/RAISR/ravu_zoom_ar_r2.glsl",
+      "file": "ravu_zoom_ar_r2.glsl",
+      "sha256": "0018b28a40d192d6a0893e86002d9dfd2043082521c22473be2f6901331d4483",
+      "size": 2994733
+    },
+    {
+      "path": "portable_config/shaders/SSim/SSimDownscaler_RT.glsl",
+      "file": "SSimDownscaler_RT.glsl",
+      "sha256": "c3def3276aea8a5d3e3d889c89a4b975ccfe995033d8d474e59b00ac4d5ede86",
+      "size": 5725
+    },
+    {
+      "path": "portable_config/shaders/eq/eq_clarity_RT.glsl",
+      "file": "eq_clarity_RT.glsl",
+      "sha256": "d0de72840ce8f78c380652517d29fd06bae24f0b118225290ba0ce089603c632",
+      "size": 15586
+    },
+    {
+      "path": "portable_config/shaders/guided/Fast_Guided_enh_rgb_RT.glsl",
+      "file": "Fast_Guided_enh_rgb_RT.glsl",
+      "sha256": "a72d090af4d110a03199cfd63596f73aa7971bb4e90528db265323a03ab2d1eb",
+      "size": 8442
+    },
+    {
+      "path": "portable_config/shaders/nlmeans/nlmeans_luma_RT.glsl",
+      "file": "nlmeans_luma_RT.glsl",
+      "sha256": "4221bd0d5f89463c42930f785179fb98a06936a133b7f93e540f0cd4a4533d97",
+      "size": 63752
+    }
+  ]
+}
