@@ -4,6 +4,42 @@ A standalone Windows x64 DirectShow video renderer, based on MPC Video Renderer 
 
 FrankyRenderer is a development project. Synthetic GPU and DirectShow regression tests cover its main paths; compatibility and image quality still depend on the player, decoder, graphics driver and display.
 
+## Screenshots
+
+General and presentation settings:
+
+![FrankyRenderer General and Presentation settings](docs/screenshots/general.png)
+
+<details>
+<summary>Processing — debanding, sharpening, deinterlacing and dithering</summary>
+
+![FrankyRenderer Processing settings](docs/screenshots/processing.png)
+
+</details>
+
+<details>
+<summary>HDR and Color Mapping</summary>
+
+![FrankyRenderer HDR and Color Mapping settings](docs/screenshots/hdr-color-mapping.png)
+
+</details>
+
+<details>
+<summary>Color Management — ICC profiles and 3D LUTs</summary>
+
+![FrankyRenderer Color Management settings](docs/screenshots/color-management.png)
+
+</details>
+
+<details>
+<summary>Shader Chain</summary>
+
+![FrankyRenderer Shader Chain settings](docs/screenshots/shaders.png)
+
+</details>
+
+The screenshots show example settings, not recommended presets.
+
 ## Features
 
 ### Video input and output

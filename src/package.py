@@ -27,6 +27,8 @@ def main(out=OUT):
     shutil.copytree(ROOT/'shaders',licenses/'shader-sources',dirs_exist_ok=True)
     shutil.copy2(ROOT/'deps/packages.lock.json',licenses/'packages.lock.json')
     shutil.copy2(ROOT.parent/'README.md',out/'README.md')
+    screenshots=ROOT.parent/'docs/screenshots'
+    if screenshots.is_dir():shutil.copytree(screenshots,out/'docs/screenshots',dirs_exist_ok=True)
     shutil.copy2(ROOT.parent/'LICENSE',out/'LICENSE')
     shutil.copy2(ROOT.parent/'THIRD_PARTY.md',out/'THIRD_PARTY.md')
     manifest={str(p.relative_to(out)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in out.rglob('*') if p.is_file() and 'registration-backup' not in p.parts and p.name!='build-manifest.json'}
