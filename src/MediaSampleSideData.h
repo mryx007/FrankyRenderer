@@ -25,34 +25,35 @@
 
 struct SideDataGUIDComparer
 {
-  bool operator()(const GUID & Left, const GUID & Right) const
-  {
-    // comparison logic goes here
-    return memcmp(&Left, &Right, sizeof(Right)) < 0;
-  }
+    bool operator()(const GUID& Left, const GUID& Right) const
+    {
+        // comparison logic goes here
+        return memcmp(&Left, &Right, sizeof(Right)) < 0;
+    }
 };
 
 class CMediaSampleSideData : public CMediaSample, public IMediaSideData
 {
-public:
-  CMediaSampleSideData(LPCTSTR pName, CBaseAllocator *pAllocator, HRESULT *phr, LPBYTE pBuffer, LONG length);
-  virtual ~CMediaSampleSideData();
+  public:
+    CMediaSampleSideData(LPCTSTR pName, CBaseAllocator* pAllocator, HRESULT* phr, LPBYTE pBuffer, LONG length);
+    virtual ~CMediaSampleSideData();
 
-  STDMETHODIMP          QueryInterface(REFIID riid, __deref_out void **ppv);
-  STDMETHODIMP_(ULONG)  Release();
+    STDMETHODIMP QueryInterface(REFIID riid, __deref_out void** ppv);
+    STDMETHODIMP_(ULONG) Release();
 
-  // IMediaSideData
-  STDMETHODIMP SetSideData(GUID guidType, const BYTE *pData, size_t size);
-  STDMETHODIMP GetSideData(GUID guidType, const BYTE **pData, size_t *pSize);
+    // IMediaSideData
+    STDMETHODIMP SetSideData(GUID guidType, const BYTE* pData, size_t size);
+    STDMETHODIMP GetSideData(GUID guidType, const BYTE** pData, size_t* pSize);
 
-private:
-  void ReleaseSideData();
+  private:
+    void ReleaseSideData();
 
-  struct SideDataEntry {
-    BYTE *pData;
-    size_t size;
-  };
+    struct SideDataEntry
+    {
+        BYTE* pData;
+        size_t size;
+    };
 
-  CCritSec m_csSideData;
-  std::map<GUID, SideDataEntry, SideDataGUIDComparer> m_SideData;
+    CCritSec m_csSideData;
+    std::map<GUID, SideDataEntry, SideDataGUIDComparer> m_SideData;
 };

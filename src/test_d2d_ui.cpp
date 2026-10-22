@@ -9,12 +9,16 @@
 static HWND g_hD2DView = nullptr;
 static PlaceboSettings g_settings;
 
-static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
     case WM_SETFOCUS:
-        if (g_hD2DView) SetFocus(g_hD2DView);
+        if (g_hD2DView)
+            SetFocus(g_hD2DView);
         return 0;
-    case WM_SIZE: {
+    case WM_SIZE:
+    {
         RECT clientRect;
         GetClientRect(hwnd, &clientRect);
         Direct2DSettingsHost::Resize(g_hD2DView, clientRect);
@@ -31,13 +35,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-int wmain(int argc, wchar_t** argv) {
+int wmain(int argc, wchar_t** argv)
+{
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     HINSTANCE hInstance = GetModuleHandleW(nullptr);
     g_settings = LoadSettings();
 
-    WNDCLASSEXW wc = { sizeof(wc) };
+    WNDCLASSEXW wc = {sizeof(wc)};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = L"FrankyModernSettingsD2DWnd";
@@ -53,13 +58,21 @@ int wmain(int argc, wchar_t** argv) {
     const int posX = (screenW - width) / 2;
     const int posY = (screenH - height) / 2;
 
-    HWND hwndMain = CreateWindowExW(WS_EX_APPWINDOW, L"FrankyModernSettingsD2DWnd",
+    HWND hwndMain = CreateWindowExW(WS_EX_APPWINDOW,
+                                    L"FrankyModernSettingsD2DWnd",
                                     L"FrankyRenderer — Direct2D Native Settings (No WebView / Pure C++)",
                                     WS_OVERLAPPEDWINDOW,
-                                    posX, posY, width, height,
-                                    nullptr, nullptr, hInstance, nullptr);
+                                    posX,
+                                    posY,
+                                    width,
+                                    height,
+                                    nullptr,
+                                    nullptr,
+                                    hInstance,
+                                    nullptr);
 
-    if (!hwndMain) return 1;
+    if (!hwndMain)
+        return 1;
 
     // Enable Windows 10 (1809+) & Windows 11 Immersive Dark Mode
     BOOL darkMode = TRUE;
@@ -86,7 +99,8 @@ int wmain(int argc, wchar_t** argv) {
     SetForegroundWindow(hwndMain);
 
     MSG msg = {};
-    while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
+    while (GetMessageW(&msg, nullptr, 0, 0) > 0)
+    {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }

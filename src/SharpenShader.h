@@ -1,6 +1,6 @@
 // Embedded upstream shader. Source and BSD notice: shaders/adaptive-sharpen.glsl
 #pragma once
-inline constexpr char AdaptiveSharpenSource[]=R"ASOURCE(// Copyright (c) 2015-2021, bacondither
+inline constexpr char AdaptiveSharpenSource[] = R"ASOURCE(// Copyright (c) 2015-2021, bacondither
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without

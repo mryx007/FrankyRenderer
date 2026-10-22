@@ -165,6 +165,18 @@ Dependencies are restored locally from official MSYS2 packages using the checked
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
 
+## Code formatting
+
+The project's C++ sources use the checked-in `.clang-format` configuration with four-space indentation and expanded control flow. Third-party sources under `src/DirectShow` retain their upstream formatting.
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python src/format_code.py
+python src/format_code.py --check
+```
+
+The formatting script uses clang-format 21.1.8 and only processes tracked C++ files directly under `src`.
+
 ## License and credits
 
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.

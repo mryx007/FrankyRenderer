@@ -19,30 +19,35 @@
 */
 
 #include "SideDataAllocator.h"
+
 HRESULT SideDataAllocator::Alloc(void)
 {
     CAutoLock lck(this);
 
     /* Check he has called SetProperties */
     HRESULT hr = CBaseAllocator::Alloc();
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         return hr;
     }
 
     /* If the requirements haven't changed then don't reallocate */
-    if (hr == S_FALSE) {
+    if (hr == S_FALSE)
+    {
         ASSERT(m_pBuffer);
         return NOERROR;
     }
     ASSERT(hr == S_OK); // we use this fact in the loop below
 
     /* Free the old resources */
-    if (m_pBuffer) {
+    if (m_pBuffer)
+    {
         ReallyFree();
     }
 
     /* Make sure we've got reasonable values */
-    if ( m_lSize < 0 || m_lPrefix < 0 || m_lCount < 0 ) {
+    if (m_lSize < 0 || m_lPrefix < 0 || m_lCount < 0)
+    {
         return E_OUTOFMEMORY;
     }
 
@@ -50,15 +55,19 @@ HRESULT SideDataAllocator::Alloc(void)
     LONG lAlignedSize = m_lSize + m_lPrefix;
 
     /*  Check overflow */
-    if (lAlignedSize < m_lSize) {
+    if (lAlignedSize < m_lSize)
+    {
         return E_OUTOFMEMORY;
     }
 
-    if (m_lAlignment > 1) {
+    if (m_lAlignment > 1)
+    {
         LONG lRemainder = lAlignedSize % m_lAlignment;
-        if (lRemainder != 0) {
+        if (lRemainder != 0)
+        {
             LONG lNewSize = lAlignedSize + m_lAlignment - lRemainder;
-            if (lNewSize < lAlignedSize) {
+            if (lNewSize < lAlignedSize)
+            {
                 return E_OUTOFMEMORY;
             }
             lAlignedSize = lNewSize;
@@ -73,21 +82,20 @@ HRESULT SideDataAllocator::Alloc(void)
     LONGLONG lToAllocate = m_lCount * (LONGLONG)lAlignedSize;
 
     /*  Check overflow */
-    if (lToAllocate > MAXLONG) {
+    if (lToAllocate > MAXLONG)
+    {
         return E_OUTOFMEMORY;
     }
 
-    m_pBuffer = (PBYTE)VirtualAlloc(NULL,
-                    (LONG)lToAllocate,
-                    MEM_COMMIT,
-                    PAGE_READWRITE);
+    m_pBuffer = (PBYTE)VirtualAlloc(NULL, (LONG)lToAllocate, MEM_COMMIT, PAGE_READWRITE);
 
-    if (m_pBuffer == NULL) {
+    if (m_pBuffer == NULL)
+    {
         return E_OUTOFMEMORY;
     }
 
     LPBYTE pNext = m_pBuffer;
-    SideDataSample *pSample;
+    SideDataSample* pSample;
 
     ASSERT(m_lAllocated == 0);
 
@@ -95,18 +103,18 @@ HRESULT SideDataAllocator::Alloc(void)
     // plus m_lPrefix bytes per sample as a prefix. We set the pointer to
     // the memory after the prefix - so that GetPointer() will return a pointer
     // to m_lSize bytes.
-    for (; m_lAllocated < m_lCount; m_lAllocated++, pNext += lAlignedSize) {
+    for (; m_lAllocated < m_lCount; m_lAllocated++, pNext += lAlignedSize)
+    {
 
+        pSample = new (std::nothrow) SideDataSample(L"Custom media sample",
+                                                    this,
+                                                    &hr,
+                                                    pNext + m_lPrefix, // GetPointer() value
+                                                    m_lSize);          // not including prefix
 
-        pSample = new(std::nothrow) SideDataSample(
-                            L"Custom media sample",
-                            this,
-                            &hr,
-                            pNext + m_lPrefix,      // GetPointer() value
-                            m_lSize);               // not including prefix
-
-            ASSERT(SUCCEEDED(hr));
-        if (pSample == NULL) {
+        ASSERT(SUCCEEDED(hr));
+        if (pSample == NULL)
+        {
             return E_OUTOFMEMORY;
         }
 
@@ -117,4 +125,3 @@ HRESULT SideDataAllocator::Alloc(void)
     m_bChanged = FALSE;
     return NOERROR;
 }
-
