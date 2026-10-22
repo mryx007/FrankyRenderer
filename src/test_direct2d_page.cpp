@@ -153,7 +153,16 @@ int wmain(int argc, wchar_t** argv)
             GetModuleHandleW(nullptr),
             &resource.dialog,
             nullptr,
-            [](HWND, UINT, WPARAM, LPARAM) -> INT_PTR { return FALSE; },
+            [](HWND window, UINT message, WPARAM, LPARAM data) -> INT_PTR
+            {
+                if (message == WM_NOTIFY && reinterpret_cast<NMHDR*>(data)->code == TCN_SELCHANGING)
+                {
+                    auto frame = reinterpret_cast<Direct2DFrame*>(GetWindowLongPtrW(window, DWLP_USER));
+                    if (frame)
+                        frame->Detach();
+                }
+                return FALSE;
+            },
             0);
         if (!host)
             return 10;
@@ -265,8 +274,60 @@ int wmain(int argc, wchar_t** argv)
         if (r.left || r.top != MulDiv(36, int(GetDpiForWindow(host)), 96))
             return 14;
         frame.Detach();
+        item.pszText = const_cast<wchar_t*>(L"Pin Info");
+        TabCtrl_InsertItem(tabs, 1, &item);
+        const auto originalTabFont = SendMessageW(tabs, WM_GETFONT, 0, 0);
+        RECT sharedHost;
+        GetWindowRect(host, &sharedHost);
+        frame.Attach(child, SIZE{1040, 720});
+        GetWindowRect(child, &r);
+        MapWindowPoints(nullptr, host, reinterpret_cast<POINT*>(&r), 2);
+        if (!(GetWindowLongPtrW(tabs, GWL_STYLE) & WS_VISIBLE) || TabCtrl_GetItemCount(tabs) != 2 ||
+            r.top != MulDiv(68, int(GetDpiForWindow(host)), 96) || (GetWindowLongPtrW(host, GWL_STYLE) & WS_CAPTION))
+            return 23;
+        {
+            HDC dc = CreateCompatibleDC(nullptr);
+            BITMAPINFO bitmap = {};
+            bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            bitmap.bmiHeader.biWidth = 1040;
+            bitmap.bmiHeader.biHeight = -64;
+            bitmap.bmiHeader.biPlanes = 1;
+            bitmap.bmiHeader.biBitCount = 32;
+            void* pixels = nullptr;
+            HBITMAP image = CreateDIBSection(dc, &bitmap, DIB_RGB_COLORS, &pixels, nullptr, 0);
+            auto previous = SelectObject(dc, image);
+            SendMessageW(tabs, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+            if (GetPixel(dc, 1000, 1) != RGB(15, 16, 18))
+                return 24;
+            SelectObject(dc, previous);
+            DeleteObject(image);
+            DeleteDC(dc);
+        }
+        RECT pinTab;
+        TabCtrl_GetItemRect(tabs, 1, &pinTab);
+        // Like a property sheet, deactivate our page while the native tab is
+        // still processing the selection notification.
+        SetWindowLongPtrW(host, DWLP_USER, reinterpret_cast<LONG_PTR>(&frame));
+        const LPARAM point = MAKELPARAM((pinTab.left + pinTab.right) / 2, (pinTab.top + pinTab.bottom) / 2);
+        SendMessageW(tabs, WM_LBUTTONDOWN, MK_LBUTTON, point);
+        SendMessageW(tabs, WM_LBUTTONUP, 0, point);
+        if (TabCtrl_GetCurSel(tabs) != 1)
+            return 25;
+        frame.Detach();
+        RECT restoredHost;
+        GetWindowRect(host, &restoredHost);
+        if (!(GetWindowLongPtrW(host, GWL_STYLE) & WS_CAPTION) || !EqualRect(&sharedHost, &restoredHost) ||
+            SendMessageW(tabs, WM_GETFONT, 0, 0) != originalTabFont ||
+            (GetWindowLongPtrW(GetDlgItem(host, IDOK), GWL_STYLE) & BS_TYPEMASK) == BS_OWNERDRAW)
+            return 26;
+        TabCtrl_SetCurSel(tabs, 0);
+        frame.Attach(child, SIZE{1040, 720});
+        if ((GetWindowLongPtrW(host, GWL_STYLE) & WS_CAPTION) || TabCtrl_GetItemCount(tabs) != 2)
+            return 27;
+        frame.Detach();
         DestroyWindow(host);
         puts("PASS modal frame: hidden single tab, edge-to-edge page, dark buttons, correct title and layout refresh");
+        puts("PASS shared frame: dark visible tabs, Pin Info selection, host restoration and renderer reactivation");
     }
     if (argc > 1 && !wcscmp(argv[1], L"--registered"))
     {
