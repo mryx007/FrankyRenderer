@@ -168,6 +168,36 @@ int wmain()
         Require(SUCCEEDED(ValidateSettings(s)), "valid custom scaling");
         scaler.reset();
         Require(!blur.Enabled(), "preset disables editor");
+        for (int role = 0; role < 5; ++role)
+        {
+            const auto title = std::wstring(L"Custom: ") + ScalingLabels[role];
+            auto& toggle = find(L"Scaling", title.c_str(), L"Enable Custom Settings");
+            Require(toggle.headerToggle, "custom switch belongs to card heading");
+            auto& starting = find(L"Scaling", title.c_str(), L"Starting Filter");
+            auto& preset = find(L"Scaling", L"Filters", ScalingLabels[role]);
+            auto& filter = s.scaling.filters[role];
+            filter = {};
+            strcpy_s(filter.filter, role == 4 ? "hermite" : "lanczos");
+            Require(toggle.Enabled() && !starting.Enabled(), "custom switch usable while editor disabled");
+            toggle.set(1);
+            Require(toggle.Value() == 1 && starting.Enabled() && !strcmp(filter.filter, "custom"),
+                    "custom switch enables editor and custom filter");
+            Require(!preset.Enabled(), "custom switch disables corresponding preset selector");
+            Require(!strcmp(filter.preset, role == 4 ? "hermite" : "lanczos"),
+                    "custom switch inherits selected preset");
+            filter.overrides = 4;
+            filter.values[2] = 1.1f;
+            Require(SUCCEEDED(ValidateSettings(s)), "custom switch creates valid settings");
+            toggle.set(0);
+            Require(!starting.Enabled() && !strcmp(filter.filter, filter.preset),
+                    "custom switch restores starting preset");
+            Require(preset.Enabled(), "disabling custom re-enables preset selector");
+            toggle.set(1);
+            Require(filter.overrides == 4 && filter.values[2] == 1.1f, "toggle preserves custom adjustments");
+            toggle.reset();
+            Require(toggle.Value() == 0 && !starting.Enabled(), "custom switch reset disables editor");
+            filter = {};
+        }
         auto& exposure = find(L"HDR & Color Mapping", L"Highlights", L"Exposure");
         exposure.set(-.001f);
         Require(s.tonal.exposure[2] == -.001f && exposure.stepVal == .001f, "fine highlight adjustment");
@@ -271,6 +301,20 @@ int wmain()
             if (hit.type == HitRegion::ResetBtn)
                 resetInContent = hit.rect.left > 240;
         Require(resetInContent, "reset belongs to content header");
+        host->m_searchQuery = L"Custom: Image Upscaler";
+        host->m_scrollY = 0;
+        host->Render();
+        int headerSwitches = 0;
+        for (const auto& hit : host->m_hitRegions)
+        {
+            if (hit.type == HitRegion::Toggle && hit.pControl && hit.pControl->headerToggle)
+            {
+                ++headerSwitches;
+            }
+        }
+        Require(headerSwitches == 1, "custom card renders one heading switch without duplicate row");
+        host->m_searchQuery.clear();
+        host->Render();
         bool scrollbar = false, apply = false;
         for (const auto& hit : host->m_hitRegions)
         {

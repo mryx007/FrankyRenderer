@@ -55,6 +55,7 @@ struct D2DControl
     std::function<void(HWND)> action;
     std::function<std::wstring()> detail;
     std::wstring actionLabel;
+    bool headerToggle = false;
 
     bool Enabled() const
     {
@@ -908,6 +909,24 @@ void Direct2DHostWindow::Render()
         currentY += 292;
     }
 
+    auto drawToggle = [&](D2DControl& ctrl, float x, float y)
+    {
+        const auto track = D2D1::RectF(x, y, x + 40.f, y + 22.f);
+        const auto rounded = D2D1::RoundedRect(track, 11.f, 11.f);
+        const bool on = ctrl.Value() != 0;
+        m_pRenderTarget->FillRoundedRectangle(rounded, on ? m_brushToggleOn.Get() : m_brushToggleOff.Get());
+        m_pRenderTarget->DrawRoundedRectangle(rounded, m_brushBorderCard.Get(), 1.f);
+        m_pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(x + (on ? 29.f : 11.f), y + 11.f), 7.5f, 7.5f),
+                                     m_brushSliderThumb.Get());
+        if (ctrl.Enabled())
+        {
+            HitRegion hit;
+            hit.type = HitRegion::Toggle;
+            hit.rect = track;
+            hit.pControl = &ctrl;
+            m_hitRegions.push_back(hit);
+        }
+    };
     for (const auto& item : cardsToRender)
     {
         const auto& card = *item.pCard;
@@ -921,6 +940,11 @@ void Direct2DHostWindow::Render()
         float cardHeight = 52.f;
         for (const auto* control : visibleControls)
         {
+            if (control->headerToggle)
+            {
+                rowHeights.push_back(0);
+                continue;
+            }
             auto description = control->detail ? control->detail() : control->desc;
             if (description.empty())
                 description = control->desc;
@@ -958,19 +982,27 @@ void Direct2DHostWindow::Render()
                                   1.0f);
 
         std::wstring headerTitle = card.title;
+        D2DControl* headerToggle = nullptr;
+        for (const auto& control : card.controls)
+            if (control.headerToggle)
+                headerToggle = const_cast<D2DControl*>(&control);
         if (isSearching)
         {
             headerTitle += L"  (" + item.pageName + L")";
         }
 
         // Clean vertical gap between Title and Subtitle
-        D2D1_RECT_F cardTitleRect =
-            D2D1::RectF(contentX + 16, currentY + 9.0f, contentX + contentW - 16, currentY + 28.0f);
+        D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
+                                                currentY + (headerToggle ? 16.f : 9.f),
+                                                contentX + contentW - (headerToggle ? 72.f : 16.f),
+                                                currentY + (headerToggle ? 36.f : 28.f));
         m_pRenderTarget->DrawText(headerTitle.c_str(),
                                   (UINT32)headerTitle.length(),
                                   m_fmtCardTitle.Get(),
                                   cardTitleRect,
                                   m_brushTextMain.Get());
+        if (headerToggle)
+            drawToggle(*headerToggle, contentX + contentW - 56.f, currentY + 14.f);
 
         D2D1_RECT_F cardSubRect =
             D2D1::RectF(contentX + 16, currentY + 31.0f, contentX + contentW - 16, currentY + 47.0f);
@@ -985,6 +1017,8 @@ void Direct2DHostWindow::Render()
         for (size_t ci = 0; ci < visibleControls.size(); ++ci)
         {
             auto& ctrl = const_cast<D2DControl&>(*visibleControls[ci]);
+            if (ctrl.headerToggle)
+                continue;
             const float rowHeight = rowHeights[ci];
             if (rowY + rowHeight < 0 || rowY > size.height)
             {
@@ -1019,29 +1053,7 @@ void Direct2DHostWindow::Render()
 
             if (ctrl.kind == ControlKind::Toggle)
             {
-                float toggleW = 40.0f;
-                float toggleH = 22.0f;
-                float toggleX = rightEdge - toggleW;
-                float toggleY = rowY + 18.0f;
-
-                D2D1_RECT_F trackRect = D2D1::RectF(toggleX, toggleY, toggleX + toggleW, toggleY + toggleH);
-                D2D1_ROUNDED_RECT roundedTrack = D2D1::RoundedRect(trackRect, 11.0f, 11.0f);
-
-                bool val = ctrl.Value() != 0;
-                m_pRenderTarget->FillRoundedRectangle(roundedTrack,
-                                                      val ? m_brushToggleOn.Get() : m_brushToggleOff.Get());
-                m_pRenderTarget->DrawRoundedRectangle(roundedTrack, m_brushBorderCard.Get(), 1.0f);
-
-                float thumbCenterX = val ? (toggleX + toggleW - 11.0f) : (toggleX + 11.0f);
-                D2D1_ELLIPSE thumb = D2D1::Ellipse(D2D1::Point2F(thumbCenterX, toggleY + 11.0f), 7.5f, 7.5f);
-                m_pRenderTarget->FillEllipse(thumb, m_brushSliderThumb.Get());
-
-                HitRegion hr;
-                hr.type = HitRegion::Toggle;
-                hr.rect = trackRect;
-                hr.pControl = &ctrl;
-                if (enabled)
-                    m_hitRegions.push_back(hr);
+                drawToggle(ctrl, rightEdge - 40.f, rowY + 18.f);
             }
             else if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
             {

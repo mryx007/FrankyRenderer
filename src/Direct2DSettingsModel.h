@@ -59,6 +59,21 @@ inline std::wstring D2DScalerDescription(int role, const char* name)
     return L"Previously saved filter. Select a preset to replace it.";
 }
 
+inline void D2DSetCustomScaling(ScalerSettings& filter, bool enabled)
+{
+    if (enabled && strcmp(filter.filter, "custom"))
+    {
+        char base[64];
+        strcpy_s(base, strcmp(filter.filter, "none") ? filter.filter : "auto");
+        if (strcmp(filter.preset, base))
+            filter = {};
+        strcpy_s(filter.preset, base);
+        strcpy_s(filter.filter, "custom");
+    }
+    else if (!enabled && !strcmp(filter.filter, "custom"))
+        strcpy_s(filter.filter, filter.preset);
+}
+
 inline std::vector<std::string> D2DScalerNames(int role, bool custom, const char* current)
 {
     std::vector<std::string> names = {"auto", "none"};
@@ -354,9 +369,10 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         t.controls.push_back(D2DBool(s, L"Change Dither for Every Frame", &s.ditherTemporal));
     }
     {
-        auto& p = page(L"Scaling",
-                       L"Scaling & Frame Mixing",
-                       L"Choose a preset or Custom. Custom controls inherit the starting filter until edited.");
+        auto& p = page(
+            L"Scaling",
+            L"Scaling & Frame Mixing",
+            L"Choose a preset or enable custom settings below. Custom controls inherit the starting filter until edited.");
         auto& c = card(p, L"Filters");
         for (int role = 0; role < 5; role++)
         {
@@ -365,6 +381,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             D2DControl n;
             n.name = ScalingLabels[role];
             n.kind = ControlKind::Choice;
+            n.enabled = [&f] { return strcmp(f.filter, "custom") != 0; };
             for (int i = 0; i < int(names.size()); i++)
                 n.choices.push_back({i, D2DWide(names[i].c_str()), D2DScalerDescription(role, names[i].c_str())});
             n.get = [&f, names]
@@ -376,14 +393,10 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             };
             n.set = [&f, names](float v)
             {
-                if (names[int(v)] == "custom" && strcmp(f.filter, "custom"))
-                {
-                    char base[64];
-                    strcpy_s(base, strcmp(f.filter, "none") ? f.filter : "auto");
-                    f = {};
-                    strcpy_s(f.preset, base);
-                }
-                strcpy_s(f.filter, names[int(v)].c_str());
+                if (names[int(v)] == "custom")
+                    D2DSetCustomScaling(f, true);
+                else
+                    strcpy_s(f.filter, names[int(v)].c_str());
             };
             n.detail = [&f, role] { return D2DScalerDescription(role, f.filter); };
             n.reset = [&f] { f = {}; };
@@ -404,10 +417,17 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         for (int role = 0; role < 5; role++)
         {
             auto& f = s.scaling.filters[role];
-            auto& e = card(p,
-                           (std::wstring(L"Custom: ") + ScalingLabels[role]).c_str(),
-                           L"Select Custom above to edit. Reset Page restores all scaling defaults.");
+            auto& e = card(p, (std::wstring(L"Custom: ") + ScalingLabels[role]).c_str());
             auto enabled = [&f] { return !strcmp(f.filter, "custom"); };
+            D2DControl toggle;
+            toggle.name = L"Enable Custom Settings";
+            toggle.desc = L"Use custom filter settings based on the starting filter.";
+            toggle.kind = ControlKind::Toggle;
+            toggle.headerToggle = true;
+            toggle.get = [enabled] { return enabled() ? 1.f : 0.f; };
+            toggle.set = [&f](float v) { D2DSetCustomScaling(f, v != 0); };
+            toggle.reset = [&f] { D2DSetCustomScaling(f, false); };
+            e.controls.push_back(std::move(toggle));
             for (int kind = 0; kind < 3; kind++)
             {
                 char* field = kind == 0 ? f.preset : kind == 1 ? f.kernel : f.window;
