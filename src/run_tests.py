@@ -17,7 +17,7 @@ try:
     # This private root does not inherit the normal player's AutoHDR setting.
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,key) as settings:
         winreg.SetValueEx(settings,'AutoHDR',0,winreg.REG_DWORD,0)
-    args=[arg for arg in sys.argv[1:] if arg in ('--live-ui','--flush-race','--gpu','--nv12','--p016','--srv','--interlaced','--bff','--weave','--eos','--yadif','--force-bff','--motion','--sharpen','--measure','--startup')]
+    args=[arg for arg in sys.argv[1:] if arg in ('--live-ui','--flush-race','--gpu','--nv12','--p016','--srv','--interlaced','--bff','--weave','--eos','--yadif','--force-bff','--motion','--sharpen','--measure','--startup','--mpcbe-owner')]
     if '--package' in sys.argv:args+=['--dll',str(ROOT.parent/'dist'/'PlaceboRenderer.ax')]
     p=subprocess.Popen([str(ROOT/'build'/'bin'/name)]+args,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     print('Native test PID',p.pid,flush=True)

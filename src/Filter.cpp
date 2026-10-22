@@ -226,8 +226,16 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
 
 STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
 {
-    if (!m_pPin || !m_pPin->IsConnected())
-        return VFW_E_NOT_CONNECTED;
+    if (!m_pPin)
+        return E_UNEXPECTED;
+    if (!m_pPin->IsConnected())
+    {
+        // MPC-BE supplies its video owner before connecting the decoder.
+        // Remember it without creating or showing a standalone video window.
+        pendingOwner = next;
+        havePendingOwner = true;
+        return S_OK;
+    }
     HWND hwnd = GetWindowHWND();
     const bool visible = (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_VISIBLE) != 0;
     const bool changed = GetOwnerWindow() != reinterpret_cast<HWND>(next);
@@ -256,6 +264,16 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
     }
     if (changed && visible && (FAILED(hr) || next))
         DoShowWindow(SW_SHOWNOACTIVATE);
+    return hr;
+}
+
+HRESULT VideoWindow::ApplyPendingOwner()
+{
+    if (!havePendingOwner)
+        return S_OK;
+    const HRESULT hr = put_Owner(pendingOwner);
+    if (SUCCEEDED(hr))
+        havePendingOwner = false;
     return hr;
 }
 
@@ -374,6 +392,20 @@ HRESULT VideoControl::GetSourceRect(RECT* r)
 VIDEOINFOHEADER* VideoControl::GetVideoFormat()
 {
     return &owner->format.basic;
+}
+
+STDMETHODIMP VideoControl::GetPreferredAspectRatio(long* width, long* height)
+{
+    if (!width || !height)
+        return E_POINTER;
+    CAutoLock guard(m_pInterfaceLock);
+    if (!m_pPin || !m_pPin->IsConnected())
+        return VFW_E_NOT_CONNECTED;
+    // ParseFormat preserves the display aspect ratio, including anamorphic
+    // input, and supplies the visible source dimensions when it is absent.
+    *width = owner->format.frame.aspectX;
+    *height = owner->format.frame.aspectY;
+    return *width > 0 && *height > 0 ? S_OK : E_UNEXPECTED;
 }
 
 HRESULT VideoControl::GetStaticImage(long* size, long* image)
@@ -503,6 +535,8 @@ STDMETHODIMP Renderer::NonDelegatingQueryInterface(REFIID id, void** out)
         return GetInterface(static_cast<IVideoWindow*>(window.get()), out);
     if (id == IID_IBasicVideo && control)
         return GetInterface(static_cast<IBasicVideo*>(control.get()), out);
+    if (id == IID_IBasicVideo2 && control)
+        return GetInterface(static_cast<IBasicVideo2*>(control.get()), out);
     if (id == IID_ISpecifyPropertyPages)
         return GetInterface(static_cast<ISpecifyPropertyPages*>(this), out);
     if (id == __uuidof(ISubRender11))
@@ -602,10 +636,13 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
         }
         info.pFilter->Release();
     }
-    // The host assigns its video owner after connection. AutoShow belongs to
-    // Pause/Run, otherwise a newly connected filter briefly shows a popup.
+    // Hosts may supply the video owner before or after connection. AutoShow
+    // belongs to Pause/Run, so connecting must never show a standalone popup.
     backend.SetSourceCodec(SourceCodecFromOutput(pin));
-    return PrepareWindow();
+    hr = PrepareWindow();
+    if (FAILED(hr))
+        return hr;
+    return window->ApplyPendingOwner();
 }
 
 void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
@@ -1304,7 +1341,10 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
             const RECT viewport = {0, 0, width, height};
             HRESULT hr = bridge->callback->Render11(
                 frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
-            return hr;
+            // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
+            // cleared before the callback; keep the video and its empty overlay.
+            // Device initialization failures above remain actual errors.
+            return hr == E_FAIL ? S_FALSE : hr;
         },
         true);
     return S_OK;

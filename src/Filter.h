@@ -54,9 +54,12 @@ class VideoWindow final : public CBaseControlWindow
 {
     Renderer* owner;
     HRESULT SetHiddenStyle(long, int);
+    OAHWND pendingOwner = 0;
+    bool havePendingOwner = false;
 
   public:
     VideoWindow(Renderer*, CCritSec*, IUnknown*, HRESULT*);
+    HRESULT ApplyPendingOwner();
     LPTSTR GetClassWindowStyles(DWORD*, DWORD*, DWORD*) override;
     STDMETHODIMP put_Owner(OAHWND) override;
     STDMETHODIMP put_WindowStyle(long) override;
@@ -82,6 +85,7 @@ class VideoControl final : public CBaseControlVideo
     HRESULT GetSourceRect(RECT*) override;
     HRESULT GetStaticImage(long*, long*) override;
     VIDEOINFOHEADER* GetVideoFormat() override;
+    STDMETHODIMP GetPreferredAspectRatio(long*, long*) override;
 };
 
 class Renderer final : public CBaseVideoRenderer,

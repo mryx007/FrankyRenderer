@@ -529,6 +529,9 @@ struct PlaceboBackend::State
         context->IASetInputLayout(overlayLayout.Get());
         context->VSSetShader(overlayVS.Get(), nullptr, 0);
         context->PSSetShader(overlayPS.Get(), nullptr, 0);
+        // Alpha normalization below leaves an alpha-only write mask in this
+        // saved context. Restore normal writes before the next host bitmap.
+        context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
         hr = painter(d3d->device, context.Get(), width, height, video);
         if (SUCCEEDED(hr) && inverseOverlayAlpha)
         {

@@ -76,7 +76,18 @@ try {
             }
         }
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskManifest -Encoding UTF8
-        try {Register $false;foreach($id in $taskIds){if(!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id),$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw "Registered path does not match: $id"}}}
+        try {
+            Register $false
+            foreach ($id in $taskIds) {
+                if (!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id), $taskAx, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Registered path does not match: $id"
+                }
+            }
+            $taskCategoryKey = 'Registry::HKEY_CLASSES_ROOT\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\' + $taskIds[0]
+            if (!(Test-Path -LiteralPath $taskCategoryKey)) {
+                throw 'The renderer is missing from the DirectShow video filter category.'
+            }
+        }
         catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
         $message='Installed. Start PotPlayer normally and select "MPC Video Renderer" under Video Renderer. The active filter is named "FrankyRenderer". Keep this directory in its permanent location.'
     } else {Register $true;RestoreBackup $state;$message='Renderer removed. PotPlayer can now use another renderer.'}

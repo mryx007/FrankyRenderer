@@ -20,7 +20,8 @@ static const GUID subtypeNV12 = {0x3231564e, 0, 0x10, {0x80, 0, 0, 0xaa, 0, 0x38
 static const AMOVIESETUP_MEDIATYPE types[] = {{&MEDIATYPE_Video, &GUID_NULL}};
 static const AMOVIESETUP_PIN pins[] = {
     {const_cast<LPWSTR>(L"Input"), FALSE, FALSE, FALSE, FALSE, &CLSID_NULL, nullptr, 1, types}};
-static const AMOVIESETUP_FILTER filter = {&CLSID_MPCCompatible, L"FrankyRenderer", MERIT_DO_NOT_USE, 1, pins};
+static const AMOVIESETUP_FILTER filter = {
+    &CLSID_MPCCompatible, L"FrankyRenderer", MERIT_DO_NOT_USE, 1, pins, CLSID_LegacyAmFilterCategory};
 CFactoryTemplate g_Templates[] = {
     {L"FrankyRenderer Settings", &CLSID_FrankyDirect2DPage, Create<Direct2DSettingsPage>, nullptr, nullptr},
     {L"FrankyRenderer Color Mapping", &CLSID_PlaceboMappingPage, Create<ColorMappingPage>, nullptr, nullptr},
@@ -36,14 +37,37 @@ CFactoryTemplate g_Templates[] = {
     {L"FrankyRenderer Shaders", &CLSID_PlaceboEffectsPage, Create<ShaderPage>, nullptr, nullptr}};
 int g_cTemplates = static_cast<int>(std::size(g_Templates));
 
+static HRESULT RemoveObsoleteFilterCategory()
+{
+    // Earlier builds omitted the explicit category required by these BaseClasses
+    // and registered under GUID_NULL. MPC-BE enumerates LegacyAmFilterCategory.
+    const HRESULT initialized = CoInitialize(nullptr);
+    if (FAILED(initialized) && initialized != RPC_E_CHANGED_MODE)
+        return initialized;
+    IFilterMapper2* mapper = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_FilterMapper2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&mapper));
+    if (SUCCEEDED(hr))
+    {
+        hr = mapper->UnregisterFilter(&GUID_NULL, nullptr, CLSID_MPCCompatible);
+        mapper->Release();
+        if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+            hr = S_OK;
+    }
+    if (SUCCEEDED(initialized))
+        CoUninitialize();
+    return hr;
+}
+
 STDAPI DllRegisterServer()
 {
-    return AMovieDllRegisterServer2(TRUE);
+    const HRESULT hr = AMovieDllRegisterServer2(TRUE);
+    return FAILED(hr) ? hr : RemoveObsoleteFilterCategory();
 }
 
 STDAPI DllUnregisterServer()
 {
-    return AMovieDllRegisterServer2(FALSE);
+    const HRESULT hr = AMovieDllRegisterServer2(FALSE);
+    return FAILED(hr) ? hr : RemoveObsoleteFilterCategory();
 }
 
 extern "C" BOOL WINAPI DllEntryPoint(HINSTANCE, ULONG, LPVOID);

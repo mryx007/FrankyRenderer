@@ -37,6 +37,50 @@ static void Check(HRESULT hr, const char* text)
 static bool hardware = false;
 static bool measureTest = false;
 static bool startupTest = false;
+static bool mpcbeOwnerTest = false;
+
+// MPC-BE's allocator presenter aggregates the renderer and forwards interface
+// requests to its non-delegating IUnknown. Exercise that ownership as well as
+// its early put_Owner call, rather than testing only an unaggregated filter.
+class TestPresenter final : public IUnknown
+{
+    std::atomic<ULONG> refs = 1;
+    ComPtr<IUnknown> inner;
+
+  public:
+    HRESULT Initialize(IClassFactory* factory)
+    {
+        return factory->CreateInstance(this, IID_PPV_ARGS(&inner));
+    }
+
+    STDMETHODIMP QueryInterface(REFIID id, void** out) override
+    {
+        if (!out)
+            return E_POINTER;
+        *out = nullptr;
+        if (id == IID_IUnknown)
+        {
+            *out = static_cast<IUnknown*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return inner ? inner->QueryInterface(id, out) : E_NOINTERFACE;
+    }
+
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return ++refs;
+    }
+
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        const ULONG remaining = --refs;
+        if (!remaining)
+            delete this;
+        return remaining;
+    }
+};
+
 static bool interlacedTest = false, bottomFirst = false, weaveTest = false, eosTest = false, yadifTest = false,
             forceBffTest = false, motionTest = false, sharpenTest = false;
 static bool flushRaceTest = false;
@@ -206,6 +250,7 @@ class SubtitleProbe final : public ISubRender11Callback
 
   public:
     unsigned attached = 0, detached = 0, drawn = 0;
+    bool empty = false;
 
     STDMETHODIMP QueryInterface(REFIID id, void** out) override
     {
@@ -281,6 +326,8 @@ class SubtitleProbe final : public ISubRender11Callback
     {
         if (!device)
             return E_UNEXPECTED;
+        if (empty)
+            return E_FAIL; // MPC-BE returns this when no subtitle is active.
         ComPtr<ID3D11DeviceContext> context;
         device->GetImmediateContext(&context);
         ComPtr<ID3D11RenderTargetView> view;
@@ -2236,6 +2283,9 @@ static void TestLiveUI(FactoryGetter get, IBaseFilter* renderer, IPlaceboSetting
 int wmain(int argc, wchar_t** argv)
 {
     for (int i = 1; i < argc; i++)
+        if (wcscmp(argv[i], L"--mpcbe-owner") == 0)
+            mpcbeOwnerTest = true;
+    for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--startup") == 0)
             startupTest = true;
     for (int i = 1; i < argc; i++)
@@ -2325,8 +2375,28 @@ int wmain(int argc, wchar_t** argv)
         DestroyWindow(keyWindow);
         puts("PASS Ctrl+J routing, focus restriction, repeat suppression and hook cleanup");
     }
+
+    struct OwnerWindow
+    {
+        HWND handle = nullptr;
+
+        ~OwnerWindow()
+        {
+            if (handle)
+                DestroyWindow(handle);
+        }
+    } ownerWindow;
+
+    ComPtr<TestPresenter> presenter;
     ComPtr<IBaseFilter> renderer;
-    Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&renderer)), "renderer");
+    if (mpcbeOwnerTest)
+    {
+        presenter.Attach(new TestPresenter());
+        Check(presenter->Initialize(factory.Get()), "MPC-BE aggregated renderer");
+        Check(presenter.As(&renderer), "MPC-BE presenter filter interface");
+    }
+    else
+        Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&renderer)), "renderer");
     ComPtr<IPlaceboSettings> config;
     Check(renderer.As(&config), "settings interface");
     PlaceboSettings settings;
@@ -2456,6 +2526,24 @@ int wmain(int argc, wchar_t** argv)
     TestShaderPage(shaderFactory.Get(), renderer.Get(), config.Get());
     ComPtr<IVideoWindow> window;
     Check(renderer.As(&window), "video window");
+    if (mpcbeOwnerTest)
+    {
+        ownerWindow.handle = CreateWindowW(L"STATIC",
+                                           L"MPC-BE owner test",
+                                           WS_POPUP,
+                                           0,
+                                           0,
+                                           128,
+                                           128,
+                                           nullptr,
+                                           nullptr,
+                                           GetModuleHandleW(nullptr),
+                                           nullptr);
+        if (!ownerWindow.handle)
+            exit(252);
+        // MPC-BE's CFGFilterVideoRenderer does this before graph connection.
+        Check(window->put_Owner(reinterpret_cast<OAHWND>(ownerWindow.handle)), "MPC-BE owner before connection");
+    }
     ComPtr<IGraphBuilder> graph;
     Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)), "graph");
     Check(graph->AddFilter(renderer.Get(), L"libplacebo"), "add renderer");
@@ -2470,6 +2558,30 @@ int wmain(int argc, wchar_t** argv)
     Check(renderer->EnumPins(&list), "input list");
     Check(list->Next(1, &input, nullptr), "input");
     Check(graph->ConnectDirect(rawSource->GetPin(0), input.Get(), nullptr), "connect P010");
+    if (mpcbeOwnerTest)
+    {
+        ComPtr<IBasicVideo2> videoInfo;
+        Check(renderer.As(&videoInfo), "MPC-BE IBasicVideo2 interface");
+        long aspectX = 0, aspectY = 0;
+        Check(videoInfo->GetPreferredAspectRatio(&aspectX, &aspectY), "MPC-BE video aspect ratio");
+        if (aspectX <= 0 || aspectY <= 0 || aspectX != aspectY)
+            exit(249); // The pattern source uses square 64x64 video.
+        OAHWND owner = 0;
+        Check(window->get_Owner(&owner), "MPC-BE retained owner");
+        const HWND video = FindWindowExW(ownerWindow.handle, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+        if (owner != reinterpret_cast<OAHWND>(ownerWindow.handle) || !video ||
+            (GetWindowLongPtrW(video, GWL_STYLE) & WS_VISIBLE))
+            exit(253);
+        for (const SIZE size : {SIZE{320, 240}, SIZE{960, 540}, SIZE{128, 128}})
+        {
+            Check(window->SetWindowPosition(0, 0, size.cx, size.cy), "MPC-BE video window resize");
+            RECT client = {};
+            if (!GetClientRect(video, &client) || client.right != size.cx || client.bottom != size.cy)
+                exit(250);
+        }
+        puts("PASS MPC-BE video identification, aspect ratio and repeated window resize");
+        puts("PASS MPC-BE pre-connection owner retained; video embedded without showing a popup");
+    }
     Check(window->put_AutoShow(OAFALSE), "disable autoshow");
     Check(window->put_Visible(OAFALSE), "hide test window");
     Check(window->SetWindowPosition(0, 0, 128, 128), "video size");
@@ -2807,14 +2919,35 @@ int wmain(int argc, wchar_t** argv)
     Check(renderer.As(&sub), "subtitle interface");
     ComPtr<SubtitleProbe> probe;
     probe.Attach(new SubtitleProbe);
+    probe->empty = true;
     Check(sub->SetCallback11(probe.Get()), "attach subtitle callback");
+    Check(config->ReadPixels(64, 64, color.data(), color.size()), "MPC-BE empty subtitle keeps video");
+    if (color != gray)
+    {
+        puts("FAIL empty subtitle changed video pixels");
+        return 254;
+    }
+    probe->empty = false;
     Check(config->ReadPixels(64, 64, color.data(), color.size()), "subtitle pixels");
     size_t center = (32 * 64 + 32) * 4;
     if (color[center] > 2 || color[center + 1] < 253 || color[center + 2] > 2 || !probe->attached || !probe->drawn)
     {
-        printf("FAIL subtitle callback/output\n");
+        printf("FAIL subtitle callback/output: RGB=%u/%u/%u attached=%u drawn=%u\n",
+               color[center],
+               color[center + 1],
+               color[center + 2],
+               probe->attached,
+               probe->drawn);
         return 5;
     }
+    probe->empty = true;
+    Check(config->ReadPixels(64, 64, color.data(), color.size()), "MPC-BE expired subtitle keeps video");
+    if (color != gray)
+    {
+        puts("FAIL expired subtitle remained over video");
+        return 255;
+    }
+    puts("PASS MPC-BE empty/expired subtitle E_FAIL preserves video and clears previous subtitle");
     Check(sub->SetCallback11(nullptr), "detach subtitles");
     if (!probe->detached)
     {
