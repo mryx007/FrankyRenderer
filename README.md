@@ -10,8 +10,6 @@ And that's exactly what I did.
 
 I decided to call my renderer Franky, inspired by Frankenstein, who pieced together different body parts to create something entirely new. Since my renderer is also built by combining different components into something new, I thought the name was quite fitting.
 
-My renderer uses only about half the VRAM that madVR does, and so far, it runs pretty solidly on my system.
-
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
 FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
