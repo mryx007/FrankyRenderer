@@ -5,6 +5,8 @@
 #include <cwctype>
 #include <string>
 #include <vector>
+#include <array>
+#include <stdexcept>
 #pragma comment(lib, "bcrypt.lib")
 
 namespace DisplayProfiles
@@ -198,6 +200,63 @@ inline std::wstring ReadString(HKEY key, const wchar_t* name)
     wchar_t text[2048];
     DWORD bytes = sizeof(text);
     return RegGetValueW(key, nullptr, name, RRF_RT_REG_SZ, nullptr, text, &bytes) == ERROR_SUCCESS ? text : L"";
+}
+
+struct Metadata
+{
+    bool exists = false;
+    std::array<std::wstring, 3> text;
+};
+
+inline constexpr const wchar_t* MetadataKeys[] = {L"DeviceName", L"DeviceIdentity", L"DisplayName"};
+
+inline Metadata ReadMetadata(const std::wstring& id)
+{
+    if (!ValidId(id))
+        throw std::runtime_error("Invalid display profile identity.");
+    Metadata metadata;
+    HKEY key;
+    const auto result = RegOpenKeyExW(HKEY_CURRENT_USER, Key(id).c_str(), 0, KEY_READ, &key);
+    if (result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND)
+        return metadata;
+    if (result != ERROR_SUCCESS)
+        throw std::runtime_error("Could not read display profile.");
+    metadata.exists = true;
+    for (int i = 0; i < 3; ++i)
+        metadata.text[i] = ReadString(key, MetadataKeys[i]);
+    RegCloseKey(key);
+    return metadata;
+}
+
+inline HRESULT WriteMetadata(const std::wstring& id, const Metadata& metadata)
+{
+    if (!ValidId(id))
+        return E_INVALIDARG;
+    if (!metadata.exists)
+    {
+        const auto result = RegDeleteTreeW(HKEY_CURRENT_USER, Key(id).c_str());
+        return result == ERROR_FILE_NOT_FOUND ? S_OK : HRESULT_FROM_WIN32(result);
+    }
+    HKEY key;
+    auto result =
+        RegCreateKeyExW(HKEY_CURRENT_USER, Key(id).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
+    if (result != ERROR_SUCCESS)
+        return HRESULT_FROM_WIN32(result);
+    for (int i = 0; i < 3 && result == ERROR_SUCCESS; ++i)
+    {
+        const auto& value = metadata.text[i];
+        result = value.empty() ? RegDeleteValueW(key, MetadataKeys[i])
+                               : RegSetValueExW(key,
+                                                MetadataKeys[i],
+                                                0,
+                                                REG_SZ,
+                                                reinterpret_cast<const BYTE*>(value.c_str()),
+                                                DWORD((value.size() + 1) * sizeof(wchar_t)));
+        if (result == ERROR_FILE_NOT_FOUND)
+            result = ERROR_SUCCESS;
+    }
+    RegCloseKey(key);
+    return HRESULT_FROM_WIN32(result);
 }
 
 inline std::vector<Device> All()

@@ -1,5 +1,7 @@
 #include "Direct2DSettingsHost.h"
 #include "SettingsIni.h"
+#include "SettingsBackup.h"
+#include "LiveSettings.h"
 #include <d2d1.h>
 #include <dwrite.h>
 #include <wrl/client.h>
@@ -713,9 +715,10 @@ void Direct2DHostWindow::Render()
         m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushInputBg.Get());
         m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushBorderCard.Get(), 1.f);
         auto text = rect;
-        text.left += 12;
         text.top += 8;
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
         m_pRenderTarget->DrawText(i ? L"Export" : L"Import", 6, m_fmtNav.Get(), text, m_brushTextMain.Get());
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         HitRegion hit;
         hit.type = i ? HitRegion::ExportBtn : HitRegion::ImportBtn;
         hit.rect = rect;
@@ -744,9 +747,14 @@ void Direct2DHostWindow::Render()
     }
     if (!m_error.empty())
     {
-        D2D1_RECT_F r = D2D1::RectF(16, transferY - 65, 224, transferY - 8);
-        m_pRenderTarget->DrawText(
-            m_error.c_str(), (UINT32)m_error.size(), m_fmtDesc.Get(), r, m_brushAccentHover.Get());
+        const float statusBottom = transferY - (m_displayProfiles ? 80.f : 8.f);
+        const auto r = D2D1::RectF(16, statusBottom - 57.f, 224, statusBottom);
+        m_pRenderTarget->DrawText(m_error.c_str(),
+                                  (UINT32)m_error.size(),
+                                  m_fmtDesc.Get(),
+                                  r,
+                                  m_brushAccentHover.Get(),
+                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
     }
 
     // 5. Content Area
@@ -1393,24 +1401,53 @@ void Direct2DHostWindow::TransferIni(bool importing)
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
-    if (!importing)
+    try
     {
-        if (SUCCEEDED(SettingsIni::Export(path, *m_pSettings, m_error)))
-            m_error = L"INI backup exported.";
-    }
-    else
-    {
-        PlaceboSettings candidate;
-        if (SUCCEEDED(SettingsIni::Import(path, candidate, m_error)))
+        if (!importing)
         {
-            const auto hr = ApplyImported(candidate);
-            if (FAILED(hr))
-                m_error = L"Could not apply INI settings. Check external ICC and LUT files.";
+            if (m_displayProfiles)
+            {
+                const auto text = SettingsBackup::Serialize(SettingsBackup::Capture(*m_pSettings));
+                if (SUCCEEDED(SettingsIni::ExportText(path, text, m_error)))
+                    m_error = L"All display profiles exported.";
+            }
+            else if (SUCCEEDED(SettingsIni::Export(path, *m_pSettings, m_error)))
+                m_error = L"INI backup exported.";
+        }
+        else
+        {
+            const auto text = SettingsBackup::ReadFile(path);
+            const auto entries = SettingsIni::ReadEntries(text, 16 * 1024 * 1024, 131072);
+            const auto version = entries.find({"FrankyRenderer", "FormatVersion"});
+            HRESULT hr;
+            if (version != entries.end() && version->second == "2")
+            {
+                const auto profiles = SettingsBackup::Parse(text);
+                for (const auto& [id, profile] : profiles)
+                    LiveSettings::RememberMetadata(GetParent(m_hwnd), id);
+                hr = SettingsBackup::Apply(profiles, m_preview);
+                if (SUCCEEDED(hr))
+                {
+                    const std::wstring selected = m_pSettings->displayProfile;
+                    m_devices = DisplayProfiles::All();
+                    AdoptDisplayProfile(selected);
+                    m_error = L"All display profiles imported.";
+                }
+            }
             else
             {
-                m_error = m_standalone ? L"INI imported. Select Save to keep it." : L"INI settings imported.";
+                hr = ApplyImported(SettingsIni::Parse(text));
+                if (SUCCEEDED(hr))
+                    m_error = m_standalone ? L"INI imported. Select Save to keep it." : L"INI settings imported.";
             }
+            if (FAILED(hr))
+                m_error = L"Could not apply INI settings. Check external ICC and LUT files.";
         }
+    }
+    catch (const std::exception& ex)
+    {
+        const std::string message = ex.what();
+        m_error.assign(message.begin(), message.end());
     }
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }

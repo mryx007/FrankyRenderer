@@ -52,6 +52,7 @@ struct Session
     PlaceboSettings opening;
     bool commit = false;
     std::map<std::wstring, PlaceboSettings> displayOpenings;
+    std::map<std::wstring, DisplayProfiles::Metadata> metadataOpenings;
 };
 
 inline thread_local std::map<HWND, Session*> sessions;
@@ -90,6 +91,8 @@ inline LRESULT CALLBACK Host(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR id, 
             else
                 for (const auto& [profileId, opening] : s->displayOpenings)
                     s->config->SetSettings(&opening);
+            for (const auto& [profileId, metadata] : s->metadataOpenings)
+                DisplayProfiles::WriteMetadata(profileId, metadata);
         }
         sessions.erase(h);
         s->config->Release();
@@ -198,6 +201,13 @@ inline void Attach(HWND page, IPlaceboSettings* config, std::function<HRESULT()>
     }
     AttachEditor(page, std::move(apply));
     EnumChildWindows(host, HideApply, 0);
+}
+
+inline void RememberMetadata(HWND page, const std::wstring& id)
+{
+    const auto found = sessions.find(GetAncestor(page, GA_ROOT));
+    if (found != sessions.end() && !found->second->metadataOpenings.count(id))
+        found->second->metadataOpenings.emplace(id, DisplayProfiles::ReadMetadata(id));
 }
 
 inline void RememberDisplay(HWND page, const PlaceboSettings& next)

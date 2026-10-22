@@ -271,9 +271,9 @@ inline std::string Trim(std::string value)
                                       : value.substr(first, value.find_last_not_of(" \t\r") - first + 1);
 }
 
-inline PlaceboSettings Parse(const std::string& text)
+inline Entries ReadEntries(const std::string& text, size_t limit = 1024 * 1024, size_t maxEntries = 2048)
 {
-    if (text.size() > 1024 * 1024 || text.find('\0') != std::string::npos)
+    if (text.size() > limit || text.find('\0') != std::string::npos)
         throw std::runtime_error("Invalid or oversized INI file.");
     Entries entries;
     std::istringstream input(text.substr(text.starts_with("\xef\xbb\xbf") ? 3 : 0));
@@ -293,10 +293,16 @@ inline PlaceboSettings Parse(const std::string& text)
             if (!entries.emplace(std::make_pair(section, Trim(line.substr(0, equals))), Trim(line.substr(equals + 1)))
                      .second)
                 throw std::runtime_error("Duplicate INI setting.");
-            if (entries.size() > 2048)
+            if (entries.size() > maxEntries)
                 throw std::runtime_error("Too many INI settings.");
         }
     }
+    return entries;
+}
+
+inline PlaceboSettings Parse(const std::string& text)
+{
+    auto entries = ReadEntries(text);
     const auto version = entries.find({"FrankyRenderer", "FormatVersion"});
     if (version == entries.end() || version->second != "1")
         throw std::runtime_error("Unsupported settings file version.");
@@ -359,13 +365,12 @@ inline HRESULT Import(const wchar_t* path, PlaceboSettings& out, std::wstring& e
     }
 }
 
-inline HRESULT Export(const wchar_t* path, const PlaceboSettings& settings, std::wstring& error)
+inline HRESULT ExportText(const wchar_t* path, const std::string& text, std::wstring& error)
 {
     std::wstring temporary;
     HANDLE file = INVALID_HANDLE_VALUE;
     try
     {
-        const auto text = Serialize(settings);
         temporary = std::wstring(path) + L".tmp-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
                     std::to_wstring(GetTickCount64());
         file = CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -394,6 +399,20 @@ inline HRESULT Export(const wchar_t* path, const PlaceboSettings& settings, std:
         const std::string message = ex.what();
         error.assign(message.begin(), message.end());
         return E_FAIL;
+    }
+}
+
+inline HRESULT Export(const wchar_t* path, const PlaceboSettings& settings, std::wstring& error)
+{
+    try
+    {
+        return ExportText(path, Serialize(settings), error);
+    }
+    catch (const std::exception& ex)
+    {
+        const std::string message = ex.what();
+        error.assign(message.begin(), message.end());
+        return E_INVALIDARG;
     }
 }
 }

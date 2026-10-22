@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "SettingsIni.h"
+#include "SettingsBackup.h"
 #include "LiveSettings.h"
 #include <cstdio>
 #include <stdexcept>
@@ -176,6 +177,48 @@ int wmain(int argc, wchar_t** argv)
               "rename does not change picture values");
         auto imported = SettingsIni::Parse(SettingsIni::Serialize(a));
         Check(!imported.displayProfile[0], "INI remains portable without device identity");
+        auto backup = SettingsBackup::Capture(a);
+        Check(backup.count(monitor.id) && backup.count(tv.id) && backup.count(newDevice.id),
+              "full backup includes all saved disconnected displays");
+        Check(backup.at(tv.id).metadata.text[2] == L"Wohnzimmer-TV", "full backup includes aliases");
+        const auto backupText = SettingsBackup::Serialize(backup);
+        auto restored = SettingsBackup::Parse(backupText);
+        Check(SettingsBackup::Serialize(restored) == backupText, "all display metadata and settings round trip");
+        Check(SettingsIni::Serialize(restored.at(monitor.id).settings) == SettingsIni::Serialize(a) &&
+                  SettingsIni::Serialize(restored.at(tv.id).settings) == SettingsIni::Serialize(b),
+              "full backup preserves independent picture values and LUT paths");
+        for (const auto& broken :
+             {backupText + "\n[Unknown]\nvalue=1\n",
+              backupText + "\n[Display." + std::string(tv.id.begin(), tv.id.end()) + ".Renderer]\nbrightness=4\n"})
+        {
+            bool rejected = false;
+            try
+            {
+                SettingsBackup::Parse(broken);
+            }
+            catch (const std::exception&)
+            {
+                rejected = true;
+            }
+            Check(rejected, "malformed full backup rejected before writes");
+        }
+        auto altered = backup;
+        altered.at(monitor.id).settings.brightness = .63f;
+        altered.at(tv.id).settings.brightness = -.63f;
+        altered.at(tv.id).metadata.text[2] = L"Neuer TV-Name";
+        int writes = 0;
+        Check(FAILED(SettingsBackup::Apply(
+                  altered, [&](const PlaceboSettings& next) { return ++writes == 2 ? E_FAIL : SaveSettings(next); })),
+              "injected second-profile write failure");
+        Check(SettingsIni::Serialize(LoadSettings(monitor.id)) == SettingsIni::Serialize(a) &&
+                  SettingsIni::Serialize(LoadSettings(tv.id)) == SettingsIni::Serialize(b) &&
+                  DisplayProfiles::ReadMetadata(tv.id).text[2] == L"Wohnzimmer-TV",
+              "failed bulk import rolls back settings and names");
+        Check(SUCCEEDED(SettingsBackup::Apply(altered, {})) &&
+                  DisplayProfiles::ReadMetadata(tv.id).text[2] == L"Neuer TV-Name" &&
+                  LoadSettings(monitor.id).brightness == .63f,
+              "bulk import restores profiles and names");
+        Check(SUCCEEDED(SettingsBackup::Apply(backup, {})), "restore original profile fixtures");
         auto config = new ProfileConfig;
         config->current = a;
         HWND host = CreateWindowW(L"STATIC",
@@ -198,11 +241,30 @@ int wmain(int argc, wchar_t** argv)
         changedB.brightness = -.5f;
         Check(SUCCEEDED(config->SetSettings(&changedA)) && SUCCEEDED(config->SetSettings(&changedB)),
               "multi-device preview");
+        const auto importedOnly = Device(L"Imported offline display", L"test:imported-only");
+        auto extra = restored.at(tv.id);
+        wcscpy_s(extra.settings.displayProfile, importedOnly.id.c_str());
+        extra.metadata.text[0] = importedOnly.name;
+        extra.metadata.text[1] = importedOnly.identity;
+        restored.emplace(importedOnly.id, extra);
+        restored.at(tv.id).metadata.text[2] = L"Imported name";
+        for (const auto& [id, profile] : restored)
+            LiveSettings::RememberMetadata(page, id);
+        Check(SUCCEEDED(SettingsBackup::Apply(restored,
+                                              [&](const PlaceboSettings& next)
+                                              {
+                                                  LiveSettings::RememberDisplay(page, next);
+                                                  return config->SetSettings(&next);
+                                              })),
+              "live bulk import with new disconnected profile");
         SendMessageW(host, WM_COMMAND, IDCANCEL, 0);
         DestroyWindow(host);
         Check(SettingsIni::Serialize(LoadSettings(monitor.id)) == SettingsIni::Serialize(a) &&
                   SettingsIni::Serialize(LoadSettings(tv.id)) == SettingsIni::Serialize(b),
               "Cancel restores all edited display profiles");
+        Check(DisplayProfiles::ReadMetadata(tv.id).text[2] == L"Wohnzimmer-TV" &&
+                  !DisplayProfiles::ReadMetadata(importedOnly.id).exists,
+              "Cancel restores imported aliases and removes newly imported profiles");
         config->Release();
         PlaceboSettings invalid;
         wcscpy_s(invalid.displayProfile, L"..\\other");

@@ -121,7 +121,7 @@ The screenshots show example settings, not recommended presets.
 - Compact shader list with double-click enable/disable and a parameter editor for the selected shader.
 - Live settings preview: valid changes appear immediately; OK keeps them and Cancel restores the dialog's opening values.
 - Separate settings for each display, with editable device names. Newly connected displays start with default settings; reconnecting a known display restores its saved profile.
-- Import and export settings as portable INI files for the selected display.
+- Import and export all saved display profiles in one INI backup, including disconnected devices and custom names. Older single-profile INI files can still be imported into the selected display.
 - Numeric entry, fine adjustment steps, reset controls and contextual descriptions.
 - Configurable background color, transparency and rendering quality/performance options.
 - PotPlayer fullscreen playlist-transition handling.
@@ -145,7 +145,7 @@ For a local build, run `python src/package.py` to create the complete installabl
 3. In PotPlayer or MPC-BE, select **MPC Video Renderer** under Video Renderer. This is the player's existing menu label; the loaded filter is FrankyRenderer.
 4. Open the filter's settings to configure it.
 
-Use **Export** in the settings menu to save an INI backup and **Import** to restore it. All menu settings and shader parameters/order are included. External ICC and LUT files are referenced by path and must be kept separately.
+Use **Export** in the settings menu to save all display profiles in one INI backup and **Import** to restore them. Disconnected displays, custom names, all menu settings and shader parameters/order are included. Existing profiles absent from the backup are kept. Older single-profile INI files are imported into the selected display. External ICC and LUT files are referenced by path and must be kept separately.
 
 FrankyRenderer currently uses the MPC Video Renderer CLSID for player discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
 

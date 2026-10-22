@@ -19,6 +19,8 @@ Close your video player and run Uninstall.cmd from the installed folder.
 
 SETTINGS BACKUP
 Use Export in the settings menu to save an INI file. Use Import to restore it.
+The backup includes all saved display profiles, disconnected devices and names.
+Older single-profile INI files are imported into the selected display.
 External ICC and LUT files must be kept separately; the INI stores their paths.
 
 ABOUT THE SCRIPTS
