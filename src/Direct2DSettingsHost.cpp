@@ -14,6 +14,7 @@
 #include <commctrl.h>
 #include <windowsx.h>
 #include <cerrno>
+#include "ChoicePopup.h"
 
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -33,6 +34,7 @@ struct ChoiceItem
 {
     int value;
     std::wstring label;
+    std::wstring description;
 };
 
 struct D2DControl
@@ -182,7 +184,6 @@ class Direct2DHostWindow
     HWND m_edit = nullptr;
     D2DControl* m_editControl = nullptr;
     HFONT m_editFont = nullptr;
-    HFONT m_menuFont = nullptr;
     HBRUSH m_editBrush = CreateSolidBrush(RGB(18, 19, 22));
     std::wstring m_error;
     bool m_pending = false;
@@ -273,8 +274,6 @@ class Direct2DHostWindow
     {
         if (m_editFont)
             DeleteObject(m_editFont);
-        if (m_menuFont)
-            DeleteObject(m_menuFont);
         if (m_editBrush)
             DeleteObject(m_editBrush);
         DiscardDeviceResources();
@@ -1140,8 +1139,16 @@ void Direct2DHostWindow::Render()
                 m_pRenderTarget->DrawText(
                     curText.c_str(), (UINT32)curText.length(), m_fmtDesc.Get(), textRect, m_brushTextMain.Get());
 
-                D2D1_RECT_F arrowRect = D2D1::RectF(boxX + boxW - 20, boxY + 6, boxX + boxW - 4, boxY + 24);
-                m_pRenderTarget->DrawText(L"▾", 1, m_fmtDesc.Get(), arrowRect, m_brushTextDim.Get());
+                // Draw at a fixed logical size so the arrow stays clear at every DPI.
+                const auto arrowCenter = D2D1::Point2F(boxX + boxW - 16, boxY + boxH / 2);
+                m_pRenderTarget->DrawLine(D2D1::Point2F(arrowCenter.x - 5, arrowCenter.y - 2.5f),
+                                          D2D1::Point2F(arrowCenter.x, arrowCenter.y + 2.5f),
+                                          m_brushTextDim.Get(),
+                                          1.8f);
+                m_pRenderTarget->DrawLine(D2D1::Point2F(arrowCenter.x, arrowCenter.y + 2.5f),
+                                          D2D1::Point2F(arrowCenter.x + 5, arrowCenter.y - 2.5f),
+                                          m_brushTextDim.Get(),
+                                          1.8f);
 
                 HitRegion hr;
                 hr.type = HitRegion::DropdownHeader;
@@ -1603,40 +1610,24 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
             }
             else if (h.type == HitRegion::DropdownHeader)
             {
-                if (m_menuFont)
-                    DeleteObject(m_menuFont);
-                m_menuFont = CreateFontW(-int(14 * Scale()),
-                                         0,
-                                         0,
-                                         0,
-                                         FW_MEDIUM,
-                                         FALSE,
-                                         FALSE,
-                                         FALSE,
-                                         DEFAULT_CHARSET,
-                                         0,
-                                         0,
-                                         CLEARTYPE_QUALITY,
-                                         0,
-                                         L"Segoe UI");
-                HMENU menu = CreatePopupMenu();
-                MENUINFO menuInfo = {sizeof(menuInfo)};
-                menuInfo.fMask = MIM_BACKGROUND;
-                menuInfo.hbrBack = m_editBrush;
-                SetMenuInfo(menu, &menuInfo);
-                for (size_t i = 0; i < c->choices.size(); i++)
-                    AppendMenuW(menu,
-                                MF_OWNERDRAW | (int(c->Value()) == c->choices[i].value ? MF_CHECKED : 0),
-                                UINT_PTR(i + 1),
-                                reinterpret_cast<LPCWSTR>(&c->choices[i]));
-                POINT pt = {int(h.rect.left * Scale()), int(h.rect.bottom * Scale())};
-                ClientToScreen(m_hwnd, &pt);
-                const int selected =
-                    TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTALIGN, pt.x, pt.y, m_hwnd, nullptr);
-                DestroyMenu(menu);
-                if (selected > 0)
+                ChoicePopup popup;
+                const auto choices = c->choices;
+                for (size_t i = 0; i < choices.size(); ++i)
                 {
-                    c->set(float(c->choices[selected - 1].value));
+                    popup.labels.push_back(choices[i].label);
+                    popup.descriptions.push_back(choices[i].description);
+                    if (int(c->Value()) == choices[i].value)
+                        popup.selected = int(i);
+                }
+                RECT anchor = {int(h.rect.left * Scale()),
+                               int(h.rect.top * Scale()),
+                               int(h.rect.right * Scale()),
+                               int(h.rect.bottom * Scale())};
+                MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+                const int selected = popup.Show(m_hwnd, anchor, Scale());
+                if (selected >= 0)
+                {
+                    c->set(float(choices[selected].value));
                     Changed();
                 }
             }
@@ -1782,45 +1773,6 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
 
     switch (msg)
     {
-    case WM_MEASUREITEM:
-        if (pThis)
-        {
-            auto item = reinterpret_cast<MEASUREITEMSTRUCT*>(lParam);
-            if (item && item->CtlType == ODT_MENU)
-            {
-                item->itemWidth = UINT(320 * pThis->Scale());
-                item->itemHeight = UINT(32 * pThis->Scale());
-                return TRUE;
-            }
-        }
-        break;
-    case WM_DRAWITEM:
-        if (pThis)
-        {
-            auto item = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
-            if (item && item->CtlType == ODT_MENU)
-            {
-                const auto choice = reinterpret_cast<const ChoiceItem*>(item->itemData);
-                HBRUSH brush = CreateSolidBrush(item->itemState & ODS_SELECTED ? RGB(42, 45, 51) : RGB(18, 19, 22));
-                FillRect(item->hDC, &item->rcItem, brush);
-                DeleteObject(brush);
-                SetBkMode(item->hDC, TRANSPARENT);
-                SetTextColor(item->hDC, RGB(235, 237, 240));
-                auto old = SelectObject(item->hDC, pThis->m_menuFont);
-                RECT text = item->rcItem;
-                text.left += int(32 * pThis->Scale());
-                DrawTextW(item->hDC, choice->label.c_str(), -1, &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-                if (item->itemState & ODS_CHECKED)
-                {
-                    RECT mark = item->rcItem;
-                    mark.right = mark.left + int(28 * pThis->Scale());
-                    DrawTextW(item->hDC, L"✓", 1, &mark, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-                }
-                SelectObject(item->hDC, old);
-                return TRUE;
-            }
-        }
-        break;
     case WM_GETDLGCODE:
         return DLGC_WANTTAB | DLGC_WANTARROWS | DLGC_WANTCHARS;
     case WM_NCCREATE:

@@ -11,6 +11,74 @@ inline std::wstring D2DWide(const char* s)
     return std::wstring(s, s + strlen(s));
 }
 
+// Curated presets and descriptions from https://libplacebo.org/options/#scaling.
+// Keep backend validation unrestricted so existing INI/registry settings still load.
+struct D2DScalerPreset
+{
+    const char* name;
+    const wchar_t* description;
+    unsigned roles;
+};
+
+inline constexpr D2DScalerPreset D2DScalerPresets[] = {
+    {"nearest", L"Nearest-neighbour (box) sampling (very fast)", 1},
+    {"bilinear", L"Bilinear sampling (very fast)", 1},
+    {"oversample", L"Aspect-ratio preserving nearest neighbour sampling (very fast)", 1},
+    {"bicubic", L"Bicubic interpolation (fast)", 3},
+    {"gaussian", L"Gaussian smoothing (fast)", 3},
+    {"catmull_rom", L"Catmull-Rom cubic spline", 3},
+    {"lanczos", L"Lanczos reconstruction", 3},
+    {"ewa_lanczos", L"EWA Lanczos (Jinc) reconstruction (slow)", 1},
+    {"ewa_lanczossharp", L"Sharpened version of ewa_lanczos (slow)", 1},
+    {"ewa_lanczos4sharpest", L"Very sharp version of ewa_lanczos, with anti-ringing (very slow)", 1},
+    {"box", L"Box averaging (very fast)", 2},
+    {"hermite", L"Hermite-weighted averaging (fast)", 2},
+    {"bilinear", L"Bilinear (triangle) averaging (fast)", 2},
+    {"mitchell", L"Mitchell-Netravalia cubic spline", 2},
+    {"oversample", L"Oversampling, only mix edge frames while preserving FPS", 4},
+    {"hermite", L"Hermite-weighted frame mixing", 4},
+    {"linear", L"Linear frame mixing", 4},
+    {"cubic", L"Cubic B-spline frame mixing", 4},
+};
+
+inline std::wstring D2DScalerDescription(int role, const char* name)
+{
+    if (!strcmp(name, "auto"))
+        return L"Use the renderer's default filter.";
+    if (!strcmp(name, "custom"))
+        return L"Configure a custom filter using the controls below.";
+    if (!strcmp(name, "none"))
+        return role == 4   ? L"Disable frame mixing, show nearest frame to target PTS"
+               : role == 0 ? L"No filter, only use basic GPU texture sampling"
+               : role == 1 ? L"Use the same filter as specified for upscaler"
+                           : L"Use the corresponding image scaling filter.";
+    const unsigned usage = role == 4 ? 4 : role % 2 ? 2 : 1;
+    for (const auto& preset : D2DScalerPresets)
+        if ((preset.roles & usage) && !strcmp(name, preset.name))
+            return preset.description;
+    return L"Previously saved filter. Select a preset to replace it.";
+}
+
+inline std::vector<std::string> D2DScalerNames(int role, bool custom, const char* current)
+{
+    std::vector<std::string> names = {"auto", "none"};
+    if (custom)
+        names.emplace_back("custom");
+    const unsigned usage = role == 4 ? 4 : role % 2 ? 2 : 1;
+    // Downscaling uses its own speed order, as in the documentation.
+    if (usage == 2)
+        for (const char* name :
+             {"box", "hermite", "bilinear", "bicubic", "gaussian", "catmull_rom", "mitchell", "lanczos"})
+            names.emplace_back(name);
+    else
+        for (const auto& preset : D2DScalerPresets)
+            if (preset.roles & usage)
+                names.emplace_back(preset.name);
+    if (std::find(names.begin(), names.end(), current) == names.end())
+        names.emplace_back(current);
+    return names;
+}
+
 template <class T>
 D2DControl D2DNumber(PlaceboSettings& s,
                      const wchar_t* name,
@@ -293,15 +361,12 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         for (int role = 0; role < 5; role++)
         {
             auto& f = s.scaling.filters[role];
-            std::vector<std::string> names = {"auto", "none", "custom"};
-            for (int i = 0; i < pl_num_filter_configs; i++)
-                if (pl_filter_configs[i]->allowed & ScalingUsage(role))
-                    names.emplace_back(pl_filter_configs[i]->name);
+            const auto names = D2DScalerNames(role, true, f.filter);
             D2DControl n;
             n.name = ScalingLabels[role];
             n.kind = ControlKind::Choice;
             for (int i = 0; i < int(names.size()); i++)
-                n.choices.push_back({i, D2DWide(names[i].c_str())});
+                n.choices.push_back({i, D2DWide(names[i].c_str()), D2DScalerDescription(role, names[i].c_str())});
             n.get = [&f, names]
             {
                 for (int i = 0; i < int(names.size()); i++)
@@ -320,6 +385,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 }
                 strcpy_s(f.filter, names[int(v)].c_str());
             };
+            n.detail = [&f, role] { return D2DScalerDescription(role, f.filter); };
             n.reset = [&f] { f = {}; };
             c.controls.push_back(std::move(n));
         }
@@ -348,9 +414,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 std::vector<std::string> names = {"auto", "none"};
                 if (kind == 0)
                 {
-                    for (int j = 0; j < pl_num_filter_configs; j++)
-                        if (pl_filter_configs[j]->allowed & ScalingUsage(role))
-                            names.emplace_back(pl_filter_configs[j]->name);
+                    names = D2DScalerNames(role, false, field);
                 }
                 else
                     for (int j = 0; j < pl_num_filter_functions; j++)
@@ -360,7 +424,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 n.kind = ControlKind::Choice;
                 n.enabled = enabled;
                 for (int j = 0; j < int(names.size()); j++)
-                    n.choices.push_back({j, D2DWide(names[j].c_str())});
+                    n.choices.push_back(
+                        {j, D2DWide(names[j].c_str()), kind == 0 ? D2DScalerDescription(role, names[j].c_str()) : L""});
                 n.get = [field, names]
                 {
                     for (int j = 0; j < int(names.size()); j++)
@@ -369,6 +434,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                     return 0.f;
                 };
                 n.set = [field, names](float v) { strcpy_s(field, 64, names[int(v)].c_str()); };
+                if (kind == 0)
+                    n.detail = [field, role] { return D2DScalerDescription(role, field); };
                 n.reset = [field] { strcpy_s(field, 64, "auto"); };
                 e.controls.push_back(std::move(n));
             }

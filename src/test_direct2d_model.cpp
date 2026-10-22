@@ -106,6 +106,40 @@ int wmain()
         Require(s.toneMapping == 1 && tone.choices[1].label == L"Spline", "Spline index");
         tone.reset();
         auto& scaler = find(L"Scaling", L"Filters", L"Image Upscaler");
+        bool documentedSupported = true;
+        const int expectedCounts[] = {13, 11, 13, 11, 7};
+        for (int role = 0; role < 5; ++role)
+        {
+            const auto names = D2DScalerNames(role, true, "auto");
+            Require(int(names.size()) == expectedCounts[role], "curated scaling preset count");
+            for (const auto& name : names)
+            {
+                Require(!D2DScalerDescription(role, name.c_str()).empty(), "each scaling preset has a description");
+                if (name == "custom")
+                    continue;
+                ScalingSettings test;
+                strcpy_s(test.filters[role].filter, name.c_str());
+                if (!ValidScaling(test))
+                    fprintf(stderr, "Unsupported documented filter: role=%d name=%s\n", role, name.c_str());
+                documentedSupported &= ValidScaling(test);
+            }
+        }
+        Require(documentedSupported, "documented filters supported by bundled runtime");
+        for (int role : {1, 3})
+        {
+            ScalingSettings test;
+            strcpy_s(test.filters[role].filter, "box");
+            auto options = pl_options_alloc(nullptr);
+            Require(ApplyScaling(options, test) && ScalingFilter(options, role) == &pl_filter_box,
+                    "box selects the actual built-in averaging filter");
+            strcpy_s(test.filters[role].filter, "custom");
+            strcpy_s(test.filters[role].preset, "box");
+            Require(ApplyScaling(options, test) && ScalingFilter(options, role)->kernel == pl_filter_box.kernel,
+                    "custom filter can inherit box averaging");
+            pl_options_free(&options);
+        }
+        const auto savedNames = D2DScalerNames(0, true, "spline36");
+        Require(savedNames.back() == "spline36", "existing non-curated setting remains represented");
         scaler.set(2);
         Require(!strcmp(s.scaling.filters[0].filter, "custom"), "canonical scaling");
         auto& blur = find(L"Scaling", L"Custom: Image Upscaler", L"Blur");
@@ -154,6 +188,60 @@ int wmain()
         HWND view = Direct2DSettingsHost::Create(parent, bounds, &s);
         Require(view != nullptr, "rendering view");
         auto host = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(view, GWLP_USERDATA));
+        ChoicePopup popup;
+        for (int i = 0; i < 60; ++i)
+            popup.labels.push_back(L"Choice");
+        popup.Move(37);
+        Require(popup.active == 37 && popup.first == 26, "selected choice remains visible");
+        popup.Scroll(100);
+        Require(popup.first == 48, "scroll stops at final choice");
+        popup.Scroll(-100);
+        Require(popup.first == 0, "scroll stops at first choice");
+        HWND popupWindow = CreateWindowExW(0,
+                                           L"STATIC",
+                                           L"",
+                                           WS_POPUP,
+                                           -10000,
+                                           -10000,
+                                           popup.width,
+                                           popup.rows * popup.rowHeight + 2,
+                                           parent,
+                                           nullptr,
+                                           GetModuleHandleW(nullptr),
+                                           nullptr);
+        Require(popupWindow != nullptr, "hidden selection input window");
+        popup.window = popupWindow;
+        SetWindowLongPtrW(popupWindow, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&popup));
+        SetWindowLongPtrW(popupWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&ChoicePopup::Proc));
+        SendMessageW(popupWindow, WM_MOUSEWHEEL, MAKEWPARAM(0, -WHEEL_DELTA), 0);
+        Require(popup.first == 3, "mouse wheel scrolls choices");
+        SendMessageW(popupWindow, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA / 2), 0);
+        Require(popup.first == 3, "partial wheel delta is accumulated");
+        SendMessageW(popupWindow, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA / 2), 0);
+        Require(popup.first == 0, "accumulated wheel delta scrolls choices");
+        SendMessageW(popupWindow, WM_KEYDOWN, VK_END, 0);
+        Require(popup.active == 59 && popup.first == 48, "keyboard reaches final choice");
+        SendMessageW(popupWindow, WM_KEYDOWN, VK_RETURN, 0);
+        Require(popup.done && popup.selected == 59, "keyboard confirms choice");
+        popup.done = false;
+        SendMessageW(popupWindow, WM_KEYDOWN, VK_ESCAPE, 0);
+        Require(popup.done && popup.selected == -1, "escape cancels choice");
+        popup.done = false;
+        popup.Scroll(12);
+        RECT thumb = popup.Thumb();
+        SendMessageW(popupWindow, WM_LBUTTONDOWN, 0, MAKELPARAM(thumb.left + 1, thumb.top + 1));
+        SendMessageW(popupWindow, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(thumb.left + 1, 1000));
+        SendMessageW(popupWindow, WM_LBUTTONUP, 0, 0);
+        Require(popup.first == 48 && popup.dragOffset == -1, "scrollbar dragging reaches last choice");
+        SendMessageW(popupWindow, WM_LBUTTONDOWN, 0, MAKELPARAM(40, 16));
+        Require(popup.done && popup.selected == 48, "mouse selects visible choice after scrolling");
+        popup.done = false;
+        SendMessageW(popupWindow, WM_LBUTTONDOWN, 0, MAKELPARAM(-1, 16));
+        Require(popup.done && popup.selected == -1, "outside click cancels selection");
+        Require(!(GetWindowLongPtrW(popupWindow, GWL_STYLE) & (WS_BORDER | WS_VSCROLL)),
+                "popup has no native border or arrow scrollbar");
+        DestroyWindow(popupWindow);
+        popup.window = nullptr;
         host->Render();
         Require(host->m_pRenderTarget != nullptr, "Direct2D render target");
         host->Render();

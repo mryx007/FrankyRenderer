@@ -109,13 +109,23 @@ inline bool ApplyScaling(pl_options o, const ScalingSettings& settings)
             continue;
         if (strcmp(s.filter, "custom"))
         {
-            if (!pl_options_set_str(o, key.c_str(), s.filter))
+            // This runtime exports the documented box filter but omits its name
+            // from the options preset registry. Use the same built-in config.
+            if (!strcmp(s.filter, "box") && (role == 1 || role == 3))
+            {
+                if (role == 1)
+                    o->params.downscaler = &pl_filter_box;
+                else
+                    o->params.plane_downscaler = &pl_filter_box;
+            }
+            else if (!pl_options_set_str(o, key.c_str(), s.filter))
                 return false;
             continue;
         }
-        if (!strcmp(s.preset, "auto"))
+        const bool boxPreset = !strcmp(s.preset, "box") && (role == 1 || role == 3);
+        if (!strcmp(s.preset, "auto") || boxPreset)
         {
-            const auto* base = ScalingFilter(o, role);
+            const auto* base = boxPreset ? &pl_filter_box : ScalingFilter(o, role);
             if (!base && role == 2)
                 base = o->params.upscaler;
             if (!base && role == 3)
