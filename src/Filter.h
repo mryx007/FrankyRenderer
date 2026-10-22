@@ -31,6 +31,7 @@ class DecoderPin final : public CRendererInputPin,
     DECLARE_IUNKNOWN
     STDMETHODIMP NonDelegatingQueryInterface(REFIID, void**) override;
     STDMETHODIMP GetAllocator(IMemAllocator**) override;
+    STDMETHODIMP GetAllocatorRequirements(ALLOCATOR_PROPERTIES*) override;
     HRESULT BreakConnect() override;
     STDMETHODIMP ActivateD3D11Decoding(ID3D11Device*, ID3D11DeviceContext*, HANDLE, UINT) override;
     UINT STDMETHODCALLTYPE GetD3D11AdapterIndex() override;

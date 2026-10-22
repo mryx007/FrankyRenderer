@@ -1848,6 +1848,19 @@ class PatternStream final : public CSourceStream
             return E_FAIL;
         }
         printf("PASS native decoder owns allocator after device activation\n");
+        ALLOCATOR_PROPERTIES nativeProperties = {};
+        Check(input->GetAllocatorRequirements(&nativeProperties), "native allocator requirements");
+        // Match MPC-BE's native DecideBufferSize: it supplies only the surface
+        // count and retains the renderer's byte size and alignment requirements.
+        nativeProperties.cBuffers = 22;
+        ComPtr<IMemAllocator> nativeAllocator;
+        Check(CoCreateInstance(CLSID_MemoryAllocator, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&nativeAllocator)),
+              "native allocator base-class requirements probe");
+        ALLOCATOR_PROPERTIES nativeActual = {};
+        Check(nativeAllocator->SetProperties(&nativeProperties, &nativeActual), "native allocator set properties");
+        Check(nativeAllocator->Commit(), "native allocator commit with MPC-BE negotiation");
+        Check(nativeAllocator->Decommit(), "native allocator decommit");
+        puts("PASS MPC-BE native buffer negotiation commits without VFW_E_SIZENOTSET");
         return S_OK;
     }
 

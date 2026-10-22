@@ -54,6 +54,21 @@ STDMETHODIMP DecoderPin::GetAllocator(IMemAllocator** out)
     return S_OK;
 }
 
+STDMETHODIMP DecoderPin::GetAllocatorRequirements(ALLOCATOR_PROPERTIES* properties)
+{
+    if (!properties)
+        return E_POINTER;
+    CAutoLock guard(m_pLock);
+    if (!nativeDecoder)
+        return CRendererInputPin::GetAllocatorRequirements(properties);
+    // MPC-BE's native decoder only supplies its surface count in
+    // DecideBufferSize. Its surface allocator still calls CBaseAllocator::Alloc,
+    // which requires positive byte size and alignment even for GPU samples.
+    *properties = {1, 1, 1, 0};
+    Trace("Native decoder allocator requirements: buffers=1 bytes=1 alignment=1");
+    return S_OK;
+}
+
 STDMETHODIMP DecoderPin::NonDelegatingQueryInterface(REFIID id, void** out)
 {
     TraceInterface("input pin", id);
@@ -1249,8 +1264,10 @@ STDMETHODIMP Renderer::Stop()
 
 STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
 {
+    Trace("Renderer run begin start=%lld", start);
     backend.ResetPresentationMeasurement();
     HRESULT hr = CBaseVideoRenderer::Run(start);
+    Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
         stopped = false;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
@@ -1260,8 +1277,10 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
 
 STDMETHODIMP Renderer::Pause()
 {
+    Trace("Renderer pause begin");
     backend.ResetPresentationMeasurement();
     HRESULT hr = CBaseVideoRenderer::Pause();
+    Trace("Renderer base pause returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
         stopped = false;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())

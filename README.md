@@ -14,7 +14,7 @@ My renderer uses only about half the VRAM that madVR does, and so far, it runs p
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
-FrankyRenderer now works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.1** fixes MPC-BE detection, video output and resizing. The project's own C++ code has also been consistently formatted for readability.
+FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
 
 It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
@@ -127,6 +127,8 @@ Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed fr
 > **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer and MPC-BE compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but these players do not yet offer a separate FrankyRenderer selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
 
 Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts, a short INSTALL.txt guide and license notices; no compilation is required to test a release.
+
+Runtime DLLs use descriptive `Franky.*.dll` names. See [runtime names](docs/runtime-names.md) for the upstream libraries; the package also records original names and binary hashes in `licenses/runtime-names.json`.
 
 For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
 

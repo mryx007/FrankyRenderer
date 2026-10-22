@@ -8,6 +8,8 @@ import shutil
 
 import pefile
 
+from runtime_names import RUNTIME_NAMES, packaged_name, verify_runtime, write_packaged_binary
+
 ROOT = pathlib.Path(__file__).resolve().parent
 OUT = ROOT.parent / "dist"
 SOURCE = ROOT / "build/bin"
@@ -25,12 +27,15 @@ def main(out=OUT):
     }
     pending = ["placeborenderer.ax"]
     seen = set()
+    runtime_manifest = []
     while pending:
         name = pending.pop()
         if name in seen:
             continue
         seen.add(name)
         path = available[name]
+        if path.suffix.lower() == ".dll" and name not in RUNTIME_NAMES:
+            raise ValueError(f"No package name assigned to dependency: {path.name}")
         pe = pefile.PE(str(path), fast_load=True)
         pe.parse_data_directories(
             directories=[
@@ -44,7 +49,18 @@ def main(out=OUT):
                 if dependency in available:
                     pending.append(dependency)
         pe.close()
-        shutil.copy2(path, out / path.name)
+        destination = out / packaged_name(path.name)
+        write_packaged_binary(path, destination)
+        runtime_manifest.append({
+            "original": path.name,
+            "packaged": destination.name,
+            "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "packaged_sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+        })
+
+    for old in RUNTIME_NAMES:
+        (out / old).unlink(missing_ok=True)
+    verify_runtime(out)
 
     for name in ("setup.ps1", "Install.cmd", "Uninstall.cmd", "INSTALL.txt"):
         shutil.copy2(ROOT / name, out / name)
@@ -52,6 +68,7 @@ def main(out=OUT):
 
     licenses = out / "licenses"
     licenses.mkdir(exist_ok=True)
+    (licenses / "runtime-names.json").write_text(json.dumps(runtime_manifest, indent=2) + "\n")
     shutil.copytree(
         ROOT / "deps/msys/ucrt64/share/licenses",
         licenses / "dependencies",
