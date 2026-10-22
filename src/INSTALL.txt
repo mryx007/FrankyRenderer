@@ -17,6 +17,10 @@ are listed in licenses/runtime-names.json. Keep all of these files together.
 UNINSTALL
 Close your video player and run Uninstall.cmd from the installed folder.
 
+SETTINGS BACKUP
+Use Export in the settings menu to save an INI file. Use Import to restore it.
+External ICC and LUT files must be kept separately; the INI stores their paths.
+
 ABOUT THE SCRIPTS
 Install.cmd and Uninstall.cmd start setup.ps1. It checks existing registrations,
 backs up the affected entries and registers or unregisters the renderer. It

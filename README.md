@@ -137,6 +137,8 @@ For a local build, run `python src/package.py` to create the complete installabl
 3. In PotPlayer or MPC-BE, select **MPC Video Renderer** under Video Renderer. This is the player's existing menu label; the loaded filter is FrankyRenderer.
 4. Open the filter's settings to configure it.
 
+Use **Export** in the settings menu to save an INI backup and **Import** to restore it. All menu settings and shader parameters/order are included. External ICC and LUT files are referenced by path and must be kept separately.
+
 FrankyRenderer currently uses the MPC Video Renderer CLSID for player discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
 
 Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.

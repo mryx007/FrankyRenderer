@@ -172,6 +172,37 @@ int wmain()
             apply |= hit.type == HitRegion::ApplyBtn;
         }
         Require(scrollbar && !apply, "visible page scrollbar and no live preview button");
+        int transferButtons = 0;
+        for (const auto& hit : host->m_hitRegions)
+            if (hit.type == HitRegion::ImportBtn || hit.type == HitRegion::ExportBtn)
+            {
+                ++transferButtons;
+                Require(hit.rect.left >= 16 && hit.rect.right <= 224 && hit.rect.bottom <= 850,
+                        "import/export fit inside sidebar");
+            }
+        Require(transferButtons == 2, "import and export buttons visible");
+        const auto beforeImport = s;
+        auto imported = SettingsIni::Parse(SettingsIni::Serialize(beforeImport));
+        imported.brightness = .1875f;
+        unsigned previews = 0;
+        host->m_preview = [&](const PlaceboSettings&)
+        {
+            ++previews;
+            return E_FAIL;
+        };
+        Require(FAILED(host->ApplyImported(imported)) && previews == 1 &&
+                    SettingsIni::Serialize(s) == SettingsIni::Serialize(beforeImport),
+                "failed imported preview preserves draft");
+        host->m_preview = [&](const PlaceboSettings&)
+        {
+            ++previews;
+            return S_OK;
+        };
+        Require(SUCCEEDED(host->ApplyImported(imported)) && s.brightness == imported.brightness &&
+                    host->m_applied.brightness == imported.brightness && !host->m_pending,
+                "INI import applies once and refreshes accepted settings");
+        Require(SUCCEEDED(host->ApplyImported(beforeImport)), "restore before import test");
+        host->m_preview = {};
         for (int index : {3, 4, 6})
         {
             host->m_activePage = index;

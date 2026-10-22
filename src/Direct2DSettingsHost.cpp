@@ -1,4 +1,5 @@
 #include "Direct2DSettingsHost.h"
+#include "SettingsIni.h"
 #include <d2d1.h>
 #include <dwrite.h>
 #include <wrl/client.h>
@@ -123,6 +124,8 @@ struct HitRegion
         SearchClearBtn,
         ResetBtn,
         ApplyBtn,
+        ImportBtn,
+        ExportBtn,
         Number,
         Action,
         ResetValue,
@@ -192,6 +195,8 @@ class Direct2DHostWindow
 
     void Changed();
     void Preview();
+    void TransferIni(bool importing);
+    HRESULT ApplyImported(const PlaceboSettings& candidate);
     void BeginEdit(D2DControl*, const D2D1_RECT_F&);
     void EndEdit();
     void EditChanged();
@@ -653,6 +658,22 @@ void Direct2DHostWindow::Render()
 
     // 4. Sidebar Bottom Action Buttons
     float btnY = size.height - 48.0f;
+    const float transferY = btnY - (m_standalone ? 44.f : 0.f);
+    for (int i = 0; i < 2; ++i)
+    {
+        const float left = i ? 124.f : 16.f;
+        const auto rect = D2D1::RectF(left, transferY, left + 100.f, transferY + 34.f);
+        m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushInputBg.Get());
+        m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushBorderCard.Get(), 1.f);
+        auto text = rect;
+        text.left += 12;
+        text.top += 8;
+        m_pRenderTarget->DrawText(i ? L"Export" : L"Import", 6, m_fmtNav.Get(), text, m_brushTextMain.Get());
+        HitRegion hit;
+        hit.type = i ? HitRegion::ExportBtn : HitRegion::ImportBtn;
+        hit.rect = rect;
+        m_hitRegions.push_back(hit);
+    }
     if (m_standalone)
     {
         D2D1_RECT_F applyRect = D2D1::RectF(124, btnY, sidebarW - 16, btnY + 34);
@@ -676,7 +697,7 @@ void Direct2DHostWindow::Render()
     }
     if (!m_error.empty())
     {
-        D2D1_RECT_F r = D2D1::RectF(16, btnY - 65, 224, btnY - 8);
+        D2D1_RECT_F r = D2D1::RectF(16, transferY - 65, 224, transferY - 8);
         m_pRenderTarget->DrawText(
             m_error.c_str(), (UINT32)m_error.size(), m_fmtDesc.Get(), r, m_brushAccentHover.Get());
     }
@@ -1284,6 +1305,74 @@ void Direct2DHostWindow::Preview()
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
+void Direct2DHostWindow::TransferIni(bool importing)
+{
+    EndEdit();
+    if (m_pending)
+        Preview();
+    wchar_t path[32768] = L"FrankyRenderer.ini";
+    OPENFILENAMEW dialog = {sizeof(dialog)};
+    dialog.hwndOwner = m_hwnd;
+    dialog.lpstrFile = path;
+    dialog.nMaxFile = DWORD(std::size(path));
+    dialog.lpstrFilter = L"INI settings (*.ini)\0*.ini\0\0";
+    dialog.lpstrDefExt = L"ini";
+    dialog.lpstrTitle = importing ? L"Import renderer settings" : L"Export renderer settings";
+    dialog.Flags =
+        OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (importing ? OFN_FILEMUSTEXIST : OFN_OVERWRITEPROMPT);
+    if (!(importing ? GetOpenFileNameW(&dialog) : GetSaveFileNameW(&dialog)))
+    {
+        if (CommDlgExtendedError())
+            m_error = L"Could not open the INI file dialog.";
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
+    if (!importing)
+    {
+        if (SUCCEEDED(SettingsIni::Export(path, *m_pSettings, m_error)))
+            m_error = L"INI backup exported.";
+    }
+    else
+    {
+        PlaceboSettings candidate;
+        if (SUCCEEDED(SettingsIni::Import(path, candidate, m_error)))
+        {
+            const auto hr = ApplyImported(candidate);
+            if (FAILED(hr))
+                m_error = L"Could not apply INI settings. Check external ICC and LUT files.";
+            else
+            {
+                m_error = m_standalone ? L"INI imported. Select Save to keep it." : L"INI settings imported.";
+            }
+        }
+    }
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+HRESULT Direct2DHostWindow::ApplyImported(const PlaceboSettings& candidate)
+{
+    auto hr = ValidateSettings(candidate);
+    if (FAILED(hr))
+        return hr;
+    hr = m_preview ? m_preview(candidate) : S_OK;
+    if (FAILED(hr))
+        return hr;
+    EndEdit();
+    *m_pSettings = m_accepted = candidate;
+    if (m_preview)
+        m_applied = candidate;
+    m_pending = false;
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_scrollY = 0;
+    m_searchQuery.clear();
+    m_searchFocused = false;
+    m_hitRegions.clear();
+    InitPages();
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+    return S_OK;
+}
+
 void Direct2DHostWindow::EndEdit()
 {
     if (m_edit)
@@ -1471,6 +1560,10 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                     if (c.reset)
                         c.reset();
             Changed();
+        }
+        else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
+        {
+            TransferIni(h.type == HitRegion::ImportBtn);
         }
         else if (h.type == HitRegion::ApplyBtn)
         {
