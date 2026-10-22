@@ -128,7 +128,7 @@ Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed fr
 
 Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts, a short INSTALL.txt guide and license notices; no compilation is required to test a release.
 
-Runtime DLLs use descriptive `Franky.*.dll` names. See [runtime names](docs/runtime-names.md) for the upstream libraries; the package also records original names and binary hashes in `licenses/runtime-names.json`.
+Runtime DLLs use descriptive names such as `VideoProcessing.dll` and `ColorManagement.dll`. See [runtime names](docs/runtime-names.md) for the upstream libraries; the package also records original names and binary hashes in `licenses/runtime-names.json`.
 
 For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
 

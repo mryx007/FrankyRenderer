@@ -8,15 +8,18 @@ import pefile
 
 
 RUNTIME_NAMES = {
-    "libplacebo-360.dll": "Franky.VideoProcessing.dll",
-    "libdovi.dll": "Franky.DolbyVision.dll",
-    "liblcms2-2.dll": "Franky.ColorManagement.dll",
-    "libshaderc_shared.dll": "Franky.ShaderCompiler.dll",
-    "libspirv-cross-c-shared.dll": "Franky.ShaderTranslator.dll",
-    "vulkan-1.dll": "Franky.VulkanLoader.dll",
-    "libstdc++-6.dll": "Franky.CppRuntime.dll",
-    "libgcc_s_seh-1.dll": "Franky.CompilerRuntime.dll",
-    "libwinpthread-1.dll": "Franky.Threading.dll",
+    "libplacebo-360.dll": "VideoProcessing.dll",
+    "libdovi.dll": "DolbyVision.dll",
+    "liblcms2-2.dll": "ColorManagement.dll",
+    "libshaderc_shared.dll": "ShaderCompiler.dll",
+    "libspirv-cross-c-shared.dll": "ShaderTranslator.dll",
+    "vulkan-1.dll": "VulkanLoader.dll",
+    "libstdc++-6.dll": "CppRuntime.dll",
+    "libgcc_s_seh-1.dll": "CompilerRuntime.dll",
+    "libwinpthread-1.dll": "Threading.dll",
+}
+OBSOLETE_RUNTIME_NAMES = frozenset(RUNTIME_NAMES) | {
+    "franky." + name.lower() for name in RUNTIME_NAMES.values()
 }
 
 
@@ -135,13 +138,13 @@ def verify_runtime(directory):
     for path in directory.iterdir():
         if path.suffix.lower() not in (".dll", ".ax"):
             continue
-        if path.name.lower() in RUNTIME_NAMES:
+        if path.name.lower() in OBSOLETE_RUNTIME_NAMES:
             raise ValueError(f"Obsolete runtime filename in package: {path}")
         with pefile.PE(str(path)) as pe:
             for table in ("DIRECTORY_ENTRY_IMPORT", "DIRECTORY_ENTRY_DELAY_IMPORT"):
                 for entry in getattr(pe, table, []):
                     name = entry.dll.decode("ascii").lower()
-                    if name in RUNTIME_NAMES:
+                    if name in OBSOLETE_RUNTIME_NAMES:
                         raise ValueError(f"Stale import in {path}: {name}")
                     if name in expected and not (directory / entry.dll.decode("ascii")).is_file():
                         raise ValueError(f"Missing dependency for {path}: {name}")

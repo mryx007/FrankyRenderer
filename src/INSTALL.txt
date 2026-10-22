@@ -10,8 +10,8 @@ INSTALL
    settings. The loaded filter identifies itself as FrankyRenderer.
 
 Keep the installed folder in its current location, including its DLLs and shaders.
-The Franky.*.dll files are the required third-party runtime libraries with
-explicit package names. Their original names, source hashes and packaged hashes
+The DLL files are the required third-party runtime libraries with descriptive
+names. Their original names, source hashes and packaged hashes
 are listed in licenses/runtime-names.json. Keep all of these files together.
 
 UNINSTALL

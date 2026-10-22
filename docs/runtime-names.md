@@ -6,15 +6,15 @@ through `src/runtime_names.py` when assembling the installation package.
 
 | Upstream filename | Packaged filename |
 |---|---|
-| libplacebo-360.dll | Franky.VideoProcessing.dll |
-| libdovi.dll | Franky.DolbyVision.dll |
-| liblcms2-2.dll | Franky.ColorManagement.dll |
-| libshaderc_shared.dll | Franky.ShaderCompiler.dll |
-| libspirv-cross-c-shared.dll | Franky.ShaderTranslator.dll |
-| vulkan-1.dll | Franky.VulkanLoader.dll |
-| libstdc++-6.dll | Franky.CppRuntime.dll |
-| libgcc_s_seh-1.dll | Franky.CompilerRuntime.dll |
-| libwinpthread-1.dll | Franky.Threading.dll |
+| libplacebo-360.dll | VideoProcessing.dll |
+| libdovi.dll | DolbyVision.dll |
+| liblcms2-2.dll | ColorManagement.dll |
+| libshaderc_shared.dll | ShaderCompiler.dll |
+| libspirv-cross-c-shared.dll | ShaderTranslator.dll |
+| vulkan-1.dll | VulkanLoader.dll |
+| libstdc++-6.dll | CppRuntime.dll |
+| libgcc_s_seh-1.dll | CompilerRuntime.dll |
+| libwinpthread-1.dll | Threading.dll |
 
 The package transformation adds a read-only PE section containing the new names
 and updates import, delay-import and export filename pointers. Executable

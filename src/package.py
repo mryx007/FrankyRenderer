@@ -8,7 +8,9 @@ import shutil
 
 import pefile
 
-from runtime_names import RUNTIME_NAMES, packaged_name, verify_runtime, write_packaged_binary
+from runtime_names import (
+    OBSOLETE_RUNTIME_NAMES, RUNTIME_NAMES, packaged_name, verify_runtime, write_packaged_binary
+)
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUT = ROOT.parent / "dist"
@@ -58,7 +60,7 @@ def main(out=OUT):
             "packaged_sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
         })
 
-    for old in RUNTIME_NAMES:
+    for old in OBSOLETE_RUNTIME_NAMES:
         (out / old).unlink(missing_ok=True)
     verify_runtime(out)
 
