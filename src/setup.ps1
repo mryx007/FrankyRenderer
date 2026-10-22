@@ -45,8 +45,8 @@ try {
         exit $p.ExitCode
     }
     # A running player can retain the old DLL even after registration changes.
-    $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64 -ErrorAction SilentlyContinue
-    if($taskPlayers){throw 'Please close PotPlayer first. No changes were made.'}
+    $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64,mpc-be64 -ErrorAction SilentlyContinue
+    if($taskPlayers){throw 'Please close PotPlayer and MPC-BE first. No changes were made.'}
     if(Test-Path -LiteralPath $taskManifest){
         $state=Get-Content -LiteralPath $taskManifest -Raw | ConvertFrom-Json
         if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw 'The registration backup belongs to another directory.'}
@@ -89,8 +89,8 @@ try {
             }
         }
         catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
-        $message='Installed. Start PotPlayer normally and select "MPC Video Renderer" under Video Renderer. The active filter is named "FrankyRenderer". Keep this directory in its permanent location.'
-    } else {Register $true;RestoreBackup $state;$message='Renderer removed. PotPlayer can now use another renderer.'}
+        $message='Installed. Start PotPlayer or MPC-BE normally and select "MPC Video Renderer" under Video Renderer. The active filter is named "FrankyRenderer". Keep this directory in its permanent location.'
+    } else {Register $true;RestoreBackup $state;$message='Renderer removed. Your video player can now use another renderer.'}
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
     if($Quiet){Write-Output $message}else{Add-Type -AssemblyName System.Windows.Forms;[Windows.Forms.MessageBox]::Show($message,'FrankyRenderer') | Out-Null}
 } catch {

@@ -1,6 +1,6 @@
 # Runtime dependency sources
 
-These official MSYS2 source packages correspond to the runtime libraries bundled with FrankyRenderer 1.0. Each package contains its build recipe and packaged source inputs. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums.
+These official MSYS2 source packages correspond to the runtime libraries bundled with FrankyRenderer 1.0.1. Each package contains its build recipe and packaged source inputs. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums.
 
 - [mingw-w64-libplacebo-7.360.1-2.src.tar.zst](https://repo.msys2.org/mingw/sources/mingw-w64-libplacebo-7.360.1-2.src.tar.zst)
 

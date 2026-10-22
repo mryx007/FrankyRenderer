@@ -1,4 +1,4 @@
-FrankyRenderer - Windows x64
+FrankyRenderer 1.0.1 - Windows x64
 
 INSTALL
 1. Uninstall or unregister the original MPC Video Renderer first. FrankyRenderer
@@ -6,8 +6,8 @@ INSTALL
    need to uninstall MPC-HC or MPC-BE themselves.
 2. Extract the complete ZIP to a permanent folder and close your video player.
 3. Run Install.cmd and approve the Windows administrator prompt.
-4. Select "MPC Video Renderer" in your player's video output settings. The loaded
-   filter identifies itself as FrankyRenderer.
+4. In PotPlayer or MPC-BE, select "MPC Video Renderer" in the video output
+   settings. The loaded filter identifies itself as FrankyRenderer.
 
 Keep the installed folder in its current location, including its DLLs and shaders.
 
@@ -24,6 +24,6 @@ Project, screenshots, documentation and renderer source:
 https://github.com/mryx007/FrankyRenderer
 
 Exact dependency sources and build recipes:
-https://github.com/mryx007/FrankyRenderer/blob/v1.0/docs/dependency-sources.md
+https://github.com/mryx007/FrankyRenderer/blob/v1.0.1/docs/dependency-sources.md
 
 See LICENSE, THIRD_PARTY.md and the licenses folder for the included notices.

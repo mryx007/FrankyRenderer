@@ -14,7 +14,9 @@ My renderer uses only about half the VRAM that madVR does, and so far, it runs p
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
-At the moment, it only works with PotPlayer. It currently uses the same identifier as MPC Video Renderer, but I'm working on giving it its own unique identifier.
+FrankyRenderer now works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.1** fixes MPC-BE detection, video output and resizing. The project's own C++ code has also been consistently formatted for readability.
+
+It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
@@ -120,20 +122,20 @@ The screenshots show example settings, not recommended presets.
 
 Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision support relies on metadata provided by the decoder; this is not Dolby Vision HDMI tunneling or FEL reconstruction.
 
-## PotPlayer installation
+## PotPlayer and MPC-BE installation
 
-> **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but PotPlayer does not yet offer native selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
+> **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer and MPC-BE compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but these players do not yet offer a separate FrankyRenderer selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
 
-Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts; no compilation is required to test a release.
+Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts, a short INSTALL.txt guide and license notices; no compilation is required to test a release.
 
 For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
 
-1. Keep the extracted package directory at a permanent location and close PotPlayer.
+1. Keep the extracted package directory at a permanent location and close PotPlayer and MPC-BE.
 2. Run `Install.cmd` inside the extracted package (or `dist` for a local build), or run `.\setup.ps1 -Action Install` from that directory. Windows requests administrator permission for COM registration.
-3. In PotPlayer, select **MPC Video Renderer** under Video Renderer. This is PotPlayer's fixed menu label; the loaded filter is FrankyRenderer.
+3. In PotPlayer or MPC-BE, select **MPC Video Renderer** under Video Renderer. This is the player's existing menu label; the loaded filter is FrankyRenderer.
 4. Open the filter's settings to configure it.
 
-FrankyRenderer currently uses the MPC Video Renderer CLSID for PotPlayer discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
+FrankyRenderer currently uses the MPC Video Renderer CLSID for player discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
 
 Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.
 
