@@ -1,0 +1,6 @@
+{
+  "source": "https://github.com/NVIDIA/nvapi/blob/main/nvapi.h",
+  "header_sha256": "76bbb71107c1388134d41712bed56bb6d80ec426f9bb2c168e2d6941b90f16ca",
+  "interface_sha256": "d279f81e7f92f2743bfea2ec7ada693001805e13645eb1c6f2af44ef9c342834",
+  "subset": "HDR color data V1, HDR capabilities V1, public QueryInterface entry IDs"
+}

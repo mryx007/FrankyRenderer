@@ -28,6 +28,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(deband);
     INI_FIELD(hdrPassthrough);
     INI_FIELD(autoHdr);
+    INI_FIELD(clippingProtection);
     INI_FIELD(upscaler);
     INI_FIELD(downscaler);
     INI_FIELD(deinterlacing);
@@ -316,6 +317,7 @@ inline PlaceboSettings Parse(const std::string& text)
     for (BOOL flag : {candidate.deband,
                       candidate.hdrPassthrough,
                       candidate.autoHdr,
+                      candidate.clippingProtection,
                       candidate.ditherTemporal,
                       candidate.iccEnabled,
                       candidate.lutEnabled,
@@ -327,6 +329,7 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.allowDelayedPeak})
         if (flag != FALSE && flag != TRUE)
             throw std::runtime_error("Boolean settings must be 0 or 1.");
+    NormalizeLegacyHdrSettings(candidate);
     if (FAILED(ValidateSettings(candidate)))
         throw std::runtime_error("Imported settings are outside the supported range.");
     return candidate;

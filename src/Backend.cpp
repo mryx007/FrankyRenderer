@@ -2,7 +2,8 @@
 #include "Backend.h"
 #include "BlackBarAnalysis.h"
 #include "GpuPacked422.h"
-#include "HdrDisplay.h"
+#include "NativeHdrDisplay.h"
+#include "NativeHdrSwapchain.h"
 #include "ColorManagement.h"
 #include "SettingsChoices.h"
 #include "HdrTuning.h"
@@ -182,8 +183,23 @@ struct PlaceboBackend::State
     UINT lastSyncRefresh = 0;
     bool stableCadence = true;
 
+    NativeHdrDisplay nativeHdr;
+    NativeHdrSwapchain nativeSwapchain;
+    HMONITOR failedNativeMonitor = nullptr;
+
+    ComPtr<IDXGISwapChain> OutputSwapchain()
+    {
+        ComPtr<IDXGISwapChain> output;
+        if (nativeSwapchain.Active())
+            nativeSwapchain.Get()->QueryInterface(IID_PPV_ARGS(&output));
+        else if (swapchain)
+            output.Attach(pl_d3d11_swapchain_unwrap(swapchain));
+        return output;
+    }
+
     void DestroySwapchain()
     {
+        nativeSwapchain.Destroy();
         pl_swapchain_destroy(&swapchain);
         presentation.Reset(false);
         presentationTimed = false;
@@ -202,7 +218,7 @@ struct PlaceboBackend::State
         if (presentProbe)
         {
             ComPtr<IDXGISwapChain> native;
-            native.Attach(pl_d3d11_swapchain_unwrap(swapchain));
+            native = OutputSwapchain();
             ComPtr<ID3D11Texture2D> buffer;
             if (native && SUCCEEDED(native->GetBuffer(0, IID_PPV_ARGS(&buffer))))
                 presentProbe(buffer.Get());
@@ -251,7 +267,6 @@ struct PlaceboBackend::State
     RenderSettings settings;
     VideoFrame description;
     RECT source = {}, targetRect = {};
-    HdrDisplay hdrDisplay;
     bool valid = false;
     std::string error;
 
@@ -369,6 +384,8 @@ struct PlaceboBackend::State
         overlayInvertBlend.Reset();
         overlayRasterizer.Reset();
         DestroySwapchain();
+        nativeHdr.Restore();
+        failedNativeMonitor = nullptr;
         pl_options_free(&options);
         pl_renderer_destroy(&renderer);
         pl_mpv_user_shader_destroy(&sharpenHook);
@@ -599,6 +616,10 @@ struct PlaceboBackend::State
         settings = std::move(*next);
         colors = std::move(nextColors);
         HRESULT hr = Configure();
+        Trace("Backend settings applied HDRMode=%d brightness=%.4f result=%08lX",
+              settings.hdrMode,
+              settings.brightness,
+              static_cast<unsigned long>(hr));
         if (FAILED(hr))
         {
             settings = std::move(previous);
@@ -753,7 +774,7 @@ struct PlaceboBackend::State
         QueryPerformanceFrequency(&frequency);
         presentation.Period(measuredPeriod * frequency.QuadPart / 1e7);
         ComPtr<IDXGISwapChain> native;
-        native.Attach(pl_d3d11_swapchain_unwrap(swapchain));
+        native = OutputSwapchain();
         if (!native)
         {
             presentation.Unavailable();
@@ -816,10 +837,10 @@ struct PlaceboBackend::State
         const double period = window ? MonitorPeriod(window) : 0;
         DXGI_OUTPUT_DESC1 display = {};
         bool haveDisplay = false;
-        if (swapchain)
+        if (swapchain || nativeSwapchain.Active())
         {
             ComPtr<IDXGISwapChain> native;
-            native.Attach(pl_d3d11_swapchain_unwrap(swapchain));
+            native = OutputSwapchain();
             ComPtr<IDXGIOutput> out;
             ComPtr<IDXGIOutput6> out6;
             if (native && SUCCEEDED(native->GetContainingOutput(&out)) && SUCCEEDED(out.As(&out6)) &&
@@ -987,6 +1008,8 @@ struct PlaceboBackend::State
         };
         durations(false);
         durations(true);
+        if (settings.hdrMode == 1 && !nativeHdr.Status().empty())
+            text << L"\n" << wide(nativeHdr.Status());
         text << L"\ndebanding " << (settings.deband ? L"on" : L"off") << L"; adaptive sharpen "
              << (sharpenState == 1   ? L"on"
                  : sharpenState == 2 ? L"bypassed"
@@ -1072,13 +1095,49 @@ struct PlaceboBackend::State
         // unwrap returns an owned reference. Retaining it prevents replacement
         // of the flip-model swapchain on this HWND after an HDR mode change.
         ComPtr<IDXGISwapChain> native;
-        native.Attach(pl_d3d11_swapchain_unwrap(swapchain));
+        native = OutputSwapchain();
         DXGI_OUTPUT_DESC1 desc = {};
         return native && SUCCEEDED(native->GetContainingOutput(&output)) && SUCCEEDED(output.As(&output6)) &&
                SUCCEEDED(output6->GetDesc1(&desc)) && desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
     }
 
-    bool Render(pl_frame& target, bool hdrOutput = false)
+    HRESULT PresentNative(int64_t due, bool timed)
+    {
+        pl_frame target = {};
+        target.num_planes = 1;
+        target.planes[0].texture = nativeSwapchain.Target();
+        target.planes[0].components = 4;
+        for (int i = 0; i < 4; ++i)
+            target.planes[0].component_mapping[i] = i;
+        target.crop = {0, 0, float(target.planes[0].texture->params.w), float(target.planes[0].texture->params.h)};
+        target.repr.sys = PL_COLOR_SYSTEM_RGB;
+        target.repr.levels = PL_COLOR_LEVELS_FULL;
+        target.repr.alpha = PL_ALPHA_INDEPENDENT;
+        target.color = pl_color_space_hdr10;
+        target.color.hdr = image.color.hdr;
+        LARGE_INTEGER begin = {}, end = {}, frequency = {};
+        QueryPerformanceFrequency(&frequency);
+        renderGpu.Begin(d3d->device, context.Get());
+        QueryPerformanceCounter(&begin);
+        const bool rendered = Render(target, true, true);
+        QueryPerformanceCounter(&end);
+        renderGpu.End(context.Get());
+        if (!rendered)
+            return E_FAIL;
+        renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        QueryPerformanceCounter(&begin);
+        const HRESULT result = nativeSwapchain.Submit();
+        QueryPerformanceCounter(&end);
+        presentCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        if (FAILED(result))
+            return result;
+        outputTextureFormat = 10;
+        MeasurePresentation(due, timed);
+        RepaintPending();
+        return S_OK;
+    }
+
+    bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false)
     {
         blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
@@ -1264,6 +1323,15 @@ struct PlaceboBackend::State
         };
         pl_color_map_params dynamicMap =
             params.color_map_params ? *params.color_map_params : pl_color_map_default_params;
+        const bool protectHighlights =
+            settings.clippingProtection && settings.hdrMode != 1 && pl_color_space_is_hdr(&image.color);
+        if (protectHighlights)
+        {
+            dynamicMap.tone_mapping_function = &pl_tone_map_spline;
+            dynamicMap.inverse_tone_mapping = false;
+            params.peak_detect_params = &options->peak_detect_params;
+            params.color_map_params = &dynamicMap;
+        }
         const bool explicitMetadata = settings.colorMapping.values[MappingIndex("tone_map_metadata")][0] != 0;
         if (image.repr.dovi && !explicitMetadata)
         {
@@ -1277,7 +1345,7 @@ struct PlaceboBackend::State
         {
             // Prefer authored scene metadata to libplacebo's measured peak.
             dynamicMap.metadata = PL_HDR_METADATA_HDR10PLUS;
-            if (settings.toneMapping == "auto" && image.color.hdr.ootf.target_luma > 0)
+            if ((settings.toneMapping == "auto" || protectHighlights) && image.color.hdr.ootf.target_luma > 0)
                 dynamicMap.tone_mapping_function = &pl_tone_map_st2094_40;
             params.color_map_params = &dynamicMap;
         }
@@ -1285,7 +1353,8 @@ struct PlaceboBackend::State
         {
             // Preserve source luminance/gamut for the HDR display. Decoder DV
             // reshaping and required transfer/format conversion remain active.
-            target.color.primaries = image.color.primaries;
+            if (!nativeOutput)
+                target.color.primaries = image.color.primaries;
             target.color.hdr = image.color.hdr;
             dynamicMap.tone_mapping_function = &pl_tone_map_clip;
             dynamicMap.gamut_mapping = &pl_gamut_map_clip;
@@ -1381,7 +1450,9 @@ HRESULT PlaceboBackend::SetWindow(HWND window)
     if (s.window != window)
     {
         s.DestroySwapchain();
-        s.hdrDisplay.Restore();
+        if (!s.nativeHdr.Restore())
+            return E_FAIL;
+        s.failedNativeMonitor = nullptr;
         s.window = window;
     }
     return S_OK;
@@ -1648,7 +1719,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(settings))
         return E_INVALIDARG;
-    if (settings.hdrMode < 0 || settings.hdrMode > 2)
+    if (settings.hdrMode < 1 || settings.hdrMode > 2)
         return E_INVALIDARG;
     float radius = 0;
     if (settings.scaling && !ValidScaling(*settings.scaling, &radius))
@@ -2018,12 +2089,37 @@ HRESULT PlaceboBackend::Present()
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
-    if (s.hdrDisplay.Update(s.window,
-                            s.settings.autoHdr && s.settings.hdrMode != 2 && s.settings.hdrPassthrough &&
-                                pl_color_space_is_hdr(&s.image.color)))
+    const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
+    const bool nativeWanted =
+        s.settings.hdrMode == 1 && s.settings.hdrPassthrough && pl_color_space_is_hdr(&s.image.color);
+    if (!nativeWanted || (s.nativeHdr.Monitor() && s.nativeHdr.Monitor() != monitor))
     {
-        Trace("HDR display mode changed; recreating swapchain");
-        s.DestroySwapchain();
+        if (s.nativeHdr.Active())
+            Trace("HDR leave monitor=%p next=%p wanted=%d swapchain=%d",
+                  s.nativeHdr.Monitor(),
+                  monitor,
+                  nativeWanted,
+                  s.nativeSwapchain.Active());
+        if (s.nativeSwapchain.Active())
+            s.DestroySwapchain();
+        if (!s.nativeHdr.Restore())
+            return E_FAIL;
+        s.failedNativeMonitor = nullptr;
+    }
+    if (nativeWanted && s.failedNativeMonitor != monitor && s.nativeHdr.Select(monitor).Supported())
+    {
+        RECT bounds = {};
+        if (!GetClientRect(s.window, &bounds) || bounds.right <= 0 || bounds.bottom <= 0)
+            return S_FALSE;
+        if (s.swapchain)
+            s.DestroySwapchain();
+        HRESULT result =
+            s.nativeSwapchain.Ensure(s.d3d, s.window, bounds.right, bounds.bottom, s.settings.maximumFramesInFlight);
+        if (SUCCEEDED(result) && s.nativeHdr.Activate(monitor, s.image.color))
+            return s.PresentNative(due, timed);
+        s.failedNativeMonitor = monitor;
+        s.nativeSwapchain.Destroy();
+        s.nativeHdr.Restore();
     }
     if (!s.swapchain)
     {
@@ -2070,8 +2166,6 @@ HRESULT PlaceboBackend::Present()
     pl_frame_from_swapchain(&target, &frame);
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
-    if (hdr && s.settings.hdrMode != 1 && s.settings.hdrNits > 0)
-        target.color.hdr.max_luma = s.settings.hdrNits;
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -2187,6 +2281,12 @@ HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty)
     if (!guard.owns_lock())
         return S_FALSE;
     s.presentationTimed = false;
+    if (blackWhenEmpty && !s.valid && s.nativeHdr.Active())
+    {
+        s.DestroySwapchain();
+        if (!s.nativeHdr.Restore())
+            return E_FAIL;
+    }
     if (!blackWhenEmpty || s.valid || !s.swapchain || !s.window)
         return Present();
     // A stopped renderer has no valid image, but still owns a DXGI surface.
@@ -2230,7 +2330,7 @@ bool PlaceboBackend::PaintLoadingBackground(HDC dc)
 {
     auto& s = *state;
     std::unique_lock guard(s.lock, std::try_to_lock);
-    if (!guard.owns_lock() || s.swapchain || !s.window || !dc)
+    if (!guard.owns_lock() || s.swapchain || s.nativeSwapchain.Active() || !s.window || !dc)
         return false;
     RECT client = {};
     if (!GetClientRect(s.window, &client))

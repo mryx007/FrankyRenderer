@@ -8,6 +8,7 @@
 #include "StatisticsKey.h"
 #include "StatisticsRasterizer.h"
 #include "VideoBackground.h"
+#include "MonitorChange.h"
 #include <wrl/client.h>
 #include <dxgi1_2.h>
 #include <vector>
@@ -294,6 +295,17 @@ HRESULT VideoWindow::ApplyPendingOwner()
 
 INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
 {
+    if (msg == WM_CREATE)
+        MonitorChange::Attach(hwnd);
+    if (msg == WM_NCDESTROY)
+        MonitorChange::Detach(hwnd);
+    if (msg == MonitorChange::Message)
+    {
+        Trace("Monitor-change repaint received monitor=%p", MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
+        owner->refreshDirty = true;
+        owner->Repaint();
+        return 0;
+    }
     if (msg == WM_KEYDOWN && w == 'J' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) &&
         !(GetKeyState(VK_SHIFT) & 0x8000))
     {
@@ -332,6 +344,7 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     }
     if (msg == WM_DISPLAYCHANGE)
     {
+        owner->UpdateDisplayProfile(true);
         owner->refreshDirty = true;
         owner->Repaint();
         return 0;
@@ -657,7 +670,8 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
     hr = PrepareWindow();
     if (FAILED(hr))
         return hr;
-    return window->ApplyPendingOwner();
+    hr = window->ApplyPendingOwner();
+    return SUCCEEDED(hr) ? UpdateDisplayProfile() : hr;
 }
 
 void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
@@ -727,8 +741,11 @@ HRESULT Renderer::DeliverMotion(const QueuedVideoFrame& frame,
         auto start = parity ? middle : frame.start, stop = fields && !parity ? middle : frame.stop;
         const auto which = fields ? (parity ? pl_field_other(frame.first) : frame.first) : PL_FIELD_NONE;
         const auto after = fields ? (parity ? frame.first : pl_field_other(frame.first)) : PL_FIELD_NONE;
-        auto ticks = MotionTicks(start, stop, motionPeriod);
-        if (ticks.empty())
+        const double period = motionPeriod.load();
+        const bool scheduled =
+            MotionCadenceSupported(frame.nominalDuration / count, period) && MotionIntervalValid(start, stop, period);
+        const auto ticks = scheduled ? MotionTicks(start, stop, period) : std::vector<MotionTick>{};
+        if (!scheduled)
         {
             // Unknown cadence, faster source, or invalid timestamps: ordinary delivery.
             ComPtr<IMediaSample> output;
@@ -846,6 +863,9 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     if (!sample)
         return E_POINTER;
     CAutoLock receive(&receiveLock);
+    const auto profileResult = UpdateDisplayProfile();
+    if (FAILED(profileResult))
+        return profileResult;
     AM_MEDIA_TYPE* changed = nullptr;
     if (sample->GetMediaType(&changed) == S_OK && changed)
     {
@@ -941,6 +961,7 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         ReadHdrSideData(sample, input.frame);
         input.start = start;
         input.stop = stop;
+        input.nominalDuration = current.averageDuration;
         input.first = fields ? (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM) : PL_FIELD_NONE;
         HRESULT hr;
         ComPtr<IMediaSampleD3D11> gpu;
@@ -1220,7 +1241,11 @@ void Renderer::ToggleStatistics()
 
 void Renderer::Repaint()
 {
-    backend.TryPresent(stopped.load());
+    if (FAILED(UpdateDisplayProfile()))
+        return;
+    const auto result = backend.TryPresent(stopped.load());
+    if (result != S_OK)
+        Trace("Repaint not presented result=%08lX", static_cast<unsigned long>(result));
 }
 
 void Renderer::NewSegment(REFERENCE_TIME start)
@@ -1373,6 +1398,9 @@ STDMETHODIMP Renderer::GetSettings(PlaceboSettings* out)
 {
     if (!out)
         return E_POINTER;
+    const auto profileResult = UpdateDisplayProfile();
+    if (FAILED(profileResult))
+        return profileResult;
     CAutoLock guard(&m_InterfaceLock);
     *out = settings;
     return S_OK;
@@ -1386,6 +1414,19 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     if (FAILED(hr))
         return hr;
     CAutoLock guard(&m_InterfaceLock);
+    PlaceboSettings selected = *next;
+    if (!selected.displayProfile[0])
+        wcscpy_s(selected.displayProfile, settings.displayProfile);
+    next = &selected;
+    Trace("Profile edit selected=%ls active=%ls HDRMode=%d brightness=%.4f monitor=%p",
+          next->displayProfile,
+          settings.displayProfile,
+          next->hdrMode,
+          next->brightness,
+          profileMonitor.load());
+    // Editing another device must not change the currently playing display.
+    if (wcscmp(next->displayProfile, settings.displayProfile))
+        return SaveSettings(*next);
     Trace("Settings requested: HDR=%d AutoHDR=%d", next->hdrPassthrough, next->autoHdr);
     hr = backend.SetSettings(BackendSettings(*next));
     if (FAILED(hr))
@@ -1404,6 +1445,52 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
     Trace("Settings queued without waiting for renderer");
+    return S_OK;
+}
+
+HRESULT Renderer::UpdateDisplayProfile(bool refresh)
+{
+    if (!window || !window->WindowExists())
+        return S_OK;
+    const auto monitor = MonitorFromWindow(window->GetWindowHWND(), MONITOR_DEFAULTTONEAREST);
+    if (!refresh && monitor == profileMonitor.load())
+        return S_OK;
+    CAutoLock guard(&m_InterfaceLock);
+    if (!refresh && monitor == profileMonitor)
+        return S_OK;
+    const auto devices = DisplayProfiles::Connected();
+    const auto persisted = EnsureDisplayProfiles(devices, LoadSettings());
+    if (FAILED(persisted))
+        return persisted;
+    const auto found =
+        std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.monitor == monitor; });
+    if (found == devices.end())
+        return S_OK;
+    if (found->id == settings.displayProfile)
+    {
+        profileMonitor = monitor;
+        return S_OK;
+    }
+    auto selected = LoadSettings(found->id);
+    auto hr = backend.SetSettings(BackendSettings(selected));
+    if (FAILED(hr) && (selected.iccEnabled || selected.lutEnabled))
+    {
+        selected.iccEnabled = selected.lutEnabled = FALSE;
+        hr = backend.SetSettings(BackendSettings(selected));
+    }
+    if (FAILED(hr))
+        return hr;
+    settings = selected;
+    Trace("Profile activated id=%ls monitor=%p HDRMode=%d brightness=%.4f",
+          settings.displayProfile,
+          monitor,
+          settings.hdrMode,
+          settings.brightness);
+    profileMonitor = monitor;
+    smoothEnabled = !!settings.smoothMotion;
+    motionRadius = BackendSettings(settings).motionRadius;
+    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    refreshDirty = true;
     return S_OK;
 }
 

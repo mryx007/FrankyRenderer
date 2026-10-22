@@ -128,6 +128,8 @@ struct HitRegion
         ApplyBtn,
         ImportBtn,
         ExportBtn,
+        DisplayProfile,
+        RenameDisplay,
         Number,
         Action,
         ResetValue,
@@ -179,9 +181,13 @@ class Direct2DHostWindow
     HWND m_hwnd = nullptr;
     PlaceboSettings* m_pSettings = nullptr;
     bool m_standalone = false;
+    bool m_displayProfiles = false;
+    std::vector<DisplayProfiles::Device> m_devices;
     std::function<HRESULT(const PlaceboSettings&)> m_preview;
     PlaceboSettings m_accepted, m_applied;
     HWND m_edit = nullptr;
+    bool m_renamingDisplay = false;
+    D2D1_RECT_F m_displayRect = {};
     D2DControl* m_editControl = nullptr;
     HFONT m_editFont = nullptr;
     HBRUSH m_editBrush = CreateSolidBrush(RGB(18, 19, 22));
@@ -196,10 +202,12 @@ class Direct2DHostWindow
 
     void Changed();
     void Preview();
+    void SelectDisplayProfile(const D2D1_RECT_F& rect);
+    void AdoptDisplayProfile(const std::wstring& id);
     void TransferIni(bool importing);
     HRESULT ApplyImported(const PlaceboSettings& candidate);
-    void BeginEdit(D2DControl*, const D2D1_RECT_F&);
-    void EndEdit();
+    void BeginEdit(D2DControl*, const D2D1_RECT_F&, bool renameDisplay = false);
+    void EndEdit(bool accept = true);
     void EditChanged();
     static LRESULT CALLBACK EditProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
 
@@ -525,7 +533,7 @@ void Direct2DHostWindow::Render()
         roundedSearch, m_searchFocused ? m_brushAccent.Get() : m_brushBorderCard.Get(), m_searchFocused ? 1.5f : 1.0f);
 
     D2D1_RECT_F searchPromptRect = D2D1::RectF(26, 23, sidebarW - 46, 43);
-    const bool nativeSearch = m_edit && !m_editControl;
+    const bool nativeSearch = m_edit && !m_editControl && !m_renamingDisplay;
     if (nativeSearch)
     {
         if (!m_searchQuery.empty())
@@ -658,6 +666,45 @@ void Direct2DHostWindow::Render()
     // 4. Sidebar Bottom Action Buttons
     float btnY = size.height - 48.0f;
     const float transferY = btnY - (m_standalone ? 44.f : 0.f);
+    if (m_displayProfiles)
+    {
+        const auto deviceRect = D2D1::RectF(16, transferY - 48, 224, transferY - 14);
+        m_displayRect = deviceRect;
+        auto caption = D2D1::RectF(16, transferY - 70, 140, transferY - 48);
+        m_pRenderTarget->DrawText(L"Display", 7, m_fmtNav.Get(), caption, m_brushTextMuted.Get());
+        const auto renameRect = D2D1::RectF(157, transferY - 72, 224, transferY - 49);
+        m_pRenderTarget->DrawText(L"Rename", 6, m_fmtNav.Get(), renameRect, m_brushTextMain.Get());
+        HitRegion renameHit;
+        renameHit.type = HitRegion::RenameDisplay;
+        renameHit.rect = renameRect;
+        m_hitRegions.push_back(renameHit);
+        m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushInputBg.Get());
+        m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushBorderCard.Get(), 1.f);
+        auto name = std::wstring(L"Display");
+        for (const auto& device : m_devices)
+            if (device.id == m_pSettings->displayProfile)
+                name = device.name + (device.connected ? L"" : L" (Disconnected)");
+        auto text = deviceRect;
+        text.left += 12;
+        text.top += 8;
+        text.right -= 28;
+        const auto oldWrap = m_fmtNav->GetWordWrapping();
+        m_fmtNav->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+        m_pRenderTarget->DrawText(name.c_str(),
+                                  UINT32(name.size()),
+                                  m_fmtNav.Get(),
+                                  text,
+                                  m_brushTextMain.Get(),
+                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        m_fmtNav->SetWordWrapping(oldWrap);
+        const float x = deviceRect.right - 16, y = deviceRect.top + 16;
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x - 5, y - 2), D2D1::Point2F(x, y + 3), m_brushTextMuted.Get(), 1.8f);
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x, y + 3), D2D1::Point2F(x + 5, y - 2), m_brushTextMuted.Get(), 1.8f);
+        HitRegion deviceHit;
+        deviceHit.type = HitRegion::DisplayProfile;
+        deviceHit.rect = deviceRect;
+        m_hitRegions.push_back(deviceHit);
+    }
     for (int i = 0; i < 2; ++i)
     {
         const float left = i ? 124.f : 16.f;
@@ -1358,16 +1405,18 @@ void Direct2DHostWindow::TransferIni(bool importing)
 
 HRESULT Direct2DHostWindow::ApplyImported(const PlaceboSettings& candidate)
 {
-    auto hr = ValidateSettings(candidate);
+    auto selected = candidate;
+    wcscpy_s(selected.displayProfile, m_pSettings->displayProfile);
+    auto hr = ValidateSettings(selected);
     if (FAILED(hr))
         return hr;
-    hr = m_preview ? m_preview(candidate) : S_OK;
+    hr = m_preview ? m_preview(selected) : S_OK;
     if (FAILED(hr))
         return hr;
     EndEdit();
-    *m_pSettings = m_accepted = candidate;
+    *m_pSettings = m_accepted = selected;
     if (m_preview)
-        m_applied = candidate;
+        m_applied = selected;
     m_pending = false;
     m_pDraggingSlider = nullptr;
     m_keyboardIndex = -1;
@@ -1380,21 +1429,78 @@ HRESULT Direct2DHostWindow::ApplyImported(const PlaceboSettings& candidate)
     return S_OK;
 }
 
-void Direct2DHostWindow::EndEdit()
+void Direct2DHostWindow::SelectDisplayProfile(const D2D1_RECT_F& rect)
+{
+    EndEdit();
+    if (m_pending)
+        Preview();
+    const auto result = EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings());
+    if (FAILED(result))
+    {
+        m_error = L"Could not read display profiles.";
+        return;
+    }
+    m_devices = DisplayProfiles::All();
+    const auto devices = m_devices;
+    ChoicePopup popup;
+    for (size_t i = 0; i < devices.size(); ++i)
+    {
+        popup.labels.push_back(devices[i].name + (devices[i].connected ? L"" : L" (Disconnected)"));
+        if (devices[i].id == m_pSettings->displayProfile)
+            popup.selected = int(i);
+    }
+    if (devices.empty())
+        return;
+    RECT anchor = {
+        int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
+    MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+    const int selected = popup.Show(m_hwnd, anchor, Scale());
+    if (selected < 0 || devices[selected].id == m_pSettings->displayProfile)
+        return;
+    AdoptDisplayProfile(devices[selected].id);
+}
+
+void Direct2DHostWindow::AdoptDisplayProfile(const std::wstring& id)
+{
+    if (!DisplayProfiles::ValidId(id))
+        return;
+    EndEdit();
+    *m_pSettings = m_accepted = m_applied = LoadSettings(id);
+    m_pending = false;
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_hitRegions.clear();
+    InitPages();
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Direct2DHostWindow::EndEdit(bool accept)
 {
     if (m_edit)
     {
         HWND edit = m_edit;
+        if (m_renamingDisplay && accept)
+        {
+            wchar_t name[128];
+            GetWindowTextW(edit, name, 128);
+            if (SUCCEEDED(DisplayProfiles::Rename(m_pSettings->displayProfile, name)))
+                m_devices = DisplayProfiles::All();
+            else
+                m_error = L"Enter a display name (1 to 80 characters).";
+            InvalidateRect(m_hwnd, nullptr, FALSE);
+        }
         m_edit = nullptr;
         m_editControl = nullptr;
+        m_renamingDisplay = false;
         DestroyWindow(edit);
     }
 }
 
-void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r)
+void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bool renameDisplay)
 {
     EndEdit();
     m_editControl = control;
+    m_renamingDisplay = renameDisplay;
     float scale = Scale();
     wchar_t text[64] = {};
     if (control)
@@ -1412,7 +1518,14 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r)
                              nullptr,
                              nullptr);
     SendMessageW(m_edit, EM_SETLIMITTEXT, 127, 0);
-    if (!control)
+    if (renameDisplay)
+    {
+        SendMessageW(m_edit, EM_SETLIMITTEXT, 80, 0);
+        for (const auto& device : m_devices)
+            if (device.id == m_pSettings->displayProfile)
+                SetWindowTextW(m_edit, device.name.c_str());
+    }
+    else if (!control)
         SetWindowTextW(m_edit, m_searchQuery.c_str());
     if (m_editFont)
         DeleteObject(m_editFont);
@@ -1442,6 +1555,8 @@ void Direct2DHostWindow::EditChanged()
         return;
     wchar_t text[128];
     GetWindowTextW(m_edit, text, 128);
+    if (m_renamingDisplay)
+        return;
     if (!m_editControl)
     {
         m_searchQuery = text;
@@ -1479,8 +1594,20 @@ LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM
     auto p = reinterpret_cast<Direct2DHostWindow*>(data);
     if (msg == WM_GETDLGCODE)
         return DLGC_WANTALLKEYS;
+    if (msg == WM_KILLFOCUS && p->m_renamingDisplay)
+    {
+        p->EndEdit();
+        return 0;
+    }
     if (msg == WM_KEYDOWN)
     {
+        if (p->m_renamingDisplay && (w == VK_RETURN || w == VK_ESCAPE))
+        {
+            p->EndEdit(w == VK_RETURN);
+            InvalidateRect(p->m_hwnd, nullptr, FALSE);
+            SetFocus(p->m_hwnd);
+            return 0;
+        }
         if (w == VK_ESCAPE && !p->m_editControl)
         {
             p->m_searchQuery.clear();
@@ -1567,6 +1694,22 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                     if (c.reset)
                         c.reset();
             Changed();
+        }
+        else if (h.type == HitRegion::RenameDisplay)
+        {
+            auto rect = m_displayRect;
+            rect.left += 10;
+            rect.right -= 10;
+            rect.top += 6;
+            rect.bottom -= 5;
+            BeginEdit(nullptr, rect, true);
+            return;
+        }
+        else if (h.type == HitRegion::DisplayProfile)
+        {
+            const auto rect = h.rect;
+            SelectDisplayProfile(rect);
+            return;
         }
         else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
         {
@@ -1786,6 +1929,14 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
         if (pThis)
             pThis->Preview();
         return 0;
+    case WM_DISPLAYCHANGE:
+        if (pThis && pThis->m_displayProfiles)
+        {
+            EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings());
+            pThis->m_devices = DisplayProfiles::All();
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        return 0;
     case WM_COMMAND:
         if (pThis && LOWORD(wParam) == 7001 && HIWORD(wParam) == EN_CHANGE)
             pThis->EditChanged();
@@ -1929,7 +2080,8 @@ HWND Direct2DSettingsHost::Create(HWND parent,
                                   const RECT& bounds,
                                   PlaceboSettings* settings,
                                   bool standalone,
-                                  std::function<HRESULT(const PlaceboSettings&)> preview)
+                                  std::function<HRESULT(const PlaceboSettings&)> preview,
+                                  bool displayProfiles)
 {
     HMODULE hInstance = nullptr;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -1951,6 +2103,9 @@ HWND Direct2DSettingsHost::Create(HWND parent,
     Direct2DHostWindow* pHost = new Direct2DHostWindow(nullptr, settings, standalone);
 
     pHost->m_preview = std::move(preview);
+    pHost->m_displayProfiles = displayProfiles;
+    if (displayProfiles)
+        pHost->m_devices = DisplayProfiles::All();
 
     DWORD style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP;
     if (standalone)

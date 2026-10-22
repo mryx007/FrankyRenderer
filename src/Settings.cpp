@@ -5,11 +5,9 @@
 #include <cmath>
 #include <cstring>
 
-static std::wstring Key()
+static std::wstring Key(const std::wstring& display = {})
 {
-    wchar_t test[512];
-    DWORD size = GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", test, 512);
-    return size && size < 512 ? test : L"Software\\PlaceboRenderer";
+    return display.empty() ? DisplayProfiles::Root() : DisplayProfiles::Key(display);
 }
 
 static void Float(HKEY key, const wchar_t* name, float& value)
@@ -89,11 +87,17 @@ static void LoadScaling(HKEY key, PlaceboSettings& settings)
         settings.scaling = {};
 }
 
-PlaceboSettings LoadSettings()
+PlaceboSettings LoadSettings(const std::wstring& display)
 {
     PlaceboSettings settings;
+    if (!display.empty())
+    {
+        if (!DisplayProfiles::ValidId(display))
+            return settings;
+        wcscpy_s(settings.displayProfile, display.c_str());
+    }
     HKEY key;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, Key().c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, Key(display).c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
         return settings;
     {
         DWORD t = 0, n = sizeof(UserShaderSettings);
@@ -216,6 +220,7 @@ PlaceboSettings LoadSettings()
     }
     Bool(key, L"HDRPassthrough", settings.hdrPassthrough);
     Bool(key, L"AutoHDR", settings.autoHdr);
+    Bool(key, L"ClippingProtection", settings.clippingProtection);
     String(key, L"Upscaler", settings.upscaler);
     String(key, L"Downscaler", settings.downscaler);
     {
@@ -224,7 +229,7 @@ PlaceboSettings LoadSettings()
         if (result == ERROR_SUCCESS && type == REG_DWORD && bytes == 4 && mode <= 2)
             settings.hdrMode = static_cast<int>(mode);
         else if (result == ERROR_FILE_NOT_FOUND)
-            settings.hdrMode = settings.hdrPassthrough ? 0 : 2;
+            settings.hdrMode = settings.hdrPassthrough ? 1 : 2;
     }
     DWORD type = 0, size = 4, value = 1;
     if (RegQueryValueExW(key, L"Deinterlacing", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
@@ -305,13 +310,21 @@ PlaceboSettings LoadSettings()
         settings.iccEnabled = FALSE;
     if (settings.lutEnabled && !settings.lutPath[0])
         settings.lutEnabled = FALSE;
+    NormalizeLegacyHdrSettings(settings);
     if (FAILED(ValidateSettings(settings)))
-        return PlaceboSettings{};
+    {
+        PlaceboSettings defaults;
+        if (!display.empty())
+            wcscpy_s(defaults.displayProfile, display.c_str());
+        return defaults;
+    }
     return settings;
 }
 
 HRESULT ValidateSettings(const PlaceboSettings& s)
 {
+    if (s.displayProfile[64] || (s.displayProfile[0] && !DisplayProfiles::ValidId(s.displayProfile)))
+        return E_INVALIDARG;
     if (!ValidTonal(s.tonal))
         return E_INVALIDARG;
     if (!ValidUserShaders(s.userShaders))
@@ -322,7 +335,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(s))
         return E_INVALIDARG;
-    if (s.hdrMode < 0 || s.hdrMode > 2)
+    if (s.hdrMode < 1 || s.hdrMode > 2)
         return E_INVALIDARG;
     if (!ValidScaling(s.scaling))
         return E_INVALIDARG;
@@ -446,7 +459,8 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.ditherMethod = s.ditherMethod;
     out.ditherTemporal = !!s.ditherTemporal;
     out.hdrPassthrough = s.hdrMode != 2;
-    out.autoHdr = !!s.autoHdr;
+    out.autoHdr = false; // Legacy field retained only for INI/COM compatibility.
+    out.clippingProtection = !!s.clippingProtection;
     out.upscaler.clear();
     out.downscaler.clear();
     for (const auto* p = s.upscaler; *p; p++)
@@ -462,8 +476,8 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     if (FAILED(valid))
         return valid;
     HKEY key;
-    LONG result =
-        RegCreateKeyExW(HKEY_CURRENT_USER, Key().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
+    LONG result = RegCreateKeyExW(
+        HKEY_CURRENT_USER, Key(s.displayProfile).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
     if (result)
         return HRESULT_FROM_WIN32(result);
     auto save = [&](const wchar_t* name, DWORD type, const void* data, DWORD bytes)
@@ -532,8 +546,68 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"Deband", REG_DWORD, &s.deband, 4);
     save(L"HDRPassthrough", REG_DWORD, &s.hdrPassthrough, 4);
     save(L"AutoHDR", REG_DWORD, &s.autoHdr, 4);
+    save(L"ClippingProtection", REG_DWORD, &s.clippingProtection, 4);
     save(L"Upscaler", REG_SZ, s.upscaler, static_cast<DWORD>((wcslen(s.upscaler) + 1) * 2));
     save(L"Downscaler", REG_SZ, s.downscaler, static_cast<DWORD>((wcslen(s.downscaler) + 1) * 2));
     RegCloseKey(key);
+    return HRESULT_FROM_WIN32(result);
+}
+
+HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& devices, const PlaceboSettings& legacy)
+{
+    if (devices.empty())
+        return S_FALSE;
+    DWORD version = 0, bytes = sizeof(version);
+    RegGetValueW(HKEY_CURRENT_USER,
+                 DisplayProfiles::Root().c_str(),
+                 L"DisplayProfilesVersion",
+                 RRF_RT_REG_DWORD,
+                 nullptr,
+                 &version,
+                 &bytes);
+    for (const auto& device : devices)
+    {
+        if (!DisplayProfiles::ValidId(device.id))
+            return E_INVALIDARG;
+        HKEY key = nullptr;
+        const auto path = DisplayProfiles::Key(device.id);
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+        {
+            // Preserve the existing setup once, then use factory defaults for
+            // genuinely new displays. Never copy another display's edits.
+            auto initial = version == 1 ? PlaceboSettings{} : legacy;
+            wcscpy_s(initial.displayProfile, device.id.c_str());
+            auto hr = SaveSettings(initial);
+            if (FAILED(hr))
+                return hr;
+            const auto result = RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_SET_VALUE, &key);
+            if (result != ERROR_SUCCESS)
+                return HRESULT_FROM_WIN32(result);
+        }
+        auto write = [&](const wchar_t* name, const std::wstring& value)
+        {
+            return RegSetValueExW(key,
+                                  name,
+                                  0,
+                                  REG_SZ,
+                                  reinterpret_cast<const BYTE*>(value.c_str()),
+                                  DWORD((value.size() + 1) * sizeof(wchar_t)));
+        };
+        auto result = write(L"DeviceName", device.name);
+        if (result == ERROR_SUCCESS)
+            result = write(L"DeviceIdentity", device.identity);
+        RegCloseKey(key);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+    }
+    HKEY root;
+    auto result = RegCreateKeyExW(
+        HKEY_CURRENT_USER, DisplayProfiles::Root().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &root, nullptr);
+    if (result != ERROR_SUCCESS)
+        return HRESULT_FROM_WIN32(result);
+    version = 1;
+    result = RegSetValueExW(
+        root, L"DisplayProfilesVersion", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&version), sizeof(version));
+    RegCloseKey(root);
     return HRESULT_FROM_WIN32(result);
 }

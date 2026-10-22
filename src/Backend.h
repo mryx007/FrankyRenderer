@@ -56,13 +56,14 @@ struct RenderSettings
     int debandIterations = 1, ditherMethod = 0;
     float debandThreshold = 3, debandRadius = 16, debandGrain = 4;
     bool ditherTemporal = false;
-    bool deband = false, hdrPassthrough = true, autoHdr = true;
+    bool deband = false, hdrPassthrough = false, autoHdr = false;
+    bool clippingProtection = false;
     int deinterlacing = 1; // 0=off, 1=Bwdif, 2=Yadif
     std::string upscaler = "ewa_lanczos", downscaler = "mitchell";
     std::string chromaUpscaler = "auto";
     int outputFormat = 0;
     int outputLevels = 0, displayDepth = 0; // levels: auto/full/limited; depth: 0=auto
-    int hdrMode = 0;
+    int hdrMode = 2;
     bool peakDetect = true, allowDelayedPeak = false;
     float peakSmoothing = 20, sceneLow = 1, sceneHigh = 3, peakPercentile = 100;
     float contrastRecovery = 0, contrastSmoothness = 3.5f;

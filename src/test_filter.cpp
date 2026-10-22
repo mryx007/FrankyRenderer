@@ -1417,19 +1417,19 @@ static void TestProcessing(IClassFactory* mainFactory,
         if (after.extras.values[14] != kind - 1)
             exit(169);
     }
-    for (int mode = 0; mode < 3; mode++)
+    for (int mode = 0; mode < 2; mode++)
     {
         SendDlgItemMessageW(dialogs[3], 121, CB_SETCURSEL, mode, 0);
         SendMessageW(dialogs[3], WM_COMMAND, MAKEWPARAM(121, CBN_SELCHANGE), 0);
         Check(pages[3]->Apply(), "HDR mode selection");
         Check(config->GetSettings(&after), "HDR mode readback");
-        if (after.hdrMode != mode || !!IsWindowEnabled(GetDlgItem(dialogs[3], 122)) != (mode != 2) ||
-            !!IsWindowEnabled(GetDlgItem(dialogs[3], 115)) != (mode == 0))
+        if (after.hdrMode != mode + 1 || !!IsWindowEnabled(GetDlgItem(dialogs[3], 122)) != (mode == 1) ||
+            IsWindowEnabled(GetDlgItem(dialogs[3], 115)))
             exit(135);
     }
     SendDlgItemMessageW(dialogs[3], 121, CB_SETCURSEL, 0, 0);
     SendMessageW(dialogs[3], WM_COMMAND, MAKEWPARAM(121, CBN_SELCHANGE), 0);
-    Check(pages[3]->Apply(), "restore Auto HDR mode");
+    Check(pages[3]->Apply(), "restore HDR passthrough mode");
     for (int id : {114, 115, 121, 122, 415, 416, 417, 801})
         if (!GetDlgItem(dialogs[3], id))
             exit(129);
@@ -1705,14 +1705,14 @@ TestMapping(IClassFactory* factory, IClassFactory* hdrFactory, IBaseFilter* rend
         if (after.gamutMapping != choice)
             exit(161);
     }
-    for (int mode = 0; mode < 3; mode++)
+    for (int mode = 0; mode < 2; mode++)
     {
         SendDlgItemMessageW(dialog, 121, CB_SETCURSEL, mode, 0);
         SendMessageW(dialog, WM_COMMAND, MAKEWPARAM(121, CBN_SELCHANGE), 0);
         Check(page->Apply(), "combined HDR modes");
         Check(config->GetSettings(&after), "combined HDR mode readback");
-        if (after.hdrMode != mode || !!IsWindowEnabled(GetDlgItem(dialog, 115)) != (mode == 0) ||
-            !!IsWindowEnabled(GetDlgItem(dialog, 122)) != (mode != 2))
+        if (after.hdrMode != mode + 1 || IsWindowEnabled(GetDlgItem(dialog, 115)) ||
+            !!IsWindowEnabled(GetDlgItem(dialog, 122)) != (mode == 1))
             exit(151);
     }
     SendDlgItemMessageW(dialog, 121, CB_SETCURSEL, 0, 0);
@@ -2414,6 +2414,31 @@ int wmain(int argc, wchar_t** argv)
     Check(renderer.As(&config), "settings interface");
     PlaceboSettings settings;
     Check(config->GetSettings(&settings), "read settings");
+    if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0))
+    {
+        auto inactive = settings;
+        const auto id = DisplayProfiles::Hash(L"filter:test:inactive");
+        wcscpy_s(inactive.displayProfile, id.c_str());
+        inactive.brightness = .17f;
+        inactive.smoothMotion = !settings.smoothMotion;
+        Check(config->SetSettings(&inactive), "edit inactive display profile");
+        PlaceboSettings unchanged;
+        Check(config->GetSettings(&unchanged), "active display after inactive edit");
+        float savedBrightness = 0;
+        DWORD bytes = sizeof(savedBrightness);
+        const auto read = RegGetValueW(HKEY_CURRENT_USER,
+                                       DisplayProfiles::Key(id).c_str(),
+                                       L"Brightness",
+                                       RRF_RT_REG_BINARY,
+                                       nullptr,
+                                       &savedBrightness,
+                                       &bytes);
+        if (unchanged.brightness != settings.brightness || unchanged.smoothMotion != settings.smoothMotion ||
+            wcscmp(unchanged.displayProfile, settings.displayProfile) || read != ERROR_SUCCESS ||
+            savedBrightness != .17f)
+            return 245;
+        puts("PASS editing an inactive display persists all settings without changing active playback");
+    }
     if (const char* mixer = getenv("PLACEBO_TEST_MIXER"))
         strcpy_s(settings.scaling.filters[4].filter, mixer);
     if (getenv("PLACEBO_TEST_DEBAND"))

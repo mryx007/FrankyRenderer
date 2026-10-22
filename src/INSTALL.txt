@@ -1,4 +1,4 @@
-FrankyRenderer 1.0.2 - Windows x64
+FrankyRenderer 1.0.3 - Windows x64
 
 INSTALL
 1. Uninstall or unregister the original MPC Video Renderer first. FrankyRenderer
@@ -31,6 +31,6 @@ Project, screenshots, documentation and renderer source:
 https://github.com/mryx007/FrankyRenderer
 
 Exact dependency sources and build recipes:
-https://github.com/mryx007/FrankyRenderer/blob/v1.0.2/docs/dependency-sources.md
+https://github.com/mryx007/FrankyRenderer/blob/v1.0.3/docs/dependency-sources.md
 
 See LICENSE, THIRD_PARTY.md and the licenses folder for the included notices.

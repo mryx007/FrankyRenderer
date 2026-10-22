@@ -103,6 +103,46 @@ int main()
     strcpy_s(render.colorMapping.values[MappingIndex("lut3d_size_C")], "16");
     strcpy_s(render.colorMapping.values[MappingIndex("lut3d_size_h")], "32");
     draw();
+    render.colorMapping = {};
+    render.extras = {};
+    render.toneMapping = "clip";
+    render.peakDetect = false;
+    render.hdrNits = 600;
+    for (int y = 0; y < 64; ++y)
+        for (int x = 0; x < 64; ++x)
+        {
+            const float nits = 100.f + 3900.f * x / 63.f;
+            input[y * 64 + x] =
+                static_cast<uint16_t>(std::lround(64 + 876 * pl_hdr_rescale(PL_HDR_NITS, PL_HDR_PQ, nits))) << 6;
+        }
+    Check(SUCCEEDED(backend.Upload(f, reinterpret_cast<uint8_t*>(input.data()), input.size() * 2)),
+          "HDR highlight ramp");
+    auto hdrDraw = [&](int mode, bool protection = false)
+    {
+        render.hdrMode = mode;
+        render.clippingProtection = protection;
+        Check(SUCCEEDED(backend.SetSettings(render)), "HDR protection settings");
+        std::vector<uint8_t> pixels;
+        Check(SUCCEEDED(backend.RenderOffscreen(64, 64, pixels, true, 16)), "HDR highlight pixels");
+        return pixels;
+    };
+    const auto pass = hdrDraw(1), protectedHdr = hdrDraw(2, true);
+    auto red = [](const std::vector<uint8_t>& pixels, int x)
+    {
+        uint16_t value = 0;
+        memcpy(&value, pixels.data() + x * 8, sizeof(value));
+        return float(value) / 65535.f;
+    };
+    const auto clippedSdr = hdrDraw(2, false);
+    Check(Delta(clippedSdr, protectedHdr) > 100, "switch changes clipped HDR-to-SDR highlights");
+    Check(red(protectedHdr, 63) <= 1.f, "protected SDR remains in range");
+    Check(red(protectedHdr, 15) + .001f < red(protectedHdr, 31) &&
+              red(protectedHdr, 31) + .001f < red(protectedHdr, 63),
+          "highlight detail survives soft compression");
+    const auto passAgain = hdrDraw(1, true);
+    Check(Delta(pass, passAgain) < 100, "protection does not leak into passthrough");
+    puts(
+        "PASS HDR highlight protection: 4000-nit source to SDR, detail retained, explicit clip overridden only with protection enabled; passthrough unchanged");
     pl_options_free(&o);
     printf(
         "PASS %d native Color Mapping options; all tone/gamut functions; defaults, validation, persistence; live GPU exposure and tricubic LUT rendering\n",

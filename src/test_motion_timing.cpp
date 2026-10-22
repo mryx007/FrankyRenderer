@@ -28,10 +28,16 @@ int main()
     const auto fixed = MotionTicks(a, MotionIntervalEnd(a, a + duration, b), period);
     Check(!fixed.empty() && !next.empty() && fixed.back().start < next.front().start,
           "captured pair has unique output times");
-    for (double fps : {23.976, 24., 25., 29.97})
-        for (double hz : {60., 120., 144.})
+    for (double fps : {23.976, 24., 25., 29.97, 50., 59.94, 60., 120.})
+        for (double hz : {59.94, 60., 120., 144.})
         {
             const double p = 1e7 / hz;
+            const auto nominal = static_cast<LONGLONG>(std::llround(1e7 / fps));
+            if (!MotionCadenceSupported(nominal, p))
+            {
+                Check(fps > hz, "only faster streams bypass the display grid");
+                continue;
+            }
             LONGLONG previous = -1;
             size_t count = 0;
             LONGLONG boundary = 0;
@@ -56,9 +62,19 @@ int main()
                 ++expected;
             Check(count == expected, "exact output count over 2000 source frames");
         }
+    Check(MotionTicks(170000, 330000, 1e7 / 60).empty() && MotionIntervalValid(170000, 330000, 1e7 / 60) &&
+              MotionCadenceSupported(166667, 1e7 / 60),
+          "valid rounded interval without a display tick does not trigger fallback");
+    Check(!MotionCadenceSupported(83333, 1e7 / 60), "120 fps on 60 Hz keeps ordinary delivery");
+    Check(!MotionCadenceSupported(0, 1e7 / 60) && !MotionCadenceSupported(166667, 0),
+          "unknown source or display cadence keeps ordinary delivery");
+    Check(!MotionIntervalValid(10, 10, 1e7 / 60) && !MotionIntervalValid(10, 9, 1e7 / 60) &&
+              !MotionIntervalValid(0, 10000001, 1e7 / 60),
+          "invalid intervals are rejected");
     Check(MotionIntervalEnd(100000, 517083, 0) == 517083, "EOS retains nominal stop");
     Check(MotionIntervalEnd(100000, 517083, 800000) == 517083, "large discontinuity is not bridged");
     Check(MotionIntervalEnd(100000, 517083, 90000) == 517083, "backward seek is not bridged");
     Check(MotionIntervalEnd(100000, 90000, 520000) == 90000, "invalid interval remains invalid");
-    puts("PASS captured overlap, exact 60/120/144 Hz cadence, 2000 rounded source timestamps, EOS and discontinuities");
+    puts(
+        "PASS captured overlap, rounded film/50/59.94/60/120 fps, exact display grid, empty intervals, faster-source fallback, EOS and discontinuities");
 }

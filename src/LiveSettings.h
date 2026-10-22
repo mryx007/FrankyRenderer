@@ -51,6 +51,7 @@ struct Session
     IPlaceboSettings* config;
     PlaceboSettings opening;
     bool commit = false;
+    std::map<std::wstring, PlaceboSettings> displayOpenings;
 };
 
 inline thread_local std::map<HWND, Session*> sessions;
@@ -83,7 +84,13 @@ inline LRESULT CALLBACK Host(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR id, 
     if (msg == WM_NCDESTROY)
     {
         if (!s->commit)
-            s->config->SetSettings(&s->opening);
+        {
+            if (s->displayOpenings.empty())
+                s->config->SetSettings(&s->opening);
+            else
+                for (const auto& [profileId, opening] : s->displayOpenings)
+                    s->config->SetSettings(&opening);
+        }
         sessions.erase(h);
         s->config->Release();
         RemoveWindowSubclass(h, Host, id);
@@ -180,6 +187,7 @@ inline void Attach(HWND page, IPlaceboSettings* config, std::function<HRESULT()>
             return;
         }
         config->AddRef();
+        s->displayOpenings.emplace(s->opening.displayProfile, s->opening);
         if (!SetWindowSubclass(host, Host, 219, reinterpret_cast<DWORD_PTR>(s)))
         {
             config->Release();
@@ -190,5 +198,15 @@ inline void Attach(HWND page, IPlaceboSettings* config, std::function<HRESULT()>
     }
     AttachEditor(page, std::move(apply));
     EnumChildWindows(host, HideApply, 0);
+}
+
+inline void RememberDisplay(HWND page, const PlaceboSettings& next)
+{
+    const auto found = sessions.find(GetAncestor(page, GA_ROOT));
+    if (found == sessions.end() || !next.displayProfile[0])
+        return;
+    auto& openings = found->second->displayOpenings;
+    if (!openings.count(next.displayProfile))
+        openings.emplace(next.displayProfile, LoadSettings(next.displayProfile));
 }
 }

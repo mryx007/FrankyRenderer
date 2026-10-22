@@ -80,6 +80,10 @@ def main(out=OUT):
     shutil.copy2(ROOT.parent / "LICENSE", out / "LICENSE")
     shutil.copy2(ROOT.parent / "THIRD_PARTY.md", out / "THIRD_PARTY.md")
 
+    (licenses / "nvapi").mkdir(exist_ok=True)
+    for name in ("LICENSE.txt", "source.json"):
+        shutil.copy2(ROOT / "deps/nvapi" / name, licenses / "nvapi" / name)
+
     manifest = {
         str(p.relative_to(out)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in out.rglob("*")

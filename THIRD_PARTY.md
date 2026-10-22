@@ -8,3 +8,7 @@
 - **Adaptive Sharpen** - original shader source and notice are retained under `src/shaders` and in the embedded source header.
 
 Bundled source notices take precedence for their respective components. The renderer's name change does not change third-party ownership or licensing.
+
+## NVIDIA NVAPI
+
+The optional NVIDIA HDR10 driver interface uses the public NVAPI definitions under the MIT license. The driver-provided nvapi64.dll is loaded from Windows; no NVIDIA runtime DLL is bundled. See `licenses/nvapi/`.

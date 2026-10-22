@@ -26,6 +26,10 @@ int wmain()
     try
     {
         PlaceboSettings original;
+        original.clippingProtection = TRUE;
+        auto legacy = SettingsIni::Parse(
+            "[FrankyRenderer]\nFormatVersion=1\n[Renderer]\nhdrMode=0\nhdrPassthrough=1\nautoHdr=1\n");
+        Require(legacy.hdrMode == 1 && !legacy.autoHdr, "legacy Auto migrates without enabling Windows HDR");
         original.brightness = .125f;
         original.saturation = 1.2345678f;
         original.autoHdr = FALSE;

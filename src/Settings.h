@@ -3,6 +3,7 @@
 #include <unknwn.h>
 #include <cstdint>
 #include "Backend.h"
+#include "DisplayProfiles.h"
 inline constexpr CLSID CLSID_FrankyDirect2DPage = {
     0x19a4f3e2, 0xf52e, 0x4dbe, {0x91, 0x67, 0x33, 0x2e, 0x7c, 0x38, 0xe8, 0x0c}};
 inline constexpr CLSID CLSID_PlaceboRenderer = {
@@ -37,7 +38,8 @@ struct PlaceboSettings
     ColorMappingSettings colorMapping;
     float saturation = 1, contrast = 1, brightness = 0, gamma = 1, sdrNits = 203;
     // Debanding numeric -1 means Default; explicit zero remains a manual value.
-    BOOL deband = FALSE, hdrPassthrough = TRUE, autoHdr = TRUE;
+    BOOL deband = FALSE, hdrPassthrough = FALSE, autoHdr = FALSE;
+    BOOL clippingProtection = FALSE;
     wchar_t upscaler[64] = L"ewa_lanczos", downscaler[64] = L"mitchell";
     int deinterlacing = 1;
     int fieldOverride = 0; // 0=sample flags, 1=force TFF, 2=force BFF
@@ -65,10 +67,20 @@ struct PlaceboSettings
     float hue = 0, temperature = 0;
     BOOL colorAdjustment = TRUE;
     BOOL allowDelayedPeak = FALSE;
-    int hdrMode = 0; // 0=Auto, 1=HDR passthrough, 2=GPU tone mapping to SDR
+    int hdrMode = 2; // 1=HDR passthrough, 2=GPU tone mapping to SDR; legacy 0 is migrated
     ScalingSettings scaling;
-    int maximumFramesInFlight = 0; // 0=retain the device's original DXGI latency
+    int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
+    wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
 };
+
+// Preserve old backups while removing the automatic output mode and OS toggle.
+inline void NormalizeLegacyHdrSettings(PlaceboSettings& s)
+{
+    if (s.hdrMode == 0)
+        s.hdrMode = s.hdrPassthrough ? 1 : 2;
+    s.hdrPassthrough = s.hdrMode == 1;
+    s.autoHdr = FALSE;
+}
 
 struct PlaceboStatus
 {
@@ -82,14 +94,15 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("B1924CA6-FCE8-4506-BD4B-1E404ED310C4")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("61C4FD87-6AF8-4E04-97A1-7CF94A340F6D")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE GetStatus(PlaceboStatus*) = 0;
     virtual HRESULT STDMETHODCALLTYPE ReadPixels(int width, int height, BYTE* rgba, SIZE_T bytes) = 0;
 };
-PlaceboSettings LoadSettings();
+PlaceboSettings LoadSettings(const std::wstring& display = {});
 HRESULT SaveSettings(const PlaceboSettings&);
+HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>&, const PlaceboSettings& legacy);
 HRESULT ValidateSettings(const PlaceboSettings&);
 RenderSettings BackendSettings(const PlaceboSettings&);

@@ -535,19 +535,17 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"Display output, HDR metadata, peak detection, tone mapping and gamut mapping.");
         auto& c = card(p, L"HDR Output");
         auto mode =
-            D2DChoice(s,
-                      L"HDR Mode",
-                      &s.hdrMode,
-                      {{0, L"Auto"}, {1, L"Passthrough HDR to Display"}, {2, L"Tone Map HDR using GPU Shaders"}});
+            D2DChoice(s, L"HDR Mode", &s.hdrMode, {{1, L"Passthrough HDR to Display"}, {2, L"Tone Map HDR to SDR"}});
         mode.set = [&s](float v)
         {
             s.hdrMode = int(v);
             s.hdrPassthrough = int(v) != 2;
         };
         c.controls.push_back(std::move(mode));
-        c.controls.push_back(D2DBool(s, L"Automatically Switch Windows HDR", &s.autoHdr));
+        auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
+        protection.enabled = [&s] { return s.hdrMode != 1; };
+        c.controls.push_back(std::move(protection));
         c.controls.push_back(D2DNumber(s, L"SDR Target Brightness (nits)", &s.sdrNits, 40, 1000, 1));
-        c.controls.push_back(D2DNumber(s, L"HDR Target Peak (0 = Auto)", &s.hdrNits, 0, 10000, 1));
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
         c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));

@@ -147,10 +147,11 @@ void ColorMappingPage::PopulateHdr()
     loading = true;
     wchar_t text[64];
     SendDlgItemMessageW(m_Dlg, 121, CB_RESETCONTENT, 0, 0);
-    for (auto mode : {L"Auto", L"Passthrough HDR to Display", L"Tone Map HDR using GPU Shaders"})
+    for (auto mode : {L"Passthrough HDR to Display", L"Tone Map HDR to SDR"})
         SendDlgItemMessageW(m_Dlg, 121, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(mode));
-    SendDlgItemMessageW(m_Dlg, 121, CB_SETCURSEL, original.hdrMode, 0);
-    CheckDlgButton(m_Dlg, 122, original.autoHdr ? BST_CHECKED : BST_UNCHECKED);
+    SendDlgItemMessageW(m_Dlg, 121, CB_SETCURSEL, original.hdrMode - 1, 0);
+    SetDlgItemTextW(m_Dlg, 122, L"Clipping Protection");
+    CheckDlgButton(m_Dlg, 122, original.clippingProtection ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(m_Dlg, 400, original.peakDetect ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(m_Dlg, 415, original.allowDelayedPeak ? BST_CHECKED : BST_UNCHECKED);
     for (auto v : {std::pair{114, original.sdrNits},
@@ -171,11 +172,12 @@ void ColorMappingPage::PopulateHdr()
 bool ColorMappingPage::ReadHdr(PlaceboSettings& next)
 {
     const auto mode = SendDlgItemMessageW(m_Dlg, 121, CB_GETCURSEL, 0, 0);
-    if (mode < 0 || mode > 2)
+    if (mode < 0 || mode > 1)
         return false;
-    next.hdrMode = static_cast<int>(mode);
-    next.hdrPassthrough = mode != 2;
-    next.autoHdr = IsDlgButtonChecked(m_Dlg, 122) == BST_CHECKED;
+    next.hdrMode = static_cast<int>(mode) + 1;
+    next.hdrPassthrough = mode == 0;
+    next.autoHdr = FALSE;
+    next.clippingProtection = IsDlgButtonChecked(m_Dlg, 122) == BST_CHECKED;
     next.peakDetect = IsDlgButtonChecked(m_Dlg, 400) == BST_CHECKED;
     next.allowDelayedPeak = IsDlgButtonChecked(m_Dlg, 415) == BST_CHECKED;
     return ReadNumber(m_Dlg, 114, next.sdrNits) && ReadNumber(m_Dlg, 115, next.hdrNits) &&
@@ -187,13 +189,12 @@ bool ColorMappingPage::ReadHdr(PlaceboSettings& next)
 void ColorMappingPage::UpdateHdr()
 {
     const auto mode = SendDlgItemMessageW(m_Dlg, 121, CB_GETCURSEL, 0, 0);
-    EnableWindow(GetDlgItem(m_Dlg, 115), mode == 0);
-    EnableWindow(GetDlgItem(m_Dlg, 122), mode != 2);
+    EnableWindow(GetDlgItem(m_Dlg, 115), FALSE);
+    EnableWindow(GetDlgItem(m_Dlg, 122), mode == 1);
     SetDlgItemTextW(m_Dlg,
                     823,
-                    mode == 1   ? L"HDR display handles tone mapping; HDR unavailable falls back to SDR."
-                    : mode == 2 ? L"GPU tone mapping to SDR. Windows HDR switching is not requested."
-                                : L"Auto adapts HDR to the active HDR display, or tone maps to SDR.");
+                    mode == 0 ? L"HDR output and metadata are passed to the display. Windows HDR is not switched."
+                              : L"GPU tone mapping from HDR to SDR.");
     for (int id : {410, 411, 412, 413, 414, 415})
         EnableWindow(GetDlgItem(m_Dlg, id), IsDlgButtonChecked(m_Dlg, 400) == BST_CHECKED);
     for (const auto& n : NumberControls)

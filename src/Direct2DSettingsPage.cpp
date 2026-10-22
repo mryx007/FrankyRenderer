@@ -26,6 +26,9 @@ HRESULT Direct2DSettingsPage::OnActivate()
 {
     if (!config)
         return E_UNEXPECTED;
+    const auto profiles = EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings());
+    if (FAILED(profiles))
+        return profiles;
     auto hr = config->GetSettings(&draft);
     if (FAILED(hr))
         return hr;
@@ -33,21 +36,24 @@ HRESULT Direct2DSettingsPage::OnActivate()
     RECT bounds;
     GetClientRect(m_Dlg, &bounds);
     preferredSize = {bounds.right - bounds.left, bounds.bottom - bounds.top};
-    view = Direct2DSettingsHost::Create(m_Dlg,
-                                        bounds,
-                                        &draft,
-                                        false,
-                                        [this](const PlaceboSettings& next)
-                                        {
-                                            const auto result = config->SetSettings(&next);
-                                            if (SUCCEEDED(result))
-                                            {
-                                                m_bDirty = FALSE;
-                                                if (m_pPageSite)
-                                                    m_pPageSite->OnStatusChange(PROPPAGESTATUS_CLEAN);
-                                            }
-                                            return result;
-                                        });
+    view = Direct2DSettingsHost::Create(
+        m_Dlg,
+        bounds,
+        &draft,
+        false,
+        [this](const PlaceboSettings& next)
+        {
+            LiveSettings::RememberDisplay(m_Dlg, next);
+            const auto result = config->SetSettings(&next);
+            if (SUCCEEDED(result))
+            {
+                m_bDirty = FALSE;
+                if (m_pPageSite)
+                    m_pPageSite->OnStatusChange(PROPPAGESTATUS_CLEAN);
+            }
+            return result;
+        },
+        true);
     // Let OLE complete its own page/tab measurement before changing its frame.
     if (view)
         PostMessageW(m_Dlg, WM_APP + 304, 0, 0);
@@ -69,6 +75,7 @@ HRESULT Direct2DSettingsPage::OnApplyChanges()
     auto hr = ValidateSettings(draft);
     if (FAILED(hr))
         return hr;
+    LiveSettings::RememberDisplay(m_Dlg, draft);
     hr = config->SetSettings(&draft);
     if (SUCCEEDED(hr))
         m_bDirty = FALSE;

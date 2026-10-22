@@ -16,6 +16,8 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
 
+Version **1.0.3** adds separate settings and custom names for each display, NVIDIA HDR passthrough without enabling Windows HDR, and a Clipping Protection switch. It also fixes Smooth Motion cadence, HDR restoration when moving between displays, and saving display names.
+
 It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
@@ -72,7 +74,9 @@ The screenshots show example settings, not recommended presets.
 
 ### HDR and color mapping
 
-- Automatic HDR handling, HDR passthrough and GPU tone mapping from HDR to SDR.
+- Two HDR modes: Passthrough HDR to Display and Tone Map HDR to SDR.
+- Native NVIDIA HDR10 passthrough sends HDR metadata to the display while leaving the Windows HDR setting off. Moving the video between displays updates the HDR output, including while paused, and restores the previous display's state. This driver path has been tested on NVIDIA hardware; AMD native HDR output is not implemented.
+- A Clipping Protection switch for HDR-to-SDR tone mapping.
 - Tone mapping functions including Spline, BT.2390, BT.2446A, Reinhard, Mobius, Hable and ST 2094 curves.
 - Adjustable SDR target brightness and HDR peak override.
 - HDR peak detection with smoothing, scene-change thresholds, percentile selection, black cutoff and delayed peak detection control.
@@ -114,6 +118,8 @@ The screenshots show example settings, not recommended presets.
 - Search across settings, scrollable pages, readable descriptions and explicit default values and ranges.
 - Compact shader list with double-click enable/disable and a parameter editor for the selected shader.
 - Live settings preview: valid changes appear immediately; OK keeps them and Cancel restores the dialog's opening values.
+- Separate settings for each display, with editable device names. Newly connected displays start with default settings; reconnecting a known display restores its saved profile.
+- Import and export settings as portable INI files for the selected display.
 - Numeric entry, fine adjustment steps, reset controls and contextual descriptions.
 - Configurable background color, transparency and rendering quality/performance options.
 - PotPlayer fullscreen playlist-transition handling.

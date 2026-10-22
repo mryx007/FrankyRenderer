@@ -66,13 +66,26 @@ inline LONGLONG MotionIntervalEnd(LONGLONG start, LONGLONG stop, LONGLONG nextSt
     return stop > start && nextStart > start && std::abs(double(nextStart) - double(stop)) <= 20000 ? nextStart : stop;
 }
 
+// Decide from the stream's nominal cadence, not each rounded PTS interval.
+// A valid interval may contain no display tick; that is not a delivery failure.
+inline bool MotionCadenceSupported(LONGLONG nominalDuration, double period)
+{
+    return nominalDuration > 0 && nominalDuration <= 10000000 && std::isfinite(period) && period >= 10000 &&
+           period <= 500000 && nominalDuration >= period * .98;
+}
+
+inline bool MotionIntervalValid(LONGLONG start, LONGLONG stop, double period)
+{
+    return stop > start && double(stop) - double(start) <= 10000000 && std::isfinite(period) && period >= 10000 &&
+           period <= 500000;
+}
+
 inline std::vector<MotionTick> MotionTicks(LONGLONG start, LONGLONG stop, double period)
 {
     std::vector<MotionTick> result;
-    const auto span = stop - start;
-    if (span <= 0 || span > 10000000 || !std::isfinite(period) || period < 10000 || period > 500000 ||
-        span < period * .98)
+    if (!MotionIntervalValid(start, stop, period))
         return result;
+    const auto span = stop - start;
     auto index = static_cast<LONGLONG>(std::ceil((start - .5) / period));
     for (int n = 0; n < 512; n++, index++)
     {

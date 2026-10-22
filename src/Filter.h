@@ -137,6 +137,8 @@ class Renderer final : public CBaseVideoRenderer,
     void ResetFields(bool preserveBlackBars = true, bool preserveVideo = false);
     HRESULT DeliverFields(const QueuedVideoFrame&, uint64_t, uint64_t);
     HRESULT PrepareWindow();
+    std::atomic<HMONITOR> profileMonitor = nullptr;
+    HRESULT UpdateDisplayProfile(bool refresh = false);
 
   public:
     Renderer(IUnknown*, HRESULT*);

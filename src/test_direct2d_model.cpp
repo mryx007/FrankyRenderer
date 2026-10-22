@@ -21,6 +21,24 @@ int wmain()
                 "search ignores case and outer spaces; all words match");
         Require(!MatchesFilter(L"HDR Highlights Exposure", L"exposure Gamma"), "search excludes missing terms");
         Require(MatchesFilter(L"Anything", L" \t"), "empty search");
+        auto& hdrControls = pages[5].cards[0].controls;
+        bool hasProtection = false;
+        for (auto& control : hdrControls)
+        {
+            if (control.name == L"HDR Mode")
+                Require(control.choices.size() == 2, "protection is not an HDR mode");
+            if (control.name == L"Clipping Protection")
+            {
+                hasProtection = true;
+                control.set(1);
+                Require(s.clippingProtection && s.hdrMode == 2, "switch does not change HDR mode");
+                s.hdrMode = 1;
+                Require(!control.enabled(), "pure passthrough bypasses protection");
+                s.hdrMode = 2;
+                control.set(0);
+            }
+        }
+        Require(hasProtection, "independent protection switch exists");
         int exposureHits = 0, combinedHits = 0;
         for (const auto& p : pages)
             for (const auto& card : p.cards)
@@ -314,6 +332,90 @@ int wmain()
         host->m_selectedShader = 20;
         host->Render();
         Require(host->m_shaderList.right > host->m_shaderList.left, "last shader reachable");
+        if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0))
+        {
+            const auto aId = DisplayProfiles::Hash(L"ui:monitor"), bId = DisplayProfiles::Hash(L"ui:tv");
+            auto a = s, b = s;
+            wcscpy_s(a.displayProfile, aId.c_str());
+            a.brightness = .21f;
+            wcscpy_s(b.displayProfile, bId.c_str());
+            b.brightness = -.31f;
+            Require(SUCCEEDED(SaveSettings(a)) && SUCCEEDED(SaveSettings(b)), "UI profile fixtures");
+            host->m_displayProfiles = true;
+            host->m_devices = {{aId, L"Monitor", L"ui:monitor", nullptr, true}, {bId, L"TV", L"ui:tv", nullptr, true}};
+            host->m_preview = {};
+            host->AdoptDisplayProfile(aId);
+            Require(s.brightness == .21f && s.displayProfile == aId, "select monitor draft");
+            host->AdoptDisplayProfile(bId);
+            Require(s.brightness == -.31f && s.displayProfile == bId,
+                    "select TV draft without applying monitor values");
+            auto portable = SettingsIni::Parse(SettingsIni::Serialize(a));
+            std::wstring importedId;
+            host->m_preview = [&](const PlaceboSettings& next)
+            {
+                importedId = next.displayProfile;
+                return S_OK;
+            };
+            Require(SUCCEEDED(host->ApplyImported(portable)) && importedId == bId && s.displayProfile == bId,
+                    "import targets selected device and cannot change profile identity");
+            host->m_activePage = 0;
+            host->Render();
+            int displayHits = 0, renameHits = 0;
+            for (const auto& hit : host->m_hitRegions)
+            {
+                if (hit.type == HitRegion::DisplayProfile)
+                {
+                    ++displayHits;
+                    Require(hit.rect.top > 430 && hit.rect.right <= 224, "device selector fits below navigation");
+                }
+                if (hit.type == HitRegion::RenameDisplay)
+                    ++renameHits;
+            }
+            Require(displayHits == 1 && renameHits == 1, "device selector and rename are visible");
+            auto rect = host->m_displayRect;
+            rect.left += 10;
+            rect.right -= 10;
+            rect.top += 6;
+            rect.bottom -= 5;
+            host->BeginEdit(nullptr, rect, true);
+            SetWindowTextW(host->m_edit, L"Wohnzimmer-TV");
+            SendMessageW(host->m_edit, WM_KEYDOWN, VK_RETURN, 0);
+            HKEY key;
+            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
+                        ERROR_SUCCESS,
+                    "renamed key");
+            Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"Wohnzimmer-TV",
+                    "inline rename persists with Enter");
+            RegCloseKey(key);
+            host->BeginEdit(nullptr, rect, true);
+            SetWindowTextW(host->m_edit, L"Discard this");
+            SendMessageW(host->m_edit, WM_KEYDOWN, VK_ESCAPE, 0);
+            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
+                        ERROR_SUCCESS,
+                    "rename cancel key");
+            Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"Wohnzimmer-TV", "Escape cancels rename");
+            RegCloseKey(key);
+            host->BeginEdit(nullptr, rect, true);
+            SetWindowTextW(host->m_edit, L"TV after click");
+            host->OnLButtonDown(260, 100);
+            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
+                        ERROR_SUCCESS,
+                    "rename click key");
+            Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"TV after click",
+                    "click outside saves rename without Enter");
+            RegCloseKey(key);
+            host->BeginEdit(nullptr, rect, true);
+            SetWindowTextW(host->m_edit, L"TV after OK focus");
+            SetFocus(parent);
+            Require(!host->m_edit, "leaving edit for parent button ends rename");
+            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
+                        ERROR_SUCCESS,
+                    "rename focus key");
+            Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"TV after OK focus",
+                    "focus loss saves rename without Enter");
+            RegCloseKey(key);
+            host->m_preview = {};
+        }
         Direct2DSettingsHost::Destroy(view);
         DestroyWindow(parent);
         printf(

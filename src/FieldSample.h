@@ -7,7 +7,7 @@ struct QueuedVideoFrame
 {
     uint64_t id = 0;
     VideoFrame frame;
-    REFERENCE_TIME start = 0, stop = 0;
+    REFERENCE_TIME start = 0, stop = 0, nominalDuration = 0;
     pl_field first = PL_FIELD_TOP;
     bool hardware = false;
 };
