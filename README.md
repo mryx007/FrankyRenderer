@@ -26,9 +26,13 @@ General and presentation settings:
 
 ![FrankyRenderer General and Presentation settings](docs/screenshots/general.png)
 
-Processing — debanding, sharpening, deinterlacing and dithering:
+Scaling and frame mixing:
 
-![FrankyRenderer Processing settings](docs/screenshots/processing.png)
+![FrankyRenderer Scaling and Frame Mixing settings](docs/screenshots/scaling.png)
+
+Color Adjustment:
+
+![FrankyRenderer Color Adjustment settings](docs/screenshots/color-adjustment.png)
 
 HDR and Color Mapping:
 
