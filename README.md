@@ -24,27 +24,27 @@ Feel free to give it a try and report any bugs you encounter. Feedback is always
 
 General and presentation settings:
 
-![FrankyRenderer General and Presentation settings](docs/screenshots/general.png)
+[<img src="docs/screenshots/general.png" width="640" alt="FrankyRenderer General and Presentation settings">](docs/screenshots/general.png)
 
 Scaling and frame mixing:
 
-![FrankyRenderer Scaling and Frame Mixing settings](docs/screenshots/scaling.png)
+[<img src="docs/screenshots/scaling.png" width="640" alt="FrankyRenderer Scaling and Frame Mixing settings">](docs/screenshots/scaling.png)
 
 Color Adjustment:
 
-![FrankyRenderer Color Adjustment settings](docs/screenshots/color-adjustment.png)
+[<img src="docs/screenshots/color-adjustment.png" width="640" alt="FrankyRenderer Color Adjustment settings">](docs/screenshots/color-adjustment.png)
 
 HDR and Color Mapping:
 
-![FrankyRenderer HDR and Color Mapping settings](docs/screenshots/hdr-color-mapping.png)
+[<img src="docs/screenshots/hdr-color-mapping.png" width="640" alt="FrankyRenderer HDR and Color Mapping settings">](docs/screenshots/hdr-color-mapping.png)
 
 Color Management — ICC profiles and 3D LUTs:
 
-![FrankyRenderer Color Management settings](docs/screenshots/color-management.png)
+[<img src="docs/screenshots/color-management.png" width="640" alt="FrankyRenderer Color Management settings">](docs/screenshots/color-management.png)
 
 Shader Chain:
 
-![FrankyRenderer Shader Chain settings](docs/screenshots/shaders.png)
+[<img src="docs/screenshots/shaders.png" width="640" alt="FrankyRenderer Shader Chain settings">](docs/screenshots/shaders.png)
 
 The screenshots show example settings, not recommended presets.
 
