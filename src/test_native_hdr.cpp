@@ -149,6 +149,33 @@ int main()
         Check(window != nullptr, "test window");
         {
             NativeHdrSwapchain output;
+            Check(SUCCEEDED(output.Ensure(d3d, window, 16, 16, 0)), "initial default latency");
+            UINT defaultLatency = 0;
+            auto readLatency = [&]()
+            {
+                ComPtr<IDXGISwapChain2> chain;
+                UINT value = 0;
+                Check(SUCCEEDED(output.Get()->QueryInterface(IID_PPV_ARGS(&chain))), "latency interface");
+                Check(SUCCEEDED(chain->GetMaximumFrameLatency(&value)), "read swapchain latency");
+                return value;
+            };
+            defaultLatency = readLatency();
+            for (int manual : {1, 4, 16})
+            {
+                Check(SUCCEEDED(output.Ensure(d3d, window, 16, 16, manual)), "apply manual latency");
+                Check(readLatency() == UINT(manual), "manual latency applied");
+                Check(SUCCEEDED(output.Ensure(d3d, window, 16, 16, 0)), "restore default latency");
+                Check(readLatency() == defaultLatency, "original default restored");
+            }
+            Check(SUCCEEDED(output.Ensure(d3d, window, 32, 32, 4)), "resize with manual latency");
+            Check(SUCCEEDED(output.Ensure(d3d, window, 16, 16, 0)), "resize and restore default latency");
+            Check(readLatency() == defaultLatency, "resize retains original default");
+            Check(output.Ensure(d3d, window, 16, 16, -1) == E_INVALIDARG &&
+                      output.Ensure(d3d, window, 16, 16, 17) == E_INVALIDARG,
+                  "invalid latency rejected");
+            output.Destroy();
+            Check(SUCCEEDED(output.Ensure(d3d, window, 16, 16, 0)), "recreate default latency");
+            Check(readLatency() == defaultLatency, "recreated swapchain default");
             auto renderer = pl_renderer_create(nullptr, d3d->gpu);
             for (int size : {16, 32, 16})
             {
@@ -213,7 +240,7 @@ int main()
         DestroyWindow(window);
         pl_d3d11_destroy(&d3d);
         puts(
-            "PASS NVIDIA PQ: mode 5, source metadata, ownership, failure, restoration, 10-bit GPU signal 100/1000/4000 nits, resize; no physical HDR setter called");
+            "PASS NVIDIA PQ: mode 5, source metadata, ownership, failure, restoration, 10-bit GPU signal 100/1000/4000 nits, resize, default latency reset; no physical HDR setter called");
         return 0;
     }
     catch (const std::exception& error)

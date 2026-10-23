@@ -1461,12 +1461,30 @@ int wmain(int argc, wchar_t** argv)
     ComPtr<IPlaceboSettings> secondConfig;
     Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&second)), "second renderer");
     Check(second.As(&secondConfig), "second settings");
+    // An unconnected renderer reads the legacy root. Connect it so it selects
+    // the output display profile, just as a player does before playback.
+    ComPtr<IGraphBuilder> secondGraph;
+    Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&secondGraph)),
+          "second graph");
+    Check(secondGraph->AddFilter(second.Get(), L"readback renderer"), "add second renderer");
+    auto secondRawSource = new PatternSource(&hr);
+    Check(hr, "second source create");
+    ComPtr<IBaseFilter> secondSource;
+    Check(secondRawSource->NonDelegatingQueryInterface(IID_PPV_ARGS(&secondSource)), "second source interface");
+    Check(secondGraph->AddFilter(secondSource.Get(), L"readback source"), "add second source");
+    ComPtr<IEnumPins> secondPins;
+    ComPtr<IPin> secondInput;
+    Check(second->EnumPins(&secondPins), "second input list");
+    Check(secondPins->Next(1, &secondInput, nullptr), "second input");
+    Check(secondGraph->ConnectDirect(secondRawSource->GetPin(0), secondInput.Get(), nullptr),
+          "connect saved display profile");
     PlaceboSettings readback;
     Check(secondConfig->GetSettings(&readback), "saved readback");
-    if (!readback.allowDelayedPeak || readback.maximumFramesInFlight != 7 || readback.kneeAdaptation != .7f ||
-        readback.splineContrast != .8f || readback.kneeMinimum != .2f || readback.kneeMaximum != .9f ||
-        readback.blackCutoff != 2 || readback.perceptualStrength != .6f || readback.softclipKnee != .65f ||
-        !readback.showClipping || readback.adaptiveSharpen != TRUE || readback.sharpenStrength != .75f ||
+    if (wcscmp(readback.displayProfile, persist.displayProfile) || !readback.allowDelayedPeak ||
+        readback.maximumFramesInFlight != 7 || readback.kneeAdaptation != .7f || readback.splineContrast != .8f ||
+        readback.kneeMinimum != .2f || readback.kneeMaximum != .9f || readback.blackCutoff != 2 ||
+        readback.perceptualStrength != .6f || readback.softclipKnee != .65f || !readback.showClipping ||
+        readback.adaptiveSharpen != TRUE || readback.sharpenStrength != .75f ||
         readback.smoothMotion != persist.smoothMotion || readback.saturation != 0.f || readback.toneMapping != 2 ||
         readback.hdrNits != 600 || readback.antiringing != .6f || readback.upscalerBlur != .9f ||
         readback.downscalerBlur != 1.2f || readback.debandIterations != 3 || readback.debandThreshold != 5 ||

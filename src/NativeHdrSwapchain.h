@@ -15,6 +15,7 @@ class NativeHdrSwapchain
     pl_tex target = nullptr;
     HWND owner = nullptr;
     int width = 0, height = 0;
+    UINT originalLatency = 0;
 
   public:
     ~NativeHdrSwapchain()
@@ -45,11 +46,12 @@ class NativeHdrSwapchain
         gpu = nullptr;
         owner = nullptr;
         width = height = 0;
+        originalLatency = 0;
     }
 
     HRESULT Ensure(pl_d3d11 d3d, HWND window, int w, int h, int maximumLatency)
     {
-        if (w <= 0 || h <= 0)
+        if (w <= 0 || h <= 0 || maximumLatency < 0 || maximumLatency > 16)
             return E_INVALIDARG;
         if (owner && owner != window)
             Destroy();
@@ -96,11 +98,26 @@ class NativeHdrSwapchain
             width = w;
             height = h;
         }
-        if (maximumLatency > 0)
+        // The waitable swapchain has its own limit, separate from the device's
+        // frame latency. Preserve its initial value for the Default setting.
         {
             Ptr<IDXGISwapChain2> latency;
-            if (SUCCEEDED(swapchain.As(&latency)))
-                latency->SetMaximumFrameLatency(maximumLatency);
+            HRESULT hr = swapchain.As(&latency);
+            if (FAILED(hr))
+                return hr;
+            UINT actual = 0;
+            hr = latency->GetMaximumFrameLatency(&actual);
+            if (FAILED(hr))
+                return hr;
+            if (!originalLatency)
+                originalLatency = actual;
+            const UINT wanted = maximumLatency ? UINT(maximumLatency) : originalLatency;
+            if (actual != wanted)
+            {
+                hr = latency->SetMaximumFrameLatency(wanted);
+                if (FAILED(hr))
+                    return hr;
+            }
         }
         if (!target)
         {
