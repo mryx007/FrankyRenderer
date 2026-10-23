@@ -608,6 +608,247 @@ static int Spread(const std::vector<BYTE>& pixels)
 
 using FactoryGetter = HRESULT(WINAPI*)(REFCLSID, REFIID, void**);
 
+struct VideoCreation
+{
+    HWND parent;
+    DWORD style;
+};
+
+static thread_local std::vector<VideoCreation> videoCreations;
+static thread_local std::vector<VideoCreation> videoDestructions;
+
+static constexpr UINT QueryOwnerCursor = WM_APP + 0x550;
+static constexpr UINT HideOwnerCursor = WM_APP + 0x551;
+
+static LRESULT CALLBACK VideoOwnerTestProcedure(HWND hwnd, UINT message, WPARAM w, LPARAM l)
+{
+    if (message == QueryOwnerCursor)
+        return reinterpret_cast<LRESULT>(GetCursor());
+    if (message == HideOwnerCursor)
+        return reinterpret_cast<LRESULT>(SetCursor(nullptr));
+    return DefWindowProcW(hwnd, message, w, l);
+}
+
+static LRESULT CALLBACK ObserveVideoCreation(int code, WPARAM w, LPARAM l)
+{
+    if (code == HCBT_CREATEWND)
+    {
+        const auto create = reinterpret_cast<const CBT_CREATEWNDW*>(l)->lpcs;
+        if (!IS_INTRESOURCE(create->lpszClass) && !wcscmp(create->lpszClass, L"PlaceboRendererVideoWindow"))
+            videoCreations.push_back({create->hwndParent, static_cast<DWORD>(create->style)});
+    }
+    if (code == HCBT_DESTROYWND)
+    {
+        wchar_t name[64] = {};
+        const HWND video = reinterpret_cast<HWND>(w);
+        GetClassNameW(video, name, 64);
+        if (!wcscmp(name, L"PlaceboRendererVideoWindow"))
+            videoDestructions.push_back({GetParent(video), static_cast<DWORD>(GetWindowLongPtrW(video, GWL_STYLE))});
+    }
+    return CallNextHookEx(nullptr, code, w, l);
+}
+
+static int TestVideoWindowFocus(FactoryGetter getter)
+{
+    WNDCLASSW cls = {};
+    cls.lpfnWndProc = VideoOwnerTestProcedure;
+    cls.hInstance = g_hInst;
+    cls.lpszClassName = L"VideoOwnerFocusTest";
+    if (!RegisterClassW(&cls))
+        return 263;
+    HWND host = CreateWindowW(cls.lpszClassName,
+                              L"Player focus test",
+                              WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                              0,
+                              0,
+                              160,
+                              120,
+                              nullptr,
+                              nullptr,
+                              g_hInst,
+                              nullptr);
+    HWND other = CreateWindowW(cls.lpszClassName,
+                               L"Other application",
+                               WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                               180,
+                               0,
+                               160,
+                               120,
+                               nullptr,
+                               nullptr,
+                               g_hInst,
+                               nullptr);
+    if (!host || !other)
+        return 260;
+    const DWORD playerThread = GetCurrentThreadId();
+    std::atomic<bool> passed = true;
+    for (int episode = 0; episode < 4; ++episode)
+    {
+        const HWND expected = episode < 2 ? host : other;
+        SetActiveWindow(expected);
+        SetFocus(expected);
+        std::atomic<bool> done = false, closeHost = false, hostClosed = false;
+        std::thread graphThread(
+            [&]()
+            {
+                Check(CoInitializeEx(nullptr, COINIT_MULTITHREADED), "focus worker COM");
+                videoCreations.clear();
+                videoDestructions.clear();
+                // Joining input queues through a cross-thread video child must
+                // not restore this old wait cursor when the child is removed.
+                SetCursor(LoadCursorW(nullptr, IDC_WAIT));
+                SendMessageW(host, HideOwnerCursor, 0, 0);
+                const HHOOK creationHook =
+                    SetWindowsHookExW(WH_CBT, ObserveVideoCreation, nullptr, GetCurrentThreadId());
+                if (!creationHook)
+                    exit(262);
+                {
+                    ComPtr<IClassFactory> factory;
+                    Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "focus renderer factory");
+                    ComPtr<IBaseFilter> renderer;
+                    Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&renderer)), "focus renderer");
+                    ComPtr<IVideoWindow> window;
+                    Check(renderer.As(&window), "focus video window");
+                    const bool pendingOwner = episode % 2 == 0;
+                    if (pendingOwner)
+                        Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus pending owner");
+                    ComPtr<IGraphBuilder> graph;
+                    Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)),
+                          "focus graph");
+                    Check(graph->AddFilter(renderer.Get(), L"renderer"), "focus add renderer");
+                    HRESULT hr = S_OK;
+                    auto rawSource = new PatternSource(&hr);
+                    Check(hr, "focus source");
+                    ComPtr<IBaseFilter> source;
+                    Check(rawSource->NonDelegatingQueryInterface(IID_PPV_ARGS(&source)), "focus source interface");
+                    Check(graph->AddFilter(source.Get(), L"source"), "focus add source");
+                    ComPtr<IEnumPins> pins;
+                    ComPtr<IPin> input;
+                    Check(renderer->EnumPins(&pins), "focus pins");
+                    Check(pins->Next(1, &input, nullptr), "focus input");
+                    Check(graph->ConnectDirect(rawSource->GetPin(0), input.Get(), nullptr), "focus connect");
+                    if (!pendingOwner)
+                    {
+                        if (!videoCreations.empty())
+                            passed = false;
+                        Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus owner after connection");
+                    }
+                    if (videoCreations.size() != 1 || videoCreations.back().parent != host ||
+                        !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                        passed = false;
+                    const auto verify = [&](const char* stage)
+                    {
+                        GUITHREADINFO gui = {sizeof(gui)};
+                        if (!GetGUIThreadInfo(playerThread, &gui) || gui.hwndActive != expected ||
+                            gui.hwndFocus != expected)
+                        {
+                            printf("FAIL episode %d %s: active=%p focus=%p expected=%p\n",
+                                   episode,
+                                   stage,
+                                   gui.hwndActive,
+                                   gui.hwndFocus,
+                                   expected);
+                            passed = false;
+                        }
+                    };
+                    verify("embedded");
+                    Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus repeated owner");
+                    verify("repeated owner");
+                    Check(window->put_Visible(OATRUE), "focus show video");
+                    verify("shown");
+                    const HWND originalVideo = FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+                    Check(window->put_Owner(reinterpret_cast<OAHWND>(other)), "focus fullscreen parent");
+                    verify("new parent");
+                    if (!originalVideo || GetParent(originalVideo) != other || videoCreations.size() != 1)
+                        passed = false;
+                    Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus restore parent");
+                    verify("restored parent");
+                    if (GetParent(originalVideo) != host || videoCreations.size() != 1)
+                        passed = false;
+                    Check(window->put_Visible(OAFALSE), "focus hide video");
+                    verify("hidden");
+                    SendMessageW(host, HideOwnerCursor, 0, 0);
+                    Check(window->put_Owner(0), "focus detach video");
+                    verify("detached");
+                    if (SendMessageW(host, QueryOwnerCursor, 0, 0))
+                    {
+                        printf("FAIL episode %d: stale cursor restored after video detach\n", episode);
+                        passed = false;
+                    }
+                    if (videoDestructions.size() != 1 ||
+                        (videoDestructions.back().parent && videoDestructions.back().parent != GetDesktopWindow()) ||
+                        (videoDestructions.back().style & (WS_POPUP | WS_VISIBLE)))
+                    {
+                        printf("FAIL episode %d: video not detached while hidden before destruction\n", episode);
+                        passed = false;
+                    }
+                    if (FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr))
+                        passed = false;
+                    Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus recreate child");
+                    verify("recreated");
+                    if (videoCreations.size() != 2 || videoCreations.back().parent != host ||
+                        !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                        passed = false;
+                    SendMessageW(host, HideOwnerCursor, 0, 0);
+                    if (episode == 3)
+                    {
+                        closeHost = true;
+                        while (!hostClosed)
+                        {
+                            MSG message;
+                            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                            {
+                                TranslateMessage(&message);
+                                DispatchMessageW(&message);
+                            }
+                            MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+                        }
+                        Check(window->put_Owner(reinterpret_cast<OAHWND>(other)),
+                              "new owner after old parent destroyed");
+                        verify("old parent destroyed");
+                        if (videoCreations.size() != 3 || videoCreations.back().parent != other ||
+                            !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                            passed = false;
+                    }
+                }
+                if (episode != 3 && SendMessageW(host, QueryOwnerCursor, 0, 0))
+                {
+                    printf("FAIL episode %d: stale cursor restored after renderer release\n", episode);
+                    passed = false;
+                }
+                UnhookWindowsHookEx(creationHook);
+                CoUninitialize();
+                done = true;
+            });
+        while (!done)
+        {
+            if (closeHost && !hostClosed)
+            {
+                DestroyWindow(host);
+                hostClosed = true;
+            }
+            MSG message;
+            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+        }
+        graphThread.join();
+        if (GetActiveWindow() != expected || GetFocus() != expected)
+            passed = false;
+    }
+    DestroyWindow(other);
+    DestroyWindow(host);
+    UnregisterClassW(cls.lpszClassName, cls.hInstance);
+    if (!passed)
+        return 261;
+    puts(
+        "PASS direct child creation, hidden detach before destruction, cursor and focus preserved through early/late/repeated owner, parent switch, show/hide/detach/recreate and parent-first destruction");
+    return 0;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
     for (int i = 1; i < argc; i++)
@@ -673,6 +914,9 @@ int wmain(int argc, wchar_t** argv)
     }
     using Getter = HRESULT(WINAPI*)(REFCLSID, REFIID, void**);
     auto getter = reinterpret_cast<Getter>(GetProcAddress(dll, "DllGetClassObject"));
+    for (int i = 1; i < argc; ++i)
+        if (wcscmp(argv[i], L"--focus") == 0)
+            return TestVideoWindowFocus(getter);
     ComPtr<IClassFactory> factory;
     Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "factory");
     {
@@ -856,7 +1100,6 @@ int wmain(int argc, wchar_t** argv)
     puts("PASS only current settings page is exposed; retired dialog factories are unavailable");
     ComPtr<IVideoWindow> window;
     Check(renderer.As(&window), "video window");
-    if (mpcbeOwnerTest)
     {
         ownerWindow.handle = CreateWindowW(L"STATIC",
                                            L"MPC-BE owner test",
@@ -871,8 +1114,10 @@ int wmain(int argc, wchar_t** argv)
                                            nullptr);
         if (!ownerWindow.handle)
             exit(252);
-        // MPC-BE's CFGFilterVideoRenderer does this before graph connection.
-        Check(window->put_Owner(reinterpret_cast<OAHWND>(ownerWindow.handle)), "MPC-BE owner before connection");
+        // MPC-BE provides its parent before connection; the ordinary host
+        // path below deliberately supplies it afterwards.
+        if (mpcbeOwnerTest)
+            Check(window->put_Owner(reinterpret_cast<OAHWND>(ownerWindow.handle)), "MPC-BE owner before connection");
     }
     ComPtr<IGraphBuilder> graph;
     Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)), "graph");
@@ -888,6 +1133,8 @@ int wmain(int argc, wchar_t** argv)
     Check(renderer->EnumPins(&list), "input list");
     Check(list->Next(1, &input, nullptr), "input");
     Check(graph->ConnectDirect(rawSource->GetPin(0), input.Get(), nullptr), "connect P010");
+    if (!mpcbeOwnerTest)
+        Check(window->put_Owner(reinterpret_cast<OAHWND>(ownerWindow.handle)), "host owner after connection");
     if (mpcbeOwnerTest)
     {
         ComPtr<IBasicVideo2> videoInfo;
@@ -1467,6 +1714,9 @@ int wmain(int argc, wchar_t** argv)
     Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&secondGraph)),
           "second graph");
     Check(secondGraph->AddFilter(second.Get(), L"readback renderer"), "add second renderer");
+    ComPtr<IVideoWindow> secondWindow;
+    Check(second.As(&secondWindow), "second video window");
+    Check(secondWindow->put_Owner(reinterpret_cast<OAHWND>(ownerWindow.handle)), "second owner");
     auto secondRawSource = new PatternSource(&hr);
     Check(hr, "second source create");
     ComPtr<IBaseFilter> secondSource;

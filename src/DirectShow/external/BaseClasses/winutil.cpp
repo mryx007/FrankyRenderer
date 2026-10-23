@@ -53,6 +53,11 @@ CBaseWindow::CBaseWindow(BOOL bDoGetDC, bool bDoPostToDestroy) :
 
 HRESULT CBaseWindow::PrepareWindow()
 {
+    return PrepareWindow(NULL);
+}
+
+HRESULT CBaseWindow::PrepareWindow(HWND parent)
+{
     if (m_hwnd) return NOERROR;
     ASSERT(m_hwnd == NULL);
     ASSERT(m_hdc == NULL);
@@ -89,7 +94,7 @@ HRESULT CBaseWindow::PrepareWindow()
         return AmGetLastErrorToHResult();
     }
 
-    return DoCreateWindow();
+    return DoCreateWindow(parent);
 }
 
 
@@ -174,9 +179,9 @@ HRESULT CBaseWindow::DoneWithWindow()
 
     // Reset the window styles before destruction
 
-    // An embedded renderer must remain a child until DestroyWindow. Restoring
-    // its original popup style here suppresses WM_PARENTNOTIFY/WM_DESTROY to
-    // the host, so the host cannot observe normal removal of its video child.
+    // Keep embedded child styles during teardown. A derived UninitialiseWindow
+    // can detach the hidden child before DestroyWindow without turning it into
+    // a popup that could change the player's activation or focus.
     const LONG resetStyles = (GetWindowLong(hwnd,GWL_STYLE) & WS_CHILD)
         ? (m_WindowStyles | WS_CHILD) & ~WS_POPUP : m_WindowStyles;
     SetWindowLong(hwnd,GWL_STYLE,resetStyles);
@@ -579,7 +584,7 @@ HRESULT CBaseWindow::InitialiseWindow(HWND hwnd)
     return NOERROR;
 }
 
-HRESULT CBaseWindow::DoCreateWindow()
+HRESULT CBaseWindow::DoCreateWindow(HWND parent)
 {
     WNDCLASS wndclass;                  // Used to register classes
     BOOL bRegistered;                   // Is this class registered
@@ -625,11 +630,11 @@ HRESULT CBaseWindow::DoCreateWindow()
                           m_pClassName,                   // Registered name
                           TEXT("ActiveMovie Window"),     // Window title
                           m_WindowStyles,                 // Window styles
-                          CW_USEDEFAULT,                  // Start x position
-                          CW_USEDEFAULT,                  // Start y position
+                          parent ? 0 : CW_USEDEFAULT,     // Start x position
+                          parent ? 0 : CW_USEDEFAULT,     // Start y position
                           DEFWIDTH,                       // Window width
                           DEFHEIGHT,                      // Window height
-                          NULL,                           // Parent handle
+                          parent,                         // Parent handle
                           NULL,                           // Menu handle
                           m_hInstance,                    // Instance handle
                           &pBaseWindow);                  // Creation data

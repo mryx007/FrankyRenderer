@@ -55,12 +55,11 @@ class VideoWindow final : public CBaseControlWindow
 {
     Renderer* owner;
     HRESULT SetHiddenStyle(long, int);
-    OAHWND pendingOwner = 0;
-    bool havePendingOwner = false;
 
   public:
     VideoWindow(Renderer*, CCritSec*, IUnknown*, HRESULT*);
-    HRESULT ApplyPendingOwner();
+    HRESULT PrepareWindow() override;
+    HRESULT UninitialiseWindow() override;
     LPTSTR GetClassWindowStyles(DWORD*, DWORD*, DWORD*) override;
     STDMETHODIMP put_Owner(OAHWND) override;
     STDMETHODIMP put_WindowStyle(long) override;

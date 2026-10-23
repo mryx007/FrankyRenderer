@@ -82,6 +82,7 @@ public:
 
     virtual HRESULT DoneWithWindow();
     virtual HRESULT PrepareWindow();
+    HRESULT PrepareWindow(HWND parent);
     virtual HRESULT InactivateWindow();
     virtual HRESULT ActivateWindow();
     virtual BOOL OnSize(LONG Width, LONG Height);
@@ -91,7 +92,7 @@ public:
     virtual HRESULT InitialiseWindow(HWND hwnd);
 
     HRESULT CompleteConnect();
-    HRESULT DoCreateWindow();
+    HRESULT DoCreateWindow(HWND parent = NULL);
 
     HRESULT PerformanceAlignWindow();
     HRESULT DoShowWindow(LONG ShowCmd);

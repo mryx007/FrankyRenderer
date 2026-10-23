@@ -175,9 +175,33 @@ VideoWindow::VideoWindow(Renderer* renderer, CCritSec* lock, IUnknown* outer, HR
 LPTSTR VideoWindow::GetClassWindowStyles(DWORD* cls, DWORD* style, DWORD* extra)
 {
     *cls = CS_HREDRAW | CS_VREDRAW;
-    *style = WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    *style = WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
     *extra = 0;
     return const_cast<LPTSTR>(TEXT("PlaceboRendererVideoWindow"));
+}
+
+HRESULT VideoWindow::PrepareWindow()
+{
+    if (!m_hwndOwner || !IsWindow(m_hwndOwner))
+        return VFW_E_WRONG_STATE;
+    // A player can destroy its parent before releasing this COM instance.
+    // Clear the dead HWND/DC state before creating a new child for a new owner.
+    if (GetWindowHWND() && !WindowExists())
+        CBaseWindow::DoneWithWindow();
+    return CBaseWindow::PrepareWindow(m_hwndOwner);
+}
+
+HRESULT VideoWindow::UninitialiseWindow()
+{
+    const HWND video = GetWindowHWND();
+    if (GetParent(video))
+    {
+        // Destroying an attached cross-thread child restores the input queues'
+        // old cursor. Detach the hidden child first; never give it popup styles.
+        ShowWindow(video, SW_HIDE);
+        SetParent(video, nullptr);
+    }
+    return CBaseWindow::UninitialiseWindow();
 }
 
 BOOL VideoWindow::OnSize(LONG width, LONG height)
@@ -193,7 +217,7 @@ HRESULT VideoWindow::SetHiddenStyle(long style, int index)
 {
     // The legacy base implementation moves hidden windows offscreen, briefly
     // shows them, then hides them again. Frame changes need no visibility or
-    // position change on our D3D11 window, including before it is embedded.
+    // position change on our D3D11 child window.
     HWND hwnd = GetWindowHWND();
     if (index == GWL_STYLE)
         style &= ~WS_VISIBLE;
@@ -215,6 +239,7 @@ STDMETHODIMP VideoWindow::put_WindowStyle(long style)
 {
     if (!m_pPin || !m_pPin->IsConnected())
         return VFW_E_NOT_CONNECTED;
+    style = (style | WS_CHILD) & ~WS_POPUP;
     if ((style & (WS_DISABLED | WS_ICONIC | WS_MAXIMIZE | WS_MINIMIZE | WS_HSCROLL | WS_VSCROLL)) ||
         IsWindowVisible(GetWindowHWND()))
         return CBaseControlWindow::put_WindowStyle(style);
@@ -244,53 +269,55 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
 {
     if (!m_pPin)
         return E_UNEXPECTED;
-    if (!m_pPin->IsConnected())
+    const HWND parent = reinterpret_cast<HWND>(next);
+    if (parent && !IsWindow(parent))
+        return HRESULT_FROM_WIN32(ERROR_INVALID_WINDOW_HANDLE);
+    VideoBackground::Ensure(parent);
+    if (!WindowExists())
     {
-        // MPC-BE supplies its video owner before connecting the decoder.
-        // Remember it without creating or showing a standalone video window.
-        pendingOwner = next;
-        havePendingOwner = true;
-        return S_OK;
+        // Both supported players normally provide the parent before connection.
+        // A later assignment uses exactly the same child-window creation path.
+        m_hwndOwner = parent;
+        if (!parent || !m_pPin->IsConnected())
+            return S_OK;
+        const auto hr = owner->PrepareWindow();
+        return FAILED(hr) ? hr : owner->UpdateDisplayProfile();
     }
-    HWND hwnd = GetWindowHWND();
-    const bool visible = (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_VISIBLE) != 0;
-    const bool changed = GetOwnerWindow() != reinterpret_cast<HWND>(next);
-    // A visible child must never become a visible desktop popup during teardown.
-    if (changed)
-        DoShowWindow(SW_HIDE);
-    // Initialize the owner's background while the incoming video is still
-    // absent/hidden, so its GDI contents are ready before a later graph gap.
-    HWND background = next ? VideoBackground::Ensure(reinterpret_cast<HWND>(next)) : nullptr;
-    HRESULT hr = CBaseControlWindow::put_Owner(next);
-    if (SUCCEEDED(hr))
+    if (parent == m_hwndOwner)
+        return S_OK;
+    const HWND video = GetWindowHWND();
+    const bool visible = IsWindowVisible(video);
+    DoShowWindow(SW_HIDE);
+    if (!parent)
     {
-        auto style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        style = next ? (style | WS_CHILD) & ~WS_POPUP : (style & ~WS_CHILD) | WS_POPUP;
-        SetWindowLongPtrW(hwnd, GWL_STYLE, style);
-        if (next)
+        // Release the output before destroying its child. Never turn it into
+        // an unowned popup, including during player shutdown or graph changes.
+        const auto hr = owner->backend.SetWindow(nullptr);
+        if (FAILED(hr))
         {
-            if (background)
-                Trace("Video owner background ready owner=%p background=%p UIthread=%lu",
-                      reinterpret_cast<HWND>(next),
-                      background,
-                      GetWindowThreadProcessId(background, nullptr));
-            else
-                Trace("Video background could not be prepared on owner UI thread");
+            if (visible)
+                DoShowWindow(SW_SHOWNOACTIVATE);
+            return hr;
         }
+        StatisticsKey::Detach(video);
+        const auto result = DoneWithWindow();
+        if (SUCCEEDED(result))
+            m_hwndOwner = nullptr;
+        return result;
     }
-    if (changed && visible && (FAILED(hr) || next))
-        DoShowWindow(SW_SHOWNOACTIVATE);
-    return hr;
-}
-
-HRESULT VideoWindow::ApplyPendingOwner()
-{
-    if (!havePendingOwner)
-        return S_OK;
-    const HRESULT hr = put_Owner(pendingOwner);
+    SetLastError(ERROR_SUCCESS);
+    const HWND previous = SetParent(video, parent);
+    const DWORD error = GetLastError();
+    const HRESULT hr = !previous && error != ERROR_SUCCESS ? HRESULT_FROM_WIN32(error) : S_OK;
     if (SUCCEEDED(hr))
-        havePendingOwner = false;
-    return hr;
+    {
+        m_hwndOwner = parent;
+        StatisticsKey::Attach(video);
+        PaintWindow(TRUE);
+    }
+    if (visible)
+        DoShowWindow(SW_SHOWNOACTIVATE);
+    return FAILED(hr) ? hr : owner->UpdateDisplayProfile();
 }
 
 INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
@@ -298,7 +325,10 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == WM_CREATE)
         MonitorChange::Attach(hwnd);
     if (msg == WM_NCDESTROY)
+    {
+        StatisticsKey::Detach(hwnd);
         MonitorChange::Detach(hwnd);
+    }
     if (msg == MonitorChange::Message)
     {
         Trace("Monitor-change repaint received monitor=%p", MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
@@ -665,13 +695,14 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
         info.pFilter->Release();
     }
     // Hosts may supply the video owner before or after connection. AutoShow
-    // belongs to Pause/Run, so connecting must never show a standalone popup.
+    // belongs to Pause/Run; the video child starts hidden inside the player.
     backend.SetSourceCodec(SourceCodecFromOutput(pin));
+    // Connection alone must not create a desktop window. If the player has
+    // not supplied a parent yet, put_Owner creates the child when it arrives.
+    if (!window->GetOwnerWindow())
+        return S_OK;
     hr = PrepareWindow();
-    if (FAILED(hr))
-        return hr;
-    hr = window->ApplyPendingOwner();
-    return SUCCEEDED(hr) ? UpdateDisplayProfile() : hr;
+    return FAILED(hr) ? hr : UpdateDisplayProfile();
 }
 
 void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
