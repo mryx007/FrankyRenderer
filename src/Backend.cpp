@@ -18,6 +18,7 @@
 #pragma comment(lib, "gdi32.lib")
 #include "SharpenShader.h"
 #include "UserShaderSource.h"
+#include "RtxScaling.h"
 #include "TonalHook.h"
 #include <libplacebo/shaders/custom.h>
 #include <charconv>
@@ -70,6 +71,8 @@ struct PlaceboBackend::State
 
     std::unordered_map<uint64_t, std::unique_ptr<StoredFrame>> history;
     uint64_t nextFrame = 1;
+    uint64_t rtxSerial = 0, rtxKey = 0;
+    RtxScaling rtx;
     pl_frame mixFrames[16] = {};
     uint64_t mixSignatures[16] = {};
     float mixTimes[16] = {}, mixDuration = 0;
@@ -363,6 +366,7 @@ struct PlaceboBackend::State
     void Destroy()
     {
         blackBars.Reset();
+        rtx.Reset();
         unpack422.Reset();
         renderGpu.Reset();
         renderCpu.Reset();
@@ -576,6 +580,7 @@ struct PlaceboBackend::State
         {
             pl_d3d11_params params = pl_d3d11_default_params;
             params.min_feature_level = D3D_FEATURE_LEVEL_11_0;
+            params.flags |= D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
             d3d = pl_d3d11_create(log, &params);
             if (!d3d)
                 return E_FAIL;
@@ -628,6 +633,15 @@ struct PlaceboBackend::State
         }
         else
         {
+            const bool scalingChanged = previous.scaling.has_value() != settings.scaling.has_value() ||
+                                        (previous.scaling && settings.scaling &&
+                                         memcmp(&*previous.scaling, &*settings.scaling, sizeof(ScalingSettings)));
+            if (!settings.rtxSuperResolution)
+                rtx.Reset();
+            else if (previous.rtxSuperResolution != settings.rtxSuperResolution ||
+                     previous.deinterlacing != settings.deinterlacing ||
+                     previous.chromaUpscaler != settings.chromaUpscaler || scalingChanged)
+                rtx.Invalidate();
             if (memcmp(&previous.tonal, &settings.tonal, sizeof(settings.tonal)) && renderer)
                 pl_renderer_flush_cache(renderer);
             if (memcmp(&oldBars, &settings.blackBars, sizeof(oldBars)))
@@ -1014,6 +1028,9 @@ struct PlaceboBackend::State
              << (sharpenState == 1   ? L"on"
                  : sharpenState == 2 ? L"bypassed"
                                      : L"off");
+        text << L"\nRTX VSR " << rtx.Status();
+        if (settings.rtxSuperResolution)
+            text << L"\nquality: NVIDIA driver; submitted " << rtx.Evaluations();
         if (settings.blackBars.enabled)
         {
             const RECT r = blackBars.detector.Bounds(description.width, description.height);
@@ -1044,6 +1061,7 @@ struct PlaceboBackend::State
 
     void Describe(const VideoFrame& frame)
     {
+        rtxKey = (uint64_t(1) << 63) | (++rtxSerial << 2);
         const auto layout = Layout(frame.format);
         description = frame;
         image = {};
@@ -1236,6 +1254,51 @@ struct PlaceboBackend::State
             target.crop.y0 += pad;
             target.crop.y1 -= pad;
         }
+
+        struct RestoreProcessed
+        {
+            pl_frame& image;
+            pl_frame* mix;
+            pl_frame original;
+            std::vector<pl_frame> originals;
+            bool active = false;
+
+            ~RestoreProcessed()
+            {
+                if (active)
+                {
+                    image = original;
+                    std::copy(originals.begin(), originals.end(), mix);
+                }
+            }
+        } processed{image, mixFrames, image};
+
+        std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
+        if (settings.rtxSuperResolution)
+        {
+            const int outW = int(std::lround(target.crop.x1 - target.crop.x0));
+            const int outH = int(std::lround(target.crop.y1 - target.crop.y0));
+            auto current = rtx.Get(d3d, context.Get(), image, rtxKey, outW, outH, options->params);
+            bool ready = bool(current);
+            if (current)
+                rtxFrames.push_back(std::move(current));
+            for (int i = 0; ready && mixing && i < mixCount; ++i)
+            {
+                auto mixed = rtx.Get(d3d, context.Get(), mixFrames[i], mixSignatures[i], outW, outH, options->params);
+                ready = bool(mixed);
+                if (mixed)
+                    rtxFrames.push_back(std::move(mixed));
+            }
+            if (ready)
+            {
+                processed.active = true;
+                processed.originals.assign(mixFrames, mixFrames + mixCount);
+                image = rtxFrames[0]->image;
+                if (mixing)
+                    for (int i = 0; i < mixCount; ++i)
+                        mixFrames[i] = rtxFrames[i + 1]->image;
+            }
+        }
         pl_color_adjustment adjustment = pl_color_adjustment_neutral;
         adjustment.saturation = settings.saturation;
         adjustment.contrast = settings.contrast;
@@ -1427,7 +1490,11 @@ struct PlaceboBackend::State
             mix.frames = frames;
             uint64_t signatures[16];
             for (int i = 0; i < mixCount; i++)
-                signatures[i] = mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL);
+                signatures[i] =
+                    mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
+                    (processed.active
+                         ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
+                         : 0);
             mix.signatures = signatures;
             mix.timestamps = mixTimes;
             mix.vsync_duration = mixDuration;
@@ -1495,6 +1562,7 @@ HRESULT PlaceboBackend::CaptureUpload(const VideoFrame& frame, const uint8_t* by
     std::lock_guard guard(s.lock);
     id = 0;
     const auto displayed = s.image;
+    const auto displayedRtxKey = s.rtxKey;
     const auto description = s.description;
     const bool valid = s.valid, mixing = s.mixing;
     HRESULT hr;
@@ -1520,6 +1588,7 @@ HRESULT PlaceboBackend::CaptureUpload(const VideoFrame& frame, const uint8_t* by
         return hr;
     }
     s.image = displayed;
+    s.rtxKey = displayedRtxKey;
     s.description = description;
     s.valid = valid;
     s.mixing = mixing;
@@ -1539,6 +1608,7 @@ HRESULT PlaceboBackend::CaptureImport(const VideoFrame& frame, ID3D11Texture2D* 
     std::lock_guard guard(s.lock);
     id = 0;
     const auto displayed = s.image;
+    const auto displayedRtxKey = s.rtxKey;
     const auto description = s.description;
     const bool valid = s.valid, mixing = s.mixing;
     HRESULT hr;
@@ -1562,6 +1632,7 @@ HRESULT PlaceboBackend::CaptureImport(const VideoFrame& frame, ID3D11Texture2D* 
         return hr;
     }
     s.image = displayed;
+    s.rtxKey = displayedRtxKey;
     s.description = description;
     s.valid = valid;
     s.mixing = mixing;
@@ -1601,6 +1672,7 @@ HRESULT PlaceboBackend::SelectField(uint64_t current, uint64_t previous, uint64_
     s.description = c.description;
     s.image.field = field;
     s.image.first_field = first;
+    s.rtxKey = current * 4 + static_cast<unsigned>(field);
     s.image.prev = &p.image;
     s.image.next = &n.image;
     s.valid = true;
@@ -2272,6 +2344,7 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
     s.history.clear();
     if (s.renderer)
         pl_renderer_flush_cache(s.renderer);
+    s.rtx.Reset();
 }
 
 HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty)
@@ -2406,6 +2479,12 @@ void PlaceboBackend::ShowStatistics(bool enabled)
 bool PlaceboBackend::StatisticsVisible() const
 {
     return state->showStatistics.load();
+}
+
+uint64_t PlaceboBackend::RtxFrames() const
+{
+    std::lock_guard guard(state->lock);
+    return state->rtx.Evaluations();
 }
 
 void PlaceboBackend::SetSourceCodec(const std::string& codec)

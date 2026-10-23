@@ -124,6 +124,12 @@ int wmain()
         Require(s.toneMapping == 1 && tone.choices[1].label == L"Spline", "Spline index");
         tone.reset();
         auto& scaler = find(L"Scaling", L"Filters", L"Image Upscaler");
+        auto& rtx = find(L"Scaling", L"RTX Video Super Resolution", L"RTX Video Super Resolution");
+        Require(rtx.headerToggle && !s.rtxSuperResolution, "RTX heading toggle defaults off");
+        rtx.set(1);
+        Require(!scaler.Enabled(), "RTX owns image upscaling");
+        rtx.reset();
+        Require(!s.rtxSuperResolution && scaler.Enabled(), "RTX reset restores normal scaler");
         bool documentedSupported = true;
         const int expectedCounts[] = {13, 11, 13, 11, 7};
         for (int role = 0; role < 5; ++role)

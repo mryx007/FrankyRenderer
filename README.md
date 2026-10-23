@@ -14,7 +14,7 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
 
-Version **1.0.3** adds separate settings and custom names for each display, NVIDIA HDR passthrough without enabling Windows HDR, and a Clipping Protection switch. It also fixes Smooth Motion cadence, HDR restoration when moving between displays, and saving display names.
+Version **1.0.4** adds NVIDIA RTX Video Super Resolution through the driver, without an additional helper process or SDK runtime files. Enable Super Resolution and choose its quality in the NVIDIA app, then switch it on under Scaling. Obsolete dialogs and unused code have also been removed, making the renderer about 12% smaller.
 
 It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
@@ -66,6 +66,7 @@ The screenshots show example settings, not recommended presets.
 - Custom filter editor with a starting filter, kernel, window, radius, clamp, blur, taper, anti-ringing, kernel/window parameters and EWA mode.
 - Global anti-ringing strength and configurable downscaling anti-aliasing behavior.
 - Smooth Motion through temporal frame mixing, with selectable and customizable frame mixer filters.
+- Optional NVIDIA RTX Video Super Resolution through the driver, without an additional NVIDIA runtime DLL or helper process. Enable Super Resolution and choose quality in the NVIDIA app or Control Panel. Processed source images are cached before Smooth Motion; subtitles and final color processing follow afterward. Supports SDR and HDR10/PQ with 8-/10-bit processing; unsupported formats and native-size/downscaled output keep normal libplacebo scaling. Statistics report the driver request, not independently confirmed AI activity. Dolby Vision, HLG, linear, rotated and alpha-bearing input use normal scaling.
 
 ### Image processing
 

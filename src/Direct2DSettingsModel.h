@@ -381,7 +381,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             D2DControl n;
             n.name = ScalingLabels[role];
             n.kind = ControlKind::Choice;
-            n.enabled = [&f] { return strcmp(f.filter, "custom") != 0; };
+            n.enabled = [&s, &f, role]
+            { return strcmp(f.filter, "custom") != 0 && (role != 0 || !s.rtxSuperResolution); };
             for (int i = 0; i < int(names.size()); i++)
                 n.choices.push_back({i, D2DWide(names[i].c_str()), D2DScalerDescription(role, names[i].c_str())});
             n.get = [&f, names]
@@ -414,16 +415,28 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DBool(s, L"Enable Smooth Motion", &s.smoothMotion));
         extra(c, 15);
         extra(c, 16);
+        auto& rtx = card(p,
+                         L"RTX Video Super Resolution",
+                         L"Enable Super Resolution in the NVIDIA app first. Quality is set there.");
+        auto rtxSwitch = D2DBool(
+            s,
+            L"RTX Video Super Resolution",
+            &s.rtxSuperResolution,
+            L"Request AI upscaling through the NVIDIA driver. Requires Super Resolution enabled in the NVIDIA app.");
+        rtxSwitch.headerToggle = true;
+        rtx.controls.push_back(std::move(rtxSwitch));
         for (int role = 0; role < 5; role++)
         {
             auto& f = s.scaling.filters[role];
             auto& e = card(p, (std::wstring(L"Custom: ") + ScalingLabels[role]).c_str());
-            auto enabled = [&f] { return !strcmp(f.filter, "custom"); };
+            auto enabled = [&s, &f, role]
+            { return !strcmp(f.filter, "custom") && (role != 0 || !s.rtxSuperResolution); };
             D2DControl toggle;
             toggle.name = L"Enable Custom Settings";
             toggle.desc = L"Use custom filter settings based on the starting filter.";
             toggle.kind = ControlKind::Toggle;
             toggle.headerToggle = true;
+            toggle.enabled = [&s, role] { return role != 0 || !s.rtxSuperResolution; };
             toggle.get = [enabled] { return enabled() ? 1.f : 0.f; };
             toggle.set = [&f](float v) { D2DSetCustomScaling(f, v != 0); };
             toggle.reset = [&f] { D2DSetCustomScaling(f, false); };

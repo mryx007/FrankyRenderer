@@ -1,4 +1,4 @@
-FrankyRenderer 1.0.3 - Windows x64
+FrankyRenderer 1.0.4 - Windows x64
 
 INSTALL
 1. Uninstall or unregister the original MPC Video Renderer first. FrankyRenderer
@@ -13,6 +13,12 @@ Keep the installed folder in its current location, including its DLLs and shader
 The DLL files are the required third-party runtime libraries with descriptive
 names. Their original names, source hashes and packaged hashes
 are listed in licenses/runtime-names.json. Keep all of these files together.
+
+OPTIONAL RTX SUPER RESOLUTION
+Enable Super Resolution and choose its quality in the NVIDIA app or Control Panel.
+Then enable RTX Video Super Resolution under Scaling in the renderer settings.
+It requires a compatible NVIDIA GPU and driver and applies when upscaling video.
+No additional RTX runtime files or helper process are installed.
 
 UNINSTALL
 Close your video player and run Uninstall.cmd from the installed folder.
@@ -33,6 +39,6 @@ Project, screenshots, documentation and renderer source:
 https://github.com/mryx007/FrankyRenderer
 
 Exact dependency sources and build recipes:
-https://github.com/mryx007/FrankyRenderer/blob/v1.0.3/docs/dependency-sources.md
+https://github.com/mryx007/FrankyRenderer/blob/v1.0.4/docs/dependency-sources.md
 
 See LICENSE, THIRD_PARTY.md and the licenses folder for the included notices.

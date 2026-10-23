@@ -1001,9 +1001,9 @@ void Direct2DHostWindow::Render()
 
         // Clean vertical gap between Title and Subtitle
         D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
-                                                currentY + (headerToggle ? 16.f : 9.f),
+                                                currentY + (headerToggle && card.subtitle.empty() ? 16.f : 9.f),
                                                 contentX + contentW - (headerToggle ? 72.f : 16.f),
-                                                currentY + (headerToggle ? 36.f : 28.f));
+                                                currentY + (headerToggle && card.subtitle.empty() ? 36.f : 28.f));
         m_pRenderTarget->DrawText(headerTitle.c_str(),
                                   (UINT32)headerTitle.length(),
                                   m_fmtCardTitle.Get(),

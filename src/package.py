@@ -84,6 +84,13 @@ def main(out=OUT):
     for name in ("LICENSE.txt", "source.json"):
         shutil.copy2(ROOT / "deps/nvapi" / name, licenses / "nvapi" / name)
 
+    # Remove files from the retired local SDK prototype when reusing a stage.
+    for name in ("VideoSuperResolution.exe", "nvngx_vsr.dll"):
+        (out / name).unlink(missing_ok=True)
+    obsolete_rtx_license = licenses / "rtx-video"
+    if obsolete_rtx_license.is_dir():
+        shutil.rmtree(obsolete_rtx_license)
+
     manifest = {
         str(p.relative_to(out)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in out.rglob("*")

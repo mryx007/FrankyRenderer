@@ -3,6 +3,7 @@ $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'PlaceboRenderer.ax'))
 $taskIds=@('{71F080AA-8661-4093-B15E-4F6903E77D0A}','{B864E92A-1BDF-4DA1-9004-CBF467DF239A}','{6B35EF45-9C5E-40B4-8EAC-DE2C5161174D}','{7D274B8B-7C98-43D7-B448-782CBA0C6A33}','{5F6FAAC4-5B83-4DBE-AB84-C04A1C5753A6}','{72EB4D7A-7D02-4080-A85E-6E65CB4223D1}','{AF0D638A-478B-43B0-81D0-E7B0FA46A3E1}','{4C64B3B7-5485-4230-AE73-84C7907E4F3B}','{10DD7ADE-F6D7-4A4D-A1E9-5D88613A4EF2}','{60585D47-776F-4B48-A357-242D8B8A3F42}','{C5B9232E-DD14-43BB-B8D9-917552C0A768}','{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}')
+$taskActiveIds=@($taskIds[0],$taskIds[1],$taskIds[-1])
 $taskManifest=Join-Path $taskRoot 'registration-backup\state.json'
 function ShowSetupMessage([string]$text,[bool]$failed=$false) {
     if($MessageFile){Set-Content -LiteralPath $MessageFile -Value $text -Encoding UTF8}
@@ -88,7 +89,7 @@ try {
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskManifest -Encoding UTF8
         try {
             Register $false
-            foreach ($id in $taskIds) {
+            foreach ($id in $taskActiveIds) {
                 if (!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id), $taskAx, [StringComparison]::OrdinalIgnoreCase)) {
                     throw "Registered path does not match: $id"
                 }

@@ -75,6 +75,7 @@ struct RenderSettings
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
     bool smoothMotion = false;
+    bool rtxSuperResolution = false;
     std::optional<ScalingSettings> scaling;
     float motionRadius = 0;
     bool iccEnabled = false, lutEnabled = false;
@@ -147,6 +148,7 @@ class PlaceboBackend
     int CacheObjects() const;
     void ShowStatistics(bool enabled);
     bool StatisticsVisible() const;
+    uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;

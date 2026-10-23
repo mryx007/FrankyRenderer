@@ -26,7 +26,9 @@ def main():
     files = [
         name
         for name in tracked
-        if Path(name).parent == Path("src") and Path(name).suffix in (".cpp", ".h")
+        if Path(name).parent == Path("src")
+        and Path(name).suffix in (".cpp", ".h")
+        and (ROOT / name).is_file()
     ]
     options = ["--dry-run", "--Werror"] if args.check else ["-i"]
     subprocess.run([formatter, "--style=file", *options, *files], cwd=ROOT, check=True)

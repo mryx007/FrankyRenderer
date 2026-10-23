@@ -128,6 +128,7 @@ int wmain(int argc, wchar_t** argv)
         PlaceboSettings legacy;
         legacy.brightness = .123f;
         legacy.smoothMotion = TRUE;
+        legacy.rtxSuperResolution = TRUE;
         legacy.hdrMode = 1;
         legacy.hdrPassthrough = TRUE;
         legacy.userShaders.shaders[0].enabled = TRUE;
@@ -144,6 +145,7 @@ int wmain(int argc, wchar_t** argv)
         Check(a.displayProfile == monitor.id && b.displayProfile == tv.id, "context is separate from values");
         a.brightness = .25f;
         a.smoothMotion = FALSE;
+        a.rtxSuperResolution = FALSE;
         a.hdrMode = 2;
         a.hdrPassthrough = FALSE;
         a.userShaders.shaders[0].enabled = FALSE;

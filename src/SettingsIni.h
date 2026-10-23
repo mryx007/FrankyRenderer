@@ -52,6 +52,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(iccPath);
     INI_FIELD(lutPath);
     INI_FIELD(adaptiveSharpen);
+    INI_FIELD(rtxSuperResolution);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
     INI_FIELD(outputLevels);

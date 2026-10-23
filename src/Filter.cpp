@@ -1579,6 +1579,11 @@ STDMETHODIMP Renderer::Flt_GetInt64(LPCSTR field, __int64* value)
 {
     if (!field || !value)
         return E_POINTER;
+    if (!strcmp(field, "placeboStatsRtxFrames"))
+    {
+        *value = backend.RtxFrames();
+        return S_OK;
+    }
     if (!strcmp(field, "placeboShaderCacheLoaded"))
     {
         *value = backend.CacheLoadedObjects();
