@@ -371,7 +371,8 @@ static bool MapDovi(const BYTE* bytes, size_t count, bool extensions, VideoFrame
         out->linear.m[i / 3][i % 3] = static_cast<float>(color.rgb_to_lms_matrix[i]);
     }
     const double coefficientScale = std::ldexp(1.0, -static_cast<int>(h.coef_log2_denom));
-    const unsigned pivotMax = (1u << h.bl_bit_depth) - 1;
+    const unsigned pivotScale = 1u << h.bl_bit_depth;
+    const unsigned pivotMax = pivotScale - 1;
     for (int c = 0; c < 3; c++)
     {
         const auto& src = in.Mapping.curves[c];
@@ -383,7 +384,9 @@ static bool MapDovi(const BYTE* bytes, size_t count, bool extensions, VideoFrame
         {
             if (src.pivots[p] > pivotMax || (p && src.pivots[p] <= src.pivots[p - 1]))
                 return false;
-            dst.pivots[p] = static_cast<float>(double(src.pivots[p]) / pivotMax);
+            // libplacebo 7.387 uses ETSI code units: divide by 2^bit_depth,
+            // matching pl_map_avdovi_metadata(), rather than the maximum code.
+            dst.pivots[p] = static_cast<float>(double(src.pivots[p]) / pivotScale);
         }
         const auto convert = [&](int64_t value, float& dest)
         {

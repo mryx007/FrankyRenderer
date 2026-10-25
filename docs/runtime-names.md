@@ -6,7 +6,7 @@ through `src/runtime_names.py` when assembling the installation package.
 
 | Upstream filename | Packaged filename |
 |---|---|
-| libplacebo-360.dll | VideoProcessing.dll |
+| libplacebo-387.dll | VideoProcessing.dll |
 | libdovi.dll | DolbyVision.dll |
 | liblcms2-2.dll | ColorManagement.dll |
 | libshaderc_shared.dll | ShaderCompiler.dll |
@@ -32,4 +32,5 @@ no old runtime filenames remain in the installation output.
 `licenses/runtime-names.json` records the original and packaged filenames and
 SHA-256 hashes of every included binary, including the renderer. Dependency
 versions, official sources and license notices remain documented separately in
-`licenses/packages.lock.json`, `THIRD_PARTY.md` and the dependency license folder.
+`licenses/packages.lock.json`, `licenses/libplacebo-source.lock.json`,
+`THIRD_PARTY.md` and the dependency license folder.

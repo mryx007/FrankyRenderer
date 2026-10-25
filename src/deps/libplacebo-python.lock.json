@@ -1,0 +1,26 @@
+[
+  {
+    "name": "glad2",
+    "version": "2.0.8",
+    "filename": "glad2-2.0.8-py3-none-any.whl",
+    "sha256": "cfe84018233043554710aa747d0bf4be55015154f8bcd451765d1984bcc9d70b"
+  },
+  {
+    "name": "jinja2",
+    "version": "3.1.6",
+    "filename": "jinja2-3.1.6-py3-none-any.whl",
+    "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+  },
+  {
+    "name": "markupsafe",
+    "version": "3.0.4",
+    "filename": "markupsafe-3.0.4-cp314-cp314-win_amd64.whl",
+    "sha256": "c1bc67752d5f21013cfe430df4062441714eab79f65a6a05e01505957e9c35fe"
+  },
+  {
+    "name": "meson",
+    "version": "1.12.1",
+    "filename": "meson-1.12.1-py3-none-any.whl",
+    "sha256": "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02"
+  }
+]

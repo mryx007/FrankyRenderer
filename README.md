@@ -14,7 +14,9 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
 
-Version **1.0.4** adds NVIDIA RTX Video Super Resolution through the driver, without an additional helper process or SDK runtime files. Enable Super Resolution and choose its quality in the NVIDIA app, then switch it on under Scaling. Obsolete dialogs and unused code have also been removed, making the renderer about 12% smaller.
+Version **1.0.5** updates libplacebo to development snapshot **7.387.0**, including upstream fixes and revised HDR tone mapping. Smooth Motion timing and Dolby Vision metadata handling have been adapted to the updated library. Optional image analysis adds waveform, histogram, RGB parade, false color and a grayscale test ramp.
+
+NVIDIA RTX Video Super Resolution works through the driver, without an additional helper process or SDK runtime files. Enable Super Resolution and choose its quality in the NVIDIA app, then switch it on under Scaling.
 
 It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
@@ -164,7 +166,7 @@ The renderer source and build instructions are available in this repository. [De
 
 ## Build
 
-Requirements: Windows x64, Visual Studio 2022 or later with Desktop development with C++, a Windows SDK containing `fxc.exe`, and **Python 3.14+**.
+Requirements: Windows x64, Visual Studio 2022 or later with Desktop development with C++, a Windows SDK containing `fxc.exe`, and **CPython 3.14 x64**.
 
 From the repository root:
 
@@ -176,7 +178,7 @@ python src/prepare_sdk.py
 python src/package.py
 ```
 
-Dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
+Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `1532bf6893f7e6dbe1b1943488180d125a421f6f` (7.387.0 development), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
 

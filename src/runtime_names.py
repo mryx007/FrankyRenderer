@@ -8,7 +8,7 @@ import pefile
 
 
 RUNTIME_NAMES = {
-    "libplacebo-360.dll": "VideoProcessing.dll",
+    "libplacebo-387.dll": "VideoProcessing.dll",
     "libdovi.dll": "DolbyVision.dll",
     "liblcms2-2.dll": "ColorManagement.dll",
     "libshaderc_shared.dll": "ShaderCompiler.dll",
@@ -20,7 +20,7 @@ RUNTIME_NAMES = {
 }
 OBSOLETE_RUNTIME_NAMES = frozenset(RUNTIME_NAMES) | {
     "franky." + name.lower() for name in RUNTIME_NAMES.values()
-}
+} | {"libplacebo-360.dll"}
 
 
 def aligned(value, alignment):

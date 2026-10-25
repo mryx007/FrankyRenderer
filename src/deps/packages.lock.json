@@ -1,10 +1,5 @@
 [
   {
-    "package": "mingw-w64-ucrt-x86_64-libplacebo",
-    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libplacebo-7.360.1-2-any.pkg.tar.zst",
-    "sha256": "ef183923c29475320d75a3b06fff5729172fcfdcefc45b660ed28c41107d4de4"
-  },
-  {
     "package": "mingw-w64-ucrt-x86_64-lcms2",
     "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-lcms2-2.19.1-1-any.pkg.tar.zst",
     "sha256": "144518cc80679f7bcc1d31b5dd7ec92e8737a1d8162014e30c8c1c181f47a156"

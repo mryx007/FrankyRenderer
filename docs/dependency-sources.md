@@ -1,10 +1,10 @@
 # Runtime dependency sources
 
-These official MSYS2 source packages correspond to the runtime libraries bundled with FrankyRenderer 1.0.4. Each package contains its build recipe and packaged source inputs. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums. The [runtime names](runtime-names.md) document the DLL names used in the installation package.
+libplacebo is built from pinned upstream source; the remaining runtime libraries use official MSYS2 source packages. The local libplacebo build recipe is `src/build_libplacebo.py`, with source, compiler and Python tool locks under `src/deps/libplacebo-*.lock.json`. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums. The [runtime names](runtime-names.md) document the DLL names used in the installation package.
 
-- [mingw-w64-libplacebo-7.360.1-2.src.tar.zst](https://repo.msys2.org/mingw/sources/mingw-w64-libplacebo-7.360.1-2.src.tar.zst)
+- [libplacebo 7.387.0 development, commit 1532bf6893f7](https://codeload.github.com/haasn/libplacebo/tar.gz/1532bf6893f7e6dbe1b1943488180d125a421f6f)
 
-  SHA-256: `2abe10f1d16981407e8108c5ccb2e13cbeb28ce62f702a4caf1165b732e85bf0`
+  SHA-256: `eade56be7214cba317d4ecf0c858adea4deee2d987adcf6fcd039e40c9d649ee`
 
 - [mingw-w64-lcms2-2.19.1-1.src.tar.zst](https://repo.msys2.org/mingw/sources/mingw-w64-lcms2-2.19.1-1.src.tar.zst)
 

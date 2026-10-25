@@ -76,6 +76,7 @@ struct RenderSettings
     float sharpenStrength = .5f;
     bool smoothMotion = false;
     bool rtxSuperResolution = false;
+    bool imageAnalysis = false;
     std::optional<ScalingSettings> scaling;
     float motionRadius = 0;
     bool iccEnabled = false, lutEnabled = false;

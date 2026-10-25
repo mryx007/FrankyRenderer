@@ -943,6 +943,11 @@ int wmain(int argc, wchar_t** argv)
         if (!StatisticsKey::Handle(key, true, false, false, keyWindow) ||
             PeekMessageW(&posted, keyWindow, StatisticsKey::ToggleMessage, StatisticsKey::ToggleMessage, PM_REMOVE))
             exit(103);
+        key.message = WM_SYSKEYDOWN;
+        key.wParam = 'A';
+        key.lParam = 0;
+        if (StatisticsKey::Handle(key, true, true, false, keyWindow) || key.message != WM_SYSKEYDOWN)
+            exit(264);
         StatisticsKey::Detach(keyWindow);
         if (!StatisticsKey::windows.empty() || !StatisticsKey::hooks.empty())
             exit(104);
@@ -1549,6 +1554,42 @@ int wmain(int argc, wchar_t** argv)
         return 7;
     }
     printf("PASS DirectShow subtitle callback device, composed pixels and detach\n");
+    {
+        PlaceboSettings original;
+        Check(config->GetSettings(&original), "analysis baseline settings");
+        bool statsBefore = false;
+        Check(hostConfig->Flt_GetBool("statsEnable", &statsBefore), "statistics before image analysis");
+        std::vector<BYTE> baseline(640 * 360 * 4), analyzed(baseline.size()), restored(baseline.size());
+        Check(config->ReadPixels(640, 360, baseline.data(), baseline.size()), "analysis baseline pixels");
+        auto enabled = original;
+        enabled.imageAnalysis = TRUE;
+        Check(config->SetSettings(&enabled), "enable complete image analysis");
+        for (int i = 0; i < 35; ++i)
+        {
+            Check(config->ReadPixels(640, 360, analyzed.data(), analyzed.size()), "live image scopes");
+            Sleep(20);
+        }
+        size_t changed = 0;
+        for (int y = 16; y < 260; ++y)
+            for (int x = 270; x < 624; ++x)
+            {
+                const size_t offset = (y * 640 + x) * 4;
+                changed += memcmp(analyzed.data() + offset, baseline.data() + offset, 3) != 0;
+            }
+        Check(changed > 500 ? S_OK : E_FAIL, "all-scopes panel appears in GPU output");
+        bool shades[256] = {};
+        for (int x = 0; x < 640; ++x)
+            shades[analyzed[(345 * 640 + x) * 4]] = true;
+        Check(std::count(std::begin(shades), std::end(shades), true) > 40 ? S_OK : E_FAIL,
+              "test strip is an actual output gradient inside the fitted video");
+        bool statsAfter = false;
+        Check(hostConfig->Flt_GetBool("statsEnable", &statsAfter), "statistics during image analysis");
+        Check(statsBefore == statsAfter ? S_OK : E_FAIL, "Ctrl+J state remains independent");
+        Check(config->SetSettings(&original), "disable image analysis");
+        Check(config->ReadPixels(640, 360, restored.data(), restored.size()), "original video after analysis");
+        Check(restored == baseline ? S_OK : E_FAIL, "disabling scopes and ramp restores exact video pixels");
+        puts("PASS four image scopes, output gray ramp, independent Ctrl+J and exact restoration when disabled");
+    }
     if (flushRaceTest)
     {
         if (!hardware)
@@ -1677,6 +1718,7 @@ int wmain(int argc, wchar_t** argv)
     persist.perceptualStrength = .6f;
     persist.softclipKnee = .65f;
     persist.showClipping = TRUE;
+    persist.imageAnalysis = TRUE;
     persist.maximumFramesInFlight = 7;
     persist.toneMapping = 2;
     persist.hdrNits = 600;
@@ -1734,7 +1776,7 @@ int wmain(int argc, wchar_t** argv)
         readback.maximumFramesInFlight != 7 || readback.kneeAdaptation != .7f || readback.splineContrast != .8f ||
         readback.kneeMinimum != .2f || readback.kneeMaximum != .9f || readback.blackCutoff != 2 ||
         readback.perceptualStrength != .6f || readback.softclipKnee != .65f || !readback.showClipping ||
-        readback.adaptiveSharpen != TRUE || readback.sharpenStrength != .75f ||
+        !readback.imageAnalysis || readback.adaptiveSharpen != TRUE || readback.sharpenStrength != .75f ||
         readback.smoothMotion != persist.smoothMotion || readback.saturation != 0.f || readback.toneMapping != 2 ||
         readback.hdrNits != 600 || readback.antiringing != .6f || readback.upscalerBlur != .9f ||
         readback.downscalerBlur != 1.2f || readback.debandIterations != 3 || readback.debandThreshold != 5 ||

@@ -17,6 +17,19 @@ int wmain()
         for (const auto& info : ShaderCatalog)
             parameters += info.count;
         Require(pages.size() == 8, "all sections");
+        bool analysis = false;
+        for (auto& card : pages[0].cards)
+            for (auto& c : card.controls)
+                if (c.name == L"Image Analysis")
+                {
+                    Require(!s.imageAnalysis, "analysis starts disabled");
+                    c.set(1);
+                    Require(s.imageAnalysis, "one toggle enables complete image analysis");
+                    c.reset();
+                    Require(!s.imageAnalysis, "analysis resets disabled");
+                    analysis = true;
+                }
+        Require(analysis, "single analysis switch exists");
         Require(MatchesFilter(L"HDR Highlights Exposure", L"  exposure HDR "),
                 "search ignores case and outer spaces; all words match");
         Require(!MatchesFilter(L"HDR Highlights Exposure", L"exposure Gamma"), "search excludes missing terms");

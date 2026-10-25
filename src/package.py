@@ -77,6 +77,7 @@ def main(out=OUT):
         dirs_exist_ok=True,
     )
     shutil.copy2(ROOT / "deps/packages.lock.json", licenses / "packages.lock.json")
+    shutil.copy2(ROOT / "deps/libplacebo-source.lock.json", licenses / "libplacebo-source.lock.json")
     shutil.copy2(ROOT.parent / "LICENSE", out / "LICENSE")
     shutil.copy2(ROOT.parent / "THIRD_PARTY.md", out / "THIRD_PARTY.md")
 

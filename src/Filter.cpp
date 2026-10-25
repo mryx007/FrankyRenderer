@@ -6,6 +6,7 @@
 #include "SideDataAllocator.h"
 #include "MotionTiming.h"
 #include "StatisticsKey.h"
+#include "ImageAnalysis.h"
 #include "StatisticsRasterizer.h"
 #include "VideoBackground.h"
 #include "MonitorChange.h"
@@ -343,18 +344,27 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
             owner->ToggleStatistics();
         return 0;
     }
+    if (msg == WM_TIMER && w == ImageAnalysis::Timer)
+    {
+        KillTimer(hwnd, ImageAnalysis::Timer);
+        FILTER_STATE state = State_Stopped;
+        owner->GetState(0, &state);
+        if (state == State_Paused && owner->settings.imageAnalysis)
+            owner->Repaint();
+        return 0;
+    }
     if (msg == StatisticsKey::ToggleMessage)
     {
         owner->ToggleStatistics();
         return 0;
     }
-    if (msg == StatisticsRasterizer::ReadyMessage)
+    if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
     {
         FILTER_STATE state = State_Stopped;
         owner->GetState(0, &state);
         // Running playback consumes the bitmap on its next scheduled frame.
         // Only a paused image needs an additional repaint after text is ready.
-        if (state == State_Paused && owner->backend.StatisticsVisible())
+        if (state == State_Paused && (owner->backend.StatisticsVisible() || owner->settings.imageAnalysis))
             owner->Repaint();
         return 0;
     }

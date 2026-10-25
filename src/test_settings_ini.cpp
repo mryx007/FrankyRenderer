@@ -27,6 +27,7 @@ int wmain()
     {
         PlaceboSettings original;
         original.rtxSuperResolution = TRUE;
+        original.imageAnalysis = TRUE;
         original.clippingProtection = TRUE;
         auto legacy = SettingsIni::Parse(
             "[FrankyRenderer]\nFormatVersion=1\n[Renderer]\nhdrMode=0\nhdrPassthrough=1\nautoHdr=1\n");
@@ -54,6 +55,7 @@ int wmain()
         wcscpy_s(original.lutPath, L"C:\\LUTs\\a=b;# test.cube");
         const auto text = SettingsIni::Serialize(original);
         auto restored = SettingsIni::Parse(text);
+        Require(restored.imageAnalysis, "Image analysis flag was lost");
         Require(SettingsIni::Serialize(restored) == text, "Backup round-trip changed values");
         Require(restored.saturation == original.saturation, "Float precision was lost");
         Require(restored.debandThreshold == -1 && restored.scaling.antiringing == -1, "Default sentinel was lost");

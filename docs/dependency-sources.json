@@ -1,9 +1,9 @@
 [
   {
-    "file": "mingw-w64-libplacebo-7.360.1-2.src.tar.zst",
-    "url": "https://repo.msys2.org/mingw/sources/mingw-w64-libplacebo-7.360.1-2.src.tar.zst",
-    "sha256": "2abe10f1d16981407e8108c5ccb2e13cbeb28ce62f702a4caf1165b732e85bf0",
-    "size": 864193
+    "file": "libplacebo-1532bf6893f7e6dbe1b1943488180d125a421f6f.tar.gz",
+    "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/1532bf6893f7e6dbe1b1943488180d125a421f6f",
+    "sha256": "eade56be7214cba317d4ecf0c858adea4deee2d987adcf6fcd039e40c9d649ee",
+    "size": 973699
   },
   {
     "file": "mingw-w64-lcms2-2.19.1-1.src.tar.zst",

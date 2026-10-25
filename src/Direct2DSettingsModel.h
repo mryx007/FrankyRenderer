@@ -322,6 +322,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                        16,
                                        1,
                                        L"0 retains the device default. More buffering increases latency."));
+        auto& analysis = card(p, L"Image Analysis");
+        auto scope = D2DBool(s, L"Image Analysis", &s.imageAnalysis);
+        scope.desc =
+            L"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal.";
+        analysis.controls.push_back(std::move(scope));
         auto& b = card(p, L"Background & Transparency");
         for (int i = 0; i < 14; i++)
             extra(b, i);

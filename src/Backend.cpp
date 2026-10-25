@@ -8,6 +8,7 @@
 #include "SettingsChoices.h"
 #include "HdrTuning.h"
 #include "StatisticsBitmap.h"
+#include "ImageAnalysis.h"
 #include "PresentationMeasurement.h"
 #include "GpuMeasurement.h"
 #include "MotionTiming.h"
@@ -75,7 +76,7 @@ struct PlaceboBackend::State
     RtxScaling rtx;
     pl_frame mixFrames[16] = {};
     uint64_t mixSignatures[16] = {};
-    float mixTimes[16] = {}, mixDuration = 0;
+    double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
     bool mixing = false;
     pl_deinterlace_params deinterlace = pl_deinterlace_default_params;
@@ -139,6 +140,7 @@ struct PlaceboBackend::State
     float sharpenCached = -1;
     std::atomic<int> sharpenState = 0;
     StatisticsBitmap statisticsBitmap;
+    ImageAnalysis imageAnalysis;
     std::atomic<bool> showStatistics = false;
     std::string sourceCodec;
     double statisticsFps = 0;
@@ -373,6 +375,7 @@ struct PlaceboBackend::State
         presentCpu.Reset();
         presentation.Reset(false);
         statisticsBitmap.Reset();
+        imageAnalysis.Reset();
         statisticsText.clear();
         statisticsUpdated = 0;
         RestoreLatency();
@@ -633,6 +636,12 @@ struct PlaceboBackend::State
         }
         else
         {
+            if (previous.imageAnalysis || settings.imageAnalysis)
+            {
+                imageAnalysis.Reset();
+                if (renderer)
+                    pl_renderer_flush_cache(renderer);
+            }
             const bool scalingChanged = previous.scaling.has_value() != settings.scaling.has_value() ||
                                         (previous.scaling && settings.scaling &&
                                          memcmp(&*previous.scaling, &*settings.scaling, sizeof(ScalingSettings)));
@@ -1336,7 +1345,7 @@ struct PlaceboBackend::State
                 sharpenState = 2;
         }
 
-        const pl_hook* hooks[ShaderCount + 2] = {};
+        const pl_hook* hooks[ShaderCount + 4] = {};
         int hookIds[ShaderCount] = {};
         int users = 0, count = 0;
         if (params.num_hooks)
@@ -1344,6 +1353,25 @@ struct PlaceboBackend::State
         tonalHook.settings = settings.tonal;
         if (ActiveTonal(settings.tonal) && pl_color_space_is_hdr(&image.color))
             hooks[count++] = &tonalHook.hook;
+        const pl_hook* analysisHooks[2] = {};
+        int analysisCount = 0;
+        if (settings.imageAnalysis)
+        {
+            // Include geometry so resizing/cropping a paused frame refreshes
+            // its sample without repeatedly analysing the same image.
+            uint64_t sampleKey = rtxKey;
+            for (int v : {target.planes[0].texture->params.w,
+                          target.planes[0].texture->params.h,
+                          int(target.crop.x0),
+                          int(target.crop.y0),
+                          int(target.crop.x1),
+                          int(target.crop.y1)})
+                sampleKey = (sampleKey ^ uint64_t(v)) * 0x100000001b3ULL;
+            imageAnalysis.Begin(d3d, context.Get(), window, sampleKey, mixing && settings.smoothMotion && mixCount > 1);
+            analysisHooks[analysisCount++] = imageAnalysis.Observer();
+            if (const auto* ramp = imageAnalysis.Ramp(target.color, target.repr))
+                analysisHooks[analysisCount++] = ramp;
+        }
         const int builtins = count;
         userShaderMessage.clear();
         for (int id : settings.userShaders.order)
@@ -1368,6 +1396,10 @@ struct PlaceboBackend::State
             else
                 userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
         }
+        // Observe after user filters; inject the test ramp last, immediately
+        // before libplacebo's output dithering and target overlays.
+        for (int i = 0; i < analysisCount; ++i)
+            hooks[count++] = analysisHooks[i];
         params.hooks = hooks;
         params.num_hooks = count;
         auto renderWithRecovery = [&](auto&& draw)
@@ -1379,8 +1411,10 @@ struct PlaceboBackend::State
             for (int n = 0; n < users; n++)
                 userFailed[hookIds[n]] = true;
             userShaderMessage = L"custom shaders bypassed after a render error";
+            for (int i = 0; i < analysisCount; ++i)
+                hooks[builtins + i] = analysisHooks[i];
             params.hooks = hooks;
-            params.num_hooks = builtins;
+            params.num_hooks = builtins + analysisCount;
             pl_renderer_flush_cache(renderer);
             return draw();
         };
@@ -1429,8 +1463,8 @@ struct PlaceboBackend::State
         }
         actualTone = dynamicMap.tone_mapping_function ? dynamicMap.tone_mapping_function->name : "n/a";
         actualTarget = target.color.hdr.max_luma;
-        pl_overlay overlays[2] = {};
-        pl_overlay_part parts[2] = {};
+        pl_overlay overlays[3] = {};
+        pl_overlay_part parts[3] = {};
         auto& overlayInfo = overlays[0];
         auto& part = parts[0];
 
@@ -1474,6 +1508,18 @@ struct PlaceboBackend::State
             {
                 const int index = target.num_overlays;
                 statisticsBitmap.Describe(overlays[index], parts[index]);
+                target.overlays = overlays;
+                target.num_overlays = index + 1;
+            }
+        }
+        if (settings.imageAnalysis)
+        {
+            const int index = target.num_overlays;
+            if (imageAnalysis.Describe(overlays[index],
+                                       parts[index],
+                                       target.planes[0].texture->params.w,
+                                       target.planes[0].texture->params.h))
+            {
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
             }
@@ -1768,7 +1814,7 @@ HRESULT PlaceboBackend::SelectTemporalMix(const std::vector<TemporalFrame>& fram
             image.next = &nextFrame->second->image;
             s.mixFrames[s.mixCount] = image;
             s.mixSignatures[s.mixCount] = f.id * 4 + static_cast<unsigned>(image.field);
-            s.mixTimes[s.mixCount++] = static_cast<float>(time);
+            s.mixTimes[s.mixCount++] = time;
         }
     }
     if (!s.mixCount)
@@ -2336,6 +2382,7 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
     s.presentCpu.Reset();
     s.renderGpu.Reset();
     s.statisticsText.clear();
+    s.imageAnalysis.Reset();
     if (preserveBlackBars)
         s.blackBars.Discontinuity();
     else

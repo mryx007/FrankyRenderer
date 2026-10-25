@@ -1,0 +1,117 @@
+[
+  {
+    "package": "mingw-w64-ucrt-x86_64-xxhash",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-xxhash-0.8.4-1-any.pkg.tar.zst",
+    "sha256": "a22d39e85edd6f0b4c7fe34733d28f17d49715f6c8dea67c142161c02bfbbde2"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-vulkan-headers",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-vulkan-headers-1~1.4.363.0-1-any.pkg.tar.zst",
+    "sha256": "be602b2657cace531316e78b1eda4087e8f7f84ebb877f08fba198a2db06406a"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-ninja",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-ninja-1.13.2-1-any.pkg.tar.zst",
+    "sha256": "514685563a84a6ebddbbeee7bbafae5f3994e363c49364fc4507fabcaa049f2b"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-cc-libs",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-cc-libs-16.2.0-6-any.pkg.tar.zst",
+    "sha256": "d8fff9e62443168bcda8ce746697243519c4f090ea607357ce94feac0bd10a50"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-libstdc++",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libstdc++-16.2.0-6-any.pkg.tar.zst",
+    "sha256": "33c5e58a85a538cf843a8672991cce591f0231d66da3b66a57629712d64be17f"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-tzdata",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-tzdata-2026e-1-any.pkg.tar.zst",
+    "sha256": "f1809089f8ed5cec858ae8584289172896eb921be1e78ba583555f74e9015428"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-libwinpthread",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libwinpthread-14.0.0.r532.gdbbc8e99d-1-any.pkg.tar.zst",
+    "sha256": "caab3068ad48dbefd39d88f7ec39778d1ce452f8e7dda0670344462b598d86ec"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-libgcc",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgcc-16.2.0-6-any.pkg.tar.zst",
+    "sha256": "80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-pkgconf",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-pkgconf-1~3.0.10-1-any.pkg.tar.zst",
+    "sha256": "c234b9f8280f1e931efe8e4350085f544e4a6081ffcbd2caa3e81834e72e4688"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-zstd",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-zstd-1.5.7-2-any.pkg.tar.zst",
+    "sha256": "dbdb8427280046a2b41697780aa4c52983b708082b0da4755951dc3bea96ca89"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-zlib",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-zlib-1.3.2-3-any.pkg.tar.zst",
+    "sha256": "130e6ef04c654fc2150a177600aa5ed0035087665a893479d2c85ba7485d5704"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-winpthreads",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-winpthreads-14.0.0.r532.gdbbc8e99d-1-any.pkg.tar.zst",
+    "sha256": "d38f611692e8505555a78653c4eafd029bb48964e549eb7f04f37eed7bc0359a"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-crt",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-crt-14.0.0.r532.gdbbc8e99d-1-any.pkg.tar.zst",
+    "sha256": "cd9e7bec62a5cf145fb5e12710c51cd9d818ec9ff4e80b358ccf4c225d7055f0"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-headers",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-headers-14.0.0.r532.gdbbc8e99d-1-any.pkg.tar.zst",
+    "sha256": "1cab853b7fad6850ac96ffab0c2922f54a8b3e4ad3432c615b6b52f0a2424b20"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-windows-default-manifest",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-windows-default-manifest-20260815-1-any.pkg.tar.zst",
+    "sha256": "b39039f754a600cc0dec49df7d675a59a3cb2b63691d91b4ae60735ee7075eca"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-mpc",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-mpc-1.4.1-1-any.pkg.tar.zst",
+    "sha256": "f06556e811c711ce91609484e31d358e4f495811ba29813bf2284a3b236d82ce"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-mpfr",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-mpfr-4.2.2-3-any.pkg.tar.zst",
+    "sha256": "6b70a275d2ec75c70aa50a236c218e6b7ee9a5ab4c6d52cb0b580267b7d200fe"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-gmp",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gmp-6.3.0-2-any.pkg.tar.zst",
+    "sha256": "e82a75968a556484a50084578238a84eb60fb93e34986fd6695c537975bd39ea"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-isl",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-isl-0.28-1-any.pkg.tar.zst",
+    "sha256": "8594e01a253d5a72646c586cf5a1626c1b1c2be7c30060fe67abd9bebe3fe223"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-binutils",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-binutils-2.47-4-any.pkg.tar.zst",
+    "sha256": "c18a40b871bfddb5da030f015003479ca85625afde1cb89f7313945e6151397d"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-gettext-runtime",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst",
+    "sha256": "ba693dda4ac375af76ce481ff3a6e7481286546cc7dc6d56c7021dae34084157"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-libiconv",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libiconv-1.19-1-any.pkg.tar.zst",
+    "sha256": "9a500f38c2b91808741c62fae746b3e9110b33a1ecf5c30fa0c66dbedddf7e16"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-gcc",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gcc-16.2.0-6-any.pkg.tar.zst",
+    "sha256": "0290e91f5a9a8a3699bcea6221a899403bb9bd5d6f7dbd98c883d74e2ef36338"
+  }
+]

@@ -54,6 +54,7 @@ struct PlaceboSettings
     int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
+    BOOL imageAnalysis = FALSE;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -77,7 +78,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("C9822A7B-4551-4F9E-B390-44A81CC648A7")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("7ADBF525-A6F1-41E1-AC45-278B3ACCEB9E")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;

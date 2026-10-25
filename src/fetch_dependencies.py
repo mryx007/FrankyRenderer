@@ -18,4 +18,6 @@ def main():
         destination=ROOT/'deps/msys';destination.mkdir(parents=True,exist_ok=True)
         with tarfile.open(cache,'r:zst') as archive:archive.extractall(destination,filter='data')
         print('Verified',item['package'],flush=True)
+    from build_libplacebo import main as build_libplacebo
+    build_libplacebo()
 if __name__=='__main__':main()

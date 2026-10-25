@@ -190,6 +190,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"ShowClipping", settings.showClipping);
     Bool(key, L"AdaptiveSharpen", settings.adaptiveSharpen);
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
+    Bool(key, L"ImageAnalysis", settings.imageAnalysis);
     Float(key, L"SharpenStrength", settings.sharpenStrength);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
     Bool(key, L"PeakDetect", settings.peakDetect);
@@ -342,6 +343,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (s.maximumFramesInFlight < 0 || s.maximumFramesInFlight > 16)
         return E_INVALIDARG;
+    if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
+        return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE))
         return E_INVALIDARG;
     if (!ValidHdrTuning(s))
@@ -422,6 +425,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.showClipping = !!s.showClipping;
     out.adaptiveSharpen = !!s.adaptiveSharpen;
     out.rtxSuperResolution = !!s.rtxSuperResolution;
+    out.imageAnalysis = !!s.imageAnalysis;
     out.sharpenStrength = s.sharpenStrength;
     out.peakDetect = !!s.peakDetect;
     out.allowDelayedPeak = !!s.allowDelayedPeak;
@@ -510,6 +514,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"ShowClipping", REG_DWORD, &s.showClipping, 4);
     save(L"AdaptiveSharpen", REG_DWORD, &s.adaptiveSharpen, 4);
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
+    save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
     save(L"SharpenStrength", REG_BINARY, &s.sharpenStrength, 4);
     save(L"PeakDetect", REG_DWORD, &s.peakDetect, 4);
     save(L"PeakSmoothing", REG_BINARY, &s.peakSmoothing, 4);
