@@ -16,6 +16,6 @@ Existing original MPC Video Renderer and madVR registrations are left untouched.
 
 Keep the runtime DLLs and shaders beside FrankyRenderer.ax. Source code,
 configuration options and license information are provided at:
-https://github.com/mryx007/FrankyRenderer/tree/codex/native-clsid-preview
+https://github.com/mryx007/FrankyRenderer/tree/native-clsid-preview
 
 See LICENSE, THIRD_PARTY.md and the licenses folder for dependency notices.
