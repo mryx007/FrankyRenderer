@@ -14,7 +14,9 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 FrankyRenderer works with **PotPlayer and MPC-BE** (tested with MPC-BE 1.9.2 x64). Version **1.0.2** fixes a playback startup failure in MPC-BE on fresh Windows installations. The project's own C++ code is consistently formatted for readability.
 
-Version **1.0.5** updates libplacebo to development snapshot **7.387.0**, including upstream fixes and revised HDR tone mapping. Smooth Motion timing and Dolby Vision metadata handling have been adapted to the updated library. Optional image analysis adds waveform, histogram, RGB parade, false color and a grayscale test ramp.
+Version **1.0.6** fixes screenshot saving during playback and while paused. Native MPC-HC integration is pending review in [PR #4356](https://github.com/clsid2/mpc-hc/pull/4356) and is not yet available in official MPC-HC releases.
+
+FrankyRenderer uses libplacebo development snapshot **7.387.0**, including upstream fixes and revised HDR tone mapping. Smooth Motion timing and Dolby Vision metadata handling have been adapted to the updated library. Optional image analysis adds waveform, histogram, RGB parade, false color and a grayscale test ramp.
 
 NVIDIA RTX Video Super Resolution works through the driver, without an additional helper process or SDK runtime files. Enable Super Resolution and choose its quality in the NVIDIA app, then switch it on under Scaling.
 

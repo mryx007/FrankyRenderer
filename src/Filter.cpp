@@ -476,6 +476,18 @@ STDMETHODIMP VideoControl::GetPreferredAspectRatio(long* width, long* height)
     return *width > 0 && *height > 0 ? S_OK : E_UNEXPECTED;
 }
 
+STDMETHODIMP VideoControl::GetCurrentImage(long* size, long* image)
+{
+    if (!size)
+        return E_POINTER;
+    CAutoLock guard(m_pInterfaceLock);
+    if (!m_pPin || !m_pPin->IsConnected())
+        return VFW_E_NOT_CONNECTED;
+    // Both calls describe our converted BGRA DIB, not the decoder's YUV
+    // format. MPC-HC also requests images without pausing playback first.
+    return GetStaticImage(size, image);
+}
+
 HRESULT VideoControl::GetStaticImage(long* size, long* image)
 {
     if (!size)
@@ -483,7 +495,10 @@ HRESULT VideoControl::GetStaticImage(long* size, long* image)
     const int width = owner->format.frame.width, height = owner->format.frame.height;
     if (width <= 0 || height <= 0)
         return VFW_E_NOT_CONNECTED;
-    const long required = sizeof(BITMAPINFOHEADER) + width * height * 4;
+    const uint64_t bytes = sizeof(BITMAPINFOHEADER) + uint64_t(width) * height * 4;
+    if (bytes > LONG_MAX)
+        return E_OUTOFMEMORY;
+    const long required = static_cast<long>(bytes);
     if (!image)
     {
         *size = required;

@@ -83,6 +83,7 @@ class VideoControl final : public CBaseControlVideo
     HRESULT SetDefaultSourceRect() override;
     HRESULT SetSourceRect(RECT*) override;
     HRESULT GetSourceRect(RECT*) override;
+    STDMETHODIMP GetCurrentImage(long*, long*) override;
     HRESULT GetStaticImage(long*, long*) override;
     VIDEOINFOHEADER* GetVideoFormat() override;
     STDMETHODIMP GetPreferredAspectRatio(long*, long*) override;

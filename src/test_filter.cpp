@@ -851,6 +851,10 @@ static int TestVideoWindowFocus(FactoryGetter getter)
 
 int wmain(int argc, wchar_t** argv)
 {
+    bool snapshotTest = false;
+    for (int i = 1; i < argc; i++)
+        if (wcscmp(argv[i], L"--snapshot") == 0)
+            snapshotTest = true;
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--mpcbe-owner") == 0)
             mpcbeOwnerTest = true;
@@ -1336,6 +1340,45 @@ int wmain(int argc, wchar_t** argv)
         return 15;
     }
     ComPtr<IPlaceboDiagnostics> diagnosticConfig;
+    if (snapshotTest)
+    {
+        ComPtr<IBasicVideo> video;
+        Check(renderer.As(&video), "snapshot interface");
+        long size = 0;
+        Check(video->GetCurrentImage(&size, nullptr), "snapshot size for P010 input");
+        const long expected = sizeof(BITMAPINFOHEADER) + 64 * 64 * 4;
+        if (size != expected)
+            exit(254);
+        std::vector<long> image((size + sizeof(long) - 1) / sizeof(long));
+        long insufficient = size - 1;
+        if (video->GetCurrentImage(&insufficient, image.data()) != E_OUTOFMEMORY || insufficient != expected)
+            exit(255);
+        Check(video->GetCurrentImage(&size, image.data()), "snapshot while playing");
+        const auto* header = reinterpret_cast<const BITMAPINFOHEADER*>(image.data());
+        if (header->biWidth != 64 || header->biHeight != -64 || header->biBitCount != 32 ||
+            header->biCompression != BI_RGB || header->biSizeImage != 64 * 64 * 4)
+            exit(256);
+        const auto* pixels = reinterpret_cast<const BYTE*>(image.data()) + sizeof(BITMAPINFOHEADER);
+        bool nonblack = false;
+        for (int i = 0; i < 64 * 64; ++i)
+        {
+            nonblack |= pixels[i * 4] || pixels[i * 4 + 1] || pixels[i * 4 + 2];
+            if (pixels[i * 4 + 3] != 255)
+                exit(257);
+        }
+        if (!nonblack)
+            exit(258);
+        Check(control->Pause(), "pause for snapshot");
+        OAFilterState paused;
+        Check(control->GetState(5000, &paused), "snapshot paused state");
+        if (paused != State_Paused)
+            exit(259);
+        Check(video->GetCurrentImage(&size, image.data()), "snapshot while paused");
+        Check(control->Run(), "resume after snapshot");
+        puts("PASS snapshot: P010 input to BGRA DIB, exact buffer size, playing and paused");
+        Check(control->Stop(), "stop snapshot test");
+        return 0;
+    }
     Check(renderer.As(&diagnosticConfig), "diagnostics interface");
     PlaceboDiagnostics actual;
     Check(diagnosticConfig->GetDiagnostics(&actual), "diagnostics snapshot");
@@ -1493,7 +1536,17 @@ int wmain(int argc, wchar_t** argv)
         for (size_t i = 0; i < color.size(); i++)
             restored += std::abs(int(color[i]) - int(shaderPixels[i]));
         if (restored > 10)
+        {
+            printf("FAIL shader disable restoration: difference=%lld first RGB=%u,%u,%u restored=%u,%u,%u\n",
+                   restored,
+                   color[0],
+                   color[1],
+                   color[2],
+                   shaderPixels[0],
+                   shaderPixels[1],
+                   shaderPixels[2]);
             exit(212);
+        }
         printf("PASS packaged custom shader GPU effect %lld and disable restores pixels\n", delta);
     }
     settings.saturation = 0.f;
