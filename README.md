@@ -8,8 +8,6 @@ So I thought: Why not take the core functionality of MPC Video Renderer, build m
 
 And that's exactly what I did.
 
-Image processing is powered by [libplacebo](https://code.videolan.org/videolan/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
-
 I decided to call my renderer Franky, inspired by Frankenstein, who pieced together different body parts to create something entirely new. Since my renderer is also built by combining different components into something new, I thought the name was quite fitting.
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
@@ -193,3 +191,5 @@ The formatting script uses clang-format 21.1.8 and only processes tracked C++ fi
 ## License and credits
 
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.
+
+Image processing is powered by [libplacebo](https://code.videolan.org/videolan/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
