@@ -12,6 +12,8 @@ I decided to call my renderer Franky, inspired by Frankenstein, who pieced toget
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
+Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
+
 It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
