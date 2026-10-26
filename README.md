@@ -172,7 +172,7 @@ python src/prepare_sdk.py
 python src/package.py
 ```
 
-Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `1532bf6893f7e6dbe1b1943488180d125a421f6f` (7.387.0 development), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
+Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
 

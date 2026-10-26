@@ -108,7 +108,9 @@ def main():
                        GIT_CEILING_DIRECTORIES=str(WORK),
                        PKG_CONFIG=str(prefix / "bin" / "pkgconf.exe"),
                        PKG_CONFIG_PATH=str(prefix / "lib" / "pkgconfig"))
-    build = work / "compiled"
+    # Meson build directories are tied to their original source directory.
+    # Keep separate directories when updating the pinned upstream commit.
+    build = work / ("compiled-" + source["commit"][:12])
     command = [sys.executable, "-m", "mesonbuild.mesonmain", "setup"]
     if (build / "meson-private" / "coredata.dat").exists():
         command.append("--reconfigure")

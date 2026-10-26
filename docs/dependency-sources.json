@@ -1,9 +1,9 @@
 [
   {
-    "file": "libplacebo-1532bf6893f7e6dbe1b1943488180d125a421f6f.tar.gz",
-    "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/1532bf6893f7e6dbe1b1943488180d125a421f6f",
-    "sha256": "eade56be7214cba317d4ecf0c858adea4deee2d987adcf6fcd039e40c9d649ee",
-    "size": 973699
+    "file": "libplacebo-275f7dea27924cdd34ab2e6c20e448b6bc4fab65.tar.gz",
+    "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/275f7dea27924cdd34ab2e6c20e448b6bc4fab65",
+    "sha256": "adbca47395410ada01414bc527e0103c716b9b758be857464c40e5ff0ec695be",
+    "size": 973669
   },
   {
     "file": "mingw-w64-lcms2-2.19.1-1.src.tar.zst",

@@ -1,8 +1,10 @@
-# libplacebo development update
+# libplacebo 7.387.0 release update
 
-FrankyRenderer now builds libplacebo **7.387.0 development**, pinned to upstream
-commit `1532bf6893f7e6dbe1b1943488180d125a421f6f` (24 October 2026).
-This is a development snapshot, not a newly published stable libplacebo release.
+FrankyRenderer now builds the official libplacebo **v7.387.0** release, pinned to
+upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (released 25 October 2026).
+The release adds one Vulkan pipeline-stage synchronization fix to the previously
+used snapshot `1532bf6893f7e6dbe1b1943488180d125a421f6f`. The API remains 387.
+Our renderer-side screenshot correction is retained.
 
 ## Integration
 
@@ -21,7 +23,20 @@ This is a development snapshot, not a newly published stable libplacebo release.
 - Existing renderer settings and the Ctrl+J shortcut are retained. Newly added
   libplacebo options do not automatically create additional menu controls.
 
-## Validation on 25 October 2026
+## Release validation on 26 October 2026
+
+- Official release source archive and SHA-256 verified; no upstream source changes.
+- Upstream tests: **16 passed, 0 failed, 1 skipped** (surfaceless OpenGL).
+  D3D11 and Vulkan GPU tests passed.
+- Renderer rebuilt against the matching release headers and runtime.
+- Extracted 1.0.6 replacement ZIP passed CPU and GPU screenshot checks while
+  playing and paused, CPU/GPU DirectShow regression tests, Smooth Motion,
+  concurrent flush, reconnect and settings round trips.
+- Bwdif TFF and Yadif BFF both passed exact end-of-stream draining.
+- The package still contains 62 installation files and retains the renderer-side
+  screenshot fix. This update does not enable additional menu features or FEL decoding.
+
+## Previous snapshot validation on 25 October 2026
 
 - Upstream tests: **16 passed, 0 failed, 1 skipped**. The skipped test is
   surfaceless OpenGL; D3D11 and Vulkan GPU tests passed.

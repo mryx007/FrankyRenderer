@@ -2,9 +2,9 @@
 
 libplacebo is built from pinned upstream source; the remaining runtime libraries use official MSYS2 source packages. The local libplacebo build recipe is `src/build_libplacebo.py`, with source, compiler and Python tool locks under `src/deps/libplacebo-*.lock.json`. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums. The [runtime names](runtime-names.md) document the DLL names used in the installation package.
 
-- [libplacebo 7.387.0 development, commit 1532bf6893f7](https://codeload.github.com/haasn/libplacebo/tar.gz/1532bf6893f7e6dbe1b1943488180d125a421f6f)
+- [libplacebo 7.387.0 release, commit 275f7dea2792](https://codeload.github.com/haasn/libplacebo/tar.gz/275f7dea27924cdd34ab2e6c20e448b6bc4fab65)
 
-  SHA-256: `eade56be7214cba317d4ecf0c858adea4deee2d987adcf6fcd039e40c9d649ee`
+  SHA-256: `adbca47395410ada01414bc527e0103c716b9b758be857464c40e5ff0ec695be`
 
 - [mingw-w64-lcms2-2.19.1-1.src.tar.zst](https://repo.msys2.org/mingw/sources/mingw-w64-lcms2-2.19.1-1.src.tar.zst)
 
