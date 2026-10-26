@@ -54,7 +54,7 @@ def main():
     if not executable.is_file():
         parser.error(f'Build {options.test}.exe before running it.')
     if options.package:
-        forwarded += ['--dll', str(ROOT.parent / 'dist' / 'PlaceboRenderer.ax')]
+        forwarded += ['--dll', str(ROOT.parent / 'dist' / 'FrankyRenderer.ax')]
     ctypes.windll.kernel32.SetErrorMode(0x8003)
     key = r'Software\PlaceboRendererTest_' + uuid.uuid4().hex
     env = os.environ.copy()

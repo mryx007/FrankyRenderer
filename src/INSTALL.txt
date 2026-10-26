@@ -1,44 +1,21 @@
-FrankyRenderer 1.0.6 - Windows x64
+FrankyRenderer 1.0.7-native-clsid.1 - Windows x64
 
-INSTALL
-1. Uninstall or unregister the original MPC Video Renderer first. FrankyRenderer
-   currently uses the same registration for player compatibility. You do not
-   need to uninstall MPC-HC or MPC-BE themselves.
-2. Extract the complete ZIP to a permanent folder and close your video player.
-3. Run Install.cmd and approve the Windows administrator prompt.
-4. In PotPlayer or MPC-BE, select "MPC Video Renderer" in the video output
-   settings. The loaded filter identifies itself as FrankyRenderer.
+DEVELOPER TEST BUILD - NATIVE CLSID INTEGRATION
+For player developers testing native FrankyRenderer integration.
+Not intended for general use.
 
-Keep the installed folder in its current location, including its DLLs and shaders.
-The DLL files are the required third-party runtime libraries with descriptive
-names. Their original names, source hashes and packaged hashes
-are listed in licenses/runtime-names.json. Keep all of these files together.
+Renderer: FrankyRenderer.ax
+Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}
+The MPC Video Renderer compatibility CLSID is not registered or exposed.
+A separate internal CLSID is used for the renderer settings page.
 
-OPTIONAL RTX SUPER RESOLUTION
-Enable Super Resolution and choose its quality in the NVIDIA app or Control Panel.
-Then enable RTX Video Super Resolution under Scaling in the renderer settings.
-It requires a compatible NVIDIA GPU and driver and applies when upscaling video.
-No additional RTX runtime files or helper process are installed.
+Requires a player build with explicit FrankyRenderer integration. Unmodified
+player releases may not offer this renderer. Tested on Windows 11 x64.
+The registration tools refuse to overwrite another FrankyRenderer installation.
+Existing original MPC Video Renderer and madVR registrations are left untouched.
 
-UNINSTALL
-Close your video player and run Uninstall.cmd from the installed folder.
+Keep the runtime DLLs and shaders beside FrankyRenderer.ax. Source code,
+configuration options and license information are provided at:
+https://github.com/mryx007/FrankyRenderer/tree/codex/native-clsid-preview
 
-SETTINGS BACKUP
-Use Export in the settings menu to save an INI file. Use Import to restore it.
-The backup includes all saved display profiles, disconnected devices and names.
-Older single-profile INI files are imported into the selected display.
-External ICC and LUT files must be kept separately; the INI stores their paths.
-
-ABOUT THE SCRIPTS
-Install.cmd and Uninstall.cmd start setup.ps1. It checks existing registrations,
-backs up the affected entries and registers or unregisters the renderer. It
-refuses to overwrite a registration pointing to another renderer installation.
-
-SOURCE AND LICENSES
-Project, screenshots, documentation and renderer source:
-https://github.com/mryx007/FrankyRenderer
-
-Exact dependency sources and build recipes:
-https://github.com/mryx007/FrankyRenderer/blob/v1.0.6/docs/dependency-sources.md
-
-See LICENSE, THIRD_PARTY.md and the licenses folder for the included notices.
+See LICENSE, THIRD_PARTY.md and the licenses folder for dependency notices.

@@ -15,11 +15,10 @@ static const AMOVIESETUP_MEDIATYPE types[] = {{&MEDIATYPE_Video, &GUID_NULL}};
 static const AMOVIESETUP_PIN pins[] = {
     {const_cast<LPWSTR>(L"Input"), FALSE, FALSE, FALSE, FALSE, &CLSID_NULL, nullptr, 1, types}};
 static const AMOVIESETUP_FILTER filter = {
-    &CLSID_MPCCompatible, L"FrankyRenderer", MERIT_DO_NOT_USE, 1, pins, CLSID_LegacyAmFilterCategory};
+    &CLSID_PlaceboRenderer, L"FrankyRenderer", MERIT_DO_NOT_USE, 1, pins, CLSID_LegacyAmFilterCategory};
 CFactoryTemplate g_Templates[] = {
     {L"FrankyRenderer Settings", &CLSID_FrankyDirect2DPage, Create<Direct2DSettingsPage>, nullptr, nullptr},
-    {L"FrankyRenderer", &CLSID_MPCCompatible, Create<Renderer>, nullptr, &filter},
-    {L"FrankyRenderer", &CLSID_PlaceboRenderer, Create<Renderer>, nullptr, nullptr}};
+    {L"FrankyRenderer", &CLSID_PlaceboRenderer, Create<Renderer>, nullptr, &filter}};
 
 int g_cTemplates = static_cast<int>(std::size(g_Templates));
 
@@ -34,7 +33,7 @@ static HRESULT RemoveObsoleteFilterCategory()
     HRESULT hr = CoCreateInstance(CLSID_FilterMapper2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&mapper));
     if (SUCCEEDED(hr))
     {
-        hr = mapper->UnregisterFilter(&GUID_NULL, nullptr, CLSID_MPCCompatible);
+        hr = mapper->UnregisterFilter(&GUID_NULL, nullptr, CLSID_PlaceboRenderer);
         mapper->Release();
         if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
             hr = S_OK;

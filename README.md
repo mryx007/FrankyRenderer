@@ -1,5 +1,7 @@
 # FrankyRenderer
 
+> **Developer test build — native CLSID integration.** For player developers testing native FrankyRenderer integration. Not intended for general use.
+
 I've been using the madVR renderer for many years now. Unfortunately, updates have become quite rare, with what feels like only one update per year.
 
 Meanwhile, MPC Video Renderer is still being actively developed, and libplacebo, which also continues to receive regular updates, has built a very good reputation for its image processing capabilities.
@@ -12,7 +14,7 @@ I decided to call my renderer Franky, inspired by Frankenstein, who pieced toget
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
-It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
+This developer preview uses only FrankyRenderer's dedicated renderer CLSID: `{B864E92A-1BDF-4DA1-9004-CBF467DF239A}`. The MPC Video Renderer compatibility registration is not provided. Native player integration is required.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
@@ -127,24 +129,22 @@ The screenshots show example settings, not recommended presets.
 
 Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision support relies on metadata provided by the decoder; this is not Dolby Vision HDMI tunneling or FEL reconstruction.
 
-## PotPlayer and MPC-BE installation
+## Developer integration build
 
-> **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer and MPC-BE compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but these players do not yet offer a separate FrankyRenderer selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
+This preview is for native player integration testing on Windows x64, tested on Windows 11.
+It contains `FrankyRenderer.ax`, runtime libraries, shaders and registration tools.
+It requires a player build that explicitly loads FrankyRenderer's dedicated CLSID.
+It may not appear in the renderer selection of unmodified player releases.
 
-Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts, a short INSTALL.txt guide and license notices; no compilation is required to test a release.
+The original MPC Video Renderer can remain registered separately. Another
+FrankyRenderer installation using the same dedicated CLSID cannot be registered
+alongside this preview. Registration tools refuse to overwrite another installation.
 
-Runtime DLLs use descriptive names such as `VideoProcessing.dll` and `ColorManagement.dll`. See [runtime names](docs/runtime-names.md) for the upstream libraries; the package also records original names and binary hashes in `licenses/runtime-names.json`.
-
-For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
-
-1. Keep the extracted package directory at a permanent location and close PotPlayer and MPC-BE.
-2. Run `Install.cmd` inside the extracted package (or `dist` for a local build), or run `.\setup.ps1 -Action Install` from that directory. Windows requests administrator permission for COM registration.
-3. In PotPlayer or MPC-BE, select **MPC Video Renderer** under Video Renderer. This is the player's existing menu label; the loaded filter is FrankyRenderer.
-4. Open the filter's settings to configure it.
+Build locally with `python src/package.py`; the complete package is written to `dist`.
 
 Use **Export** in the settings menu to save all display profiles in one INI backup and **Import** to restore them. Disconnected displays, custom names, all menu settings and shader parameters/order are included. Existing profiles absent from the backup are kept. Older single-profile INI files are imported into the selected display. External ICC and LUT files are referenced by path and must be kept separately.
 
-FrankyRenderer currently uses the MPC Video Renderer CLSID for player discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
+This preview never registers under the MPC Video Renderer CLSID. Existing MPCVR and madVR registrations are separate.
 
 Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.
 
@@ -172,7 +172,7 @@ python src/prepare_sdk.py
 python src/package.py
 ```
 
-Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
+Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/FrankyRenderer.ax` and its adjacent runtime DLLs and shaders.
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
 

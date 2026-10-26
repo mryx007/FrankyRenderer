@@ -27,7 +27,7 @@ def main(out=OUT):
         for p in SOURCE.iterdir()
         if p.suffix.lower() in (".dll", ".ax")
     }
-    pending = ["placeborenderer.ax"]
+    pending = ["frankyrenderer.ax"]
     seen = set()
     runtime_manifest = []
     while pending:

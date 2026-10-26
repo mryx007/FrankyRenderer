@@ -38,7 +38,7 @@ inline void Trace(const char* format, ...)
         return;
     std::wstring path(name, length);
     path.resize(path.find_last_of(L"\\") + 1);
-    path += L"PlaceboRenderer.log";
+    path += L"FrankyRenderer.log";
     FILE* file = nullptr;
     if (_wfopen_s(&file, path.c_str(), L"ab") || !file)
         return;

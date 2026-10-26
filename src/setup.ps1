@@ -1,9 +1,9 @@
 param([ValidateSet('Install','Remove','Check')][string]$Action='Install',[switch]$Quiet,[string]$MessageFile)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
-$taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'PlaceboRenderer.ax'))
-$taskIds=@('{71F080AA-8661-4093-B15E-4F6903E77D0A}','{B864E92A-1BDF-4DA1-9004-CBF467DF239A}','{6B35EF45-9C5E-40B4-8EAC-DE2C5161174D}','{7D274B8B-7C98-43D7-B448-782CBA0C6A33}','{5F6FAAC4-5B83-4DBE-AB84-C04A1C5753A6}','{72EB4D7A-7D02-4080-A85E-6E65CB4223D1}','{AF0D638A-478B-43B0-81D0-E7B0FA46A3E1}','{4C64B3B7-5485-4230-AE73-84C7907E4F3B}','{10DD7ADE-F6D7-4A4D-A1E9-5D88613A4EF2}','{60585D47-776F-4B48-A357-242D8B8A3F42}','{C5B9232E-DD14-43BB-B8D9-917552C0A768}','{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}')
-$taskActiveIds=@($taskIds[0],$taskIds[1],$taskIds[-1])
+$taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'FrankyRenderer.ax'))
+$taskIds=@('{B864E92A-1BDF-4DA1-9004-CBF467DF239A}','{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}')
+$taskActiveIds=$taskIds
 $taskManifest=Join-Path $taskRoot 'registration-backup\state.json'
 function ShowSetupMessage([string]$text,[bool]$failed=$false) {
     if($MessageFile){Set-Content -LiteralPath $MessageFile -Value $text -Encoding UTF8}
@@ -14,6 +14,13 @@ function RegisteredPath([string]$id,[string]$hive='HKEY_LOCAL_MACHINE') {
     $key="Registry::$hive\SOFTWARE\Classes\CLSID\$id\InprocServer32"
     if(Test-Path -LiteralPath $key){return (Get-Item -LiteralPath $key).GetValue('')}
     return $null
+}
+function ReadInstallationState {
+    $state=Get-Content -LiteralPath $taskManifest -Raw | ConvertFrom-Json
+    if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The registration backup belongs to another renderer installation.'
+    }
+    return $state
 }
 function AssertOwnership {
     foreach($id in $taskIds){foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){
@@ -56,11 +63,10 @@ try {
         } finally {Remove-Item -LiteralPath $taskMessagePath -ErrorAction SilentlyContinue}
     }
     # A running player can retain the old DLL even after registration changes.
-    $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64,mpc-be64 -ErrorAction SilentlyContinue
-    if($taskPlayers){throw 'Please close PotPlayer and MPC-BE first. No changes were made.'}
+    $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64,mpc-be64,mpc-hc64 -ErrorAction SilentlyContinue
+    if($taskPlayers){throw 'Please close PotPlayer, MPC-BE and MPC-HC first. No changes were made.'}
     if(Test-Path -LiteralPath $taskManifest){
-        $state=Get-Content -LiteralPath $taskManifest -Raw | ConvertFrom-Json
-        if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)){throw 'The registration backup belongs to another directory.'}
+        $state=ReadInstallationState
     } elseif($Action -eq 'Remove') {throw 'No installation backup was found. No changes were made.'}
     else {
         if(RegisteredPath $taskIds[0]){throw 'The renderer is already registered, but its backup is missing. No changes were made.'}
@@ -100,7 +106,7 @@ try {
             }
         }
         catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
-        $message='Installed. Start PotPlayer or MPC-BE normally and select "MPC Video Renderer" under Video Renderer. The active filter is named "FrankyRenderer". Keep this directory in its permanent location.'
+        $message='Developer test build registered under the dedicated FrankyRenderer CLSID. Native player integration is required; the MPC Video Renderer registration is unchanged.'
     } else {Register $true;RestoreBackup $state;$message='Renderer removed. Your video player can now use another renderer.'}
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
     ShowSetupMessage $message

@@ -20,7 +20,7 @@ RUNTIME_NAMES = {
 }
 OBSOLETE_RUNTIME_NAMES = frozenset(RUNTIME_NAMES) | {
     "franky." + name.lower() for name in RUNTIME_NAMES.values()
-} | {"libplacebo-360.dll"}
+} | {"libplacebo-360.dll", "placeborenderer.ax"}
 
 
 def aligned(value, alignment):

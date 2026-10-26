@@ -332,7 +332,7 @@ int wmain(int argc, wchar_t** argv)
     GetModuleFileNameW(nullptr, exe, 32768);
     std::wstring path = exe;
     path.resize(path.find_last_of(L'\\') + 1);
-    path += L"PlaceboRenderer.ax";
+    path += L"FrankyRenderer.ax";
     for (int repeat = 0; repeat < 3; repeat++)
     {
         HMODULE dll =

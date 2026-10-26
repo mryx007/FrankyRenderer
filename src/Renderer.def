@@ -1,4 +1,4 @@
-LIBRARY PlaceboRenderer.ax
+LIBRARY FrankyRenderer.ax
 EXPORTS
  DllGetClassObject PRIVATE
  DllCanUnloadNow PRIVATE

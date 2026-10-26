@@ -905,7 +905,7 @@ int wmain(int argc, wchar_t** argv)
     GetModuleFileNameW(nullptr, executable, 32768);
     std::wstring directory = executable;
     directory.resize(directory.find_last_of(L"\\") + 1);
-    std::wstring dllPath = directory + L"PlaceboRenderer.ax";
+    std::wstring dllPath = directory + L"FrankyRenderer.ax";
     for (int i = 1; i + 1 < argc; i++)
         if (wcscmp(argv[i], L"--dll") == 0)
             dllPath = argv[++i];
@@ -923,6 +923,12 @@ int wmain(int argc, wchar_t** argv)
             return TestVideoWindowFocus(getter);
     ComPtr<IClassFactory> factory;
     Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "factory");
+    {
+        ComPtr<IClassFactory> compatibility;
+        if (getter(CLSID_MPCCompatible, IID_PPV_ARGS(&compatibility)) != CLASS_E_CLASSNOTAVAILABLE || compatibility)
+            exit(265);
+        puts("PASS dedicated renderer factory available; MPCVR compatibility factory unavailable");
+    }
     {
         HWND keyWindow = CreateWindowExW(
             0, L"STATIC", L"Internal shortcut test", WS_POPUP, 0, 0, 100, 100, nullptr, nullptr, g_hInst, nullptr);
