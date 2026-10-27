@@ -138,6 +138,10 @@ class PlaceboBackend
 #endif
     bool PaintLoadingBackground(HDC dc);
     void SetGeometry(const RECT& source, const RECT& target);
+    HRESULT SetRotation(int degrees);
+    int Rotation() const;
+    void SetFlip(bool mirror);
+    bool Flip() const;
     HRESULT
     RenderOffscreen(int width, int height, std::vector<uint8_t>& rgba, bool hdrTarget = false, int textureDepth = 8);
     void Flush(bool preserveBlackBars = true);

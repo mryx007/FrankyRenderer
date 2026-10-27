@@ -272,6 +272,8 @@ struct PlaceboBackend::State
     RenderSettings settings;
     VideoFrame description;
     RECT source = {}, targetRect = {};
+    int rotation = 0;
+    bool flip = false;
     bool valid = false;
     std::string error;
 
@@ -1178,19 +1180,28 @@ struct PlaceboBackend::State
             pl_frame* mix;
             pl_rect2df main;
             pl_rect2df saved[16];
+            pl_rotation rotation;
+            pl_rotation rotations[16];
             int count;
 
-            RestoreCrops(pl_frame& i, pl_frame* m, int n) : image(i), mix(m), main(i.crop), count(n)
+            RestoreCrops(pl_frame& i, pl_frame* m, int n) : image(i), mix(m), main(i.crop), rotation(i.rotation), count(n)
             {
                 for (int k = 0; k < n; k++)
+                {
                     saved[k] = m[k].crop;
+                    rotations[k] = m[k].rotation;
+                }
             }
 
             ~RestoreCrops()
             {
                 image.crop = main;
+                image.rotation = rotation;
                 for (int k = 0; k < count; k++)
+                {
                     mix[k].crop = saved[k];
+                    mix[k].rotation = rotations[k];
+                }
             }
         } restore(image, mixFrames, mixCount);
 
@@ -1242,9 +1253,11 @@ struct PlaceboBackend::State
         const float originalAspect = description.aspectX > 0 && description.aspectY > 0
                                          ? static_cast<float>(description.aspectX) / description.aspectY
                                          : static_cast<float>(description.width) / description.height;
-        const float aspect = cropBars ? originalAspect * ((image.crop.x1 - image.crop.x0) / description.width) /
+        float aspect = cropBars ? originalAspect * ((image.crop.x1 - image.crop.x0) / description.width) /
                                             ((image.crop.y1 - image.crop.y0) / description.height)
                                       : originalAspect;
+        if (rotation % 180)
+            aspect = 1.f / aspect;
         // With automatic crop, fit the active image into the complete output;
         // the player's old destination can still include encoded letterboxing.
         if (autoZoom)
@@ -1285,8 +1298,10 @@ struct PlaceboBackend::State
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         if (settings.rtxSuperResolution)
         {
-            const int outW = int(std::lround(target.crop.x1 - target.crop.x0));
-            const int outH = int(std::lround(target.crop.y1 - target.crop.y0));
+            int outW = int(std::lround(target.crop.x1 - target.crop.x0));
+            int outH = int(std::lround(target.crop.y1 - target.crop.y0));
+            if (rotation % 180)
+                std::swap(outW, outH);
             auto current = rtx.Get(d3d, context.Get(), image, rtxKey, outW, outH, options->params);
             bool ready = bool(current);
             if (current)
@@ -1308,6 +1323,17 @@ struct PlaceboBackend::State
                         mixFrames[i] = rtxFrames[i + 1]->image;
             }
         }
+        // Apply after preprocessing, to the main image and every temporal sample.
+        // MPC-HC's SetFlip convention mirrors the source horizontally.
+        auto transform = [&](pl_frame& frame)
+        {
+            frame.rotation = static_cast<pl_rotation>(rotation / 90);
+            if (flip)
+                std::swap(frame.crop.x0, frame.crop.x1);
+        };
+        transform(image);
+        for (int i = 0; i < mixCount; ++i)
+            transform(mixFrames[i]);
         pl_color_adjustment adjustment = pl_color_adjustment_neutral;
         adjustment.saturation = settings.saturation;
         adjustment.contrast = settings.contrast;
@@ -1365,7 +1391,7 @@ struct PlaceboBackend::State
                           int(target.crop.x0),
                           int(target.crop.y0),
                           int(target.crop.x1),
-                          int(target.crop.y1)})
+                          int(target.crop.y1), rotation, int(flip)})
                 sampleKey = (sampleKey ^ uint64_t(v)) * 0x100000001b3ULL;
             imageAnalysis.Begin(d3d, context.Get(), window, sampleKey, mixing && settings.smoothMotion && mixCount > 1);
             analysisHooks[analysisCount++] = imageAnalysis.Observer();
@@ -1538,6 +1564,7 @@ struct PlaceboBackend::State
             for (int i = 0; i < mixCount; i++)
                 signatures[i] =
                     mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
+                    (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -2486,6 +2513,33 @@ void PlaceboBackend::SetGeometry(const RECT& source, const RECT& target)
             for (auto& f : s.mixFrames)
                 f.crop = s.image.crop;
     }
+}
+
+HRESULT PlaceboBackend::SetRotation(int degrees)
+{
+    if (degrees < 0 || degrees >= 360 || degrees % 90)
+        return E_INVALIDARG;
+    std::lock_guard guard(state->lock);
+    state->rotation = degrees;
+    return S_OK;
+}
+
+int PlaceboBackend::Rotation() const
+{
+    std::lock_guard guard(state->lock);
+    return state->rotation;
+}
+
+void PlaceboBackend::SetFlip(bool mirror)
+{
+    std::lock_guard guard(state->lock);
+    state->flip = mirror;
+}
+
+bool PlaceboBackend::Flip() const
+{
+    std::lock_guard guard(state->lock);
+    return state->flip;
 }
 
 ID3D11Device* PlaceboBackend::Device() const

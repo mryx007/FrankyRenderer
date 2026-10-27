@@ -1602,7 +1602,7 @@ STDMETHODIMP Renderer::Flt_GetBool(LPCSTR field, bool* value)
     }
     if (!strcmp(field, "flip"))
     {
-        *value = false;
+        *value = backend.Flip();
         return S_OK;
     }
     return E_INVALIDARG;
@@ -1620,7 +1620,7 @@ STDMETHODIMP Renderer::Flt_GetInt(LPCSTR field, int* value)
     }
     if (!strcmp(field, "rotation"))
     {
-        *value = 0;
+        *value = backend.Rotation();
         return S_OK;
     }
     if (!strcmp(field, "playbackState"))
@@ -1733,6 +1733,13 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
     if (!field)
         return E_POINTER;
     Trace("Host Flt_SetBool %s=%d", field, value);
+    if (!strcmp(field, "flip"))
+    {
+        backend.SetFlip(value);
+        if (window && window->WindowExists())
+            PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
+        return S_OK;
+    }
     if (!strcmp(field, "statsEnable"))
     {
         backend.ShowStatistics(value);
@@ -1747,4 +1754,16 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
         return S_OK;
     }
     return E_INVALIDARG;
+}
+
+STDMETHODIMP Renderer::Flt_SetInt(LPCSTR field, int value)
+{
+    if (!field)
+        return E_POINTER;
+    if (strcmp(field, "rotation"))
+        return E_INVALIDARG;
+    const HRESULT hr = backend.SetRotation(value);
+    if (SUCCEEDED(hr) && window && window->WindowExists())
+        PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
+    return hr;
 }

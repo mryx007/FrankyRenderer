@@ -1,4 +1,4 @@
-FrankyRenderer 1.0.7-native-clsid.1 - Windows x64
+FrankyRenderer 1.0.8-native-clsid.1 - Windows x64
 
 DEVELOPER TEST BUILD - NATIVE CLSID INTEGRATION
 For player developers testing native FrankyRenderer integration.

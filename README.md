@@ -2,6 +2,8 @@
 
 > **Developer test build — native CLSID integration.** For player developers testing native FrankyRenderer integration. Not intended for general use.
 
+Developer preview **1.0.8-native-clsid.1** fixes player rotation and mirroring commands having no effect. Rotated video preserves its aspect ratio, including with Smooth Motion. Run `src/build_transform_tests.cmd` after building to check GPU output and the renderer interface.
+
 I've been using the madVR renderer for many years now. Unfortunately, updates have become quite rare, with what feels like only one update per year.
 
 Meanwhile, MPC Video Renderer is still being actively developed, and libplacebo, which also continues to receive regular updates, has built a very good reputation for its image processing capabilities.
