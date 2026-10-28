@@ -1,3 +1,4 @@
+#include "DolbyVision/Transport.h"
 #include "SourceCodec.h"
 // DirectShow pin and state management use the MPC-distributed BaseClasses.
 // The D3D11 decoder interface follows MPC Source/VideoRendererInputPin.cpp.
@@ -10,6 +11,7 @@
 #include "StatisticsRasterizer.h"
 #include "VideoBackground.h"
 #include "MonitorChange.h"
+#include "ResizeGesture.h"
 #include <wrl/client.h>
 #include <dxgi1_2.h>
 #include <vector>
@@ -98,6 +100,8 @@ STDMETHODIMP DecoderPin::ActivateD3D11Decoding(ID3D11Device* device, ID3D11Devic
     if (contextDevice.Get() != device)
         return E_INVALIDARG;
     HRESULT hr = owner->backend.SetDevice(device, mutex);
+    if (SUCCEEDED(hr))
+        hr = owner->dv.SetDevice(device, mutex);
     nativeDecoder = SUCCEEDED(hr);
     Trace("D3D11 decoder activation result=%08lX", static_cast<unsigned long>(hr));
     return hr;
@@ -111,6 +115,11 @@ HRESULT DecoderPin::BreakConnect()
         nativeDecoder = false;
     Trace("Input disconnect completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
+}
+
+UINT DecoderPin::GetD3D11TextureBindFlags()
+{
+    return owner->dv.Active() ? D3D11_BIND_SHADER_RESOURCE : 0;
 }
 
 UINT DecoderPin::GetD3D11AdapterIndex()
@@ -143,10 +152,12 @@ STDMETHODIMP DecoderPin::BeginFlush()
     // Release a Receive waiting for its presentation time before joining the
     // whole temporal-input operation. Never wait on receiveLock with the base
     // interface/render locks held: the source may need those locks to return.
+    owner->dv.Cancel();
     HRESULT hr = CRendererInputPin::BeginFlush();
     if (FAILED(hr))
         return hr;
     CAutoLock receive(&owner->receiveLock);
+    owner->dv.ResetTimeline();
     CAutoLock render(&owner->m_RendererLock);
     owner->ResetFields();
     return hr;
@@ -155,6 +166,8 @@ STDMETHODIMP DecoderPin::BeginFlush()
 STDMETHODIMP DecoderPin::NewSegment(REFERENCE_TIME start, REFERENCE_TIME stop, double rate)
 {
     CAutoLock receive(&owner->receiveLock);
+    if (owner->dv.Active() && rate != 1.0)
+        return E_INVALIDARG;
     owner->NewSegment(start);
     return CRendererInputPin::NewSegment(start, stop, rate);
 }
@@ -181,15 +194,98 @@ LPTSTR VideoWindow::GetClassWindowStyles(DWORD* cls, DWORD* style, DWORD* extra)
     return const_cast<LPTSTR>(TEXT("PlaceboRendererVideoWindow"));
 }
 
+VideoWindow::~VideoWindow()
+{
+    DoneWithWindow();
+}
+
+DWORD WINAPI VideoWindow::WindowThread(void* context)
+{
+    auto& self = *static_cast<VideoWindow*>(context);
+    // A new thread can inherit its creator's wait cursor. Initialize its own
+    // queue from the currently displayed cursor before attaching to the host.
+    CURSORINFO cursor = {sizeof(cursor)};
+    if (GetCursorInfo(&cursor))
+        SetCursor((cursor.flags & CURSOR_SHOWING) ? cursor.hCursor : nullptr);
+    self.prepared = self.PrepareOnThread();
+    SetEvent(self.ready);
+    if (SUCCEEDED(self.prepared))
+    {
+        MSG message;
+        while (GetMessageW(&message, nullptr, 0, 0) > 0)
+        {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+    self.CBaseWindow::DoneWithWindow();
+    return 0;
+}
+
 HRESULT VideoWindow::PrepareWindow()
 {
     if (!m_hwndOwner || !IsWindow(m_hwndOwner))
         return VFW_E_WRONG_STATE;
+    if (WindowExists())
+        return S_OK;
+    DoneWithWindow();
+    ready = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (!ready)
+        return HRESULT_FROM_WIN32(GetLastError());
+    thread = CreateThread(nullptr, 0, WindowThread, this, 0, &threadId);
+    if (!thread)
+    {
+        const auto error = GetLastError();
+        CloseHandle(ready);
+        ready = nullptr;
+        return HRESULT_FROM_WIN32(error);
+    }
+    const DWORD waited = WaitDispatchingMessages(ready, INFINITE);
+    CloseHandle(ready);
+    ready = nullptr;
+    if (waited != WAIT_OBJECT_0)
+        return E_FAIL;
+    const HRESULT result = prepared;
+    if (FAILED(result))
+        DoneWithWindow();
+    return result;
+}
+
+HRESULT VideoWindow::PrepareOnThread()
+{
     // A player can destroy its parent before releasing this COM instance.
     // Clear the dead HWND/DC state before creating a new child for a new owner.
     if (GetWindowHWND() && !WindowExists())
         CBaseWindow::DoneWithWindow();
-    return CBaseWindow::PrepareWindow(m_hwndOwner);
+    const bool creating = !WindowExists();
+    HRESULT hr = CBaseWindow::PrepareWindow(m_hwndOwner);
+    if (FAILED(hr) || !creating)
+        return hr;
+    // Pause may show the child before the player supplies its first placement.
+    // Replace the base class's 320x240 default while the child is still hidden.
+    RECT client = {};
+    if (!GetClientRect(m_hwndOwner, &client) ||
+        !SetWindowPos(GetWindowHWND(), nullptr, 0, 0, client.right, client.bottom, SWP_NOACTIVATE | SWP_NOZORDER))
+        return HRESULT_FROM_WIN32(GetLastError());
+    return S_OK;
+}
+
+HRESULT VideoWindow::DoneWithWindow()
+{
+    if (!thread)
+        return CBaseWindow::DoneWithWindow();
+    if (GetCurrentThreadId() == threadId)
+    {
+        const auto result = CBaseWindow::DoneWithWindow();
+        PostQuitMessage(0);
+        return result;
+    }
+    PostThreadMessageW(threadId, WM_QUIT, 0, 0);
+    const DWORD waited = WaitDispatchingMessages(thread, INFINITE);
+    CloseHandle(thread);
+    thread = nullptr;
+    threadId = 0;
+    return waited == WAIT_OBJECT_0 ? S_OK : E_FAIL;
 }
 
 HRESULT VideoWindow::UninitialiseWindow()
@@ -208,6 +304,11 @@ HRESULT VideoWindow::UninitialiseWindow()
 BOOL VideoWindow::OnSize(LONG width, LONG height)
 {
     CBaseWindow::OnSize(width, height);
+    if (ResizeGesture::Resizing(GetWindowHWND()))
+    {
+        owner->backend.HoldForResize(true);
+        SetTimer(GetWindowHWND(), ResizeGesture::Timer, ResizeGesture::QuietMilliseconds, nullptr);
+    }
     if (GetWindowLongPtrW(GetWindowHWND(), GWL_STYLE) & WS_CHILD)
         VideoBackground::Resize(GetParent(GetWindowHWND()));
     owner->Repaint();
@@ -286,6 +387,7 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
     }
     if (parent == m_hwndOwner)
         return S_OK;
+    owner->backend.HoldForResize(false);
     const HWND video = GetWindowHWND();
     const bool visible = IsWindowVisible(video);
     DoShowWindow(SW_HIDE);
@@ -323,12 +425,46 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
 
 INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
 {
+    constexpr UINT_PTR repaintTimer = 0x46525950;
+    if (msg == WM_TIMER && w == ResizeGesture::Timer)
+    {
+        // A queued timer can predate the most recent size change. Check the
+        // deadline before resuming, even while the mouse button remains down.
+        const UINT remaining = ResizeGesture::Remaining(hwnd);
+        if (remaining)
+            SetTimer(hwnd, ResizeGesture::Timer, remaining, nullptr);
+        else
+        {
+            KillTimer(hwnd, ResizeGesture::Timer);
+            owner->backend.HoldForResize(false);
+            owner->Repaint();
+        }
+        return 0;
+    }
+    if (msg == WM_TIMER && w == repaintTimer)
+    {
+        KillTimer(hwnd, repaintTimer);
+        owner->Repaint();
+        return 0;
+    }
     if (msg == WM_CREATE)
+    {
         MonitorChange::Attach(hwnd);
+        ResizeGesture::Attach(hwnd);
+    }
     if (msg == WM_NCDESTROY)
     {
         StatisticsKey::Detach(hwnd);
         MonitorChange::Detach(hwnd);
+        ResizeGesture::Detach(hwnd);
+        owner->backend.HoldForResize(false);
+    }
+    if (msg == ResizeGesture::EndMessage)
+    {
+        KillTimer(hwnd, ResizeGesture::Timer);
+        owner->backend.HoldForResize(false);
+        owner->Repaint();
+        return 0;
     }
     if (msg == MonitorChange::Message)
     {
@@ -347,8 +483,7 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
     {
         KillTimer(hwnd, ImageAnalysis::Timer);
-        FILTER_STATE state = State_Stopped;
-        owner->GetState(0, &state);
+        const auto state = owner->windowState.load();
         if (state == State_Paused && owner->settings.imageAnalysis)
             owner->Repaint();
         return 0;
@@ -360,8 +495,7 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     }
     if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
     {
-        FILTER_STATE state = State_Stopped;
-        owner->GetState(0, &state);
+        const auto state = owner->windowState.load();
         // Running playback consumes the bitmap on its next scheduled frame.
         // Only a paused image needs an additional repaint after text is ready.
         if (state == State_Paused && (owner->backend.StatisticsVisible() || owner->settings.imageAnalysis))
@@ -535,7 +669,7 @@ HRESULT VideoControl::GetStaticImage(long* size, long* image)
 }
 
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
-    : CBaseVideoRenderer(CLSID_MPCCompatible, NAME("FrankyRenderer"), outer, hr), settings(LoadSettings())
+    : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(LoadSettings())
 {
     smoothEnabled = !!settings.smoothMotion;
     motionRadius = BackendSettings(settings).motionRadius;
@@ -611,6 +745,8 @@ CBasePin* Renderer::GetPin(int index)
 STDMETHODIMP Renderer::NonDelegatingQueryInterface(REFIID id, void** out)
 {
     TraceInterface("renderer", id);
+    if (id == IID_IAMFilterMiscFlags)
+        return GetInterface(static_cast<IAMFilterMiscFlags*>(this), out);
     if (!out)
         return E_POINTER;
     *out = nullptr;
@@ -646,7 +782,13 @@ HRESULT Renderer::CheckMediaType(const CMediaType* mt)
     if (!mt)
         return E_POINTER;
     MediaFormat candidate;
-    return ParseFormat(*mt, candidate);
+    auto hr = ParseFormat(*mt, candidate);
+    if (FAILED(hr))
+        return hr;
+    ComPtr<IPin> peer;
+    if (m_pInputPin)
+        m_pInputPin->ConnectedTo(&peer);
+    return dv.CheckFormat(m_pGraph, peer.Get(), candidate);
 }
 
 HRESULT Renderer::SetMediaType(const CMediaType* mt)
@@ -753,8 +895,15 @@ void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
 
 HRESULT Renderer::BreakConnect()
 {
+    dv.Cancel();
+    dv.Disconnect();
     backend.SetSourceCodec({});
     ResetFields(false);
+    // Disconnect, unlike a temporary graph Stop, really retires this image
+    // and releases native HDR output before another stream takes its place.
+    const auto redraw = backend.TryPresent(true);
+    if (FAILED(redraw))
+        Trace("Disconnected background redraw failed result=%08lX", static_cast<unsigned long>(redraw));
     return CBaseVideoRenderer::BreakConnect();
 }
 
@@ -942,6 +1091,18 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         CAutoLock render(&m_RendererLock);
         current = format;
     }
+    if (dv.ShouldProcess())
+    {
+        ComPtr<IPin> upstream;
+        m_pInputPin->ConnectedTo(&upstream);
+        ComPtr<IMediaSample> reconstructed;
+        const auto supplemented =
+            dv.Prepare(m_pGraph, upstream.Get(), sample, current, segment, backend.Device(), reconstructed);
+        if (FAILED(supplemented))
+            return supplemented;
+        if (supplemented == S_OK)
+            return reconstructed ? CBaseVideoRenderer::Receive(reconstructed.Get()) : S_OK;
+    }
     bool interlaced = current.interlaced;
     bool top = current.topFieldFirst;
     DWORD fieldFlags = 0xffffffff;
@@ -966,16 +1127,16 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     if (!fieldDecisionLogged)
     {
         fieldDecisionLogged = true;
-        Trace(
-            "Deinterlacing input decision: algorithm=%d media_interlaced=%d sample_flags=%08lX interlaced=%d top=%d timed=%d start=%lld stop=%lld",
-            algorithm,
-            current.interlaced,
-            fieldFlags,
-            interlaced,
-            top,
-            timed,
-            start,
-            stop);
+        Trace("Deinterlacing input decision: algorithm=%d media_interlaced=%d sample_flags=%08lX interlaced=%d top=%d "
+              "timed=%d start=%lld stop=%lld",
+              algorithm,
+              current.interlaced,
+              fieldFlags,
+              interlaced,
+              top,
+              timed,
+              start,
+              stop);
     }
     const bool fields = algorithm && interlaced && timed;
     const bool smooth = smoothEnabled && timed && sample->IsPreroll() != S_OK;
@@ -1073,6 +1234,15 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     return output.id ? DeliverFields(output, past.id, future) : S_OK;
 }
 
+void Renderer::OnReceiveFirstSample(IMediaSample* sample)
+{
+    // The base renderer holds a paused sample until Run or the next flush.
+    // Present its preview before that wait, including after a paused seek.
+    const HRESULT hr = DoRenderSample(sample);
+    if (FAILED(hr))
+        Trace("Paused preview failed result=%08lX", static_cast<unsigned long>(hr));
+}
+
 HRESULT Renderer::DoRenderSample(IMediaSample* sample)
 {
     if (!sample)
@@ -1084,49 +1254,63 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
     auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
     VideoFrame frame = field ? field->frame.frame : format.frame;
-    auto side = field ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
+    ComPtr<IDvLayerSample> layered;
+    DvFrameInfo layeredInfo = {};
+    if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&layered))))
+    {
+        hr = layered->GetInfo(DvTransportVersion, sizeof(layeredInfo), &layeredInfo);
+        if (FAILED(hr))
+            return hr;
+        if (layeredInfo.version != DvTransportVersion || layeredInfo.placeboApi != PL_API_VER ||
+            layeredInfo.bytes != sizeof(layeredInfo))
+            return E_INVALIDARG;
+        frame.dovi = std::make_shared<pl_dovi_metadata>(layeredInfo.dovi);
+        frame.color = layeredInfo.color;
+    }
+
+    auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
     if (!field && (!(sideDataLogged & 32) || (side.dovi && !(sideDataLogged & 64))))
     {
         sideDataLogged |= 32 | (side.dovi ? 64 : 0);
-        Trace(
-            "Dolby Vision side data: result=%08lX bytes=%zu accepted=%d source_max=%.2f Level1_max_pq=%.6f Level1_avg_pq=%.6f",
-            static_cast<unsigned long>(side.doviResult),
-            side.doviBytes,
-            side.dovi,
-            frame.color.hdr.max_luma,
-            frame.color.hdr.max_pq_y,
-            frame.color.hdr.avg_pq_y);
+        Trace("Dolby Vision side data: result=%08lX bytes=%zu accepted=%d source_max=%.2f Level1_max_pq=%.6f "
+              "Level1_avg_pq=%.6f",
+              static_cast<unsigned long>(side.doviResult),
+              side.doviBytes,
+              side.dovi,
+              frame.color.hdr.max_luma,
+              frame.color.hdr.max_pq_y,
+              frame.color.hdr.avg_pq_y);
     }
     if (!field && (!(sideDataLogged & 8) || side.dynamic && !(sideDataLogged & 16)))
     {
         sideDataLogged |= 8 | (side.dynamic ? 16 : 0);
-        Trace(
-            "HDR10+ side data: result=%08lX bytes=%zu available=%d used=%d scene_max=%.2f/%.2f/%.2f scene_avg=%.2f target=%.2f",
-            static_cast<unsigned long>(side.dynamicResult),
-            side.dynamicBytes,
-            side.dynamic,
-            side.dynamic && !frame.dovi,
-            frame.color.hdr.scene_max[0],
-            frame.color.hdr.scene_max[1],
-            frame.color.hdr.scene_max[2],
-            frame.color.hdr.scene_avg,
-            frame.color.hdr.ootf.target_luma);
+        Trace("HDR10+ side data: result=%08lX bytes=%zu available=%d used=%d scene_max=%.2f/%.2f/%.2f scene_avg=%.2f "
+              "target=%.2f",
+              static_cast<unsigned long>(side.dynamicResult),
+              side.dynamicBytes,
+              side.dynamic,
+              side.dynamic && !frame.dovi,
+              frame.color.hdr.scene_max[0],
+              frame.color.hdr.scene_max[1],
+              frame.color.hdr.scene_max[2],
+              frame.color.hdr.scene_avg,
+              frame.color.hdr.ootf.target_luma);
     }
     unsigned observed = 1 | (side.mastering ? 2 : 0) | (side.light ? 4 : 0);
     if (observed & ~sideDataLogged)
     {
         sideDataLogged |= observed;
-        Trace(
-            "HDR side data: interface=%08lX mastering=%08lX bytes=%zu light=%08lX bytes=%zu max_nits=%.4f min_nits=%.6f MaxCLL=%.1f MaxFALL=%.1f",
-            static_cast<unsigned long>(side.interfaceResult),
-            static_cast<unsigned long>(side.masteringResult),
-            side.masteringBytes,
-            static_cast<unsigned long>(side.lightResult),
-            side.lightBytes,
-            frame.color.hdr.max_luma,
-            frame.color.hdr.min_luma,
-            frame.color.hdr.max_cll,
-            frame.color.hdr.max_fall);
+        Trace("HDR side data: interface=%08lX mastering=%08lX bytes=%zu light=%08lX bytes=%zu max_nits=%.4f "
+              "min_nits=%.6f MaxCLL=%.1f MaxFALL=%.1f",
+              static_cast<unsigned long>(side.interfaceResult),
+              static_cast<unsigned long>(side.masteringResult),
+              side.masteringBytes,
+              static_cast<unsigned long>(side.lightResult),
+              side.lightBytes,
+              frame.color.hdr.max_luma,
+              frame.color.hdr.min_luma,
+              frame.color.hdr.max_cll,
+              frame.color.hdr.max_fall);
     }
     REFERENCE_TIME start = 0, stop = 0;
     if (SUCCEEDED(sample->GetTime(&start, &stop)))
@@ -1160,6 +1344,11 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
                                            start,
                                            field->duration);
         hardware = field->frame.hardware;
+    }
+    else if (layered)
+    {
+        hr = backend.ImportDolbyVision(frame, layered.Get());
+        hardware = SUCCEEDED(hr);
     }
     else if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&gpuSample))))
     {
@@ -1196,7 +1385,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
     if (sample->IsDiscontinuity() == S_OK)
         backend.ResetPresentationMeasurement();
-    backend.SetPresentationTiming(dueQpc, m_State == State_Running);
+    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
@@ -1226,14 +1415,14 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         snapshot = status;
     }
     if (hr == S_OK && snapshot.rendered == 1)
-        Trace(
-            "First video frame presented; hardware=%llu HDR=%d mastering_max=%.1f MaxCLL=%.1f SmoothMotion=%d displayHz=%.6f",
-            snapshot.hardwareFrames,
-            pl_color_space_is_hdr(&frame.color),
-            frame.color.hdr.max_luma,
-            frame.color.hdr.max_cll,
-            field && field->motion && smoothEnabled,
-            motionPeriod > 0 ? 1e7 / motionPeriod.load() : 0);
+        Trace("First video frame presented; hardware=%llu HDR=%d mastering_max=%.1f MaxCLL=%.1f SmoothMotion=%d "
+              "displayHz=%.6f",
+              snapshot.hardwareFrames,
+              pl_color_space_is_hdr(&frame.color),
+              frame.color.hdr.max_luma,
+              frame.color.hdr.max_cll,
+              field && field->motion && smoothEnabled,
+              motionPeriod > 0 ? 1e7 / motionPeriod.load() : 0);
     {
         std::lock_guard stats(statusLock);
         diagnostics.result = hr;
@@ -1274,14 +1463,14 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
               field->frame.first == PL_FIELD_TOP ? "TFF" : "BFF",
               settings.deinterlacing == 2 ? "Yadif" : "Bwdif");
     if (hr == S_OK && snapshot.rendered == 120)
-        Trace(
-            "Playback verified at 120 presented frames; hardware=%llu CPU=%llu HDR=%d DolbyVision=%d SmoothMotion=%llu Sharpen=%d",
-            snapshot.hardwareFrames,
-            snapshot.rendered - snapshot.hardwareFrames,
-            pl_color_space_is_hdr(&frame.color),
-            !!frame.dovi,
-            snapshot.mixedFrames,
-            backend.SharpenState());
+        Trace("Playback verified at 120 presented frames; hardware=%llu CPU=%llu HDR=%d DolbyVision=%d "
+              "SmoothMotion=%llu Sharpen=%d",
+              snapshot.hardwareFrames,
+              snapshot.rendered - snapshot.hardwareFrames,
+              pl_color_space_is_hdr(&frame.color),
+              !!frame.dovi,
+              snapshot.mixedFrames,
+              backend.SharpenState());
     if (FAILED(hr) && hr != previousResult)
         Trace(
             "Video frame failed result=%08lX details=%s", static_cast<unsigned long>(hr), backend.LastError().c_str());
@@ -1297,15 +1486,40 @@ void Renderer::ToggleStatistics()
 
 void Renderer::Repaint()
 {
+    // The host can synchronously resize the video while holding this lock.
+    // Never block its window thread behind that call; retry the repaint later.
+    if (!m_InterfaceLock.TryLock())
+    {
+        if (window && window->WindowExists())
+            SetTimer(window->GetWindowHWND(), 0x46525950, 16, nullptr);
+        return;
+    }
+
+    struct Unlock
+    {
+        CCritSec& lock;
+
+        ~Unlock()
+        {
+            lock.Unlock();
+        }
+    } unlock{m_InterfaceLock};
+
     if (FAILED(UpdateDisplayProfile()))
         return;
-    const auto result = backend.TryPresent(stopped.load());
+    const auto result = backend.TryPresent();
+    // A resize can race the scheduled GPU presentation. Keep the redraw
+    // pending even while paused, when no new video sample will repaint it.
+    if (result == HRESULT_FROM_WIN32(ERROR_BUSY) && window && window->WindowExists())
+        SetTimer(window->GetWindowHWND(), 0x46525950, 16, nullptr);
     if (result != S_OK)
         Trace("Repaint not presented result=%08lX", static_cast<unsigned long>(result));
 }
 
 void Renderer::NewSegment(REFERENCE_TIME start)
 {
+    dv.ResetTimeline();
+    dv.Resume();
     CAutoLock guard(&m_RendererLock);
     segment = start;
     ResetFields();
@@ -1318,6 +1532,7 @@ HRESULT Renderer::BeginFlush()
 
 HRESULT Renderer::EndFlush()
 {
+    dv.Resume();
     ResetFields();
     return CBaseVideoRenderer::EndFlush();
 }
@@ -1325,20 +1540,19 @@ HRESULT Renderer::EndFlush()
 STDMETHODIMP Renderer::Stop()
 {
     Trace("Renderer stop begin");
+    dv.Cancel();
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
-        stopped = true;
+        windowState = State_Stopped;
     {
         CAutoLock receive(&receiveLock);
+        dv.ResetTimeline();
         CAutoLock lock(&m_RendererLock);
         ResetFields();
     }
-    if (SUCCEEDED(hr))
-    {
-        HRESULT redraw = backend.TryPresent(true);
-        if (FAILED(redraw))
-            Trace("Stopped background redraw failed result=%08lX", static_cast<unsigned long>(redraw));
-    }
+    // Stop also occurs during an audio-track rebuild. It ends scheduling,
+    // not the video connection: discard temporal inputs but leave the last
+    // presented swapchain surface alone until a new picture arrives.
     Trace("Renderer stop completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
 }
@@ -1350,7 +1564,7 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
-        stopped = false;
+        windowState = State_Running;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
     return hr;
@@ -1363,7 +1577,7 @@ STDMETHODIMP Renderer::Pause()
     HRESULT hr = CBaseVideoRenderer::Pause();
     Trace("Renderer base pause returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
-        stopped = false;
+        windowState = State_Paused;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
     return hr;
@@ -1375,6 +1589,8 @@ HRESULT Renderer::OnStartStreaming()
     auto input = GetPin(0);
     if (input && SUCCEEDED(input->ConnectedTo(&peer)))
         backend.SetSourceCodec(SourceCodecFromOutput(peer.Get()));
+    dv.RefreshSource(m_pGraph, peer.Get());
+    dv.Resume();
     int rawDrops = 0;
     get_FramesDroppedInRenderer(&rawDrops);
     backend.RestartDropMeasurement(rawDrops);
@@ -1400,7 +1616,8 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
 
     struct Bridge
     {
-        ComPtr<ISubRender11Callback> callback;
+        ISubRender11Callback* callback = nullptr;
+        ComPtr<ISubRender11Callback> retained;
         ComPtr<ID3D11Device> device;
 
         ~Bridge()
@@ -1411,7 +1628,7 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
                 callback->SetDevice11(nullptr);
                 Trace("Subtitle device detached");
             }
-            callback.Reset();
+            retained.Reset();
             Trace("Subtitle callback reference released");
         }
     };
@@ -1421,8 +1638,21 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
         backend.SetOverlayPainter({});
         return S_OK;
     }
+    ComPtr<IUnknown> callbackIdentity, ownerIdentity;
+    HRESULT hr = next->QueryInterface(IID_PPV_ARGS(&callbackIdentity));
+    if (FAILED(hr))
+        return hr;
+    hr = GetOwner()->QueryInterface(IID_PPV_ARGS(&ownerIdentity));
+    if (FAILED(hr))
+        return hr;
     auto bridge = std::make_shared<Bridge>();
     bridge->callback = next;
+    // An aggregate's controlling unknown already owns the renderer. Retaining
+    // that same object as our callback would keep both alive after file change.
+    // Independent callback objects still need their own lifetime reference.
+    if (callbackIdentity.Get() != ownerIdentity.Get())
+        bridge->retained = next;
+    Trace("Subtitle callback ownership: aggregate=%d", !bridge->retained);
     backend.SetOverlayPainter(
         [this, bridge](ID3D11Device* device, ID3D11DeviceContext*, int width, int height, const RECT& video) -> HRESULT
         {

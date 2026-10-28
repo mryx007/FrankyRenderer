@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/clsid2/FFmpeg",
+  "commit": "29e0b0813d855d55536cd11ae4a8b6de88ee6461",
+  "use": "Enhancement-layer decoding and local file reading only; no replacement DirectShow decoder",
+  "runtime": [
+    {
+      "file": "avcodec-lav-63.dll",
+      "sha256": "edf945ce5ddc928e9ebfc3cb46873c0c5ae6664e1f8758e8d88e6c122abc7b6b"
+    },
+    {
+      "file": "avformat-lav-63.dll",
+      "sha256": "65222a1d7731d1dcb368a33aaea1421b5708c5f4be0dff85d5f572cdb4cc5ab4"
+    },
+    {
+      "file": "avutil-lav-61.dll",
+      "sha256": "4311990336d29cbbb08ce9ab07ff169d2725d97f5b607050b3fcb583dc388605"
+    },
+    {
+      "file": "swresample-lav-7.dll",
+      "sha256": "8530118a4d7c2d98a613d3e706576fd5e9fdfe3791dba63be771f03265b95f9a"
+    }
+  ]
+}

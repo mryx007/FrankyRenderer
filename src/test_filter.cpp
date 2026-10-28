@@ -608,15 +608,6 @@ static int Spread(const std::vector<BYTE>& pixels)
 
 using FactoryGetter = HRESULT(WINAPI*)(REFCLSID, REFIID, void**);
 
-struct VideoCreation
-{
-    HWND parent;
-    DWORD style;
-};
-
-static thread_local std::vector<VideoCreation> videoCreations;
-static thread_local std::vector<VideoCreation> videoDestructions;
-
 static constexpr UINT QueryOwnerCursor = WM_APP + 0x550;
 static constexpr UINT HideOwnerCursor = WM_APP + 0x551;
 
@@ -629,26 +620,7 @@ static LRESULT CALLBACK VideoOwnerTestProcedure(HWND hwnd, UINT message, WPARAM 
     return DefWindowProcW(hwnd, message, w, l);
 }
 
-static LRESULT CALLBACK ObserveVideoCreation(int code, WPARAM w, LPARAM l)
-{
-    if (code == HCBT_CREATEWND)
-    {
-        const auto create = reinterpret_cast<const CBT_CREATEWNDW*>(l)->lpcs;
-        if (!IS_INTRESOURCE(create->lpszClass) && !wcscmp(create->lpszClass, L"PlaceboRendererVideoWindow"))
-            videoCreations.push_back({create->hwndParent, static_cast<DWORD>(create->style)});
-    }
-    if (code == HCBT_DESTROYWND)
-    {
-        wchar_t name[64] = {};
-        const HWND video = reinterpret_cast<HWND>(w);
-        GetClassNameW(video, name, 64);
-        if (!wcscmp(name, L"PlaceboRendererVideoWindow"))
-            videoDestructions.push_back({GetParent(video), static_cast<DWORD>(GetWindowLongPtrW(video, GWL_STYLE))});
-    }
-    return CallNextHookEx(nullptr, code, w, l);
-}
-
-static int TestVideoWindowFocus(FactoryGetter getter)
+static int TestVideoWindowFocus(FactoryGetter getter, REFCLSID rendererId)
 {
     WNDCLASSW cls = {};
     cls.lpfnWndProc = VideoOwnerTestProcedure;
@@ -692,19 +664,13 @@ static int TestVideoWindowFocus(FactoryGetter getter)
             [&]()
             {
                 Check(CoInitializeEx(nullptr, COINIT_MULTITHREADED), "focus worker COM");
-                videoCreations.clear();
-                videoDestructions.clear();
                 // Joining input queues through a cross-thread video child must
                 // not restore this old wait cursor when the child is removed.
                 SetCursor(LoadCursorW(nullptr, IDC_WAIT));
                 SendMessageW(host, HideOwnerCursor, 0, 0);
-                const HHOOK creationHook =
-                    SetWindowsHookExW(WH_CBT, ObserveVideoCreation, nullptr, GetCurrentThreadId());
-                if (!creationHook)
-                    exit(262);
                 {
                     ComPtr<IClassFactory> factory;
-                    Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "focus renderer factory");
+                    Check(getter(rendererId, IID_PPV_ARGS(&factory)), "focus renderer factory");
                     ComPtr<IBaseFilter> renderer;
                     Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&renderer)), "focus renderer");
                     ComPtr<IVideoWindow> window;
@@ -729,13 +695,23 @@ static int TestVideoWindowFocus(FactoryGetter getter)
                     Check(graph->ConnectDirect(rawSource->GetPin(0), input.Get(), nullptr), "focus connect");
                     if (!pendingOwner)
                     {
-                        if (!videoCreations.empty())
+                        if (FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr))
                             passed = false;
                         Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus owner after connection");
                     }
-                    if (videoCreations.size() != 1 || videoCreations.back().parent != host ||
-                        !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                    const HWND createdVideo = FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+                    const DWORD videoThread = GetWindowThreadProcessId(createdVideo, nullptr);
+                    const LONG_PTR style = GetWindowLongPtrW(createdVideo, GWL_STYLE);
+                    if (!createdVideo || !(style & WS_CHILD) || (style & (WS_POPUP | WS_VISIBLE)))
                         passed = false;
+                    if (!videoThread || videoThread == GetCurrentThreadId() || videoThread == playerThread)
+                    {
+                        puts("FAIL video window shares the player or loader thread");
+                        passed = false;
+                    }
+                    HANDLE videoThreadHandle = OpenThread(SYNCHRONIZE, FALSE, videoThread);
+                    if (!videoThreadHandle)
+                        exit(262);
                     const auto verify = [&](const char* stage)
                     {
                         GUITHREADINFO gui = {sizeof(gui)};
@@ -759,11 +735,11 @@ static int TestVideoWindowFocus(FactoryGetter getter)
                     const HWND originalVideo = FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr);
                     Check(window->put_Owner(reinterpret_cast<OAHWND>(other)), "focus fullscreen parent");
                     verify("new parent");
-                    if (!originalVideo || GetParent(originalVideo) != other || videoCreations.size() != 1)
+                    if (!originalVideo || GetParent(originalVideo) != other)
                         passed = false;
                     Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus restore parent");
                     verify("restored parent");
-                    if (GetParent(originalVideo) != host || videoCreations.size() != 1)
+                    if (GetParent(originalVideo) != host)
                         passed = false;
                     Check(window->put_Visible(OAFALSE), "focus hide video");
                     verify("hidden");
@@ -775,19 +751,29 @@ static int TestVideoWindowFocus(FactoryGetter getter)
                         printf("FAIL episode %d: stale cursor restored after video detach\n", episode);
                         passed = false;
                     }
-                    if (videoDestructions.size() != 1 ||
-                        (videoDestructions.back().parent && videoDestructions.back().parent != GetDesktopWindow()) ||
-                        (videoDestructions.back().style & (WS_POPUP | WS_VISIBLE)))
+                    if (IsWindow(originalVideo) || WaitForSingleObject(videoThreadHandle, 0) != WAIT_OBJECT_0)
                     {
-                        printf("FAIL episode %d: video not detached while hidden before destruction\n", episode);
+                        printf("FAIL episode %d: video window thread survives detach\n", episode);
+                        passed = false;
+                    }
+                    CloseHandle(videoThreadHandle);
+                    SetCursor(LoadCursorW(nullptr, IDC_WAIT));
+                    if (SendMessageW(host, QueryOwnerCursor, 0, 0))
+                    {
+                        printf("FAIL episode %d: next-file loading cursor leaks into player\n", episode);
+                        passed = false;
+                    }
+                    if (GetCursor() != LoadCursorW(nullptr, IDC_WAIT))
+                    {
+                        puts("FAIL loader cursor was overwritten instead of isolated");
                         passed = false;
                     }
                     if (FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr))
                         passed = false;
                     Check(window->put_Owner(reinterpret_cast<OAHWND>(host)), "focus recreate child");
                     verify("recreated");
-                    if (videoCreations.size() != 2 || videoCreations.back().parent != host ||
-                        !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                    const HWND recreatedVideo = FindWindowExW(host, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+                    if (!recreatedVideo || GetParent(recreatedVideo) != host)
                         passed = false;
                     SendMessageW(host, HideOwnerCursor, 0, 0);
                     if (episode == 3)
@@ -806,8 +792,8 @@ static int TestVideoWindowFocus(FactoryGetter getter)
                         Check(window->put_Owner(reinterpret_cast<OAHWND>(other)),
                               "new owner after old parent destroyed");
                         verify("old parent destroyed");
-                        if (videoCreations.size() != 3 || videoCreations.back().parent != other ||
-                            !(videoCreations.back().style & WS_CHILD) || (videoCreations.back().style & WS_POPUP))
+                        const HWND movedVideo = FindWindowExW(other, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+                        if (!movedVideo || GetParent(movedVideo) != other)
                             passed = false;
                     }
                 }
@@ -816,7 +802,6 @@ static int TestVideoWindowFocus(FactoryGetter getter)
                     printf("FAIL episode %d: stale cursor restored after renderer release\n", episode);
                     passed = false;
                 }
-                UnhookWindowsHookEx(creationHook);
                 CoUninitialize();
                 done = true;
             });
@@ -845,7 +830,7 @@ static int TestVideoWindowFocus(FactoryGetter getter)
     if (!passed)
         return 261;
     puts(
-        "PASS direct child creation, hidden detach before destruction, cursor and focus preserved through early/late/repeated owner, parent switch, show/hide/detach/recreate and parent-first destruction");
+        "PASS isolated video window thread, next-file loading cursor, focus, parent switch, detach/recreate and parent-first destruction");
     return 0;
 }
 
@@ -919,8 +904,12 @@ int wmain(int argc, wchar_t** argv)
     using Getter = HRESULT(WINAPI*)(REFCLSID, REFIID, void**);
     auto getter = reinterpret_cast<Getter>(GetProcAddress(dll, "DllGetClassObject"));
     for (int i = 1; i < argc; ++i)
+    {
         if (wcscmp(argv[i], L"--focus") == 0)
-            return TestVideoWindowFocus(getter);
+            return TestVideoWindowFocus(getter, CLSID_PlaceboRenderer);
+        if (wcscmp(argv[i], L"--focus-potplayer") == 0)
+            return TestVideoWindowFocus(getter, CLSID_MPCCompatible);
+    }
     ComPtr<IClassFactory> factory;
     Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "factory");
     {
@@ -1164,6 +1153,14 @@ int wmain(int argc, wchar_t** argv)
         if (owner != reinterpret_cast<OAHWND>(ownerWindow.handle) || !video ||
             (GetWindowLongPtrW(video, GWL_STYLE) & WS_VISIBLE))
             exit(253);
+        RECT parentClient = {}, initialClient = {};
+        if (!GetClientRect(ownerWindow.handle, &parentClient) || !GetClientRect(video, &initialClient) ||
+            initialClient.right != parentClient.right || initialClient.bottom != parentClient.bottom)
+        {
+            puts("FAIL new video child does not initially fill its owner before being shown");
+            exit(254);
+        }
+        puts("PASS new video child fills its owner before the first explicit placement");
         for (const SIZE size : {SIZE{320, 240}, SIZE{960, 540}, SIZE{128, 128}})
         {
             Check(window->SetWindowPosition(0, 0, size.cx, size.cy), "MPC-BE video window resize");

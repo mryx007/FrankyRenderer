@@ -13,6 +13,7 @@ class PresentationMeasurement
     {
         uint32_t id;
         int64_t due;
+        int64_t timeline;
         bool timed;
     };
 
@@ -72,13 +73,18 @@ class PresentationMeasurement
 
     void Submit(uint32_t id, int64_t due, bool timed)
     {
+        Submit(id, due, timed, due);
+    }
+
+    void Submit(uint32_t id, int64_t due, bool timed, int64_t timeline)
+    {
         if (!id || id == submitted)
             return;
         if (id < submitted)
             Disjoint();
         submitted = id;
         ++submissions;
-        tickets.push_back({id, due, timed && due > 0});
+        tickets.push_back({id, due, timeline, timed && due > 0});
         if (tickets.size() > 512)
         {
             tickets.pop_front();
@@ -124,15 +130,17 @@ class PresentationMeasurement
         ++confirmed;
         int64_t late = 0;
         bool assessed = false;
-        if (anchored && current.due > anchorDue && refresh >= anchorRefresh)
+        if (anchored && current.timeline > anchorDue && refresh >= anchorRefresh)
         {
             const auto planned = static_cast<int64_t>(anchorRefresh) +
-                                 static_cast<int64_t>(std::llround((current.due - anchorDue) / period));
+                                 static_cast<int64_t>(std::llround((current.timeline - anchorDue) / period));
             late = static_cast<int64_t>(refresh) - planned;
             assessed = true;
             // One refresh of tolerance for phase quantization/compositor jitter.
             // Count extra refreshes only for >1-vsync lateness; ordinary 3:2,
-            // 24->144 Hz holds, fields and Smooth Motion use their actual due times.
+            // 24->144 Hz holds, fields and Smooth Motion use their media timeline.
+            // A fresh audio-clock/QPC conversion can jitter or run backwards;
+            // that must not report a missed refresh in a continuous scanout.
         }
         else if (anchored)
         {
@@ -168,7 +176,7 @@ class PresentationMeasurement
         }
         if (!anchored)
         {
-            anchorDue = current.due;
+            anchorDue = current.timeline;
             anchorRefresh = refresh;
             anchored = true;
         }

@@ -1,4 +1,5 @@
 #include "Direct2DSettingsHost.h"
+#include "SettingsLayout.h"
 #include "SettingsIni.h"
 #include "SettingsBackup.h"
 #include "LiveSettings.h"
@@ -520,7 +521,7 @@ void Direct2DHostWindow::Render()
     m_pRenderTarget->BeginDraw();
     m_pRenderTarget->Clear(D2D1::ColorF(15.0f / 255.0f, 16.0f / 255.0f, 18.0f / 255.0f));
 
-    const float sidebarW = 240.0f;
+    const float sidebarW = SettingsLayout::SidebarWidth;
 
     // 1. Sidebar Background
     D2D1_RECT_F sidebarRect = D2D1::RectF(0, 0, sidebarW, size.height);
@@ -611,7 +612,7 @@ void Direct2DHostWindow::Render()
     float navY = 64.0f;
     for (size_t i = 0; i < m_pages.size(); ++i)
     {
-        D2D1_RECT_F itemRect = D2D1::RectF(12, navY, sidebarW - 12, navY + 40);
+        D2D1_RECT_F itemRect = D2D1::RectF(12, navY, sidebarW - 12, navY + 34);
         D2D1_ROUNDED_RECT roundedItem = D2D1::RoundedRect(itemRect, 6.0f, 6.0f);
 
         bool hasMatches = false;
@@ -653,7 +654,7 @@ void Direct2DHostWindow::Render()
         else if (isSearching && hasMatches)
             textBrush = m_brushTextMain.Get();
 
-        D2D1_RECT_F textRect = D2D1::RectF(28, navY + 10, sidebarW - 12, navY + 35);
+        D2D1_RECT_F textRect = D2D1::RectF(28, navY + 7, sidebarW - 12, navY + 29);
         m_pRenderTarget->DrawText(
             m_pages[i].name.c_str(), (UINT32)m_pages[i].name.length(), m_fmtNav.Get(), textRect, textBrush);
 
@@ -663,7 +664,7 @@ void Direct2DHostWindow::Render()
         hitNav.pageIndex = static_cast<int>(i);
         m_hitRegions.push_back(hitNav);
 
-        navY += 44.0f;
+        navY += 38.0f;
     }
 
     // 4. Sidebar Bottom Action Buttons
@@ -671,11 +672,11 @@ void Direct2DHostWindow::Render()
     const float transferY = btnY - (m_standalone ? 44.f : 0.f);
     if (m_displayProfiles)
     {
-        const auto deviceRect = D2D1::RectF(16, transferY - 48, 224, transferY - 14);
+        const auto deviceRect = D2D1::RectF(16, transferY - 48, sidebarW - 16, transferY - 14);
         m_displayRect = deviceRect;
         auto caption = D2D1::RectF(16, transferY - 70, 140, transferY - 48);
         m_pRenderTarget->DrawText(L"Display", 7, m_fmtNav.Get(), caption, m_brushTextMuted.Get());
-        const auto renameRect = D2D1::RectF(157, transferY - 72, 224, transferY - 49);
+        const auto renameRect = D2D1::RectF(sidebarW - 83, transferY - 72, sidebarW - 16, transferY - 49);
         m_pRenderTarget->DrawText(L"Rename", 6, m_fmtNav.Get(), renameRect, m_brushTextMain.Get());
         HitRegion renameHit;
         renameHit.type = HitRegion::RenameDisplay;
@@ -710,8 +711,9 @@ void Direct2DHostWindow::Render()
     }
     for (int i = 0; i < 2; ++i)
     {
-        const float left = i ? 124.f : 16.f;
-        const auto rect = D2D1::RectF(left, transferY, left + 100.f, transferY + 34.f);
+        const float buttonWidth = (sidebarW - 40.f) / 2.f;
+        const float left = i ? sidebarW / 2.f + 4.f : 16.f;
+        const auto rect = D2D1::RectF(left, transferY, left + buttonWidth, transferY + 34.f);
         m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushInputBg.Get());
         m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushBorderCard.Get(), 1.f);
         auto text = rect;
@@ -726,11 +728,11 @@ void Direct2DHostWindow::Render()
     }
     if (m_standalone)
     {
-        D2D1_RECT_F applyRect = D2D1::RectF(124, btnY, sidebarW - 16, btnY + 34);
+        D2D1_RECT_F applyRect = D2D1::RectF(sidebarW / 2.f + 4.f, btnY, sidebarW - 16, btnY + 34);
         D2D1_ROUNDED_RECT roundedApply = D2D1::RoundedRect(applyRect, 6.0f, 6.0f);
         m_pRenderTarget->FillRoundedRectangle(roundedApply, m_brushActiveBg.Get());
         m_pRenderTarget->DrawRoundedRectangle(roundedApply, m_brushBorderCard.Get(), 1.0f);
-        D2D1_RECT_F applyTextRect = D2D1::RectF(124, btnY + 8, sidebarW - 16, btnY + 30);
+        D2D1_RECT_F applyTextRect = D2D1::RectF(sidebarW / 2.f + 4.f, btnY + 8, sidebarW - 16, btnY + 30);
         m_pRenderTarget->DrawText(m_standalone ? L"Save" : L"Live Preview",
                                   m_standalone ? 4 : 12,
                                   m_fmtNav.Get(),
@@ -748,7 +750,7 @@ void Direct2DHostWindow::Render()
     if (!m_error.empty())
     {
         const float statusBottom = transferY - (m_displayProfiles ? 80.f : 8.f);
-        const auto r = D2D1::RectF(16, statusBottom - 57.f, 224, statusBottom);
+        const auto r = D2D1::RectF(16, statusBottom - 57.f, sidebarW - 16, statusBottom);
         m_pRenderTarget->DrawText(m_error.c_str(),
                                   (UINT32)m_error.size(),
                                   m_fmtDesc.Get(),
@@ -758,8 +760,8 @@ void Direct2DHostWindow::Render()
     }
 
     // 5. Content Area
-    const float contentX = sidebarW + 28.0f;
-    const float contentW = size.width - contentX - 36.0f;
+    const float contentX = sidebarW + 20.0f;
+    const float contentW = size.width - contentX - 24.0f;
 
     m_pRenderTarget->PushAxisAlignedClip(D2D1::RectF(sidebarW, 0, size.width, size.height),
                                          D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
@@ -774,7 +776,7 @@ void Direct2DHostWindow::Render()
     std::vector<RenderCardItem> cardsToRender;
 
     bool isSearching = !m_searchQuery.empty();
-    float currentY = 24.0f - m_scrollY;
+    float currentY = 16.0f - m_scrollY;
 
     if (!isSearching)
     {
@@ -805,7 +807,7 @@ void Direct2DHostWindow::Render()
                                       subRect,
                                       m_brushTextMuted.Get());
 
-            currentY += 70.0f;
+            currentY += 62.0f;
 
             for (const auto& card : page.cards)
             {
@@ -831,7 +833,7 @@ void Direct2DHostWindow::Render()
         m_pRenderTarget->DrawText(
             queryHint.c_str(), (UINT32)queryHint.length(), m_fmtSubtitle.Get(), subRect, m_brushTextMuted.Get());
 
-        currentY += 70.0f;
+        currentY += 62.0f;
 
         // Gather matches from ALL pages
         for (const auto& page : m_pages)
@@ -935,59 +937,51 @@ void Direct2DHostWindow::Render()
             m_hitRegions.push_back(hit);
         }
     };
+    const auto defaultTextFor = [](const D2DControl& ctrl)
+    {
+        std::wstring defaultText;
+        if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
+        {
+            wchar_t defaults[160];
+            swprintf_s(defaults,
+                       L"Default: %.6g   |   Range: %.6g to %.6g",
+                       double(ctrl.Default()),
+                       double(ctrl.minVal),
+                       double(ctrl.maxVal));
+            defaultText = defaults;
+        }
+        else if (ctrl.kind == ControlKind::Toggle)
+            defaultText = ctrl.Default() ? L"Default: On" : L"Default: Off";
+        else if (ctrl.kind == ControlKind::Choice)
+        {
+            for (const auto& choice : ctrl.choices)
+                if (choice.value == int(ctrl.Default()))
+                {
+                    defaultText = L"Default: " + choice.label;
+                    break;
+                }
+        }
+        return defaultText;
+    };
+    const auto textHeightFor = [&](const std::wstring& text, IDWriteTextFormat* format, float width)
+    {
+        if (text.empty())
+            return 0.f;
+        ComPtr<IDWriteTextLayout> layout;
+        DWRITE_TEXT_METRICS metrics = {};
+        if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                text.c_str(), UINT32(text.size()), format, std::max(1.f, width), 4096.f, &layout)) &&
+            SUCCEEDED(layout->GetMetrics(&metrics)))
+            return metrics.height;
+        return 0.f;
+    };
+    const auto defaultWidthFor = [](const D2DControl& control)
+    { return control.kind == ControlKind::SliderInt || control.kind == ControlKind::SliderFloat ? 272.f : 220.f; };
+    float contentBottom = currentY + m_scrollY;
     for (const auto& item : cardsToRender)
     {
         const auto& card = *item.pCard;
         const auto& visibleControls = item.visibleControls;
-
-        const bool compact = !isSearching && (m_pages[m_activePage].name == L"Black Bars / Zoom" ||
-                                              m_pages[m_activePage].name == L"Color Adjustment" ||
-                                              m_pages[m_activePage].name == L"Color Management");
-        const float baseRowHeight = compact ? 70.f : 88.f;
-        std::vector<float> rowHeights;
-        float cardHeight = 52.f;
-        for (const auto* control : visibleControls)
-        {
-            if (control->headerToggle)
-            {
-                rowHeights.push_back(0);
-                continue;
-            }
-            auto description = control->detail ? control->detail() : control->desc;
-            if (description.empty())
-                description = control->desc;
-            ComPtr<IDWriteTextLayout> layout;
-            float textHeight = 0;
-            if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(description.c_str(),
-                                                             UINT32(description.size()),
-                                                             m_fmtDesc.Get(),
-                                                             std::max(1.f, contentW - 316.f),
-                                                             4096.f,
-                                                             &layout)))
-            {
-                DWRITE_TEXT_METRICS metrics = {};
-                if (SUCCEEDED(layout->GetMetrics(&metrics)))
-                    textHeight = metrics.height;
-            }
-            const float height = std::max(baseRowHeight, 30.f + textHeight + (compact ? 8.f : 28.f));
-            rowHeights.push_back(height);
-            cardHeight += height;
-        }
-        D2D1_RECT_F cardRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + cardHeight);
-        D2D1_ROUNDED_RECT roundedCard = D2D1::RoundedRect(cardRect, 8.0f, 8.0f);
-
-        // Card background & border
-        m_pRenderTarget->FillRoundedRectangle(roundedCard, m_brushBgCard.Get());
-        m_pRenderTarget->DrawRoundedRectangle(roundedCard, m_brushBorderCard.Get(), 1.0f);
-
-        // Card Header (50px height with clean padding & separation)
-        D2D1_RECT_F headerRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + 50.0f);
-        D2D1_ROUNDED_RECT roundedHeader = D2D1::RoundedRect(headerRect, 8.0f, 8.0f);
-        m_pRenderTarget->FillRoundedRectangle(roundedHeader, m_brushBgCardHeader.Get());
-        m_pRenderTarget->DrawLine(D2D1::Point2F(contentX, currentY + 50.0f),
-                                  D2D1::Point2F(contentX + contentW, currentY + 50.0f),
-                                  m_brushBorderCard.Get(),
-                                  1.0f);
 
         std::wstring headerTitle = card.title;
         D2DControl* headerToggle = nullptr;
@@ -999,21 +993,67 @@ void Direct2DHostWindow::Render()
             headerTitle += L"  (" + item.pageName + L")";
         }
 
+        std::vector<float> rowHeights, descriptionOffsets;
+        const float titleHeight =
+            textHeightFor(headerTitle, m_fmtCardTitle.Get(), contentW - (headerToggle ? 88.f : 32.f));
+        const float subtitleHeight = textHeightFor(card.subtitle, m_fmtCardSubtitle.Get(), contentW - 32.f);
+        const float subtitleTop = 9.f + titleHeight + 4.f;
+        const float headerHeight =
+            std::max(38.f, card.subtitle.empty() ? 18.f + titleHeight : subtitleTop + subtitleHeight + 6.f);
+        float cardHeight = headerHeight;
+        for (const auto* control : visibleControls)
+        {
+            if (control->headerToggle)
+            {
+                rowHeights.push_back(0);
+                descriptionOffsets.push_back(0);
+                continue;
+            }
+            auto description = control->detail ? control->detail() : control->desc;
+            if (description.empty())
+                description = control->desc;
+            const float labelHeight = textHeightFor(control->name, m_fmtLabel.Get(), contentW - 316.f);
+            const float descriptionTop = std::max(30.f, 9.f + labelHeight + 4.f);
+            const float descriptionHeight = textHeightFor(description, m_fmtDesc.Get(), contentW - 316.f);
+            const float defaultHeight =
+                textHeightFor(defaultTextFor(*control), m_fmtDesc.Get(), defaultWidthFor(*control));
+            const float height = std::max(
+                {SettingsLayout::RowHeight, descriptionTop + descriptionHeight + 8.f, 48.f + defaultHeight + 6.f});
+            descriptionOffsets.push_back(descriptionTop);
+            rowHeights.push_back(height);
+            cardHeight += height;
+        }
+        D2D1_RECT_F cardRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + cardHeight);
+        D2D1_ROUNDED_RECT roundedCard = D2D1::RoundedRect(cardRect, 8.0f, 8.0f);
+
+        // Card background & border
+        m_pRenderTarget->FillRoundedRectangle(roundedCard, m_brushBgCard.Get());
+        m_pRenderTarget->DrawRoundedRectangle(roundedCard, m_brushBorderCard.Get(), 1.0f);
+
+        // Keep plain section headings compact; subtitles retain their own line.
+        D2D1_RECT_F headerRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + headerHeight);
+        D2D1_ROUNDED_RECT roundedHeader = D2D1::RoundedRect(headerRect, 8.0f, 8.0f);
+        m_pRenderTarget->FillRoundedRectangle(roundedHeader, m_brushBgCardHeader.Get());
+        m_pRenderTarget->DrawLine(D2D1::Point2F(contentX, currentY + headerHeight),
+                                  D2D1::Point2F(contentX + contentW, currentY + headerHeight),
+                                  m_brushBorderCard.Get(),
+                                  1.0f);
+
         // Clean vertical gap between Title and Subtitle
         D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
-                                                currentY + (headerToggle && card.subtitle.empty() ? 16.f : 9.f),
+                                                currentY + 9.f,
                                                 contentX + contentW - (headerToggle ? 72.f : 16.f),
-                                                currentY + (headerToggle && card.subtitle.empty() ? 36.f : 28.f));
+                                                currentY + 9.f + titleHeight);
         m_pRenderTarget->DrawText(headerTitle.c_str(),
                                   (UINT32)headerTitle.length(),
                                   m_fmtCardTitle.Get(),
                                   cardTitleRect,
                                   m_brushTextMain.Get());
         if (headerToggle)
-            drawToggle(*headerToggle, contentX + contentW - 56.f, currentY + 14.f);
+            drawToggle(*headerToggle, contentX + contentW - 56.f, currentY + (headerHeight - 22.f) / 2.f);
 
         D2D1_RECT_F cardSubRect =
-            D2D1::RectF(contentX + 16, currentY + 31.0f, contentX + contentW - 16, currentY + 47.0f);
+            D2D1::RectF(contentX + 16, currentY + subtitleTop, contentX + contentW - 16, currentY + headerHeight - 6.f);
         m_pRenderTarget->DrawText(card.subtitle.c_str(),
                                   (UINT32)card.subtitle.length(),
                                   m_fmtCardSubtitle.Get(),
@@ -1021,7 +1061,7 @@ void Direct2DHostWindow::Render()
                                   m_brushTextMuted.Get());
 
         // Controls in Card
-        float rowY = currentY + 52.0f;
+        float rowY = currentY + headerHeight;
         for (size_t ci = 0; ci < visibleControls.size(); ++ci)
         {
             auto& ctrl = const_cast<D2DControl&>(*visibleControls[ci]);
@@ -1044,12 +1084,13 @@ void Direct2DHostWindow::Render()
             }
 
             // Left: Name & Description with clean gap
-            D2D1_RECT_F labelRect = D2D1::RectF(contentX + 16, rowY + 9.0f, contentX + contentW - 300, rowY + 27.0f);
+            D2D1_RECT_F labelRect =
+                D2D1::RectF(contentX + 16, rowY + 9.0f, contentX + contentW - 300, rowY + descriptionOffsets[ci] - 4.f);
             m_pRenderTarget->DrawText(
                 ctrl.name.c_str(), (UINT32)ctrl.name.length(), m_fmtLabel.Get(), labelRect, m_brushTextMain.Get());
 
             D2D1_RECT_F descRect = D2D1::RectF(
-                contentX + 16, rowY + 30.0f, contentX + contentW - 300, rowY + rowHeight - (compact ? 8.f : 26.f));
+                contentX + 16, rowY + descriptionOffsets[ci], contentX + contentW - 300, rowY + rowHeight - 8.f);
             auto description = ctrl.detail ? ctrl.detail() : ctrl.desc;
             if (description.empty())
                 description = ctrl.desc;
@@ -1244,34 +1285,10 @@ void Direct2DHostWindow::Render()
                 if (enabled)
                     m_hitRegions.push_back(h);
             }
-            std::wstring defaultText;
-            if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
-            {
-                wchar_t defaults[160];
-                swprintf_s(defaults,
-                           L"Default: %.6g   |   Range: %.6g to %.6g",
-                           double(ctrl.Default()),
-                           double(ctrl.minVal),
-                           double(ctrl.maxVal));
-                defaultText = defaults;
-            }
-            else if (ctrl.kind == ControlKind::Toggle)
-                defaultText = ctrl.Default() ? L"Default: On" : L"Default: Off";
-            else if (ctrl.kind == ControlKind::Choice)
-            {
-                for (const auto& choice : ctrl.choices)
-                    if (choice.value == int(ctrl.Default()))
-                    {
-                        defaultText = L"Default: " + choice.label;
-                        break;
-                    }
-            }
+            const auto defaultText = defaultTextFor(ctrl);
             if (!defaultText.empty())
             {
-                auto r = D2D1::RectF(compact ? rightEdge - 300 : contentX + 16,
-                                     rowY + (compact ? 48 : rowHeight - 26),
-                                     rightEdge,
-                                     rowY + rowHeight - 4);
+                auto r = D2D1::RectF(rightEdge - defaultWidthFor(ctrl), rowY + 48.f, rightEdge, rowY + rowHeight - 4);
                 m_pRenderTarget->DrawText(
                     defaultText.c_str(), (UINT32)defaultText.size(), m_fmtDesc.Get(), r, m_brushTextMuted.Get());
             }
@@ -1286,10 +1303,19 @@ void Direct2DHostWindow::Render()
             rowY += rowHeight;
         }
 
-        currentY += cardHeight + 20.0f;
+        contentBottom = currentY + m_scrollY + cardHeight;
+        currentY += cardHeight + 14.0f;
     }
 
-    m_maxScrollY = std::max(0.0f, (currentY + m_scrollY) - size.height + 40.0f);
+    // Spacing after the final card must not make an otherwise complete page scroll.
+    const float overflow = contentBottom - size.height;
+    m_maxScrollY = overflow > .5f ? std::ceil(overflow + 8.f) : 0.f;
+    const float clampedScroll = std::clamp(m_scrollY, 0.f, m_maxScrollY);
+    if (clampedScroll != m_scrollY)
+    {
+        m_scrollY = clampedScroll;
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+    }
 
     m_pRenderTarget->PopAxisAlignedClip();
     DrawScrollbar(D2D1::RectF(size.width - 16, 8, size.width - 5, size.height - 8),

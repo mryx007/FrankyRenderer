@@ -15,16 +15,21 @@ through `src/runtime_names.py` when assembling the installation package.
 | libstdc++-6.dll | CppRuntime.dll |
 | libgcc_s_seh-1.dll | CompilerRuntime.dll |
 | libwinpthread-1.dll | Threading.dll |
+| avcodec-lav-63.dll | VideoCodec.dll |
+| avformat-lav-63.dll | MediaContainer.dll |
+| avutil-lav-61.dll | MediaUtil.dll |
+| swresample-lav-7.dll | AudioResampler.dll |
 
-The package transformation adds a read-only PE section containing the new names
-and updates import, delay-import and export filename pointers. Executable
+The package transformation updates recognized PE filename tables, using a
+read-only section or available space in existing filename slots, and updates
+import, delay-import and export filename pointers. Executable
 sections, exported functions, version information and license notices remain
 unchanged. Original filenames in version information identify the upstream
 libraries. The existing bound-import cache is discarded and the PE checksum is
 recalculated.
 
 Packaging rejects signed binaries, unsupported delay imports, insufficient
-header space and filename literals outside the recognized PE and version tables.
+header space without a safe in-place alternative, and filename literals outside the recognized PE and version tables.
 This requires review if a future upstream library changes its loading behavior.
 It also checks that every renamed import resolves within the package and that
 no old runtime filenames remain in the installation output.

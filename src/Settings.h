@@ -4,12 +4,23 @@
 #include <cstdint>
 #include "Backend.h"
 #include "DisplayProfiles.h"
-inline constexpr CLSID CLSID_FrankyDirect2DPage = {
-    0x19a4f3e2, 0xf52e, 0x4dbe, {0x91, 0x67, 0x33, 0x2e, 0x7c, 0x38, 0xe8, 0x0c}};
 inline constexpr CLSID CLSID_PlaceboRenderer = {
     0xb864e92a, 0x1bdf, 0x4da1, {0x90, 0x04, 0xcb, 0xf4, 0x67, 0xdf, 0x23, 0x9a}};
 inline constexpr CLSID CLSID_MPCCompatible = {
     0x71f080aa, 0x8661, 0x4093, {0xb1, 0x5e, 0x4f, 0x69, 0x03, 0xe7, 0x7d, 0x0a}};
+
+#ifdef FRANKY_POTPLAYER
+inline constexpr CLSID CLSID_RegisteredRenderer = CLSID_MPCCompatible;
+inline constexpr wchar_t RendererFilterName[] = L"FrankyRenderer (PotPlayer)";
+// Separate page classes let both packages coexist without redirecting each other's UI.
+inline constexpr CLSID CLSID_FrankyDirect2DPage = {
+    0x98f20bc7, 0x42a9, 0x4fba, {0xb1, 0x71, 0x39, 0xca, 0x08, 0x65, 0x1f, 0xca}};
+#else
+inline constexpr CLSID CLSID_RegisteredRenderer = CLSID_PlaceboRenderer;
+inline constexpr wchar_t RendererFilterName[] = L"FrankyRenderer (MPC-BE)";
+inline constexpr CLSID CLSID_FrankyDirect2DPage = {
+    0x19a4f3e2, 0xf52e, 0x4dbe, {0x91, 0x67, 0x33, 0x2e, 0x7c, 0x38, 0xe8, 0x0c}};
+#endif
 
 struct PlaceboSettings
 {

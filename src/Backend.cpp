@@ -1,3 +1,4 @@
+#include "DolbyVision/Transport.h"
 // libplacebo integration uses only its public API. No existing MPC pixel path.
 #include "Backend.h"
 #include "BlackBarAnalysis.h"
@@ -179,6 +180,7 @@ struct PlaceboBackend::State
     }
 
     int64_t presentationDue = 0;
+    int64_t presentationMediaTime = -1;
     bool presentationTimed = false;
     ULONGLONG periodUpdated = 0;
     HMONITOR measuredMonitor = nullptr;
@@ -248,6 +250,8 @@ struct PlaceboBackend::State
     pl_options options = nullptr;
     pl_tex planes[4] = {};
     pl_frame image = {};
+    pl_frame felEnhancement = {};
+    pl_tex felPlanes[3] = {};
     std::vector<uint8_t> unpacked;
     ComPtr<ID3D11Texture2D> copy;
     ComPtr<ID3D11DeviceContext> context;
@@ -272,6 +276,7 @@ struct PlaceboBackend::State
     RenderSettings settings;
     VideoFrame description;
     RECT source = {}, targetRect = {};
+    std::atomic<bool> resizeHold = false, resizeResumed = false;
     int rotation = 0;
     bool flip = false;
     bool valid = false;
@@ -309,6 +314,10 @@ struct PlaceboBackend::State
         if (d3d)
             for (auto& plane : planes)
                 pl_tex_destroy(d3d->gpu, &plane);
+        if (d3d)
+            for (auto& plane : felPlanes)
+                pl_tex_destroy(d3d->gpu, &plane);
+        felEnhancement = {};
         copy.Reset();
         unpack422.ResetFrame();
         image = {};
@@ -811,7 +820,11 @@ struct PlaceboBackend::State
             presentation.Unavailable();
             return;
         }
-        presentation.Submit(submitted, due, timed);
+        const int64_t timeline =
+            presentationMediaTime >= 0
+                ? static_cast<int64_t>(std::llround(double(presentationMediaTime) * frequency.QuadPart / 1e7))
+                : due;
+        presentation.Submit(submitted, due, timed, timeline);
         DXGI_FRAME_STATISTICS result = {};
         auto hr = native->GetFrameStatistics(&result);
         if (hr == DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
@@ -1184,7 +1197,8 @@ struct PlaceboBackend::State
             pl_rotation rotations[16];
             int count;
 
-            RestoreCrops(pl_frame& i, pl_frame* m, int n) : image(i), mix(m), main(i.crop), rotation(i.rotation), count(n)
+            RestoreCrops(pl_frame& i, pl_frame* m, int n)
+                : image(i), mix(m), main(i.crop), rotation(i.rotation), count(n)
             {
                 for (int k = 0; k < n; k++)
                 {
@@ -1254,8 +1268,8 @@ struct PlaceboBackend::State
                                          ? static_cast<float>(description.aspectX) / description.aspectY
                                          : static_cast<float>(description.width) / description.height;
         float aspect = cropBars ? originalAspect * ((image.crop.x1 - image.crop.x0) / description.width) /
-                                            ((image.crop.y1 - image.crop.y0) / description.height)
-                                      : originalAspect;
+                                      ((image.crop.y1 - image.crop.y0) / description.height)
+                                : originalAspect;
         if (rotation % 180)
             aspect = 1.f / aspect;
         // With automatic crop, fit the active image into the complete output;
@@ -1391,7 +1405,9 @@ struct PlaceboBackend::State
                           int(target.crop.x0),
                           int(target.crop.y0),
                           int(target.crop.x1),
-                          int(target.crop.y1), rotation, int(flip)})
+                          int(target.crop.y1),
+                          rotation,
+                          int(flip)})
                 sampleKey = (sampleKey ^ uint64_t(v)) * 0x100000001b3ULL;
             imageAnalysis.Begin(d3d, context.Get(), window, sampleKey, mixing && settings.smoothMotion && mixCount > 1);
             analysisHooks[analysisCount++] = imageAnalysis.Observer();
@@ -2229,6 +2245,10 @@ HRESULT PlaceboBackend::Present()
     const auto due = s.presentationDue;
     const bool timed = s.presentationTimed;
     s.presentationTimed = false;
+    if (s.resizeHold)
+        return S_FALSE;
+    if (s.resizeResumed.exchange(false))
+        s.presentation.Reset(false);
     if (!s.valid || !s.window)
         return S_FALSE;
     HRESULT applied = s.ApplySettings();
@@ -2421,12 +2441,19 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
     s.rtx.Reset();
 }
 
+void PlaceboBackend::HoldForResize(bool hold)
+{
+    auto& s = *state;
+    if (s.resizeHold.exchange(hold) && !hold)
+        s.resizeResumed = true;
+}
+
 HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty)
 {
     auto& s = *state;
     std::unique_lock guard(s.lock, std::try_to_lock);
     if (!guard.owns_lock())
-        return S_FALSE;
+        return HRESULT_FROM_WIN32(ERROR_BUSY);
     s.presentationTimed = false;
     if (blackWhenEmpty && !s.valid && s.nativeHdr.Active())
     {
@@ -2625,11 +2652,12 @@ std::wstring PlaceboBackend::StatisticsText() const
     return s.statisticsText;
 }
 
-void PlaceboBackend::SetPresentationTiming(int64_t due, bool running)
+void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
     s.presentationDue = due;
+    s.presentationMediaTime = mediaTime;
     s.presentationTimed = running && due > 0;
 }
 
@@ -2688,4 +2716,83 @@ BlackBarStatus PlaceboBackend::BlackBars() const
     out.protectingSubtitles = s.blackBars.detector.subtitleProtection;
     out.samples = s.blackBars.detector.samples;
     return out;
+}
+
+HRESULT PlaceboBackend::ImportDolbyVision(const VideoFrame& frame, IDvLayerSample* sample)
+{
+    if (!sample)
+        return E_POINTER;
+    DvFrameInfo info = {};
+    HRESULT hr = sample->GetInfo(DvTransportVersion, sizeof(info), &info);
+    if (FAILED(hr))
+        return hr;
+    if (info.version != DvTransportVersion || info.placeboApi != PL_API_VER || info.bytes != sizeof(info) ||
+        !frame.dovi || info.width[0] != frame.width || info.height[0] != frame.height)
+        return E_INVALIDARG;
+    const int layers = frame.dovi->nlq_active ? 2 : 1;
+    if (layers == 1 && (info.width[1] || info.height[1]))
+        return E_INVALIDARG;
+    ComPtr<ID3D11Texture2D> textures[2][3];
+    ComPtr<ID3D11Device> device;
+    for (int l = 0; l < layers; ++l)
+    {
+        if (!info.width[l] || !info.height[l] || info.width[l] > 8192 || info.height[l] > 8192)
+            return E_INVALIDARG;
+        for (int p = 0; p < 3; ++p)
+        {
+            hr = sample->GetPlane(l, p, &textures[l][p]);
+            if (FAILED(hr) || !textures[l][p])
+                return E_INVALIDARG;
+            D3D11_TEXTURE2D_DESC desc = {};
+            textures[l][p]->GetDesc(&desc);
+            ComPtr<ID3D11Device> owner;
+            textures[l][p]->GetDevice(&owner);
+            if (!device)
+                device = owner;
+            if (owner.Get() != device.Get() || desc.Format != DXGI_FORMAT_R16_UNORM || desc.ArraySize != 1 ||
+                desc.Width != (p ? (info.width[l] + 1) / 2 : info.width[l]) ||
+                desc.Height != (p ? (info.height[l] + 1) / 2 : info.height[l]))
+                return E_INVALIDARG;
+        }
+    }
+    hr = Device() == device.Get() ? S_OK : SetDevice(device.Get());
+    if (FAILED(hr))
+        return hr;
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    s.ClearFrame();
+    s.Describe(frame);
+    s.image.num_planes = 3;
+    s.image.repr.bits = {16, 10, 0};
+    s.felEnhancement = {};
+    s.felEnhancement.num_planes = layers == 2 ? 3 : 0;
+    s.felEnhancement.color = frame.color;
+    s.felEnhancement.repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
+    s.felEnhancement.repr.levels = PL_COLOR_LEVELS_LIMITED;
+    s.felEnhancement.repr.bits = {16, 10, 0};
+    s.felEnhancement.crop = {0, 0, float(info.width[1]), float(info.height[1])};
+    for (int l = 0; l < layers; ++l)
+        for (int p = 0; p < 3; ++p)
+        {
+            pl_d3d11_wrap_params wrap = {};
+            wrap.tex = textures[l][p].Get();
+            auto& plane = l ? s.felEnhancement.planes[p] : s.image.planes[p];
+            auto& texture = l ? s.felPlanes[p] : s.planes[p];
+            texture = pl_d3d11_wrap(s.d3d->gpu, &wrap);
+            if (!texture)
+            {
+                s.ClearFrame();
+                return E_FAIL;
+            }
+            plane.texture = texture;
+            plane.components = 1;
+            plane.component_mapping[0] = p;
+        }
+    pl_frame_set_chroma_location(&s.image, PL_CHROMA_TOP_LEFT);
+    if (layers == 2)
+        pl_frame_set_chroma_location(&s.felEnhancement, PL_CHROMA_TOP_LEFT);
+    s.image.enhancement_layer = layers == 2 ? &s.felEnhancement : nullptr;
+    s.valid = true;
+    s.mixing = false;
+    return S_OK;
 }

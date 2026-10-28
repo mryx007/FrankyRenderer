@@ -8,6 +8,10 @@ import pefile
 
 
 RUNTIME_NAMES = {
+    "avcodec-lav-63.dll": "VideoCodec.dll",
+    "avformat-lav-63.dll": "MediaContainer.dll",
+    "avutil-lav-61.dll": "MediaUtil.dll",
+    "swresample-lav-7.dll": "AudioResampler.dll",
     "libplacebo-387.dll": "VideoProcessing.dll",
     "libdovi.dll": "DolbyVision.dll",
     "liblcms2-2.dll": "ColorManagement.dll",
@@ -29,6 +33,22 @@ def aligned(value, alignment):
 
 def packaged_name(name):
     return RUNTIME_NAMES.get(name.lower(), name)
+
+
+def _write_verified(pe, data, source, destination):
+    with pefile.PE(data=bytes(data)) as result:
+        for before, after in zip(pe.sections, result.sections):
+            if before.Characteristics & 0x20000000 and before.get_data() != after.get_data():
+                raise ValueError(f"Executable section changed: {source}")
+        old_exports = [(s.ordinal, s.name, s.address, s.forwarder)
+                       for s in getattr(getattr(pe, "DIRECTORY_ENTRY_EXPORT", None), "symbols", [])]
+        new_exports = [(s.ordinal, s.name, s.address, s.forwarder)
+                       for s in getattr(getattr(result, "DIRECTORY_ENTRY_EXPORT", None), "symbols", [])]
+        if old_exports != new_exports:
+            raise ValueError(f"Exported functions changed: {source}")
+        struct.pack_into("<I", data, result.OPTIONAL_HEADER.get_field_absolute_offset("CheckSum"),
+                         result.generate_checksum())
+    destination.write_bytes(data)
 
 
 def write_packaged_binary(source, destination):
@@ -83,6 +103,20 @@ def write_packaged_binary(source, destination):
             destination.write_bytes(original)
             return
 
+        # Some FFmpeg builds have no spare section-header slot. Shorter DLL
+        # names fit in their existing PE string slots without moving any code.
+        slots = [(pe.get_offset_from_rva(getattr(owner, field)),
+                  pe.get_string_at_rva(getattr(owner, field)), name.encode("ascii"))
+                 for owner, field, name in changes]
+        if all(len(name) <= len(old) for _, old, name in slots):
+            pe.OPTIONAL_HEADER.DATA_DIRECTORY[11].VirtualAddress = 0
+            pe.OPTIONAL_HEADER.DATA_DIRECTORY[11].Size = 0
+            data = bytearray(pe.write())
+            for offset, old, name in slots:
+                data[offset:offset + len(old) + 1] = name + b"\0" * (len(old) + 1 - len(name))
+            _write_verified(pe, data, source, destination)
+            return
+
         section_offset = pe.sections[-1].get_file_offset() + 40
         first_data = min(s.PointerToRawData for s in pe.sections if s.PointerToRawData)
         if section_offset + 40 > min(first_data, pe.OPTIONAL_HEADER.SizeOfHeaders):
@@ -114,19 +148,7 @@ def write_packaged_binary(source, destination):
         data.extend(b"\0" * (raw_offset - len(data)))
         data.extend(strings)
         data.extend(b"\0" * (raw_size - len(strings)))
-        with pefile.PE(data=bytes(data)) as result:
-            for before, after in zip(pe.sections, result.sections):
-                if before.Characteristics & 0x20000000 and before.get_data() != after.get_data():
-                    raise ValueError(f"Executable section changed: {source}")
-            old_exports = [(s.ordinal, s.name, s.address, s.forwarder)
-                           for s in getattr(getattr(pe, "DIRECTORY_ENTRY_EXPORT", None), "symbols", [])]
-            new_exports = [(s.ordinal, s.name, s.address, s.forwarder)
-                           for s in getattr(getattr(result, "DIRECTORY_ENTRY_EXPORT", None), "symbols", [])]
-            if old_exports != new_exports:
-                raise ValueError(f"Exported functions changed: {source}")
-            struct.pack_into("<I", data, result.OPTIONAL_HEADER.get_field_absolute_offset("CheckSum"),
-                             result.generate_checksum())
-        destination.write_bytes(data)
+        _write_verified(pe, data, source, destination)
     finally:
         pe.close()
 

@@ -1,21 +1,19 @@
-FrankyRenderer 1.0.8-native-clsid.1 - Windows x64
+FrankyRenderer - Windows x64
 
-DEVELOPER TEST BUILD - NATIVE CLSID INTEGRATION
-For player developers testing native FrankyRenderer integration.
-Not intended for general use.
+Use the native package for MPC-BE or the compatibility package for PotPlayer.
+Extract the complete ZIP to a permanent folder and run Install.cmd.
+Close all players before installation or removal. Messages appear in this console.
+Run Uninstall.cmd before moving or deleting the installed folder.
 
-Renderer: FrankyRenderer.ax
-Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}
-The MPC Video Renderer compatibility CLSID is not registered or exposed.
-A separate internal CLSID is used for the renderer settings page.
+Dolby Vision Profile 7 FEL/MEL processing is integrated and detected automatically.
+No separate DV filter or menu switch is required. Existing splitters and decoders remain in use.
+Remove any old Franky DV Filter entry from your player's preferred-filter list.
+Supported: local progressive UHD P7 with 10-bit P010 or native D3D11 base frames.
+FEL uses a 1920x1080 enhancement layer. Required runtime DLLs stay beside FrankyRenderer.ax.
 
-Requires a player build with explicit FrankyRenderer integration. Unmodified
-player releases may not offer this renderer. Tested on Windows 11 x64.
-The registration tools refuse to overwrite another FrankyRenderer installation.
-Existing original MPC Video Renderer and madVR registrations are left untouched.
+MPC-BE: select FrankyRenderer in Video Renderer.
+PotPlayer: select MPC Video Renderer in Video Renderer.
+The original MPC Video Renderer must be uninstalled before installing the PotPlayer package.
+Both Franky packages can coexist in separate permanent folders.
 
-Keep the runtime DLLs and shaders beside FrankyRenderer.ax. Source code,
-configuration options and license information are provided at:
-https://github.com/mryx007/FrankyRenderer/tree/native-clsid-preview
-
-See LICENSE, THIRD_PARTY.md and the licenses folder for dependency notices.
+Tested on Windows 11 x64. Windows 10 x64 is expected to work but has not been tested.

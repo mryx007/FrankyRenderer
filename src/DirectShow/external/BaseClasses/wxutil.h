@@ -24,6 +24,16 @@ class CCritSec {
 
     CRITICAL_SECTION m_CritSec;
 
+public:
+    bool TryLock() {
+        if (!TryEnterCriticalSection(&m_CritSec)) return false;
+#ifdef _DEBUG
+        m_currentOwner = GetCurrentThreadId();
+        ++m_lockCount;
+#endif
+        return true;
+    }
+
 #ifdef _DEBUG
 public:
     DWORD   m_currentOwner;

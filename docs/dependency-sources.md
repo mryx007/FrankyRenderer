@@ -6,6 +6,10 @@ libplacebo is built from pinned upstream source; the remaining runtime libraries
 
   SHA-256: `adbca47395410ada01414bc527e0103c716b9b758be857464c40e5ff0ec695be`
 
+- [LAV-maintained FFmpeg, commit 29e0b0813d85](https://github.com/clsid2/FFmpeg/tree/29e0b0813d855d55536cd11ae4a8b6de88ee6461)
+
+  Used internally for local-file enhancement-layer reading/decoding, without replacing the player's DirectShow decoder. The exact four runtime hashes are in [dv-ffmpeg.lock.json](../src/deps/dv-ffmpeg.lock.json); the package includes their original FFmpeg license files under `licenses/ffmpeg`. [Build setup](../src/DolbyVision/BUILD.md) verifies the source revision and runtime hashes before generating MSVC import libraries.
+
 - [mingw-w64-lcms2-2.19.1-1.src.tar.zst](https://repo.msys2.org/mingw/sources/mingw-w64-lcms2-2.19.1-1.src.tar.zst)
 
   SHA-256: `83414d0d95c5cb2548d3050670694e9efc64304a52190f42bcad951efa038b41`

@@ -3,7 +3,10 @@ $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'FrankyRenderer.ax'))
 $taskIds=@('{B864E92A-1BDF-4DA1-9004-CBF467DF239A}','{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}')
-$taskActiveIds=$taskIds
+$taskFilterAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'DolbyVisionFilter.ax'))
+$taskFilterIds=@('{40F090C8-E82B-4CE9-931B-A34760E6D49E}')
+$taskComponents=@(@{file=$taskAx;ids=$taskIds})
+# Old packages registered a separate DV filter. Retire only this variant's owned entry.
 $taskManifest=Join-Path $taskRoot 'registration-backup\state.json'
 function ShowSetupMessage([string]$text,[bool]$failed=$false) {
     if($MessageFile){Set-Content -LiteralPath $MessageFile -Value $text -Encoding UTF8}
@@ -20,33 +23,80 @@ function ReadInstallationState {
     if(![string]::Equals($state.renderer,$taskAx,[StringComparison]::OrdinalIgnoreCase)) {
         throw 'The registration backup belongs to another renderer installation.'
     }
+    if($state.filter -and ![string]::Equals($state.filter,$taskFilterAx,[StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The registration backup belongs to another DV filter installation.'
+    }
     return $state
 }
 function AssertOwnership {
-    foreach($id in $taskIds){foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){
+    $owned=@($taskComponents)+@{file=$taskFilterAx;ids=$taskFilterIds}
+    foreach($component in $owned){foreach($id in $component.ids){foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){
         $path=RegisteredPath $id $hive
-        if($path -and ![string]::Equals([IO.Path]::GetFullPath($path),$taskAx,[StringComparison]::OrdinalIgnoreCase)){
-            throw "Another renderer registration exists: $id -> $path. No changes were made."
+        if($path -and ![string]::Equals([IO.Path]::GetFullPath($path),$component.file,[StringComparison]::OrdinalIgnoreCase)){
+            throw "Another registration exists: $id -> $path. No changes were made."
+        }
+    }}}
+}
+function RegistrationPaths {
+    foreach($component in $taskComponents){
+        foreach($id in $component.ids){"HKLM\SOFTWARE\Classes\CLSID\$id"}
+        "HKLM\SOFTWARE\Classes\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\$($component.ids[0])"
+    }
+    foreach($hive in @('HKLM','HKCU')){foreach($id in $taskFilterIds){
+        "$hive\SOFTWARE\Classes\CLSID\$id"
+        "$hive\SOFTWARE\Classes\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\$id"
+    }}
+}
+function RemoveLegacyFilter {
+    foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){foreach($id in $taskFilterIds){
+        $path=RegisteredPath $id $hive
+        if($path -and ![string]::Equals([IO.Path]::GetFullPath($path),$taskFilterAx,[StringComparison]::OrdinalIgnoreCase)){
+            throw "Another DV filter registration exists: $id -> $path"
+        }
+        foreach($key in @("Registry::$hive\SOFTWARE\Classes\CLSID\$id",
+                         "Registry::$hive\SOFTWARE\Classes\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\$id")){
+            if(Test-Path -LiteralPath $key){Remove-Item -LiteralPath $key -Recurse -Force}
         }
     }}
 }
 function Register([bool]$remove) {
-    $taskArgs=if($remove){'/s /u "'+$taskAx+'"'}else{'/s "'+$taskAx+'"'}
-    $p=Start-Process -FilePath "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList $taskArgs -WindowStyle Hidden -Wait -PassThru
-    if($p.ExitCode -ne 0){throw "Registration failed. regsvr32 exit code: $($p.ExitCode)"}
+    $modules=@($taskComponents)
+    if($remove){[array]::Reverse($modules)}
+    foreach($component in $modules){
+        $taskArgs=if($remove){'/s /u "'+$component.file+'"'}else{'/s "'+$component.file+'"'}
+        $p=Start-Process -FilePath "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList $taskArgs -WindowStyle Hidden -Wait -PassThru
+        if($p.ExitCode -ne 0){throw "Registration failed for $($component.file). Exit code: $($p.ExitCode)"}
+    }
 }
-function RestoreBackup($state) {
-    foreach($entry in $state.entries){if($entry.existed){
-        $file=Join-Path (Split-Path $taskManifest) $entry.file
+function SaveRegistrationSnapshot([string]$directory) {
+    $null=New-Item -ItemType Directory -Path $directory -Force
+    $entries=@();$index=0
+    foreach($path in @(RegistrationPaths)){
+        $exists=Test-Path -LiteralPath ('Registry::'+$path.Replace('HKLM','HKEY_LOCAL_MACHINE').Replace('HKCU','HKEY_CURRENT_USER'))
+        $name="key-$index.reg";$index++
+        if($exists){
+            & "$env:SystemRoot\System32\reg.exe" export $path (Join-Path $directory $name) /y /reg:64 | Out-Null
+            if($LASTEXITCODE -ne 0){throw "Registration backup failed: $path"}
+        }
+        $entries+=@{path=$path;existed=$exists;file=$name}
+    }
+    return $entries
+}
+function RestoreBackup($state,[string]$directory=(Split-Path $taskManifest),[switch]$IncludeLegacy) {
+    foreach($entry in $state.entries){
+        $legacy=@($taskFilterIds | Where-Object {$entry.path -like "*$_*"}).Count -gt 0
+        if($legacy -and !$IncludeLegacy){continue}
+        if($entry.existed){
+        $file=Join-Path $directory $entry.file
         & "$env:SystemRoot\System32\reg.exe" import $file /reg:64 | Out-Null
         if($LASTEXITCODE -ne 0){throw "Could not restore the registration backup: $file"}
     }}
 }
 try {
-    if(!(Test-Path -LiteralPath $taskAx)){throw "Renderer file is missing: $taskAx"}
+    foreach($component in $taskComponents){if(!(Test-Path -LiteralPath $component.file)){throw "Required file is missing: $($component.file)"}}
     AssertOwnership
     if($Action -eq 'Check') {
-        foreach($id in $taskIds){[pscustomobject]@{CLSID=$id;Machine=(RegisteredPath $id);User=(RegisteredPath $id 'HKEY_CURRENT_USER')}}
+        foreach($component in $taskComponents){foreach($id in $component.ids){[pscustomobject]@{CLSID=$id;Machine=(RegisteredPath $id);User=(RegisteredPath $id 'HKEY_CURRENT_USER')}}}
         exit 0
     }
     $taskIdentity=[Security.Principal.WindowsIdentity]::GetCurrent()
@@ -69,45 +119,42 @@ try {
         $state=ReadInstallationState
     } elseif($Action -eq 'Remove') {throw 'No installation backup was found. No changes were made.'}
     else {
-        if(RegisteredPath $taskIds[0]){throw 'The renderer is already registered, but its backup is missing. No changes were made.'}
-        $null=New-Item -ItemType Directory -Path (Split-Path $taskManifest) -Force
-        $paths=@();foreach($id in $taskIds){$paths+="HKLM\SOFTWARE\Classes\CLSID\$id"}
-        $paths+="HKLM\SOFTWARE\Classes\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\$($taskIds[0])"
-        $entries=@();$index=0
-        foreach($path in $paths){
-            $exists=Test-Path -LiteralPath ('Registry::'+$path.Replace('HKLM','HKEY_LOCAL_MACHINE'))
-            $name="key-$index.reg";$index++
-            if($exists){& "$env:SystemRoot\System32\reg.exe" export $path (Join-Path (Split-Path $taskManifest) $name) /y /reg:64 | Out-Null;if($LASTEXITCODE -ne 0){throw "Registration backup failed: $path"}}
-            $entries+=@{path=$path;existed=$exists;file=$name}
-        }
+        foreach($component in $taskComponents){if(RegisteredPath $component.ids[0]){throw 'A component is already registered, but its backup is missing. No changes were made.'}}
+        $entries=@(SaveRegistrationSnapshot (Split-Path $taskManifest))
         $state=@{renderer=$taskAx;entries=$entries;created=(Get-Date).ToString('o')}
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskManifest -Encoding UTF8
     }
     if($Action -eq 'Install'){
         # Extend an existing installation snapshot for newly added page classes.
         # AssertOwnership already rejects registrations belonging to other files.
-        foreach($id in $taskIds){
-            $newPath="HKLM\SOFTWARE\Classes\CLSID\$id"
+        foreach($newPath in @(RegistrationPaths)){
             if(!(@($state.entries) | Where-Object { $_.path -eq $newPath })){
                 $state.entries=@($state.entries)+@{path=$newPath;existed=$false;file=''}
             }
         }
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskManifest -Encoding UTF8
+        # Keep the pre-attempt registrations too: a failed reinstall must
+        # restore the working installation, not only the original empty state.
+        $rollbackDirectory=Join-Path (Split-Path $taskManifest) 'rollback'
+        $rollback=@{entries=@(SaveRegistrationSnapshot $rollbackDirectory)}
         try {
             Register $false
-            foreach ($id in $taskActiveIds) {
-                if (!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id), $taskAx, [StringComparison]::OrdinalIgnoreCase)) {
-                    throw "Registered path does not match: $id"
+            RemoveLegacyFilter
+            foreach($component in $taskComponents){
+                foreach($id in $component.ids){
+                    if(!(RegisteredPath $id) -or ![string]::Equals((RegisteredPath $id),$component.file,[StringComparison]::OrdinalIgnoreCase)){
+                        throw "Registered path does not match: $id"
+                    }
                 }
-            }
-            $taskCategoryKey = 'Registry::HKEY_CLASSES_ROOT\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\' + $taskIds[0]
-            if (!(Test-Path -LiteralPath $taskCategoryKey)) {
-                throw 'The renderer is missing from the DirectShow video filter category.'
+                $category='Registry::HKEY_CLASSES_ROOT\CLSID\{083863F1-70DE-11D0-BD40-00A0C911CE86}\Instance\'+$component.ids[0]
+                if(!(Test-Path -LiteralPath $category)){throw 'A component is missing from the DirectShow filter category.'}
             }
         }
-        catch {$taskFailure=$_;try {Register $true;RestoreBackup $state}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
-        $message='Developer test build registered under the dedicated FrankyRenderer CLSID. Native player integration is required; the MPC Video Renderer registration is unchanged.'
-    } else {Register $true;RestoreBackup $state;$message='Renderer removed. Your video player can now use another renderer.'}
+        catch {$taskFailure=$_;try {Register $true;RestoreBackup $rollback $rollbackDirectory -IncludeLegacy}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
+        $message='FrankyRenderer installed for MPC-BE.
+Select "FrankyRenderer" as the video renderer.
+Dolby Vision Profile 7 (FEL/MEL) is detected automatically.'
+    } else {Register $true;RemoveLegacyFilter;RestoreBackup $state;$message='FrankyRenderer removed. Your settings were kept.'}
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
     ShowSetupMessage $message
 } catch {

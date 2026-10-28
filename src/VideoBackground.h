@@ -27,24 +27,28 @@ inline HWND Find(HWND parent)
 
 inline void Repaint(HWND parent)
 {
+    if (!parent || !IsWindow(parent))
+        return;
     // Invalidation alone waits for the host UI thread's next paint dispatch.
     // Restore exposed pixels now without sending synchronous paint messages
     // to that thread during graph teardown. Sibling clipping preserves video
     // and controls above this background.
-    if (HWND child = Find(parent))
+    const HWND child = Find(parent);
+    // Graph-thread owners cannot create the persistent UI-thread child.
+    // Clear only their exposed area directly when the video child goes away.
+    const HWND surface = child ? child : parent;
+    RECT client = {};
+    if (GetClientRect(surface, &client))
     {
-        RECT client = {};
-        if (GetClientRect(child, &client))
+        if (HDC dc = GetDCEx(surface, nullptr, DCX_CACHE | DCX_CLIPSIBLINGS | DCX_CLIPCHILDREN))
         {
-            if (HDC dc = GetDCEx(child, nullptr, DCX_CACHE | DCX_CLIPSIBLINGS | DCX_CLIPCHILDREN))
-            {
-                FillRect(dc, &client, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
-                GdiFlush();
-                ReleaseDC(child, dc);
-            }
+            FillRect(dc, &client, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+            GdiFlush();
+            ReleaseDC(surface, dc);
         }
-        RedrawWindow(child, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_NOCHILDREN);
     }
+    if (child)
+        RedrawWindow(child, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_NOCHILDREN);
 }
 
 inline bool Resize(HWND parent)
