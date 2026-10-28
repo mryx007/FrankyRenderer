@@ -95,7 +95,18 @@ try {
     $script:FailAfterLegacy=$false
     . $fixtureSetup -Action Remove
     Require ($script:registrations.Count -eq 1 -and $script:registrations['HKEY_LOCAL_MACHINE|unrelated'] -eq 'untouched') 'Uninstall must preserve unrelated registrations'
-    Write-Output 'PASS setup transaction: partial-install rollback, successful install, failed-reinstall restore, joint uninstall'
+    . $fixtureSetup -Action Install
+    Microsoft.PowerShell.Management\Remove-Item -LiteralPath $taskManifest
+    . $fixtureSetup -Action Remove
+    Require ($script:registrations.Count -eq 1) 'Missing backup must not prevent owned uninstall'
+    . $fixtureSetup -Action Remove
+    Require ($script:registrations.Count -eq 1) 'Repeated uninstall without backup must remain safe'
+    $script:registrations["HKEY_LOCAL_MACHINE|$($taskIds[0])"]='C:\OtherFranky\FrankyRenderer.ax'
+    $failed=$false
+    try {. $fixtureSetup -Action Remove} catch {$failed=$true}
+    Require $failed 'Missing backup must not permit uninstalling another installation'
+    Require ($script:registrations["HKEY_LOCAL_MACHINE|$($taskIds[0])"] -eq 'C:\OtherFranky\FrankyRenderer.ax') 'Foreign registration must remain untouched'
+    Write-Output 'PASS setup transaction: install rollback, reinstall restore, uninstall with/without backup, repeated uninstall and foreign registration protection'
 } finally {
     $resolved=[IO.Path]::GetFullPath($fixtureRoot)
     $allowed=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'build'))+[IO.Path]::DirectorySeparatorChar

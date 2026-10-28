@@ -61,9 +61,9 @@ inline constexpr const wchar_t* DitherChoices[] = {
 inline constexpr const wchar_t* OutputChoices[] = {
     L"Auto (libplacebo)", L"8-bit Integer (SDR)", L"Prefer 10-bit Integer", L"Prefer 16-bit Float"};
 inline constexpr const wchar_t* LevelChoices[] = {L"Auto (Output)", L"PC Levels (0–255)", L"TV Levels (16–235)"};
-inline constexpr int DisplayDepths[] = {0, 6, 8, 10, 12, 16};
+inline constexpr int DisplayDepths[] = {0, 4, 5, 6, 8, 10, 12, 16};
 inline constexpr const wchar_t* DepthChoices[] = {
-    L"Auto (Output Texture)", L"6 Bit", L"8 Bit", L"10 Bit", L"12 Bit", L"16 Bit"};
+    L"Auto (Output Texture)", L"4 Bit", L"5 Bit", L"6 Bit", L"8 Bit", L"10 Bit", L"12 Bit", L"16 Bit"};
 
 inline constexpr RendererChoice GamutChoices[] = {{"auto", L"Default (libplacebo)"},
                                                   {"perceptual", L"Perceptual"},

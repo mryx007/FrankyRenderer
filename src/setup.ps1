@@ -115,10 +115,10 @@ try {
     # A running player can retain the old DLL even after registration changes.
     $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64,mpc-be64,mpc-hc64 -ErrorAction SilentlyContinue
     if($taskPlayers){throw 'Please close PotPlayer, MPC-BE and MPC-HC first. No changes were made.'}
+    $state=$null
     if(Test-Path -LiteralPath $taskManifest){
         $state=ReadInstallationState
-    } elseif($Action -eq 'Remove') {throw 'No installation backup was found. No changes were made.'}
-    else {
+    } elseif($Action -eq 'Install') {
         foreach($component in $taskComponents){if(RegisteredPath $component.ids[0]){throw 'A component is already registered, but its backup is missing. No changes were made.'}}
         $entries=@(SaveRegistrationSnapshot (Split-Path $taskManifest))
         $state=@{renderer=$taskAx;entries=$entries;created=(Get-Date).ToString('o')}
@@ -154,7 +154,15 @@ try {
         $message='FrankyRenderer installed for MPC-BE.
 Select "FrankyRenderer" as the video renderer.
 Dolby Vision Profile 7 (FEL/MEL) is detected automatically.'
-    } else {Register $true;RemoveLegacyFilter;RestoreBackup $state;$message='FrankyRenderer removed. Your settings were kept.'}
+    } else {
+        # Ownership was checked above. A missing snapshot must not prevent
+        # unregistering this installation, but there is nothing to restore.
+        Register $true
+        RemoveLegacyFilter
+        if($state){RestoreBackup $state}
+        $message='FrankyRenderer removed. Your settings were kept.'
+    }
+    $null=New-Item -ItemType Directory -Path (Split-Path $taskManifest) -Force
     @{action=$Action;success=$true;renderer=$taskAx;time=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $taskManifest) 'result.json') -Encoding UTF8
     ShowSetupMessage $message
 } catch {

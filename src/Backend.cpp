@@ -1911,8 +1911,9 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (settings.outputLevels < 0 || settings.outputLevels > 2)
         return E_INVALIDARG;
-    if (settings.displayDepth != 0 && settings.displayDepth != 6 && settings.displayDepth != 8 &&
-        settings.displayDepth != 10 && settings.displayDepth != 12 && settings.displayDepth != 16)
+    if (settings.displayDepth != 0 && settings.displayDepth != 4 && settings.displayDepth != 5 &&
+        settings.displayDepth != 6 && settings.displayDepth != 8 && settings.displayDepth != 10 &&
+        settings.displayDepth != 12 && settings.displayDepth != 16)
         return E_INVALIDARG;
     if (settings.iccIntent < 0 || settings.iccIntent > 1)
         return E_INVALIDARG;

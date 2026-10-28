@@ -26,6 +26,15 @@ int wmain()
     try
     {
         PlaceboSettings original;
+        for (int depth : {4, 5})
+        {
+            auto lowDepth = original;
+            lowDepth.displayDepth = depth;
+            Require(SUCCEEDED(ValidateSettings(lowDepth)), "Low dither depth was rejected");
+            const auto restoredDepth = SettingsIni::Parse(SettingsIni::Serialize(lowDepth));
+            Require(restoredDepth.displayDepth == depth, "Low dither depth was lost in INI round-trip");
+            Require(BackendSettings(restoredDepth).displayDepth == depth, "Low dither depth was lost for backend");
+        }
         original.rtxSuperResolution = TRUE;
         original.imageAnalysis = TRUE;
         original.clippingProtection = TRUE;
