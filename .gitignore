@@ -11,3 +11,5 @@ src/tools-runtime/
 __pycache__/
 dist/
 releases/
+
+src/deps/lavffmpeg/

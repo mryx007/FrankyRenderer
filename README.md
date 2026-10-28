@@ -1,5 +1,9 @@
 # FrankyRenderer
 
+Two separate packages are available: **MPC-BE native** and **PotPlayer compatibility**. Both use the same renderer code. Choose the package for your player.
+
+Recent [MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases) support selecting **FrankyRenderer** directly. Use the MPC-BE package for those builds; use the PotPlayer package when selecting **MPC Video Renderer** in PotPlayer.
+
 I've been using the madVR renderer for many years now. Unfortunately, updates have become quite rare, with what feels like only one update per year.
 
 Meanwhile, MPC Video Renderer is still being actively developed, and libplacebo, which also continues to receive regular updates, has built a very good reputation for its image processing capabilities.
@@ -14,7 +18,7 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
-It currently uses the same identifier as MPC Video Renderer for player compatibility. A dedicated FrankyRenderer identifier already exists, but separate selection still requires support from player developers.
+The MPC-BE package uses only FrankyRenderer's own renderer identity. The PotPlayer package uses only the MPC Video Renderer compatibility identity. Each package has its own settings-page registration, so they can coexist in separate folders.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
@@ -56,6 +60,7 @@ The screenshots show example settings, not recommended presets.
 - Selectable output texture format: automatic, 8-bit integer, preferred 10-bit integer or preferred 16-bit float.
 - Configurable RGB output levels, dither target bit depth and maximum frames in flight.
 - D3D11 subtitle composition through compatible host callbacks.
+- Automatic Dolby Vision Profile 7 FEL/MEL processing for supported local progressive UHD files, integrated into the renderer without an additional DirectShow filter. The existing splitter and base-layer decoder remain in use; enhancement data is read from the same local file.
 
 ### Scaling and Smooth Motion
 
@@ -124,29 +129,28 @@ The screenshots show example settings, not recommended presets.
 - Numeric entry, fine adjustment steps, reset controls and contextual descriptions.
 - Configurable background color, transparency and rendering quality/performance options.
 - PotPlayer fullscreen playlist-transition handling.
+- Compact settings layout for smaller displays and stable window resizing: the image holds during size changes and resumes when the size settles, including before the mouse button is released. Audio playback continues.
 - Ctrl+J statistics with display/video information, active processing settings, frame counters, presentation timing and CPU/GPU render timings.
 - Persistent shader cache for reusing compiled processing work across playback sessions.
 
-Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision support relies on metadata provided by the decoder; this is not Dolby Vision HDMI tunneling or FEL reconstruction.
+Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision profiles such as 5 and 8 rely on metadata provided by the decoder. The integrated Profile 7 path supports local progressive 3840x2160 P010 base layers, including native D3D11 input; FEL enhancement must be 1920x1080. MEL uses metadata without enhancement-layer reconstruction. The result is rendered as HDR/PQ or tone-mapped SDR, not native Dolby Vision HDMI signalling. Smooth Motion is currently not applied to this layered Profile 7 path. See [the processing and build notes](src/DolbyVision/BUILD.md).
 
-## PotPlayer and MPC-BE installation
+## Choose the package
 
-> **Before installing:** uninstall or unregister the original **MPC Video Renderer** first. FrankyRenderer currently uses the same CLSID for PotPlayer and MPC-BE compatibility, so both cannot be registered at the same time. A dedicated FrankyRenderer CLSID exists, but these players do not yet offer a separate FrankyRenderer selection through it. Uninstall the renderer itself, not MPC-HC or MPC-BE.
+| Package | Player selection | Renderer CLSID |
+|---|---|---|
+| **MPC-BE native** | **FrankyRenderer** | `{B864E92A-1BDF-4DA1-9004-CBF467DF239A}` |
+| **PotPlayer compatibility** | **MPC Video Renderer** | `{71F080AA-8661-4093-B15E-4F6903E77D0A}` |
 
-Download the Windows x64 ZIP from [Releases](https://github.com/mryx007/FrankyRenderer/releases), extract it to a permanent directory, then follow the installation steps below. The ZIP includes the renderer, required runtime DLLs, shaders and installation/removal scripts, a short INSTALL.txt guide and license notices; no compilation is required to test a release.
+The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings. This package exposes no MPCVR compatibility factory or registration. The original MPC Video Renderer may remain installed alongside it.
 
-Runtime DLLs use descriptive names such as `VideoProcessing.dll` and `ColorManagement.dll`. See [runtime names](docs/runtime-names.md) for the upstream libraries; the package also records original names and binary hashes in `licenses/runtime-names.json`.
+The PotPlayer package exposes only the compatibility identity because PotPlayer currently has no native FrankyRenderer option. Uninstall the original MPC Video Renderer before installing this package: both need the same compatibility identity. This package does not register or expose FrankyRenderer's native renderer CLSID.
 
-For a local build, run `python src/package.py` to create the complete installable package in `dist`. Its displayed filter name is **FrankyRenderer**; `PlaceboRenderer.ax` remains the internal binary filename for compatibility.
+Extract the chosen ZIP to a permanent folder, close your players and run `Install.cmd`. Each package includes `FrankyRenderer.ax`, its runtime libraries, shaders and console registration tools. Install the two packages in different folders if you need both players. An existing installation using the same identity must be uninstalled first; the tools refuse to overwrite another installation.
 
-1. Keep the extracted package directory at a permanent location and close PotPlayer and MPC-BE.
-2. Run `Install.cmd` inside the extracted package (or `dist` for a local build), or run `.\setup.ps1 -Action Install` from that directory. Windows requests administrator permission for COM registration.
-3. In PotPlayer or MPC-BE, select **MPC Video Renderer** under Video Renderer. This is the player's existing menu label; the loaded filter is FrankyRenderer.
-4. Open the filter's settings to configure it.
+Supported Profile 7 FEL/MEL files are detected automatically. Do not add a separate Franky DV filter in the player.
 
 Use **Export** in the settings menu to save all display profiles in one INI backup and **Import** to restore them. Disconnected displays, custom names, all menu settings and shader parameters/order are included. Existing profiles absent from the backup are kept. Older single-profile INI files are imported into the selected display. External ICC and LUT files are referenced by path and must be kept separately.
-
-FrankyRenderer currently uses the MPC Video Renderer CLSID for player discovery. It cannot occupy that registration alongside the original MPC Video Renderer. The installer refuses to overwrite a registration pointing elsewhere. Existing madVR registration is separate.
 
 Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.
 
@@ -164,17 +168,21 @@ The renderer source and build instructions are available in this repository. [De
 
 Requirements: Windows x64, Visual Studio 2022 or later with Desktop development with C++, a Windows SDK containing `fxc.exe`, and **CPython 3.14 x64**.
 
-From the repository root:
+From the repository root, in a Visual Studio x64 developer shell:
 
 ```powershell
 python -m pip install -r requirements.txt
 python src/fetch_dependencies.py
 python src/prepare_sdk.py
-.\build.cmd
-python src/package.py
+python src/prepare_dv_dependencies.py --ffmpeg <pinned-FFmpeg-checkout> --runtime <matching-FFmpeg-runtime-folder>
+.\build.cmd native
+.\build.cmd potplayer
+python src/package_variants.py --output releases/local-packages
 ```
 
-Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Build output is `src/build/bin/PlaceboRenderer.ax` and its adjacent runtime DLLs and shaders.
+Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Native build output is `src/build/bin/FrankyRenderer.ax`; PotPlayer output is `src/build/variants/potplayer/bin/FrankyRenderer.ax`. `package_variants.py` creates both ZIPs in the selected new output folder without installing or publishing them.
+
+The FFmpeg inputs for integrated DV processing are an additional prerequisite, separate from the MSYS2 restore. Their exact source commit and runtime hashes are pinned in `src/deps/dv-ffmpeg.lock.json`; the setup step verifies them and generates matching MSVC import libraries. See [DV build requirements](src/DolbyVision/BUILD.md).
 
 All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
 

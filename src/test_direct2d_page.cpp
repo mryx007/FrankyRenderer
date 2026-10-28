@@ -202,7 +202,14 @@ int wmain(int argc, wchar_t** argv)
         MapWindowPoints(nullptr, host, reinterpret_cast<POINT*>(&r), 2);
         RECT client;
         GetClientRect(host, &client);
-        if (client.right < 1000 || client.bottom < 700)
+        MONITORINFO monitor = {sizeof(monitor)};
+        GetMonitorInfoW(MonitorFromWindow(host, MONITOR_DEFAULTTONEAREST), &monitor);
+        RECT frameBounds;
+        GetWindowRect(host, &frameBounds);
+        const UINT dpi = GetDpiForWindow(host);
+        if (client.right < 640 || client.bottom < 400 || client.right > MulDiv(960, dpi, 96) ||
+            frameBounds.right - frameBounds.left > (monitor.rcWork.right - monitor.rcWork.left) * 9 / 10 ||
+            frameBounds.bottom - frameBounds.top > (monitor.rcWork.bottom - monitor.rcWork.top) * 9 / 10)
             return 15;
         if (GetWindowLongPtrW(host, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)
             return 17;
@@ -332,7 +339,10 @@ int wmain(int argc, wchar_t** argv)
     GetModuleFileNameW(nullptr, exe, 32768);
     std::wstring path = exe;
     path.resize(path.find_last_of(L'\\') + 1);
-    path += L"PlaceboRenderer.ax";
+    path += L"FrankyRenderer.ax";
+    for (int i = 1; i + 1 < argc; ++i)
+        if (!wcscmp(argv[i], L"--dll"))
+            path = argv[++i];
     for (int repeat = 0; repeat < 3; repeat++)
     {
         HMODULE dll =

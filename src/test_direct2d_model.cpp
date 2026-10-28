@@ -311,6 +311,67 @@ int wmain()
         popup.window = nullptr;
         host->Render();
         Require(host->m_pRenderTarget != nullptr, "Direct2D render target");
+        {
+            auto savedPages = host->m_pages;
+            D2DControl control;
+            control.name = L"Test";
+            control.kind = ControlKind::Toggle;
+            host->m_pages = {{L"Layout", L"", L"Layout", L"", {{L"Test", L"", {control}}}}};
+            host->m_activePage = 0;
+            host->m_scrollY = 0;
+            host->m_pRenderTarget->SetDpi(96.f, 96.f);
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 190))), "fitting layout target");
+            host->Render();
+            Require(host->m_maxScrollY == 0, "last card fits without scrolling into trailing padding");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 180))), "overflow layout target");
+            host->Render();
+            Require(host->m_maxScrollY > 0, "actual clipped content remains scrollable");
+            host->m_scrollY = host->m_maxScrollY;
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 190))), "restore fitting target");
+            host->Render();
+            Require(host->m_maxScrollY == 0 && host->m_scrollY == 0, "resize removes stale scroll offset");
+            for (const auto& hit : host->m_hitRegions)
+                Require(hit.type != HitRegion::Scrollbar, "fitting content has no scrollbar hit region");
+            host->m_pages = std::move(savedPages);
+        }
+        for (UINT dpi : {96u, 120u, 144u})
+        {
+            const auto preferred = SIZE{MulDiv(1040, dpi, 96), MulDiv(720, dpi, 96)};
+            const auto content = SettingsLayout::ContentSize(preferred, dpi, dpi);
+            const auto frame =
+                SettingsLayout::FitFrame({content.cx, content.cy + MulDiv(84, dpi, 96)}, {1920, 1040}, dpi);
+            Require(frame.cx <= 1728 && frame.cy <= 936, "Full HD frame leaves desktop margins at every DPI");
+            const auto viewSize = D2D1::SizeU(frame.cx, frame.cy - MulDiv(84, dpi, 96));
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(viewSize)), "resize Full HD render target");
+            host->m_pRenderTarget->SetDpi(float(dpi), float(dpi));
+            for (int page = 0; page < int(host->m_pages.size()); ++page)
+            {
+                host->m_activePage = page;
+                host->m_scrollY = 0;
+                host->Render();
+                const auto size = host->m_pRenderTarget->GetSize();
+                float navBottom = 0, actionsTop = size.height;
+                for (const auto& hit : host->m_hitRegions)
+                {
+                    if (hit.type == HitRegion::NavItem)
+                        navBottom = std::max(navBottom, hit.rect.bottom);
+                    if (hit.type == HitRegion::ImportBtn || hit.type == HitRegion::ExportBtn)
+                    {
+                        Require(hit.rect.left >= 16 && hit.rect.right <= SettingsLayout::SidebarWidth - 16 &&
+                                    hit.rect.bottom <= size.height,
+                                "Full HD action buttons remain inside sidebar");
+                        actionsTop = std::min(actionsTop, hit.rect.top - 72.f);
+                    }
+                    if (hit.type == HitRegion::DropdownHeader || hit.type == HitRegion::Slider)
+                        Require(hit.rect.left >= SettingsLayout::SidebarWidth && hit.rect.right <= size.width - 16,
+                                "Full HD controls remain inside content area");
+                }
+                Require(navBottom < actionsTop, "Full HD navigation does not overlap device or transfer controls");
+            }
+        }
+        Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(1100, 850))), "restore model render target");
+        host->m_pRenderTarget->SetDpi(96.f, 96.f);
+        host->m_activePage = 0;
         host->Render();
         Require(host->m_fmtNav->GetTextAlignment() == DWRITE_TEXT_ALIGNMENT_LEADING,
                 "navigation remains left aligned after repeated paint");

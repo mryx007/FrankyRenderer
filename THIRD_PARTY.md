@@ -17,3 +17,9 @@ The optional NVIDIA HDR10 driver interface uses the public NVAPI definitions und
 ## NVIDIA driver video processing
 
 The optional Super Resolution request uses the Direct3D 11 Video Processor extension also used by MPC Video Renderer and Chromium. No NVIDIA RTX Video SDK headers, libraries, runtime DLLs or helper executable are included or linked. Super Resolution must be enabled in the NVIDIA driver settings; the driver controls availability and quality. A successful D3D11 request is not a guarantee that the driver applies the enhancement.
+
+## Integrated Dolby Vision processing
+
+The internal processing module in `src/DolbyVision` retains the player's splitter and base-layer decoder. FFmpeg reads the same local file and decodes only the enhancement layer when required. MEL metadata is parsed with libdovi; libplacebo combines the delivered layers in FrankyRenderer.
+
+The FFmpeg build inputs come from the LAV-maintained FFmpeg fork, commit `29e0b0813d855d55536cd11ae4a8b6de88ee6461`: https://github.com/clsid2/FFmpeg . Exact runtime SHA256 values are recorded in `src/deps/dv-ffmpeg.lock.json`. The original FFmpeg license files are included under `licenses/ffmpeg` in packages. No LAV DirectShow decoder is bundled or registered by this feature. Build inputs can be restored with `src/prepare_dv_dependencies.py`; see `src/DolbyVision/BUILD.md`.

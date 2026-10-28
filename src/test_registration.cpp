@@ -22,8 +22,8 @@ int main()
     int result = 0;
     try
     {
-        const wchar_t* own = L"C:\\Renderer\\PlaceboRenderer.ax";
-        const wchar_t* foreign = L"C:\\OtherInstallation\\PlaceboRenderer.ax";
+        const wchar_t* own = L"C:\\Renderer\\FrankyRenderer.ax";
+        const wchar_t* foreign = L"C:\\OtherInstallation\\FrankyRenderer.ax";
         for (int i = 0; i < 9; ++i)
         {
             StringFromGUID2(LegacyPropertyPages::Ids[i], guid, 40);
@@ -34,7 +34,7 @@ int main()
                         ERROR_SUCCESS,
                     "create fixture");
         }
-        Require(SUCCEEDED(LegacyPropertyPages::RemoveOwned(root, L"c:\\renderer\\placeborenderer.ax")),
+        Require(SUCCEEDED(LegacyPropertyPages::RemoveOwned(root, L"c:\\renderer\\frankyrenderer.ax")),
                 "remove owned registrations case insensitively");
         Require(SUCCEEDED(LegacyPropertyPages::RemoveOwned(root, own)), "idempotent cleanup");
         for (int i = 0; i < 9; ++i)

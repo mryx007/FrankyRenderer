@@ -95,6 +95,8 @@ struct MeasurementSnapshot
            presentCpuMax = 0;
 };
 
+struct IDvLayerSample;
+
 class PlaceboBackend
 {
     struct State;
@@ -110,6 +112,7 @@ class PlaceboBackend
     void SetOverlayPainter(OverlayPainter painter, bool inverseAlpha = false);
     HRESULT Upload(const VideoFrame& frame, const uint8_t* data, size_t bytes);
     HRESULT Import(const VideoFrame& frame, ID3D11Texture2D* texture, UINT slice);
+    HRESULT ImportDolbyVision(const VideoFrame& frame, IDvLayerSample* sample);
     HRESULT CaptureUpload(const VideoFrame&, const uint8_t*, size_t, uint64_t&);
     HRESULT CaptureImport(const VideoFrame&, ID3D11Texture2D*, UINT, uint64_t&);
     HRESULT SelectField(uint64_t current, uint64_t previous, uint64_t next, pl_field field, pl_field first);
@@ -131,6 +134,7 @@ class PlaceboBackend
                               int64_t timestamp,
                               float duration);
     HRESULT Present();
+    void HoldForResize(bool hold);
     HRESULT TryPresent(bool blackWhenEmpty = false);
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     void SetPresentProbeForTest(std::function<void(ID3D11Texture2D*)>);
@@ -138,6 +142,10 @@ class PlaceboBackend
 #endif
     bool PaintLoadingBackground(HDC dc);
     void SetGeometry(const RECT& source, const RECT& target);
+    HRESULT SetRotation(int degrees);
+    int Rotation() const;
+    void SetFlip(bool mirror);
+    bool Flip() const;
     HRESULT
     RenderOffscreen(int width, int height, std::vector<uint8_t>& rgba, bool hdrTarget = false, int textureDepth = 8);
     void Flush(bool preserveBlackBars = true);
@@ -153,7 +161,7 @@ class PlaceboBackend
     void SetSourceCodec(const std::string& codec);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;
-    void SetPresentationTiming(int64_t dueQpc, bool running);
+    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1);
     void ResetPresentationMeasurement(bool counters = false);
     void RestartDropMeasurement(int rawBeforeReset);
     MeasurementSnapshot Measurements() const;

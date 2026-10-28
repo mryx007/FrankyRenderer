@@ -13,6 +13,7 @@
 #include "Settings.h"
 #include "FieldSample.h"
 #include "Diagnostics.h"
+#include "DolbyVision/Processor.h"
 #include <atomic>
 #include <mutex>
 
@@ -36,10 +37,7 @@ class DecoderPin final : public CRendererInputPin,
     STDMETHODIMP ActivateD3D11Decoding(ID3D11Device*, ID3D11DeviceContext*, HANDLE, UINT) override;
     UINT STDMETHODCALLTYPE GetD3D11AdapterIndex() override;
 
-    UINT STDMETHODCALLTYPE GetD3D11TextureBindFlags() override
-    {
-        return 0;
-    }
+    UINT STDMETHODCALLTYPE GetD3D11TextureBindFlags() override;
 
     UINT STDMETHODCALLTYPE GetD3D11TextureMiscFlags() override
     {
@@ -55,10 +53,17 @@ class VideoWindow final : public CBaseControlWindow
 {
     Renderer* owner;
     HRESULT SetHiddenStyle(long, int);
+    HANDLE thread = nullptr, ready = nullptr;
+    DWORD threadId = 0;
+    HRESULT prepared = E_UNEXPECTED;
+    static DWORD WINAPI WindowThread(void*);
+    HRESULT PrepareOnThread();
 
   public:
     VideoWindow(Renderer*, CCritSec*, IUnknown*, HRESULT*);
+    ~VideoWindow();
     HRESULT PrepareWindow() override;
+    HRESULT DoneWithWindow() override;
     HRESULT UninitialiseWindow() override;
     LPTSTR GetClassWindowStyles(DWORD*, DWORD*, DWORD*) override;
     STDMETHODIMP put_Owner(OAHWND) override;
@@ -90,16 +95,21 @@ class VideoControl final : public CBaseControlVideo
 };
 
 class Renderer final : public CBaseVideoRenderer,
+                       public IAMFilterMiscFlags,
                        public ISpecifyPropertyPages,
                        public ISubRender11,
                        public IPlaceboSettings,
                        public IPlaceboDiagnostics,
                        public CExFilterConfigImpl
 {
+#ifdef PLACEBO_TEST_PRESENT_PIXELS
+    friend class RendererRestartTest;
+#endif
     friend class DecoderPin;
     friend class VideoWindow;
     friend class VideoControl;
     PlaceboBackend backend;
+    DvProcessor dv;
     MediaFormat format;
     PlaceboSettings settings;
     PlaceboStatus status;
@@ -115,7 +125,7 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<REFERENCE_TIME> frameStart = 0, frameStop = 0, frameDuration = 0;
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
-    std::atomic<bool> stopped = true;
+    std::atomic<FILTER_STATE> windowState = State_Stopped;
     QueuedVideoFrame pending, previous;
     std::atomic<bool> deinterlacingActive = false;
     bool buffering = false, smoothBuffering = false;
@@ -143,12 +153,19 @@ class Renderer final : public CBaseVideoRenderer,
   public:
     Renderer(IUnknown*, HRESULT*);
     ~Renderer();
+
+    ULONG STDMETHODCALLTYPE GetMiscFlags() override
+    {
+        return AM_FILTER_MISC_FLAGS_IS_RENDERER;
+    }
+
     DECLARE_IUNKNOWN
     STDMETHODIMP NonDelegatingQueryInterface(REFIID, void**) override;
     CBasePin* GetPin(int) override;
     HRESULT CheckMediaType(const CMediaType*) override;
     HRESULT SetMediaType(const CMediaType*) override;
     HRESULT DoRenderSample(IMediaSample*) override;
+    void OnReceiveFirstSample(IMediaSample*) override;
     HRESULT Receive(IMediaSample*) override;
     HRESULT BeginFlush() override;
     HRESULT DrainFields();
@@ -174,4 +191,5 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Flt_GetInt64(LPCSTR, __int64*) override;
     STDMETHODIMP Flt_GetDouble(LPCSTR, double*) override;
     STDMETHODIMP Flt_SetBool(LPCSTR, bool) override;
+    STDMETHODIMP Flt_SetInt(LPCSTR, int) override;
 };

@@ -6,6 +6,7 @@
 #include <string>
 #include <algorithm>
 #include <windowsx.h>
+#include "SettingsLayout.h"
 #pragma comment(lib, "dwmapi.lib")
 
 // Restyle the existing modal property frame. The host still owns OK/Cancel,
@@ -69,20 +70,24 @@ class Direct2DFrame
     }
 
     SIZE preferred = {};
+    UINT preferredDpi = 96;
 
     void SizeToContent()
     {
         if (sizing || !host || preferred.cx <= 0 || preferred.cy <= 0)
             return;
         const UINT dpi = GetDpiForWindow(host);
-        RECT outer = {0, 0, preferred.cx, preferred.cy + MulDiv(84, dpi, 96)};
+        const auto content = SettingsLayout::ContentSize(preferred, preferredDpi, dpi);
+        RECT outer = {0, 0, content.cx, content.cy + MulDiv(84, dpi, 96)};
         AdjustWindowRectExForDpi(
             &outer, DWORD(GetWindowLongPtrW(host, GWL_STYLE)), FALSE, DWORD(GetWindowLongPtrW(host, GWL_EXSTYLE)), dpi);
         MONITORINFO monitor = {sizeof(monitor)};
         GetMonitorInfoW(MonitorFromWindow(host, MONITOR_DEFAULTTONEAREST), &monitor);
         const RECT work = monitor.rcWork;
-        const int width = std::min(int(outer.right - outer.left), int(work.right - work.left));
-        const int height = std::min(int(outer.bottom - outer.top), int(work.bottom - work.top));
+        const auto fitted = SettingsLayout::FitFrame({outer.right - outer.left, outer.bottom - outer.top},
+                                                     {work.right - work.left, work.bottom - work.top},
+                                                     dpi);
+        const int width = fitted.cx, height = fitted.cy;
         RECT current;
         GetWindowRect(host, &current);
         const int x = std::clamp(int(current.left), int(work.left), int(work.right) - width),
@@ -264,7 +269,7 @@ class Direct2DFrame
         const auto result = DefSubclassProc(h, msg, w, l);
         // MPC-BE's property sheet also recalculates its size on page activation.
         // Keep our declared content size instead of accumulating its tab margins.
-        if (self->additionalPages && !self->attaching && msg == WM_WINDOWPOSCHANGED)
+        if (!self->attaching && ((self->additionalPages && msg == WM_WINDOWPOSCHANGED) || msg == WM_DPICHANGED))
             self->SizeToContent();
         if (msg == WM_SIZE || msg == WM_WINDOWPOSCHANGED || msg == WM_SHOWWINDOW || msg == WM_DPICHANGED)
             self->Layout();
@@ -302,6 +307,7 @@ class Direct2DFrame
             return;
         attaching = true;
         host = candidate;
+        preferredDpi = GetDpiForWindow(host);
         tab = tabs;
         additionalPages = TabCtrl_GetItemCount(tab) > 1;
         rendererTab = std::max(0, TabCtrl_GetCurSel(tab));
