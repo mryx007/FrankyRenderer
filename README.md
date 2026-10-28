@@ -14,7 +14,7 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
-The MPC-BE package uses only FrankyRenderer's own renderer identity. The PotPlayer package uses only the MPC Video Renderer compatibility identity. Each package has its own settings-page registration, so they can coexist in separate folders.
+The MPC-BE nightly package uses native FrankyRenderer's own renderer identity. The PotPlayer package uses only the MPC Video Renderer compatibility identity. Each package has its own settings-page registration, so they can coexist in separate folders.
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
