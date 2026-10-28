@@ -135,8 +135,6 @@ The PotPlayer package exposes only the compatibility identity because PotPlayer 
 
 Extract the chosen ZIP to a permanent folder, close your players and run `Install.cmd`. Each package includes `FrankyRenderer.ax`, its runtime libraries, shaders and console registration tools. Install the two packages in different folders if you need both players. An existing installation using the same identity must be uninstalled first; the tools refuse to overwrite another installation.
 
-Supported Profile 7 FEL/MEL files are detected automatically. Do not add a separate Franky DV filter in the player.
-
 Use **Export** in the settings menu to save all display profiles in one INI backup and **Import** to restore them. Disconnected displays, custom names, all menu settings and shader parameters/order are included. Existing profiles absent from the backup are kept. Older single-profile INI files are imported into the selected display. External ICC and LUT files are referenced by path and must be kept separately.
 
 Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.
