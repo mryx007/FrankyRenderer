@@ -14,12 +14,6 @@ It's still a work in progress, so there are probably quite a few bugs I haven't 
 
 Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
-**MPC-BE nightly** 
-uses native FrankyRenderer's own renderer identity. 
-
-**PotPlayer**
-uses only the MPC Video Renderer compatibility identity. Each package has its own settings-page registration, so they can coexist in separate folders.
-
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
 ## Screenshots
@@ -135,15 +129,10 @@ The screenshots show example settings, not recommended presets.
 
 Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision profiles such as 5 and 8 rely on metadata provided by the decoder. The integrated Profile 7 path supports local progressive 3840x2160 P010 base layers, including native D3D11 input; FEL enhancement must be 1920x1080. MEL uses metadata without enhancement-layer reconstruction. The result is rendered as HDR/PQ or tone-mapped SDR, not native Dolby Vision HDMI signalling. Smooth Motion is currently not applied to this layered Profile 7 path. See [the processing and build notes](src/DolbyVision/BUILD.md).
 
-## Choose the package
+**MPC-BE** 
+The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings.
 
-| Package | Player selection | Renderer CLSID |
-|---|---|---|
-| **MPC-BE native** | **FrankyRenderer** |
-| **PotPlayer compatibility** | **MPC Video Renderer** |
-
-The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings. This package exposes no MPCVR compatibility factory or registration. The original MPC Video Renderer may remain installed alongside it.
-
+**Potplayer** 
 The PotPlayer package exposes only the compatibility identity because PotPlayer currently has no native FrankyRenderer option. Uninstall the original MPC Video Renderer before installing this package: both need the same compatibility identity. This package does not register or expose FrankyRenderer's native renderer CLSID.
 
 Extract the chosen ZIP to a permanent folder, close your players and run `Install.cmd`. Each package includes `FrankyRenderer.ax`, its runtime libraries, shaders and console registration tools. Install the two packages in different folders if you need both players. An existing installation using the same identity must be uninstalled first; the tools refuse to overwrite another installation.
