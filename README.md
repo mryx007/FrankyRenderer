@@ -1,9 +1,5 @@
 # FrankyRenderer
 
-Two separate packages are available: **MPC-BE native** and **PotPlayer compatibility**. Both use the same renderer code. Choose the package for your player.
-
-Recent [MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases) support selecting **FrankyRenderer** directly. Use the MPC-BE package for those builds; use the PotPlayer package when selecting **MPC Video Renderer** in PotPlayer.
-
 I've been using the madVR renderer for many years now. Unfortunately, updates have become quite rare, with what feels like only one update per year.
 
 Meanwhile, MPC Video Renderer is still being actively developed, and libplacebo, which also continues to receive regular updates, has built a very good reputation for its image processing capabilities.
