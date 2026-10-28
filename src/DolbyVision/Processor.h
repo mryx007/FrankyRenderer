@@ -28,4 +28,5 @@ class DvProcessor
     void Disconnect();
     bool Active() const;
     bool ShouldProcess() const;
+    DolbyVisionSource SourceInfo() const;
 };

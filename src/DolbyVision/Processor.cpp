@@ -135,6 +135,7 @@ struct DvProcessor::State
     ComPtr<ID3D11Device> decoderDevice;
     HANDLE decoderMutex = nullptr;
     bool nativeActive = false;
+    DolbyVisionSource source;
     REFERENCE_TIME segment = 0;
 
     ~State()
@@ -174,6 +175,9 @@ struct DvProcessor::State
                         data->size < sizeof(AVDOVIDecoderConfigurationRecord))
                         continue;
                     const auto record = reinterpret_cast<const AVDOVIDecoderConfigurationRecord*>(data->data);
+                    source.present = record->rpu_present_flag != 0;
+                    source.profile = record->dv_profile;
+                    source.hdr10Base = record->dv_profile == 7 || record->dv_bl_signal_compatibility_id == 1;
                     profile7 |= record->dv_profile == 7 && record->el_present_flag && record->rpu_present_flag;
                 }
             }
@@ -244,6 +248,12 @@ bool DvProcessor::ShouldProcess() const
     return !state->modeKnown || state->layered;
 }
 
+DolbyVisionSource DvProcessor::SourceInfo() const
+{
+    std::lock_guard guard(state->lock);
+    return state->source;
+}
+
 void DvProcessor::ResetTimeline()
 {
     std::lock_guard guard(state->lock);
@@ -256,6 +266,7 @@ void DvProcessor::Disconnect()
     state->Reset();
     state->modeKnown = false;
     state->layered = false;
+    state->source = {};
     state->filename.clear();
     state->decoderDevice.Reset();
     state->nativeActive = false;
@@ -291,6 +302,7 @@ void DvProcessor::RefreshSource(IFilterGraph* graph, IPin* peer)
         state->Reset();
         state->modeKnown = false;
         state->layered = false;
+        state->source = {};
         state->filename.clear();
     }
 }
@@ -373,6 +385,8 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
         pl_color_repr repr = {};
         pl_map_avdovi_metadata(&info.color, &repr, &info.dovi, reinterpret_cast<const AVDOVIMetadata*>(sd->data));
         const bool residual = info.dovi.nlq_active;
+        const auto header = av_dovi_get_header(reinterpret_cast<const AVDOVIMetadata*>(sd->data));
+        s.source.layer = header->disable_residual_flag ? DolbyVisionSource::Layer::MEL : DolbyVisionSource::Layer::FEL;
         info.width[1] = residual ? 1920 : 0;
         info.height[1] = residual ? 1080 : 0;
         ComPtr<IMediaSampleD3D11> native;

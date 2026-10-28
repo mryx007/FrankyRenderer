@@ -967,17 +967,19 @@ struct PlaceboBackend::State
         text << L"\nmatrix " << wide(matrix) << L" (says upstream)\nprimaries " << prim(description.color.primaries)
              << L" -> " << prim(output.color.primaries);
         const bool hdrSource = pl_color_space_is_hdr(&description.color);
+        AppendDolbyVisionStatus(text, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
         if (hdrSource)
         {
             const bool dovi = bool(image.repr.dovi),
                        plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
-            text << L"\nHDR "
-                 << (dovi                                             ? L"Dolby Vision"
-                     : plus                                           ? L"HDR10+"
-                     : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
-                                                                      : L"HDR10");
+            if (!description.dvSource.present && !dovi)
+                text << L"\nHDR "
+                     << (plus                                             ? L"HDR10+"
+                         : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
+                                                                          : L"HDR10");
             if (std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0)
-                text << L", " << std::setprecision(0) << description.color.hdr.max_luma << L" nits";
+                text << (description.dvSource.present || dovi ? L"\nSource peak: " : L", ") << std::setprecision(0)
+                     << description.color.hdr.max_luma << L" nits";
             pl_hdr_metadata measured = {};
             if (pl_renderer_get_hdr_metadata(renderer, &measured))
                 text << L"\nmeasured frame " << std::setprecision(1)

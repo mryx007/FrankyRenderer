@@ -1176,6 +1176,9 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             ResetFields(true, !timelineReset);
         input.frame = current.frame;
         ReadHdrSideData(sample, input.frame);
+        const auto source = dv.SourceInfo();
+        if (source.present)
+            input.frame.dvSource = source;
         input.start = start;
         input.stop = stop;
         input.nominalDuration = current.averageDuration;
@@ -1266,9 +1269,16 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
             return E_INVALIDARG;
         frame.dovi = std::make_shared<pl_dovi_metadata>(layeredInfo.dovi);
         frame.color = layeredInfo.color;
+        frame.dvLayered = layeredInfo.dovi.nlq_active && layeredInfo.width[1] > 0;
     }
 
     auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
+    if (!field)
+    {
+        const auto source = dv.SourceInfo();
+        if (source.present)
+            frame.dvSource = source;
+    }
     if (!field && (!(sideDataLogged & 32) || (side.dovi && !(sideDataLogged & 64))))
     {
         sideDataLogged |= 32 | (side.dovi ? 64 : 0);

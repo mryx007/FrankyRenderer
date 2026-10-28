@@ -345,7 +345,10 @@ static bool MapDynamicHdr(const MediaSideDataHDR10Plus& in, pl_hdr_metadata& out
 static bool MapDovi(const BYTE* bytes, size_t count, bool extensions, VideoFrame& frame)
 {
     constexpr size_t base = offsetof(MediaSideDataDOVIMetadata, Extensions);
-    if (!bytes || count < base || Layout(frame.format).rgb)
+    if (!bytes || count < base)
+        return false;
+    frame.dvSource.present = true;
+    if (Layout(frame.format).rgb)
         return false;
     MediaSideDataDOVIMetadata in = {};
     std::memcpy(&in, bytes, std::min(count, sizeof(in)));
@@ -459,6 +462,8 @@ HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame)
     frame.color.hdr.ootf = {};
     frame.color.hdr.max_pq_y = frame.color.hdr.avg_pq_y = 0;
     frame.dovi.reset();
+    frame.dvSource = {};
+    frame.dvLayered = false;
     HdrSideDataStatus status;
     Microsoft::WRL::ComPtr<IMediaSideData> side;
     status.interfaceResult = sample->QueryInterface(IID_PPV_ARGS(&side));

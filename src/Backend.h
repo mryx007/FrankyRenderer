@@ -18,6 +18,7 @@
 #include "BlackBarSettings.h"
 #include "ShaderCatalog.h"
 #include "TonalSettings.h"
+#include "DolbyVisionStatus.h"
 #include <optional>
 
 struct VideoFrame
@@ -27,6 +28,8 @@ struct VideoFrame
     PixelFormat format = PixelFormat::NV12;
     pl_color_space color = {};
     std::shared_ptr<const pl_dovi_metadata> dovi;
+    DolbyVisionSource dvSource;
+    bool dvLayered = false;
     pl_color_system matrix = PL_COLOR_SYSTEM_BT_709;
     pl_color_levels levels = PL_COLOR_LEVELS_LIMITED;
     pl_chroma_location chroma = PL_CHROMA_LEFT;
