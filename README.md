@@ -128,7 +128,7 @@ The screenshots show example settings, not recommended presets.
 - Persistent shader cache for reusing compiled processing work across playback sessions.
 
 **MPC-BE** 
-The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings.
+The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select FrankyRenderer in the player's video renderer settings.
 
 **Potplayer** 
 The PotPlayer package exposes only the compatibility identity because PotPlayer currently has no native FrankyRenderer option. Uninstall the original MPC Video Renderer before installing this package: both need the same compatibility identity. This package does not register or expose FrankyRenderer's native renderer CLSID.
