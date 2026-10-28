@@ -233,8 +233,7 @@ class EnhancementReader
                     continue;
                 auto record = reinterpret_cast<const AVDOVIDecoderConfigurationRecord*>(config->data);
                 if (record->dv_profile == 7 && record->el_present_flag && record->rpu_present_flag &&
-                    !record->bl_present_flag && c->width == 3840 && c->height == 2160 && parameters->width == 1920 &&
-                    parameters->height == 1080)
+                    !record->bl_present_flag)
                 {
                     origin = source->start_time == AV_NOPTS_VALUE
                                  ? 0
@@ -254,8 +253,7 @@ class EnhancementReader
             auto dv = reinterpret_cast<const AVDOVIDecoderConfigurationRecord*>(sd->data);
             check(dv->dv_profile == 7 && dv->el_present_flag && dv->bl_present_flag && dv->rpu_present_flag,
                   "Profile 7 layered file required");
-            check(c->width == 3840 && c->height == 2160 && c->extradata_size > 21 && c->extradata[0] == 1,
-                  "UHD HVCC source required");
+            check(c->extradata_size > 21 && c->extradata[0] == 1, "HVCC source required");
             lengthSize = (c->extradata[21] & 3) + 1;
             origin = source->start_time == AV_NOPTS_VALUE
                          ? 0
@@ -268,8 +266,8 @@ class EnhancementReader
             stream->r_frame_rate = source->r_frame_rate;
             stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
             stream->codecpar->codec_id = AV_CODEC_ID_HEVC;
-            stream->codecpar->width = 1920;
-            stream->codecpar->height = 1080;
+            // The enhancement layer's SPS supplies its actual dimensions.
+            // Do not assume half-size UHD when initializing the HEVC decoder.
             enhancement.stream = stream;
             packet = av_packet_alloc();
             split = av_packet_alloc();

@@ -314,8 +314,8 @@ HRESULT DvProcessor::CheckFormat(IFilterGraph* graph, IPin* peer, const MediaFor
     auto hr = state->SelectMode(graph, peer);
     if (FAILED(hr))
         return hr;
-    return state->layered && (format.frame.format != PixelFormat::P010 || format.frame.width != 3840 ||
-                              format.frame.height != 2160)
+    return state->layered &&
+                   (format.frame.format != PixelFormat::P010 || format.frame.width <= 0 || format.frame.height <= 0)
                ? VFW_E_TYPE_NOT_ACCEPTED
                : S_OK;
 }
@@ -338,7 +338,7 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
         return hr;
     if (!s.layered)
         return S_FALSE;
-    if (format.frame.format != PixelFormat::P010 || format.frame.width != 3840 || format.frame.height != 2160)
+    if (format.frame.format != PixelFormat::P010 || format.frame.width <= 0 || format.frame.height <= 0)
         return VFW_E_TYPE_NOT_ACCEPTED;
     // MPC's decoder advertises a field-capable media type even for progressive
     // HEVC. Only actual sample flags determine whether this picture is interlaced.
@@ -380,15 +380,16 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
         info.placeboApi = PL_API_VER;
         info.bytes = sizeof(info);
         info.pts = absolute;
-        info.width[0] = 3840;
-        info.height[0] = 2160;
+        info.width[0] = format.frame.width;
+        info.height[0] = format.frame.height;
         pl_color_repr repr = {};
         pl_map_avdovi_metadata(&info.color, &repr, &info.dovi, reinterpret_cast<const AVDOVIMetadata*>(sd->data));
         const bool residual = info.dovi.nlq_active;
         const auto header = av_dovi_get_header(reinterpret_cast<const AVDOVIMetadata*>(sd->data));
         s.source.layer = header->disable_residual_flag ? DolbyVisionSource::Layer::MEL : DolbyVisionSource::Layer::FEL;
-        info.width[1] = residual ? 1920 : 0;
-        info.height[1] = residual ? 1080 : 0;
+        check(!residual || (el->width > 0 && el->height > 0), "decoded enhancement dimensions");
+        info.width[1] = residual ? el->width : 0;
+        info.height[1] = residual ? el->height : 0;
         ComPtr<IMediaSampleD3D11> native;
         input->QueryInterface(IID_PPV_ARGS(&native));
         check(!nativeActive || native, "native decoder must deliver actual GPU samples");
@@ -402,13 +403,13 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
             texture->GetDesc(&desc);
             ComPtr<ID3D11Device> device;
             texture->GetDevice(&device);
-            check(device.Get() == gpu->d3d->device && desc.Format == DXGI_FORMAT_P010 && desc.Width >= 3840 &&
-                      desc.Height >= 2160 && slice < desc.ArraySize,
+            check(device.Get() == gpu->d3d->device && desc.Format == DXGI_FORMAT_P010 && desc.Width >= info.width[0] &&
+                      desc.Height >= info.height[0] && slice < desc.ArraySize,
                   "native base texture layout/device");
             AVFrame frame = {};
             frame.format = AV_PIX_FMT_D3D11;
-            frame.width = 3840;
-            frame.height = 2160;
+            frame.width = format.frame.width;
+            frame.height = format.frame.height;
             frame.data[0] = reinterpret_cast<uint8_t*>(texture.Get());
             frame.data[1] = reinterpret_cast<uint8_t*>(UINT_PTR(slice));
             UploadDvPlanes(&frame, gpu->splitShader.Get(), picture->planes[0]);
@@ -422,10 +423,11 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
                   "complete P010 decoded base buffer");
             for (int p = 0; p < 3; ++p)
             {
-                unsigned w = p ? 1920 : 3840, h = p ? 1080 : 2160;
+                unsigned w = p ? (info.width[0] + 1) / 2 : info.width[0];
+                unsigned h = p ? (info.height[0] + 1) / 2 : info.height[0];
                 plane.resize(size_t(w) * h);
-                auto source =
-                    reinterpret_cast<const uint16_t*>(base) + (p ? size_t(format.frame.stride / 2) * 2160 : 0);
+                auto source = reinterpret_cast<const uint16_t*>(base) +
+                              (p ? size_t(format.frame.stride / 2) * info.height[0] : 0);
                 for (unsigned y = 0; y < h; ++y)
                     for (unsigned x = 0; x < w; ++x)
                         plane[size_t(y) * w + x] =

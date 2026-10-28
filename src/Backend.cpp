@@ -60,13 +60,17 @@ struct PlaceboBackend::State
     {
         pl_gpu gpu = nullptr;
         pl_frame image = {};
+        pl_frame enhancement = {};
         VideoFrame description;
         pl_tex planes[4] = {};
+        pl_tex enhancementPlanes[3] = {};
         ComPtr<ID3D11Texture2D> copy;
 
         ~StoredFrame()
         {
             for (auto& plane : planes)
+                pl_tex_destroy(gpu, &plane);
+            for (auto& plane : enhancementPlanes)
                 pl_tex_destroy(gpu, &plane);
         }
     };
@@ -442,10 +446,15 @@ struct PlaceboBackend::State
         auto saved = std::make_unique<StoredFrame>();
         saved->gpu = d3d->gpu;
         saved->image = image;
+        saved->enhancement = felEnhancement;
+        if (image.enhancement_layer)
+            saved->image.enhancement_layer = &saved->enhancement;
         saved->description = description;
         saved->copy = std::move(copy);
         for (int i = 0; i < 4; i++)
             saved->planes[i] = std::exchange(planes[i], nullptr);
+        for (int i = 0; i < 3; i++)
+            saved->enhancementPlanes[i] = std::exchange(felPlanes[i], nullptr);
         // Buffered unpacked planes own their output textures. The packed input
         // copy is no longer needed once dispatch has consumed it.
         if (unpack422.HasFrame())
@@ -454,8 +463,54 @@ struct PlaceboBackend::State
         const uint64_t id = nextFrame++;
         history.emplace(id, std::move(saved));
         image = {};
+        felEnhancement = {};
         valid = false;
         return id;
+    }
+
+    template <class Import> HRESULT Capture(Import&& import, uint64_t& id)
+    {
+        std::lock_guard guard(lock);
+        id = 0;
+        auto displayed = image;
+        const auto displayedRtxKey = rtxKey;
+        const auto displayedDescription = description;
+        const bool wasValid = valid, wasMixing = mixing;
+        HRESULT hr;
+        try
+        {
+            // Transfer directly owned planes before importing the next frame.
+            // Both BL and EL pointers must refer to their stable history owner.
+            if (valid && (copy || planes[0]))
+            {
+                const auto held = StoreCurrent();
+                displayed = history.at(held)->image;
+            }
+            hr = import();
+            if (SUCCEEDED(hr))
+                id = StoreCurrent();
+        }
+        catch (const std::bad_alloc&)
+        {
+            hr = E_OUTOFMEMORY;
+        }
+        if (FAILED(hr))
+        {
+            ClearFrame();
+            return hr;
+        }
+        image = displayed;
+        rtxKey = displayedRtxKey;
+        description = displayedDescription;
+        valid = wasValid;
+        mixing = wasMixing;
+        for (auto it = history.begin(); it != history.end();)
+            if (it->first + static_cast<uint64_t>(2 * std::ceil(settings.motionRadius) + 4) < id &&
+                !DisplayReferences(*it->second))
+                it = history.erase(it);
+            else
+                ++it;
+        return hr;
     }
 
     HRESULT PaintOverlay(int width, int height, const RECT& video)
@@ -1649,92 +1704,17 @@ void PlaceboBackend::SetOverlayPainter(OverlayPainter painter, bool inverseAlpha
 
 HRESULT PlaceboBackend::CaptureUpload(const VideoFrame& frame, const uint8_t* bytes, size_t length, uint64_t& id)
 {
-    auto& s = *state;
-    std::lock_guard guard(s.lock);
-    id = 0;
-    const auto displayed = s.image;
-    const auto displayedRtxKey = s.rtxKey;
-    const auto description = s.description;
-    const bool valid = s.valid, mixing = s.mixing;
-    HRESULT hr;
-    try
-    {
-        // A displayed, directly owned frame must survive the capture too:
-        // Upload/Import may replace its textures even on a successful call.
-        if (valid && (s.copy || s.planes[0]))
-            s.StoreCurrent();
-        hr = Upload(frame, bytes, length);
-        if (SUCCEEDED(hr))
-            id = s.StoreCurrent();
-    }
-    catch (const std::bad_alloc&)
-    {
-        hr = E_OUTOFMEMORY;
-    }
-    // Upload may already have destroyed/replaced the displayed textures. A
-    // shallow frame snapshot cannot restore ownership after any failure.
-    if (FAILED(hr))
-    {
-        s.ClearFrame();
-        return hr;
-    }
-    s.image = displayed;
-    s.rtxKey = displayedRtxKey;
-    s.description = description;
-    s.valid = valid;
-    s.mixing = mixing;
-    if (SUCCEEDED(hr))
-        for (auto it = s.history.begin(); it != s.history.end();)
-            if (it->first + static_cast<uint64_t>(2 * std::ceil(s.settings.motionRadius) + 4) < id &&
-                !s.DisplayReferences(*it->second))
-                it = s.history.erase(it);
-            else
-                ++it;
-    return hr;
+    return state->Capture([&] { return Upload(frame, bytes, length); }, id);
 }
 
 HRESULT PlaceboBackend::CaptureImport(const VideoFrame& frame, ID3D11Texture2D* texture, UINT slice, uint64_t& id)
 {
-    auto& s = *state;
-    std::lock_guard guard(s.lock);
-    id = 0;
-    const auto displayed = s.image;
-    const auto displayedRtxKey = s.rtxKey;
-    const auto description = s.description;
-    const bool valid = s.valid, mixing = s.mixing;
-    HRESULT hr;
-    try
-    {
-        if (valid && (s.copy || s.planes[0]))
-            s.StoreCurrent();
-        hr = Import(frame, texture, slice);
-        if (SUCCEEDED(hr))
-            id = s.StoreCurrent();
-    }
-    catch (const std::bad_alloc&)
-    {
-        hr = E_OUTOFMEMORY;
-    }
-    // Import may have freed the old frame or created only some planes. Do not
-    // revive its copied pointers, and release partial resources on failure.
-    if (FAILED(hr))
-    {
-        s.ClearFrame();
-        return hr;
-    }
-    s.image = displayed;
-    s.rtxKey = displayedRtxKey;
-    s.description = description;
-    s.valid = valid;
-    s.mixing = mixing;
-    if (SUCCEEDED(hr))
-        for (auto it = s.history.begin(); it != s.history.end();)
-            if (it->first + static_cast<uint64_t>(2 * std::ceil(s.settings.motionRadius) + 4) < id &&
-                !s.DisplayReferences(*it->second))
-                it = s.history.erase(it);
-            else
-                ++it;
-    return hr;
+    return state->Capture([&] { return Import(frame, texture, slice); }, id);
+}
+
+HRESULT PlaceboBackend::CaptureDolbyVision(const VideoFrame& frame, IDvLayerSample* sample, uint64_t& id)
+{
+    return state->Capture([&] { return ImportDolbyVision(frame, sample); }, id);
 }
 
 HRESULT PlaceboBackend::SelectField(uint64_t current, uint64_t previous, uint64_t next, pl_field field, pl_field first)
@@ -2739,7 +2719,7 @@ HRESULT PlaceboBackend::ImportDolbyVision(const VideoFrame& frame, IDvLayerSampl
     ComPtr<ID3D11Device> device;
     for (int l = 0; l < layers; ++l)
     {
-        if (!info.width[l] || !info.height[l] || info.width[l] > 8192 || info.height[l] > 8192)
+        if (!info.width[l] || !info.height[l])
             return E_INVALIDARG;
         for (int p = 0; p < 3; ++p)
         {
@@ -2763,6 +2743,9 @@ HRESULT PlaceboBackend::ImportDolbyVision(const VideoFrame& frame, IDvLayerSampl
         return hr;
     auto& s = *state;
     std::lock_guard guard(s.lock);
+    hr = s.Ensure();
+    if (FAILED(hr))
+        return hr;
     s.ClearFrame();
     s.Describe(frame);
     s.image.num_planes = 3;

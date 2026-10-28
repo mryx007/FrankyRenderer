@@ -19,6 +19,20 @@
 #include <algorithm>
 using Microsoft::WRL::ComPtr;
 
+static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
+{
+    DvFrameInfo info = {};
+    HRESULT hr = sample->GetInfo(DvTransportVersion, sizeof(info), &info);
+    if (FAILED(hr))
+        return hr;
+    if (info.version != DvTransportVersion || info.placeboApi != PL_API_VER || info.bytes != sizeof(info))
+        return E_INVALIDARG;
+    frame.dovi = std::make_shared<pl_dovi_metadata>(info.dovi);
+    frame.color = info.color;
+    frame.dvLayered = info.dovi.nlq_active && info.width[1] > 0;
+    return S_OK;
+}
+
 DecoderPin::DecoderPin(Renderer* renderer, HRESULT* hr) : CRendererInputPin(renderer, hr, L"Input"), owner(renderer) {}
 
 STDMETHODIMP DecoderPin::GetAllocator(IMemAllocator** out)
@@ -1091,19 +1105,21 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         CAutoLock render(&m_RendererLock);
         current = format;
     }
+    ComPtr<IMediaSample> reconstructed;
     if (dv.ShouldProcess())
     {
         ComPtr<IPin> upstream;
         m_pInputPin->ConnectedTo(&upstream);
-        ComPtr<IMediaSample> reconstructed;
         const auto supplemented =
             dv.Prepare(m_pGraph, upstream.Get(), sample, current, segment, backend.Device(), reconstructed);
         if (FAILED(supplemented))
             return supplemented;
-        if (supplemented == S_OK)
-            return reconstructed ? CBaseVideoRenderer::Receive(reconstructed.Get()) : S_OK;
+        if (supplemented == S_OK && !reconstructed)
+            return S_OK;
+        if (reconstructed)
+            sample = reconstructed.Get();
     }
-    bool interlaced = current.interlaced;
+    bool interlaced = !reconstructed && current.interlaced;
     bool top = current.topFieldFirst;
     DWORD fieldFlags = 0xffffffff;
     ComPtr<IMediaSample2> propsSample;
@@ -1119,7 +1135,7 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     }
     REFERENCE_TIME start = 0, stop = 0;
     const bool timed = SUCCEEDED(sample->GetTime(&start, &stop)) && stop > start;
-    if (current.interlaced && fieldOverride)
+    if (!reconstructed && current.interlaced && fieldOverride)
     {
         interlaced = true;
         top = fieldOverride == 1;
@@ -1175,7 +1191,16 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             (fields && (!motionQueue.empty() || pending.id) && bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)))
             ResetFields(true, !timelineReset);
         input.frame = current.frame;
-        ReadHdrSideData(sample, input.frame);
+        ComPtr<IDvLayerSample> layered;
+        sample->QueryInterface(IID_PPV_ARGS(&layered));
+        if (layered)
+        {
+            HRESULT hr = DescribeDolbyVision(layered.Get(), input.frame);
+            if (FAILED(hr))
+                return hr;
+        }
+        else
+            ReadHdrSideData(sample, input.frame);
         const auto source = dv.SourceInfo();
         if (source.present)
             input.frame.dvSource = source;
@@ -1185,7 +1210,12 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         input.first = fields ? (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM) : PL_FIELD_NONE;
         HRESULT hr;
         ComPtr<IMediaSampleD3D11> gpu;
-        if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&gpu))))
+        if (layered)
+        {
+            hr = backend.CaptureDolbyVision(input.frame, layered.Get(), input.id);
+            input.hardware = SUCCEEDED(hr);
+        }
+        else if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&gpu))))
         {
             ComPtr<ID3D11Texture2D> texture;
             UINT slice = 0;
@@ -1258,18 +1288,11 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
     VideoFrame frame = field ? field->frame.frame : format.frame;
     ComPtr<IDvLayerSample> layered;
-    DvFrameInfo layeredInfo = {};
     if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&layered))))
     {
-        hr = layered->GetInfo(DvTransportVersion, sizeof(layeredInfo), &layeredInfo);
+        hr = DescribeDolbyVision(layered.Get(), frame);
         if (FAILED(hr))
             return hr;
-        if (layeredInfo.version != DvTransportVersion || layeredInfo.placeboApi != PL_API_VER ||
-            layeredInfo.bytes != sizeof(layeredInfo))
-            return E_INVALIDARG;
-        frame.dovi = std::make_shared<pl_dovi_metadata>(layeredInfo.dovi);
-        frame.color = layeredInfo.color;
-        frame.dvLayered = layeredInfo.dovi.nlq_active && layeredInfo.width[1] > 0;
     }
 
     auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);

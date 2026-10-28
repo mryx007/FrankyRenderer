@@ -118,6 +118,7 @@ class PlaceboBackend
     HRESULT ImportDolbyVision(const VideoFrame& frame, IDvLayerSample* sample);
     HRESULT CaptureUpload(const VideoFrame&, const uint8_t*, size_t, uint64_t&);
     HRESULT CaptureImport(const VideoFrame&, ID3D11Texture2D*, UINT, uint64_t&);
+    HRESULT CaptureDolbyVision(const VideoFrame&, IDvLayerSample*, uint64_t&);
     HRESULT SelectField(uint64_t current, uint64_t previous, uint64_t next, pl_field field, pl_field first);
     HRESULT SelectMix(uint64_t current,
                       uint64_t previous,
