@@ -139,8 +139,8 @@ Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed fr
 
 | Package | Player selection | Renderer CLSID |
 |---|---|---|
-| **MPC-BE native** | **FrankyRenderer** | `{B864E92A-1BDF-4DA1-9004-CBF467DF239A}` |
-| **PotPlayer compatibility** | **MPC Video Renderer** | `{71F080AA-8661-4093-B15E-4F6903E77D0A}` |
+| **MPC-BE native** | **FrankyRenderer** |
+| **PotPlayer compatibility** | **MPC Video Renderer** |
 
 The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings. This package exposes no MPCVR compatibility factory or registration. The original MPC Video Renderer may remain installed alongside it.
 
