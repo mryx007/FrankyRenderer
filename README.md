@@ -127,8 +127,6 @@ The screenshots show example settings, not recommended presets.
 - Ctrl+J statistics with display/video information, active processing settings, frame counters, presentation timing and CPU/GPU render timings.
 - Persistent shader cache for reusing compiled processing work across playback sessions.
 
-Some HDR metadata is decoder-dependent. Missing metadata is not reconstructed from filenames. Dolby Vision profiles such as 5 and 8 rely on metadata provided by the decoder. The integrated Profile 7 path supports local progressive P010 base layers, including native D3D11 input. Base and enhancement dimensions are read from the input rather than restricted to fixed UHD/half-UHD sizes. MEL uses metadata without enhancement-layer reconstruction. Smooth Motion uses the same scheduling and frame-mixing path for FEL/MEL as for ordinary video, retaining each frame's matching enhancement data and metadata. The result is rendered as HDR/PQ or tone-mapped SDR, not native Dolby Vision HDMI signalling. See [the processing and build notes](src/DolbyVision/BUILD.md).
-
 **MPC-BE** 
 The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select **FrankyRenderer** in the player's video renderer settings.
 
