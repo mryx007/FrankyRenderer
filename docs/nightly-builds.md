@@ -8,10 +8,8 @@ Each ZIP name and its `INSTALL.txt` identify the build by date and commit, such 
 
 ## Publishing a test build
 
-1. Sync the current confirmed stable source into `mryx007/FrankyRenderer-Nightly` and apply proposed fixes there.
-2. Build both variants and run the applicable checks. Record any tests that still require the reporter's device or source.
-3. Package that exact source revision with `python src/package_variants.py --channel nightly --build-id YYYYMMDD-<commit> --output releases/<new-folder>`.
-4. Create or update the `nightly` pre-release in `mryx007/FrankyRenderer-Nightly`, attach its two ZIP assets, and link the exact source commit in `mryx007/FrankyRenderer-Nightly`. Describe what needs testing. Publish only when an actual fix is ready for testing and keep it marked **Pre-release**.
-5. After confirmation, cherry-pick the tested fix commits into the stable repository for a stable release. Keep the short nightly README separate from the main overview.
+Push tested source changes to `main` in `mryx007/FrankyRenderer-Nightly`. GitHub Actions checks formatting, builds both variants, runs the available non-GPU regression tests and verifies the packages before updating the normal Nightly release. Documentation-only changes do not trigger publication. The workflow can also be started manually from **Actions → Publish Nightly**.
 
-Publication is manual. No scheduled builds or automatic promotion to stable are configured. Nightly development and downloads are kept in the separate repository; the stable repository needs no nightly branch.
+Build failures leave the existing release untouched. Each release links the exact source commit and identifies both packages by date and commit. Hardware, HDR/TV and real-player tests still require user confirmation.
+
+After confirmation, cherry-pick the tested fix commits into the stable repository. Stable releases require a separate manual start; no automatic promotion is configured. See [GitHub automation](automation.md).

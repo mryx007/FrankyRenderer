@@ -1,0 +1,58 @@
+name: Publish stable release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version already committed in the source, e.g. 1.0.10'
+        required: true
+        type: string
+      changelog:
+        description: 'Short release notes (English)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-publication
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'mryx007/FrankyRenderer' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/validate_release.py
+      - name: Refuse to overwrite an existing release
+        run: |
+          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "This release already exists. No files were replaced."
+            exit 1
+          fi
+  build:
+    needs: validate
+    uses: ./.github/workflows/build.yml
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_NOTES: ${{ inputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: Publish release
+        run: |
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
+          gh release create "v$RELEASE_VERSION" packages/* --target "$GITHUB_SHA" --title "FrankyRenderer $RELEASE_VERSION" --notes-file release-notes.md --latest

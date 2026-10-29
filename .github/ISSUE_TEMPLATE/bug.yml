@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a problem with FrankyRenderer.
+title: '[Bug] '
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong?
+    validations:
+      required: true
+  - type: input
+    id: player
+    attributes:
+      label: Player and version
+      placeholder: MPC-BE 1.9.2.53 or PotPlayer 260819
+    validations:
+      required: true
+  - type: input
+    id: renderer
+    attributes:
+      label: FrankyRenderer version
+      description: Release version or Nightly build ID.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: System
+      description: Windows version, graphics card and driver version.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can the issue be reproduced?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or logs
+      description: Optional. Ctrl+J statistics may help. Remove any private information before uploading.

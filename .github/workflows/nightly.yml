@@ -1,0 +1,68 @@
+name: Publish Nightly
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.github/**'
+      - 'requirements.txt'
+      - '*.cmd'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-publication
+  cancel-in-progress: false
+
+jobs:
+  identify:
+    if: github.repository == 'mryx007/FrankyRenderer-Nightly'
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.id.outputs.value }}
+    steps:
+      - id: id
+        run: echo "value=$(date -u +%Y%m%d)-${GITHUB_SHA:0:10}" >> "$GITHUB_OUTPUT"
+  build:
+    needs: identify
+    uses: ./.github/workflows/build.yml
+    with:
+      channel: nightly
+      build_id: ${{ needs.identify.outputs.build_id }}
+  publish:
+    needs: [identify, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_ID: ${{ needs.identify.outputs.build_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - run: python .github/scripts/nightly_notes.py
+      - name: Publish tested packages as a normal release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly packages/* --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit nightly --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --prerelease=false --latest
+          else
+            gh release create nightly packages/* --target "$GITHUB_SHA" --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --latest
+          fi
+          # New ZIPs are present before superseded ZIPs are removed.
+          gh release view nightly --json assets --jq '.assets[].name' > assets.txt
+          while IFS= read -r asset; do
+            if [[ "$asset" == FrankyRenderer-nightly-*.zip && "$asset" != *"$BUILD_ID"* ]]; then
+              gh release delete-asset nightly "$asset" --yes
+            fi
+          done < assets.txt
