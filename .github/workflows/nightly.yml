@@ -7,7 +7,6 @@ on:
       - '.github/**'
       - 'requirements.txt'
       - '*.cmd'
-      - 'docs/nightly-changelog.md'
   workflow_dispatch:
 
 permissions:
