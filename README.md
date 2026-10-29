@@ -16,9 +16,9 @@ Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
-Downloads: [Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest) · [Nightly test builds](https://github.com/mryx007/FrankyRenderer/releases/tag/nightly)
+Download: [Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)
 
-The nightly channel is for fixes awaiting user testing. See [how nightly builds work](docs/nightly-builds.md).
+The nightly channel is prepared for fixes awaiting user testing. No nightly build is currently published. See [how nightly builds work](docs/nightly-builds.md).
 
 ## Screenshots
 
