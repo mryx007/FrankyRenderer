@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a feature or improvement for FrankyRenderer.
+title: '[Feature] '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: Feature or improvement
+      description: What would you like to add or change?
+    validations:
+      required: true
+  - type: textarea
+    id: benefit
+    attributes:
+      label: Why would it help?
+      description: Describe the problem or use case.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details
+      description: Optional examples, links or screenshots.
