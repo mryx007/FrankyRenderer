@@ -1,0 +1,2 @@
+- Fixed AviSynth sources being reopened by Dolby Vision probing.
+- Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
