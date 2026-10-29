@@ -119,7 +119,9 @@ Click a preview to open the full-size image. The screenshots show example settin
 
 </details>
 
-## Installation
+## Installation and system requirements
+
+Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
 - **MPC-BE:** Use a recent nightly build with native FrankyRenderer support and select **FrankyRenderer** in the video renderer settings.
 - **PotPlayer:** Uninstall the original MPC Video Renderer first, then select **MPC Video Renderer** after installing FrankyRenderer.
@@ -142,25 +144,17 @@ The renderer source and build instructions are available in this repository. [De
 
 ## Build
 
-Requirements: Windows x64, Visual Studio 2022 or later with Desktop development with C++, a Windows SDK containing `fxc.exe`, and **CPython 3.14 x64**.
+Requires Windows x64, Visual Studio 2022 or later with C++ tools, a Windows SDK with `fxc.exe`, and Python 3.14 x64.
 
-From the repository root, in a Visual Studio x64 developer shell:
+Follow the [build guide](docs/build.md) to prepare dependencies, then run these commands from the repository root in a Visual Studio x64 developer shell:
 
 ```powershell
-python -m pip install -r requirements.txt
-python src/fetch_dependencies.py
-python src/prepare_sdk.py
-python src/prepare_dv_dependencies.py --ffmpeg <pinned-FFmpeg-checkout> --runtime <matching-FFmpeg-runtime-folder>
 .\build.cmd native
 .\build.cmd potplayer
 python src/package_variants.py --output releases/local-packages
 ```
 
-Runtime dependencies are restored locally from official MSYS2 packages using the checked-in SHA256 lock file. libplacebo is built from pinned upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (7.387.0 release), with hash-verified local compiler packages and Python build tools. The first dependency restore also compiles libplacebo; later restores reuse its verified build cache. Build from a path without spaces, or with Windows 8.3 filenames enabled. The scripts locate Visual Studio through `vswhere`; no personal SDK paths are required. Native build output is `src/build/bin/FrankyRenderer.ax`; PotPlayer output is `src/build/variants/potplayer/bin/FrankyRenderer.ax`. `package_variants.py` creates both ZIPs in the selected new output folder without installing or publishing them.
-
-The FFmpeg inputs for integrated DV processing are an additional prerequisite, separate from the MSYS2 restore. Their exact source commit and runtime hashes are pinned in `src/deps/dv-ffmpeg.lock.json`; the setup step verifies them and generates matching MSVC import libraries. See [DV build requirements](src/DolbyVision/BUILD.md).
-
-All build sources are under `src`, including the required compatibility interfaces and DirectShow BaseClasses in `src/DirectShow`. FrankyRenderer uses its own libplacebo/D3D11 rendering path.
+This builds both variants and creates the ZIP packages without installing them.
 
 ## Code formatting
 
@@ -179,10 +173,6 @@ The formatting script uses clang-format 21.1.8 and only processes tracked C++ fi
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.
 
 Image processing is powered by [libplacebo](https://github.com/haasn/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
-
-## System requirements
-
-Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
 ## Downloads
 
