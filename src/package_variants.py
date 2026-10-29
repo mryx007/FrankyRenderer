@@ -2,23 +2,41 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import zipfile
 
 from package import ROOT, main
 
 
-def package_variants(output):
+def package_variants(output, channel="stable", build_id=None):
+    if channel not in ("stable", "nightly"):
+        raise ValueError("Unknown release channel")
+    if channel == "nightly" and not re.fullmatch(r"\d{8}-[0-9a-f]{7,40}", build_id or ""):
+        raise ValueError("Nightly builds need --build-id YYYYMMDD-<commit>")
+    if channel == "stable" and build_id:
+        raise ValueError("--build-id is only used for nightly builds")
     if output.exists():
         raise ValueError(f"Use a new output directory: {output}")
     output.mkdir(parents=True)
     result = []
-    for variant, name, source in [
-        ("native", "FrankyRenderer-1.0.9-MPC-BE-x64", ROOT / "build/bin"),
-        ("potplayer", "FrankyRenderer-1.0.9-PotPlayer-x64", ROOT / "build/variants/potplayer/bin"),
+    version = "nightly-" + build_id if channel == "nightly" else "1.0.9"
+    for variant, player, source in [
+        ("native", "MPC-BE", ROOT / "build/bin"),
+        ("potplayer", "PotPlayer", ROOT / "build/variants/potplayer/bin"),
     ]:
+        name = f"FrankyRenderer-{version}-{player}-x64"
         stage = output / name
         main(stage, source, variant)
+        if channel == "nightly":
+            instructions = stage / "INSTALL.txt"
+            with instructions.open("a", encoding="utf-8") as stream:
+                stream.write(f"\nNightly test build: {build_id}\n"
+                             "Quote this build ID when reporting test results.\n")
+            manifest_path = stage / "build-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["INSTALL.txt"] = hashlib.sha256(instructions.read_bytes()).hexdigest()
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
         archive = output / (name + ".zip")
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             for path in sorted(stage.rglob("*")):
@@ -37,4 +55,7 @@ def package_variants(output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    package_variants(parser.parse_args().output.resolve())
+    parser.add_argument("--channel", choices=("stable", "nightly"), default="stable")
+    parser.add_argument("--build-id", help="Nightly identifier: YYYYMMDD-<commit>")
+    args = parser.parse_args()
+    package_variants(args.output.resolve(), args.channel, args.build_id)
