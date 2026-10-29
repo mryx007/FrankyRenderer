@@ -5,7 +5,7 @@
 Restore normal libplacebo/MSYS2 dependencies first. In a Visual Studio x64 tools prompt:
 
 ```
-python src/prepare_dv_dependencies.py --ffmpeg <local-clsid2-FFmpeg-checkout> --runtime <matching-runtime-folder>
+python src/Tools/prepare_dv_dependencies.py --ffmpeg <local-clsid2-FFmpeg-checkout> --runtime <matching-runtime-folder>
 ```
 
 This verifies `src/deps/dv-ffmpeg.lock.json` and restores headers, import libraries and four runtime DLLs. No filter is registered by the dependency setup. Both package variants retain only their existing renderer and settings-page identities. Their installers retire their own legacy DV-filter entries when updating an existing installation, without touching the other variant.
@@ -14,4 +14,4 @@ The integrated path accepts local progressive Profile 7 with P010 base input. Ba
 
 Processing and file I/O run before the renderer's scheduling/presentation locks. Flush and Stop cancel enhancement reads before waiting for Receive; segment changes and disconnects reset the corresponding reader/device state. Prepared FEL/MEL frames enter the existing Smooth Motion queue. Each history entry owns its base planes, enhancement planes and DV metadata, so temporal mixing cannot substitute another frame's enhancement layer. Oversample and custom temporal filters use the normal timing, paused-seek and end-of-stream handling.
 
-`src/build_dv_motion_tests.cmd` builds a GPU regression test for FEL/MEL history ownership, released input samples, cache eviction and temporal mixing with differing layer sizes. Run `src/build/bin/test_dv_motion.exe` after building it. Real-file tests additionally cover CPU/native D3D11 base input, pause, seeks, subtitles, live Smooth Motion toggles and end of stream.
+`src/Tests/build_dv_motion_tests.cmd` builds a GPU regression test for FEL/MEL history ownership, released input samples, cache eviction and temporal mixing with differing layer sizes. Run `src/build/bin/test_dv_motion.exe` after building it. Real-file tests additionally cover CPU/native D3D11 base input, pause, seeks, subtitles, live Smooth Motion toggles and end of stream.

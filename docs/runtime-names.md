@@ -1,8 +1,8 @@
 # Packaged runtime names
 
 Release packages use explicit names for the runtime DLLs. The development SDK
-and build output retain the upstream names. `src/package.py` applies the mapping
-through `src/runtime_names.py` when assembling the installation package.
+and build output retain the upstream names. `src/Tools/package.py` applies the mapping
+through `src/Tools/runtime_names.py` when assembling the installation package.
 
 | Upstream filename | Packaged filename |
 |---|---|

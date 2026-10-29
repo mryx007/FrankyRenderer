@@ -35,7 +35,7 @@ def main():
         subprocess.run(["git", "init", str(source)], check=True)
     subprocess.run(["git", "-C", str(source), "fetch", "--depth=1", lock["source"], lock["commit"]], check=True)
     subprocess.run(["git", "-C", str(source), "checkout", "--detach", lock["commit"]], check=True)
-    subprocess.run([sys.executable, str(ROOT / "src/prepare_dv_dependencies.py"),
+    subprocess.run([sys.executable, str(ROOT / "src/Tools/prepare_dv_dependencies.py"),
                     "--ffmpeg", str(source), "--runtime", str(runtime)], check=True)
 
 

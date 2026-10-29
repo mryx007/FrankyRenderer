@@ -11,8 +11,8 @@ Our renderer-side screenshot correction is retained.
 - `src/deps/libplacebo-source.lock.json` pins the original source archive and SHA-256.
 - `src/deps/libplacebo-build.lock.json` pins the local GCC toolchain packages.
 - `src/deps/libplacebo-python.lock.json` pins the Meson/glad code-generation tools.
-- `python src/fetch_dependencies.py` restores the runtime dependencies and builds
-  libplacebo locally through `src/build_libplacebo.py`. A verified cache avoids
+- `python src/Tools/fetch_dependencies.py` restores the runtime dependencies and builds
+  libplacebo locally through `src/Tools/build_libplacebo.py`. A verified cache avoids
   rebuilding unchanged inputs. No upstream source patch is applied.
 - The matching API-387 headers, DLL and MSVC import definition are used together.
   Packaged `libplacebo-387.dll` retains the user-facing name `VideoProcessing.dll`.

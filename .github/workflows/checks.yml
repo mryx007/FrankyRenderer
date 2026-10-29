@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.14'
       - run: python -m pip install -r requirements-dev.txt
-      - run: python src/format_code.py --check
+      - run: python src/Tools/format_code.py --check
       - name: Validate workflow and issue-form YAML
         run: |
           python -m pip install PyYAML==6.0.3
