@@ -16,39 +16,27 @@ Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not
 
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
-Download: [Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)
-
-The nightly channel is prepared for fixes awaiting user testing. No nightly build is currently published. See [how nightly builds work](docs/nightly-builds.md).
-
 ## Screenshots
 
-General and presentation settings:
+<table>
+  <tr>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/general.png"><img src="docs/screenshots/general.png" width="240" alt="General &amp; Presentation"></a><br><sub>General &amp; Presentation</sub></td>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/scaling.png"><img src="docs/screenshots/scaling.png" width="240" alt="Scaling &amp; Frame Mixing"></a><br><sub>Scaling &amp; Frame Mixing</sub></td>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/color-adjustment.png"><img src="docs/screenshots/color-adjustment.png" width="240" alt="Color Adjustment"></a><br><sub>Color Adjustment</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/hdr-color-mapping.png"><img src="docs/screenshots/hdr-color-mapping.png" width="240" alt="HDR &amp; Color Mapping"></a><br><sub>HDR &amp; Color Mapping</sub></td>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/color-management.png"><img src="docs/screenshots/color-management.png" width="240" alt="Color Management"></a><br><sub>Color Management</sub></td>
+    <td align="center"><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer/main/docs/screenshots/shaders.png"><img src="docs/screenshots/shaders.png" width="240" alt="Shader Chain"></a><br><sub>Shader Chain</sub></td>
+  </tr>
+</table>
 
-[<img src="docs/screenshots/general.png" width="640" alt="FrankyRenderer General and Presentation settings">](docs/screenshots/general.png)
-
-Scaling and frame mixing:
-
-[<img src="docs/screenshots/scaling.png" width="640" alt="FrankyRenderer Scaling and Frame Mixing settings">](docs/screenshots/scaling.png)
-
-Color Adjustment:
-
-[<img src="docs/screenshots/color-adjustment.png" width="640" alt="FrankyRenderer Color Adjustment settings">](docs/screenshots/color-adjustment.png)
-
-HDR and Color Mapping:
-
-[<img src="docs/screenshots/hdr-color-mapping.png" width="640" alt="FrankyRenderer HDR and Color Mapping settings">](docs/screenshots/hdr-color-mapping.png)
-
-Color Management — ICC profiles and 3D LUTs:
-
-[<img src="docs/screenshots/color-management.png" width="640" alt="FrankyRenderer Color Management settings">](docs/screenshots/color-management.png)
-
-Shader Chain:
-
-[<img src="docs/screenshots/shaders.png" width="640" alt="FrankyRenderer Shader Chain settings">](docs/screenshots/shaders.png)
-
-The screenshots show example settings, not recommended presets.
+Click a preview to open the full-size image. The screenshots show example settings, not recommended presets.
 
 ## Features
+
+<details>
+<summary>Show features</summary>
 
 ### Video input and output
 
@@ -131,8 +119,10 @@ The screenshots show example settings, not recommended presets.
 - Ctrl+J statistics with display/video information, active processing settings, frame counters, presentation timing and CPU/GPU render timings.
 - Persistent shader cache for reusing compiled processing work across playback sessions.
 
+</details>
+
 **MPC-BE** 
-The native package requires a recent [MPC-BE nightly build with FrankyRenderer support](https://github.com/qwerttvv/Player/releases), such as the tested 1.9.2.50 build. Select FrankyRenderer in the player's video renderer settings.
+The native package requires a recent MPC-BE nightly build with FrankyRenderer support, such as the tested 1.9.2.50 build. Select FrankyRenderer in the player's video renderer settings.
 
 **Potplayer** 
 The PotPlayer package exposes only the compatibility identity because PotPlayer currently has no native FrankyRenderer option. Uninstall the original MPC Video Renderer before installing this package: both need the same compatibility identity. This package does not register or expose FrankyRenderer's native renderer CLSID.
@@ -192,3 +182,11 @@ The formatting script uses clang-format 21.1.8 and only processes tracked C++ fi
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.
 
 Image processing is powered by [libplacebo](https://github.com/haasn/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
+
+## Downloads
+
+- **[Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)** — recommended for normal use.
+- **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/tag/nightly)** — fixes awaiting user feedback.
+- **[MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases)** — player builds with native FrankyRenderer selection.
+
+FrankyRenderer downloads provide separate MPC-BE and PotPlayer packages.
