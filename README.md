@@ -12,8 +12,6 @@ I decided to call my renderer Franky, inspired by Frankenstein, who pieced toget
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
-Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
-
 Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
 
 ## Screenshots
@@ -182,6 +180,10 @@ The formatting script uses clang-format 21.1.8 and only processes tracked C++ fi
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.
 
 Image processing is powered by [libplacebo](https://github.com/haasn/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
+
+## System requirements
+
+Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
 ## Downloads
 
