@@ -1,0 +1,34 @@
+name: Check libplacebo releases
+on:
+  schedule:
+    - cron: '20 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.repository == 'mryx007/FrankyRenderer'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare newest release with pinned version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/haasn/libplacebo/releases/latest > latest-libplacebo.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          current = json.loads(Path('src/deps/libplacebo-source.lock.json').read_text())['version']
+          release = json.loads(Path('latest-libplacebo.json').read_text())
+          tag = release['tag_name']
+          message = f"Pinned: {current}. Latest release: [{tag}]({release['html_url']})."
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(message + '\n')
+          if tag.lstrip('v') != current:
+              print('::error::New libplacebo release available. ' + message)
+              raise SystemExit(1)
+          print(message)
+          PY
