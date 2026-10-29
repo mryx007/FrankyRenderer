@@ -33,6 +33,46 @@ static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
     return S_OK;
 }
 
+static HRESULT
+CaptureDib(PlaceboBackend& backend, int width, int height, bool windowGeometry, std::vector<uint8_t>& dib)
+try
+{
+    if (width <= 0 || height <= 0)
+        return VFW_E_NOT_CONNECTED;
+    const uint64_t pixelBytes = uint64_t(width) * height * 4;
+    if (sizeof(BITMAPINFOHEADER) + pixelBytes > LONG_MAX)
+        return E_OUTOFMEMORY;
+    std::vector<uint8_t> pixels;
+    const HRESULT hr = backend.RenderOffscreen(width, height, pixels, false, 8, windowGeometry);
+    if (FAILED(hr))
+        return hr;
+    if (pixels.size() != pixelBytes)
+        return E_UNEXPECTED;
+    BITMAPINFOHEADER header = {};
+    header.biSize = sizeof(header);
+    header.biWidth = width;
+    header.biHeight = -height;
+    header.biPlanes = 1;
+    header.biBitCount = 32;
+    header.biCompression = BI_RGB;
+    header.biSizeImage = static_cast<DWORD>(pixelBytes);
+    dib.resize(sizeof(header) + pixels.size());
+    memcpy(dib.data(), &header, sizeof(header));
+    auto out = dib.data() + sizeof(header);
+    for (size_t i = 0; i < pixels.size(); i += 4)
+    {
+        out[i] = pixels[i + 2];
+        out[i + 1] = pixels[i + 1];
+        out[i + 2] = pixels[i];
+        out[i + 3] = 255;
+    }
+    return S_OK;
+}
+catch (const std::bad_alloc&)
+{
+    return E_OUTOFMEMORY;
+}
+
 DecoderPin::DecoderPin(Renderer* renderer, HRESULT* hr) : CRendererInputPin(renderer, hr, L"Input"), owner(renderer) {}
 
 STDMETHODIMP DecoderPin::GetAllocator(IMemAllocator** out)
@@ -657,27 +697,11 @@ HRESULT VideoControl::GetStaticImage(long* size, long* image)
         *size = required;
         return E_OUTOFMEMORY;
     }
-    std::vector<uint8_t> pixels;
-    HRESULT hr = owner->backend.RenderOffscreen(width, height, pixels);
+    std::vector<uint8_t> dib;
+    HRESULT hr = CaptureDib(owner->backend, width, height, false, dib);
     if (FAILED(hr))
         return hr;
-    BITMAPINFOHEADER hdr = {};
-    hdr.biSize = sizeof(hdr);
-    hdr.biWidth = width;
-    hdr.biHeight = -height;
-    hdr.biPlanes = 1;
-    hdr.biBitCount = 32;
-    hdr.biCompression = BI_RGB;
-    hdr.biSizeImage = width * height * 4;
-    memcpy(image, &hdr, sizeof(hdr));
-    auto out = reinterpret_cast<BYTE*>(image) + sizeof(hdr);
-    for (size_t i = 0; i < pixels.size(); i += 4)
-    {
-        out[i] = pixels[i + 2];
-        out[i + 1] = pixels[i + 1];
-        out[i + 2] = pixels[i];
-        out[i + 3] = 255;
-    }
+    memcpy(image, dib.data(), dib.size());
     *size = required;
     return S_OK;
 }
@@ -1846,6 +1870,32 @@ STDMETHODIMP Renderer::ReadPixels(int width, int height, BYTE* rgba, SIZE_T byte
         memcpy(rgba, pixels.data(), pixels.size());
     }
     return hr;
+}
+
+STDMETHODIMP Renderer::Flt_GetBin(LPCSTR field, LPVOID* value, unsigned* size)
+{
+    if (!field || !value || !size)
+        return E_POINTER;
+    *value = nullptr;
+    *size = 0;
+    if (strcmp(field, "displayedImage"))
+        return E_INVALIDARG;
+    CAutoLock guard(&m_InterfaceLock);
+    RECT viewport = {};
+    if (!window || !window->WindowExists() || !GetClientRect(window->GetWindowHWND(), &viewport))
+        return VFW_E_NOT_CONNECTED;
+    std::vector<uint8_t> dib;
+    const HRESULT hr = CaptureDib(backend, viewport.right, viewport.bottom, true, dib);
+    if (FAILED(hr))
+        return hr;
+    // MPC-BE's allocator presenter releases this DIB with LocalFree.
+    const auto result = LocalAlloc(LMEM_FIXED, dib.size());
+    if (!result)
+        return E_OUTOFMEMORY;
+    memcpy(result, dib.data(), dib.size());
+    *value = result;
+    *size = static_cast<unsigned>(dib.size());
+    return S_OK;
 }
 
 STDMETHODIMP Renderer::Flt_GetBool(LPCSTR field, bool* value)

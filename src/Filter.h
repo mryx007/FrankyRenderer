@@ -190,6 +190,7 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Flt_GetInt(LPCSTR, int*) override;
     STDMETHODIMP Flt_GetInt64(LPCSTR, __int64*) override;
     STDMETHODIMP Flt_GetDouble(LPCSTR, double*) override;
+    STDMETHODIMP Flt_GetBin(LPCSTR, LPVOID*, unsigned*) override;
     STDMETHODIMP Flt_SetBool(LPCSTR, bool) override;
     STDMETHODIMP Flt_SetInt(LPCSTR, int) override;
 };
