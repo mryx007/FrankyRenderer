@@ -42,7 +42,7 @@ def prepare(previous, nightly_sha, output):
     if not any(name.startswith("src/") or name in ("build.cmd", "requirements.txt", "requirements-dev.txt", "LICENSE", "THIRD_PARTY.md") for name in changed):
         git("merge", "--abort", check=False)
         raise ValueError("No new renderer/build changes to publish")
-    rc = ROOT / "src/Renderer.rc"
+    rc = ROOT / "src/Renderer/Renderer.rc"
     text = rc.read_text(encoding="utf-8")
     old = re.search(r'VALUE "FileVersion", "([\d.]+)"', text).group(1)
     if old not in (previous, version):
@@ -58,8 +58,8 @@ def prepare(previous, nightly_sha, output):
             raise ValueError("Missing resource string: " + field)
     rc.write_text(text, encoding="utf-8", newline="\n")
     for name, pattern in (
-        ("src/package.py", r'(f"FrankyRenderer )[\d.]+( - )'),
-        ("src/package_variants.py", r'(version = "nightly-" \+ build_id if channel == "nightly" else ")[\d.]+(")'),
+        ("src/Tools/package.py", r'(f"FrankyRenderer )[\d.]+( - )'),
+        ("src/Tools/package_variants.py", r'(version = "nightly-" \+ build_id if channel == "nightly" else ")[\d.]+(")'),
     ):
         path = ROOT / name
         text, count = re.subn(pattern, rf'\g<1>{version}\2', path.read_text(encoding="utf-8"))
@@ -68,7 +68,7 @@ def prepare(previous, nightly_sha, output):
         path.write_text(text, encoding="utf-8", newline="\n")
     marker.write_text(json.dumps({"source_repository": "mryx007/FrankyRenderer-Nightly",
                                   "source_commit": nightly_sha, "version": version}, indent=2) + "\n")
-    git("add", "src/Renderer.rc", "src/package.py", "src/package_variants.py", ".github/last-promoted-nightly.json")
+    git("add", "src/Renderer/Renderer.rc", "src/Tools/package.py", "src/Tools/package_variants.py", ".github/last-promoted-nightly.json")
     git("commit", "-m", f"Release {version} from tested Nightly {nightly_sha[:10]}")
     sha = git("rev-parse", "HEAD").stdout.strip()
     git("bundle", "create", str(output / "candidate.bundle"), "HEAD")

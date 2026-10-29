@@ -146,7 +146,7 @@ The renderer source and build instructions are available in this repository. [De
 
 ## Project layout
 
-- `src` - all build sources, shaders, tests and scripts; required DirectShow compatibility code is included under `src/DirectShow` with its original notices.
+- `src` - renderer, settings, UI, shaders, tests and tools in [separate folders](src/README.md); required DirectShow compatibility code remains under `src/DirectShow`.
 - `dist` - locally generated installable package, excluded from Git.
 - `LICENSE` and `THIRD_PARTY.md` - licensing and attribution.
 
@@ -159,7 +159,7 @@ Follow the [build guide](docs/build.md) to prepare dependencies, then run these 
 ```powershell
 .\build.cmd native
 .\build.cmd potplayer
-python src/package_variants.py --output releases/local-packages
+python src/Tools/package_variants.py --output releases/local-packages
 ```
 
 This builds both variants and creates the ZIP packages without installing them. For automated builds and releases, see [GitHub automation](docs/automation.md).
@@ -170,11 +170,11 @@ The project's C++ sources use the checked-in `.clang-format` configuration with 
 
 ```powershell
 python -m pip install -r requirements-dev.txt
-python src/format_code.py
-python src/format_code.py --check
+python src/Tools/format_code.py
+python src/Tools/format_code.py --check
 ```
 
-The formatting script uses clang-format 21.1.8 and only processes tracked C++ files directly under `src`.
+The formatting script uses clang-format 21.1.8 and only processes tracked project C++ files in `src/Renderer`, `src/Settings`, `src/UI`, `src/DolbyVision` and `src/Tests`.
 
 ## License and credits
 

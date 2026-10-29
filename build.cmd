@@ -1,3 +1,3 @@
 @echo off
-call "%~dp0src\build.cmd" %*
+call "%~dp0src\Tools\build.cmd" %*
 exit /b %errorlevel%
