@@ -162,7 +162,7 @@ Follow the [build guide](docs/build.md) to prepare dependencies, then run these 
 python src/package_variants.py --output releases/local-packages
 ```
 
-This builds both variants and creates the ZIP packages without installing them.
+This builds both variants and creates the ZIP packages without installing them. For automated builds and releases, see [GitHub automation](docs/automation.md).
 
 ## Code formatting
 
