@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   prepare:
-    if: github.repository == 'mryx007/FrankyRenderer' && github.ref == 'refs/heads/main'
+    if: github.repository == 'mryx007/FrankyRenderer' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.actor_id == '149878151' && github.triggering_actor == 'mryx007'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -43,7 +43,7 @@ jobs:
       candidate: true
   publish:
     needs: build
-    if: ${{ !inputs.test_only }}
+    if: ${{ !inputs.test_only && github.actor_id == '149878151' && github.triggering_actor == 'mryx007' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -15,3 +15,5 @@ Nightly release notes come only from the short, maintained `docs/nightly-changel
 The workflows run in their own repository using its built-in token. They require no personal access token and cannot publish stable releases from the Nightly repository. GitHub-hosted runs do not establish HDR/TV compatibility or real-player playback correctness.
 
 Stable versions follow `1.0 → 1.0.1 → … → 1.0.9 → 1.1 → 1.1.1 → … → 1.1.9 → 1.2`. After `1.9.9`, the next version is `2.0`. The release workflow calculates the next version in this sequence and updates all resource/package versions together. It never skips ahead or overwrites an existing release.
+
+Stable publication is restricted to the `mryx007` account (GitHub user ID `149878151`). Both the original actor and the account starting or re-running the workflow must match. Public visitors cannot start publication.
