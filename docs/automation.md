@@ -11,3 +11,5 @@ Builds use Windows Server 2022 and Python 3.14. Existing checksum locks remain a
 Failed builds leave the published release untouched. Successful packages are also retained as workflow artifacts for seven days. Public release ZIPs do not expire with those artifacts.
 
 The workflows run in their own repository using its built-in token. They require no personal access token and cannot publish stable releases from the Nightly repository. GitHub-hosted runs do not establish HDR/TV compatibility or real-player playback correctness.
+
+Stable versions follow `1.0 → 1.0.1 → … → 1.0.9 → 1.1 → 1.1.1 → … → 1.1.9 → 1.2`. After `1.9.9`, the next version is `2.0`. The release workflow requires the next version in this sequence and matching source/resource versions. It does not choose or change the stable version itself.
