@@ -152,13 +152,31 @@ struct DvProcessor::State
         {
             const auto path = SourcePath(graph, upstream);
             bool profile7 = false;
+            if (!path.empty())
+            {
+                filename = path;
+                modeKnown = true;
+                layered = false;
+                source = {};
+            }
             if (!path.empty() && GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES)
             {
                 int count = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
                 std::string utf8(count, '\0');
                 WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), count, nullptr, nullptr);
                 AVFormatContext* context = nullptr;
-                const int opened = avformat_open_input(&context, utf8.c_str(), nullptr, nullptr);
+                // This is passive DV-container inspection, not another source
+                // filter. In particular, never execute AviSynth/VapourSynth or
+                // reopen a capture device through a script demuxer.
+                AVDictionary* options = nullptr;
+                const int configured = av_dict_set(&options, "format_whitelist", "matroska,webm,mov,mpegts", 0);
+                if (configured < 0)
+                {
+                    av_dict_free(&options);
+                    avcheck(configured, "configure passive source probe");
+                }
+                const int opened = avformat_open_input(&context, utf8.c_str(), nullptr, &options);
+                av_dict_free(&options);
                 std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)> guard(
                     context, [](AVFormatContext* value) { avformat_close_input(&value); });
                 avcheck(opened, "probe source container");
@@ -196,10 +214,20 @@ struct DvProcessor::State
             LogDv(layered ? "Profile 7 processing selected" : "standard renderer input selected");
             return S_OK;
         }
+        catch (const std::bad_alloc&)
+        {
+            return E_OUTOFMEMORY;
+        }
         catch (const std::exception& error)
         {
             LogDv(error.what(), 0, E_FAIL);
-            return E_FAIL;
+            // The existing source/decoder can supply valid frames even if
+            // FFmpeg cannot inspect its input. Cache the ordinary-input mode;
+            // do not retry the failed optional probe on each decoded frame.
+            modeKnown = true;
+            layered = false;
+            source = {};
+            return S_OK;
         }
     }
 
