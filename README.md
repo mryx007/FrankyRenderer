@@ -119,17 +119,16 @@ Click a preview to open the full-size image. The screenshots show example settin
 
 </details>
 
-**MPC-BE** 
-The native package requires a recent MPC-BE nightly build with FrankyRenderer support, such as the tested 1.9.2.50 build. Select FrankyRenderer in the player's video renderer settings.
+## Installation
 
-**Potplayer** 
-The PotPlayer package exposes only the compatibility identity because PotPlayer currently has no native FrankyRenderer option. Uninstall the original MPC Video Renderer before installing this package: both need the same compatibility identity. This package does not register or expose FrankyRenderer's native renderer CLSID.
+- **MPC-BE:** Use a recent nightly build with native FrankyRenderer support and select **FrankyRenderer** in the video renderer settings.
+- **PotPlayer:** Uninstall the original MPC Video Renderer first, then select **MPC Video Renderer** after installing FrankyRenderer.
 
-Extract the chosen ZIP to a permanent folder, close your players and run `Install.cmd`. Each package includes `FrankyRenderer.ax`, its runtime libraries, shaders and console registration tools. Install the two packages in different folders if you need both players. An existing installation using the same identity must be uninstalled first; the tools refuse to overwrite another installation.
+Extract the matching ZIP to a permanent folder, close your players and run `Install.cmd`. Uninstall any previous package using the same renderer identity first. If installing both packages, use separate folders.
 
-Use **Export** in the settings menu to save all display profiles in one INI backup and **Import** to restore them. Disconnected displays, custom names, all menu settings and shader parameters/order are included. Existing profiles absent from the backup are kept. Older single-profile INI files are imported into the selected display. External ICC and LUT files are referenced by path and must be kept separately.
+Keep the installation folder in place. To remove the renderer, run `Uninstall.cmd`.
 
-Do not move or delete the installed package directory. Uninstall using `Uninstall.cmd` or `setup.ps1 -Action Remove`.
+**Settings backup:** **Export** saves all display profiles to an INI file; **Import** restores them. Keep external ICC and LUT files separately.
 
 ## Source code and dependency sources
 
