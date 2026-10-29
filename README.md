@@ -132,6 +132,14 @@ Keep the installation folder in place. To remove the renderer, run `Uninstall.cm
 
 **Settings backup:** **Export** saves all display profiles to an INI file; **Import** restores them. Keep external ICC and LUT files separately.
 
+## Downloads
+
+- **[Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)** — recommended for normal use.
+- **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/tag/nightly)** — fixes awaiting user feedback.
+- **[MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases)** — player builds with native FrankyRenderer selection.
+
+FrankyRenderer downloads provide separate MPC-BE and PotPlayer packages.
+
 ## Source code and dependency sources
 
 The renderer source and build instructions are available in this repository. [Dependency sources](docs/dependency-sources.md) lists the exact official source packages, build recipes and SHA-256 checksums corresponding to the bundled runtime libraries.
@@ -173,11 +181,3 @@ The formatting script uses clang-format 21.1.8 and only processes tracked C++ fi
 FrankyRenderer is distributed under **GPL-3.0-or-later**, due to its MPC Video Renderer code reuse. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md). Existing copyright notices and individual shader licenses are preserved. FrankyRenderer is an independent project and is not an official MPC Video Renderer, libplacebo, mpv or PotPlayer release.
 
 Image processing is powered by [libplacebo](https://github.com/haasn/libplacebo), the rendering library also used by mpv. It provides scaling, HDR tone mapping, color management and other image processing features.
-
-## Downloads
-
-- **[Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)** — recommended for normal use.
-- **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/tag/nightly)** — fixes awaiting user feedback.
-- **[MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases)** — player builds with native FrankyRenderer selection.
-
-FrankyRenderer downloads provide separate MPC-BE and PotPlayer packages.
