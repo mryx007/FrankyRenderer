@@ -2,14 +2,10 @@ name: Publish stable release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Next version already committed in source: 1.0.9 → 1.1 → 1.1.1'
-        required: true
-        type: string
-      changelog:
-        description: 'Short release notes (English)'
-        required: true
-        type: string
+      test_only:
+        description: 'Test without publishing (leave off for a release)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,44 +15,63 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
+  prepare:
     if: github.repository == 'mryx007/FrankyRenderer' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
-      RELEASE_VERSION: ${{ inputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check version sequence and matching source
+        with:
+          fetch-depth: 0
+      - name: Prepare Nightly, next version and its changelog
+        run: python .github/scripts/prepare_stable.py
+      - name: Verify generated versions
         run: |
-          PREVIOUS_VERSION=$(gh release view --json tagName --jq '.tagName | ltrimstr("v")')
-          export PREVIOUS_VERSION
+          export RELEASE_VERSION=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['version'])")
           python .github/scripts/validate_release.py
-      - name: Refuse to overwrite an existing release
-        run: |
-          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
-            echo "This release already exists. No files were replaced."
-            exit 1
-          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stable-candidate
+          path: promotion/
+          if-no-files-found: error
+          retention-days: 7
   build:
-    needs: validate
+    needs: prepare
     uses: ./.github/workflows/build.yml
+    with:
+      candidate: true
   publish:
     needs: build
+    if: ${{ !inputs.test_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_VERSION: ${{ inputs.version }}
-      RELEASE_NOTES: ${{ inputs.changelog }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stable-candidate
+          path: promotion
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: packages
           path: packages
-      - name: Publish release
+      - name: Publish tested source and packages
+        shell: bash
         run: |
-          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
-          gh release create "v$RELEASE_VERSION" packages/* --target "$GITHUB_SHA" --title "FrankyRenderer $RELEASE_VERSION" --notes-file release-notes.md --latest
+          set -euo pipefail
+          git fetch promotion/candidate.bundle HEAD
+          git checkout --detach FETCH_HEAD
+          version=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['version'])")
+          expected=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['commit'])")
+          base=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['base_commit'])")
+          test "$(git rev-parse HEAD)" = "$expected"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$base"
+          git tag "v$version" "$expected"
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/v$version"
+          gh release create "v$version" packages/* --verify-tag --title "FrankyRenderer $version" --notes-file promotion/release-notes.md --latest

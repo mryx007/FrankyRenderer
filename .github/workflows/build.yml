@@ -9,6 +9,9 @@ on:
       build_id:
         type: string
         default: ''
+      candidate:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,6 +22,21 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download prepared stable candidate
+        if: inputs.candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stable-candidate
+          path: promotion
+      - name: Use the exact prepared source commit
+        if: inputs.candidate
+        run: |
+          git fetch promotion/candidate.bundle HEAD
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          git checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $plan = Get-Content promotion/promotion.json | ConvertFrom-Json
+          if ((git rev-parse HEAD) -ne $plan.commit) { throw 'Candidate source mismatch' }
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'

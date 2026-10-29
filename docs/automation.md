@@ -1,7 +1,7 @@
 # GitHub automation
 
 - **Nightly:** Source changes pushed to `main` in `FrankyRenderer-Nightly` build both packages. Formatting, non-GPU regression tests and ZIP integrity must pass before the normal Nightly release is updated. Documentation-only changes do not publish another build. The workflow can also be started manually.
-- **Stable:** In the stable repository, open **Actions → Publish stable release → Run workflow**. Enter the version already committed in `Renderer.rc`, `package.py` and `package_variants.py`, plus short English release notes. The workflow checks the version, builds both packages and publishes only after the tests pass. Existing releases cannot be overwritten by this workflow.
+- **Stable:** Use **Publish stable release** on the Nightly page, then **Run workflow** in the main repository. No version or changelog input is needed. The workflow takes the published Nightly, keeps the main README and automation, calculates the next version and uses the short Nightly changelog. Both variants must build and pass the automated tests before the source and normal release are published. **Test without publishing** runs the preparation and build only. An already promoted Nightly or a Nightly without new renderer/build changes is rejected.
 - **Code checks:** Pull requests and relevant source changes check formatting and build both variants. Tests requiring a real GPU, display or player remain manual.
 - **libplacebo:** Every Monday, the stable repository compares the pinned version with the latest official release. A new version deliberately marks the check as failed, with a link in the run summary. GitHub Actions notifications must be enabled in your account to receive these alerts. No dependency is updated automatically.
 - **Bug reports:** The bug-report form collects the player, renderer version and reproduction steps. Blank issues remain available.
@@ -14,4 +14,4 @@ Nightly release notes come only from the short, maintained `docs/nightly-changel
 
 The workflows run in their own repository using its built-in token. They require no personal access token and cannot publish stable releases from the Nightly repository. GitHub-hosted runs do not establish HDR/TV compatibility or real-player playback correctness.
 
-Stable versions follow `1.0 → 1.0.1 → … → 1.0.9 → 1.1 → 1.1.1 → … → 1.1.9 → 1.2`. After `1.9.9`, the next version is `2.0`. The release workflow requires the next version in this sequence and matching source/resource versions. It does not choose or change the stable version itself.
+Stable versions follow `1.0 → 1.0.1 → … → 1.0.9 → 1.1 → 1.1.1 → … → 1.1.9 → 1.2`. After `1.9.9`, the next version is `2.0`. The release workflow calculates the next version in this sequence and updates all resource/package versions together. It never skips ahead or overwrites an existing release.
