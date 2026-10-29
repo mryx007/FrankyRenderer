@@ -12,7 +12,7 @@ I decided to call my renderer Franky, inspired by Frankenstein, who pieced toget
 
 It's still a work in progress, so there are probably quite a few bugs I haven't discovered yet, especially considering the number of available settings.
 
-Feel free to give it a try and report any bugs you encounter. Feedback is always welcome!
+Questions, ideas and general feedback are welcome in [Discussions](https://github.com/mryx007/FrankyRenderer/discussions). Please use [Issues](https://github.com/mryx007/FrankyRenderer/issues) for bug reports.
 
 ## Screenshots
 
