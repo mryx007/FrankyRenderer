@@ -1,2 +1,3 @@
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
+- Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).

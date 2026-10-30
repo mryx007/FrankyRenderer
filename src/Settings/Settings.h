@@ -99,5 +99,6 @@ interface __declspec(uuid("7ADBF525-A6F1-41E1-AC45-278B3ACCEB9E")) IPlaceboSetti
 PlaceboSettings LoadSettings(const std::wstring& display = {});
 HRESULT SaveSettings(const PlaceboSettings&);
 HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>&, const PlaceboSettings& legacy);
+HRESULT PrepareDisplaySettings(PlaceboSettings&, const std::vector<DisplayProfiles::Device>&, HMONITOR preferred);
 HRESULT ValidateSettings(const PlaceboSettings&);
 RenderSettings BackendSettings(const PlaceboSettings&);

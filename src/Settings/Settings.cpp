@@ -563,6 +563,27 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     return HRESULT_FROM_WIN32(result);
 }
 
+HRESULT PrepareDisplaySettings(PlaceboSettings& settings,
+                               const std::vector<DisplayProfiles::Device>& devices,
+                               HMONITOR preferred)
+{
+    const auto result = EnsureDisplayProfiles(devices, LoadSettings());
+    if (FAILED(result))
+        return result;
+    // A playing renderer already identifies its output. Do not switch that
+    // profile just because its settings dialog is on another screen.
+    if (settings.displayProfile[0])
+        return DisplayProfiles::ValidId(settings.displayProfile) ? S_OK : E_INVALIDARG;
+    const auto selected = std::find_if(
+        devices.begin(), devices.end(), [&](const auto& device) { return preferred && device.monitor == preferred; });
+    if (selected == devices.end())
+        return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+    // Before playback there is no video HWND/profile. Bind the editor to its
+    // own display instead of exposing the legacy, unassigned settings store.
+    settings = LoadSettings(selected->id);
+    return S_OK;
+}
+
 HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& devices, const PlaceboSettings& legacy)
 {
     if (devices.empty())

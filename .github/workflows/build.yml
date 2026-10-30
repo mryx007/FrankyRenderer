@@ -80,6 +80,8 @@ jobs:
           if errorlevel 1 exit /b 1
           call src\Tests\build_settings_ini_tests.cmd
           if errorlevel 1 exit /b 1
+          call src\Tests\build_settings_before_playback_tests.cmd
+          if errorlevel 1 exit /b 1
           call src\Tests\build_dovi_mapping_tests.cmd
           if errorlevel 1 exit /b 1
           call src\Tests\build_dv_status_tests.cmd

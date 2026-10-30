@@ -26,10 +26,11 @@ HRESULT Direct2DSettingsPage::OnActivate()
 {
     if (!config)
         return E_UNEXPECTED;
-    const auto profiles = EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings());
-    if (FAILED(profiles))
-        return profiles;
     auto hr = config->GetSettings(&draft);
+    if (FAILED(hr))
+        return hr;
+    hr =
+        PrepareDisplaySettings(draft, DisplayProfiles::Connected(), MonitorFromWindow(m_Dlg, MONITOR_DEFAULTTONEAREST));
     if (FAILED(hr))
         return hr;
     LiveSettings::Attach(m_Dlg, config, [this] { return OnApplyChanges(); });
