@@ -1,3 +1,5 @@
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
+- One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
+- Fixed a brief white properties window when opening the settings menu in MPC-BE.

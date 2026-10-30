@@ -1,4 +1,4 @@
-name: Build and test both packages
+name: Build and test FrankyRenderer
 
 on:
   workflow_call:
@@ -63,12 +63,9 @@ jobs:
           call src\Tools\vsenv.cmd
           if errorlevel 1 exit /b 1
           python .github\scripts\prepare_dv.py
-      - name: Build native MPC-BE package
+      - name: Build shared native renderer
         shell: cmd
-        run: build.cmd native
-      - name: Build PotPlayer package
-        shell: cmd
-        run: build.cmd potplayer
+        run: build.cmd
       - name: Run non-GPU regression checks
         shell: cmd
         run: |
@@ -86,12 +83,12 @@ jobs:
           if errorlevel 1 exit /b 1
           call src\Tests\build_dv_status_tests.cmd
           if errorlevel 1 exit /b 1
-      - name: Package and verify ZIPs
+      - name: Package and verify ZIP
         env:
           CHANNEL: ${{ inputs.channel }}
           BUILD_ID: ${{ inputs.build_id }}
         run: |
-          $arguments = @('src/Tools/package_variants.py', '--output', 'releases/ci', '--channel', $env:CHANNEL)
+          $arguments = @('src/Tools/package_release.py', '--output', 'releases/ci', '--channel', $env:CHANNEL)
           if ($env:CHANNEL -eq 'nightly') { $arguments += @('--build-id', $env:BUILD_ID) }
           python @arguments
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -6,7 +6,7 @@ $taskIds=@('{B864E92A-1BDF-4DA1-9004-CBF467DF239A}','{19A4F3E2-F52E-4DBE-9167-33
 $taskFilterAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'DolbyVisionFilter.ax'))
 $taskFilterIds=@('{40F090C8-E82B-4CE9-931B-A34760E6D49E}')
 $taskComponents=@(@{file=$taskAx;ids=$taskIds})
-# Old packages registered a separate DV filter. Retire only this variant's owned entry.
+# Retire only the native installation's owned legacy DV filter.
 $taskManifest=Join-Path $taskRoot 'registration-backup\state.json'
 function ShowSetupMessage([string]$text,[bool]$failed=$false) {
     if($MessageFile){Set-Content -LiteralPath $MessageFile -Value $text -Encoding UTF8}
@@ -151,7 +151,7 @@ try {
             }
         }
         catch {$taskFailure=$_;try {Register $true;RestoreBackup $rollback $rollbackDirectory -IncludeLegacy}catch {throw "Installation and rollback failed: $taskFailure / $_"};throw $taskFailure}
-        $message='FrankyRenderer installed for MPC-BE.
+        $message='FrankyRenderer installed.
 Select "FrankyRenderer" as the video renderer.
 Dolby Vision Profile 7 (FEL/MEL) is detected automatically.'
     } else {

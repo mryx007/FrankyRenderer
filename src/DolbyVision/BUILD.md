@@ -1,6 +1,6 @@
 # Integrated Dolby Vision processing
 
-`build.cmd native` and `build.cmd potplayer` build the internal `Processor.cpp` directly into FrankyRenderer.ax. There is no separate DV filter AX, class registration or menu switch. Supported local Profile 7 FEL/MEL files are detected automatically. The player's existing splitter and base-layer decoder remain in use; FFmpeg reads matching enhancement data, and libplacebo reconstructs and processes the image.
+`build.cmd` builds the internal `Processor.cpp` directly into FrankyRenderer.ax. There is no separate DV filter AX, class registration or menu switch. Supported local Profile 7 FEL/MEL files are detected automatically. The player's existing splitter and base-layer decoder remain in use; FFmpeg reads matching enhancement data, and libplacebo reconstructs and processes the image.
 
 Restore normal libplacebo/MSYS2 dependencies first. In a Visual Studio x64 tools prompt:
 
