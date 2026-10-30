@@ -23,7 +23,7 @@ def main():
     current = Path("docs/nightly-changelog.md").read_text(encoding="utf-8")
     if not entries(current):
         raise ValueError("The cumulative changelog must contain concise bullet entries")
-    result = subprocess.run(["gh", "api", f"repos/{repository}/releases/tags/nightly"],
+    result = subprocess.run(["gh", "api", f"repos/{repository}/releases/latest"],
                             capture_output=True, text=True, encoding="utf-8")
     previous = ""
     if result.returncode:
