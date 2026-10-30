@@ -126,6 +126,12 @@ class Renderer final : public CBaseVideoRenderer,
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;
+    // The paused sample already presented as preview. Run renders that same
+    // held sample again; skip it so each picture is presented and counted once.
+    std::mutex previewLock;
+    IMediaSample* previewed = nullptr;
+    void SetPreviewed(IMediaSample*);
+    bool TakePreviewed(IMediaSample*);
     QueuedVideoFrame pending, previous;
     std::atomic<bool> deinterlacingActive = false;
     bool buffering = false, smoothBuffering = false;
@@ -172,7 +178,13 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT CompleteConnect(IPin*) override;
     HRESULT BreakConnect() override;
     HRESULT EndFlush() override;
-    void Repaint();
+    // The source names the trigger in the opt-in diagnostic log.
+    void Repaint(const char* source = "other");
+    uint64_t traceDrops = 0, traceRepeats = 0, traceGlitches = 0;
+    // Tick of the last scheduled frame presented while running. A repaint
+    // during active playback is left to the next scheduled frame.
+    std::atomic<uint64_t> lastTimedPresent = 0;
+    HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
     STDMETHODIMP Stop() override;

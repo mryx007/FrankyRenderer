@@ -12,6 +12,7 @@
 #include "Renderer/VideoBackground.h"
 #include "Renderer/MonitorChange.h"
 #include "Renderer/ResizeGesture.h"
+#include "Settings/SettingsJournal.h"
 #include <wrl/client.h>
 #include <dxgi1_2.h>
 #include <vector>
@@ -365,7 +366,7 @@ BOOL VideoWindow::OnSize(LONG width, LONG height)
     }
     if (GetWindowLongPtrW(GetWindowHWND(), GWL_STYLE) & WS_CHILD)
         VideoBackground::Resize(GetParent(GetWindowHWND()));
-    owner->Repaint();
+    owner->Repaint("window size");
     return TRUE;
 }
 
@@ -418,6 +419,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
     // Prepare newly exposed parent space before the GPU child grows over it.
     if (GetOwnerWindow())
         VideoBackground::Resize(GetOwnerWindow());
+    if (owner->windowState.load() == State_Running)
+        Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
 }
 
@@ -491,14 +494,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         {
             KillTimer(hwnd, ResizeGesture::Timer);
             owner->backend.HoldForResize(false);
-            owner->Repaint();
+            owner->Repaint("resize timer");
         }
         return 0;
     }
     if (msg == WM_TIMER && w == repaintTimer)
     {
         KillTimer(hwnd, repaintTimer);
-        owner->Repaint();
+        owner->Repaint("retry timer");
         return 0;
     }
     if (msg == WM_CREATE)
@@ -517,14 +520,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     {
         KillTimer(hwnd, ResizeGesture::Timer);
         owner->backend.HoldForResize(false);
-        owner->Repaint();
+        owner->Repaint("resize end");
         return 0;
     }
     if (msg == MonitorChange::Message)
     {
         Trace("Monitor-change repaint received monitor=%p", MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
         owner->refreshDirty = true;
-        owner->Repaint();
+        owner->Repaint("monitor change");
         return 0;
     }
     if (msg == WM_KEYDOWN && w == 'J' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) &&
@@ -567,14 +570,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         BeginPaint(hwnd, &ps);
         owner->backend.PaintLoadingBackground(ps.hdc);
         EndPaint(hwnd, &ps);
-        owner->Repaint();
+        owner->Repaint("WM_PAINT");
         return 0;
     }
     if (msg == WM_DISPLAYCHANGE)
     {
         owner->UpdateDisplayProfile(true);
         owner->refreshDirty = true;
-        owner->Repaint();
+        owner->Repaint("display change");
         return 0;
     }
     return CBaseControlWindow::OnReceiveMessage(hwnd, msg, w, l);
@@ -706,8 +709,15 @@ HRESULT VideoControl::GetStaticImage(long* size, long* image)
     return S_OK;
 }
 
+// Restore settings a crashed player left in uncommitted live preview first.
+static PlaceboSettings InitialSettings()
+{
+    SettingsJournal::Recover();
+    return LoadSettings();
+}
+
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
-    : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(LoadSettings())
+    : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
     smoothEnabled = !!settings.smoothMotion;
     motionRadius = BackendSettings(settings).motionRadius;
@@ -740,6 +750,7 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
 
 Renderer::~Renderer()
 {
+    SetPreviewed(nullptr);
     Trace("Renderer destruction begin; rendered=%llu hardware=%llu last=%08lX",
           status.rendered,
           status.hardwareFrames,
@@ -935,6 +946,7 @@ HRESULT Renderer::BreakConnect()
 {
     dv.Cancel();
     dv.Disconnect();
+    SetPreviewed(nullptr);
     backend.SetSourceCodec({});
     ResetFields(false);
     // Disconnect, unlike a temporary graph Stop, really retires this image
@@ -1291,19 +1303,66 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     return output.id ? DeliverFields(output, past.id, future) : S_OK;
 }
 
+HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop)
+{
+    // The base heuristic times DoRenderSample, which includes waiting for the
+    // DXGI queue, as render cost. It then drops samples half a duration late:
+    // about 4 ms for Smooth Motion's display-rate outputs, which ordinary clock
+    // jitter reaches. Present such samples; drop only when clearly behind.
+    const HRESULT hr = CBaseVideoRenderer::ShouldDrawSampleNow(sample, start, stop);
+    REFERENCE_TIME now = 0;
+    if (hr != E_FAIL || !m_pClock || FAILED(m_pClock->GetTime(&now)))
+        return hr;
+    const REFERENCE_TIME late = now - m_tStart - *start;
+    const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * (*stop - *start), 250000);
+    if (late > limit)
+        return hr;
+    // The base class marked a drop; keep its next decision on the normal path.
+    m_nNormal = 0;
+    return S_OK;
+}
+
 void Renderer::OnReceiveFirstSample(IMediaSample* sample)
 {
     // The base renderer holds a paused sample until Run or the next flush.
     // Present its preview before that wait, including after a paused seek.
+    SetPreviewed(nullptr);
     const HRESULT hr = DoRenderSample(sample);
     if (FAILED(hr))
         Trace("Paused preview failed result=%08lX", static_cast<unsigned long>(hr));
+    else
+        SetPreviewed(sample);
+}
+
+void Renderer::SetPreviewed(IMediaSample* sample)
+{
+    std::lock_guard guard(previewLock);
+    if (sample)
+        sample->AddRef();
+    if (previewed)
+        previewed->Release();
+    previewed = sample;
+}
+
+bool Renderer::TakePreviewed(IMediaSample* sample)
+{
+    std::lock_guard guard(previewLock);
+    // Any later render ends the preview: allocators recycle sample objects,
+    // so only the very next render of the held sample is the duplicate.
+    const bool same = previewed && previewed == sample;
+    if (previewed)
+        previewed->Release();
+    previewed = nullptr;
+    return same;
 }
 
 HRESULT Renderer::DoRenderSample(IMediaSample* sample)
 {
     if (!sample)
         return E_POINTER;
+    // Run delivers the held paused sample again; its preview is still on screen.
+    if (TakePreviewed(sample))
+        return S_OK;
     HRESULT hr = PrepareWindow();
     if (FAILED(hr))
         return hr;
@@ -1448,6 +1507,26 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
     if (SUCCEEDED(hr))
         hr = backend.Present();
+    if (hr == S_OK && m_State == State_Running)
+        lastTimedPresent = GetTickCount64();
+    if (TraceEnabled())
+    {
+        // Opt-in diagnostics: name the moment a drop, repeat or glitch appears.
+        const auto measured = backend.Measurements();
+        const uint64_t drops = measured.drops, repeats = measured.repeats, glitches = measured.glitches;
+        if (drops != traceDrops || repeats != traceRepeats || glitches != traceGlitches)
+            Trace("Counters drop %llu->%llu rep %llu->%llu glitch %llu->%llu at stream %lld ms",
+                  static_cast<unsigned long long>(traceDrops),
+                  static_cast<unsigned long long>(drops),
+                  static_cast<unsigned long long>(traceRepeats),
+                  static_cast<unsigned long long>(repeats),
+                  static_cast<unsigned long long>(traceGlitches),
+                  static_cast<unsigned long long>(glitches),
+                  static_cast<long long>(start / 10000));
+        traceDrops = drops;
+        traceRepeats = repeats;
+        traceGlitches = glitches;
+    }
     PlaceboStatus snapshot;
     HRESULT previousResult;
     {
@@ -1537,12 +1616,25 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
 void Renderer::ToggleStatistics()
 {
     backend.ShowStatistics(!backend.StatisticsVisible());
-    if (window && window->WindowExists())
+    // Running playback shows or hides the overlay with its next scheduled
+    // frame. An extra untimed present here would repeat the current frame,
+    // delay the next one and count as repeats, glitches and drops.
+    if (windowState.load() != State_Running && window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
-void Renderer::Repaint()
+void Renderer::Repaint(const char* source)
 {
+    // During playback the next scheduled frame follows within one display
+    // period and already renders at the new size, monitor and settings. An
+    // extra untimed present here repeats the current frame, takes a vsync from
+    // the schedule and makes the following frames late (repeats and drops).
+    // After the end of the stream nothing follows, so keep repainting there.
+    if (windowState.load() == State_Running && GetTickCount64() - lastTimedPresent.load() < 250)
+    {
+        Trace("Repaint during playback left to the next frame: %s", source);
+        return;
+    }
     // The host can synchronously resize the video while holding this lock.
     // Never block its window thread behind that call; retry the repaint later.
     if (!m_InterfaceLock.TryLock())
@@ -1584,6 +1676,7 @@ void Renderer::NewSegment(REFERENCE_TIME start)
 
 HRESULT Renderer::BeginFlush()
 {
+    SetPreviewed(nullptr);
     return CBaseVideoRenderer::BeginFlush();
 }
 
@@ -1598,6 +1691,7 @@ STDMETHODIMP Renderer::Stop()
 {
     Trace("Renderer stop begin");
     dv.Cancel();
+    SetPreviewed(nullptr);
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
         windowState = State_Stopped;
@@ -1631,6 +1725,14 @@ STDMETHODIMP Renderer::Pause()
 {
     Trace("Renderer pause begin");
     backend.ResetPresentationMeasurement();
+    // Stop and disconnect cancel waiting DV work. A new streaming run starts
+    // here, not at Run: the decoder already delivers the preroll while paused,
+    // and a still-cancelled processor would silently swallow those samples.
+    {
+        CAutoLock state(&m_InterfaceLock);
+        if (m_State == State_Stopped)
+            dv.Resume();
+    }
     HRESULT hr = CBaseVideoRenderer::Pause();
     Trace("Renderer base pause returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
@@ -2056,7 +2158,8 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
     if (!strcmp(field, "statsEnable"))
     {
         backend.ShowStatistics(value);
-        if (window && window->WindowExists())
+        // As with Ctrl+J: running playback picks up the change on its next frame.
+        if (windowState.load() != State_Running && window && window->WindowExists())
             PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
         return S_OK;
     }
