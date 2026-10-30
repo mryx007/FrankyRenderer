@@ -10,7 +10,7 @@ Builds use Windows Server 2022 and Python 3.14. Existing checksum locks remain a
 
 Failed builds leave the published release untouched. Successful packages are also retained as workflow artifacts for seven days. Public release ZIPs do not expire with those artifacts.
 
-Nightly release notes come only from the short, maintained `docs/nightly-changelog.md` list. Update that list for the changes users should test. Git history, documentation commits and automation changes are not added to the changelog automatically.
+Append concise user-facing changes to `docs/nightly-changelog.md`; keep its existing entries. Each Nightly shows only entries added since the previously published Nightly. Re-running the same build preserves its notes. Stable releases collect all entries since the last stable release, without duplicates. Git history, documentation commits and automation changes are not added to the changelog automatically.
 
 The workflows run in their own repository using its built-in token. They require no personal access token and cannot publish stable releases from the Nightly repository. GitHub-hosted runs do not establish HDR/TV compatibility or real-player playback correctness.
 

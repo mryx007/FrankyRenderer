@@ -18,17 +18,27 @@ def api(path):
     return json.loads(subprocess.check_output(["gh", "api", path], text=True, encoding="utf-8"))
 
 
+def stable_notes(current, previous=""):
+    old = {line.strip() for line in previous.splitlines() if line.strip().startswith("- ")}
+    entries = dict.fromkeys(line.strip() for line in current.splitlines()
+                            if line.strip().startswith("- ") and line.strip() not in old)
+    if not entries:
+        raise ValueError("No new changelog entries since the last stable release")
+    return "\n".join(entries)
+
+
 def prepare(previous, nightly_sha, output):
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     stable_sha = git("rev-parse", "HEAD").stdout.strip()
     marker = ROOT / ".github/last-promoted-nightly.json"
-    if marker.exists() and json.loads(marker.read_text())["source_commit"] == nightly_sha:
+    promoted = json.loads(marker.read_text())["source_commit"] if marker.exists() else None
+    if promoted == nightly_sha:
         raise ValueError("This Nightly has already been published as a stable release")
     version = next_version(previous)
-    notes = git("show", f"{nightly_sha}:docs/nightly-changelog.md").stdout.strip()
-    if not notes or len(notes) > 2000:
-        raise ValueError("The Nightly changelog must be present and short")
+    current_notes = git("show", f"{nightly_sha}:docs/nightly-changelog.md").stdout
+    previous_notes = git("show", f"{promoted}:docs/nightly-changelog.md").stdout if promoted else ""
+    notes = stable_notes(current_notes, previous_notes)
     protected = ["README.md", ".github", "docs/automation.md", "docs/nightly-builds.md", "docs/build.md"]
     result = git("merge", "--no-ff", "--no-commit", nightly_sha, check=False)
     conflicts = git("diff", "--name-only", "--diff-filter=U").stdout.splitlines()
