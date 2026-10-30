@@ -442,7 +442,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             toggle.kind = ControlKind::Toggle;
             toggle.headerToggle = true;
             toggle.enabled = [&s, role] { return role != 0 || !s.rtxSuperResolution; };
-            toggle.get = [enabled] { return enabled() ? 1.f : 0.f; };
+            // Show the stored state even while RTX locks the upscaler controls.
+            toggle.get = [&f] { return !strcmp(f.filter, "custom") ? 1.f : 0.f; };
             toggle.set = [&f](float v) { D2DSetCustomScaling(f, v != 0); };
             toggle.reset = [&f] { D2DSetCustomScaling(f, false); };
             e.controls.push_back(std::move(toggle));

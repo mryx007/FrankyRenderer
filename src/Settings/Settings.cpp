@@ -87,6 +87,99 @@ static void LoadScaling(HKEY key, PlaceboSettings& settings)
         settings.scaling = {};
 }
 
+// Keep every valid part of a stored profile. One out-of-range value, for
+// example after an update narrows a limit, must not reset the whole display.
+static PlaceboSettings Salvage(const PlaceboSettings& loaded)
+{
+    PlaceboSettings result;
+    wcscpy_s(result.displayProfile, loaded.displayProfile);
+    using Copy = void (*)(PlaceboSettings&, const PlaceboSettings&);
+#define GROUP(...) [](PlaceboSettings& d, const PlaceboSettings& s) { __VA_ARGS__; }
+#define FIELD(name) GROUP(d.name = s.name)
+#define COPY_TEXT(name) GROUP(memcpy(d.name, s.name, sizeof(d.name)))
+    const Copy groups[] = {
+        FIELD(tonal),
+        FIELD(userShaders),
+        FIELD(blackBars),
+        FIELD(extras),
+        // Dependent pairs first together, then individually.
+        GROUP(d.kneeMinimum = s.kneeMinimum; d.kneeMaximum = s.kneeMaximum),
+        FIELD(kneeMinimum),
+        FIELD(kneeMaximum),
+        FIELD(kneeAdaptation),
+        FIELD(splineContrast),
+        FIELD(blackCutoff),
+        FIELD(perceptualStrength),
+        FIELD(softclipKnee),
+        FIELD(contrastRecovery),
+        FIELD(contrastSmoothness),
+        FIELD(colorMapping),
+        GROUP(d.sceneLow = s.sceneLow; d.sceneHigh = s.sceneHigh),
+        FIELD(sceneLow),
+        FIELD(sceneHigh),
+        FIELD(saturation),
+        FIELD(contrast),
+        FIELD(brightness),
+        FIELD(gamma),
+        FIELD(sdrNits),
+        FIELD(deband),
+        GROUP(d.hdrMode = s.hdrMode; d.hdrPassthrough = s.hdrPassthrough),
+        FIELD(autoHdr),
+        FIELD(clippingProtection),
+        COPY_TEXT(upscaler),
+        COPY_TEXT(downscaler),
+        FIELD(deinterlacing),
+        FIELD(fieldOverride),
+        FIELD(toneMapping),
+        FIELD(hdrNits),
+        FIELD(antiringing),
+        FIELD(upscalerBlur),
+        FIELD(downscalerBlur),
+        FIELD(debandIterations),
+        FIELD(ditherMethod),
+        FIELD(debandThreshold),
+        FIELD(debandRadius),
+        FIELD(debandGrain),
+        FIELD(ditherTemporal),
+        FIELD(chromaScaler),
+        FIELD(outputFormat),
+        GROUP(memcpy(d.iccPath, s.iccPath, sizeof(d.iccPath)); d.iccEnabled = s.iccEnabled),
+        COPY_TEXT(iccPath),
+        FIELD(iccIntent),
+        GROUP(memcpy(d.lutPath, s.lutPath, sizeof(d.lutPath)); d.lutEnabled = s.lutEnabled),
+        COPY_TEXT(lutPath),
+        FIELD(adaptiveSharpen),
+        FIELD(sharpenStrength),
+        FIELD(smoothMotion),
+        FIELD(outputLevels),
+        FIELD(displayDepth),
+        FIELD(peakDetect),
+        FIELD(peakSmoothing),
+        FIELD(peakPercentile),
+        FIELD(gamutMapping),
+        FIELD(showClipping),
+        FIELD(hue),
+        FIELD(temperature),
+        FIELD(colorAdjustment),
+        FIELD(allowDelayedPeak),
+        FIELD(scaling),
+        FIELD(maximumFramesInFlight),
+        FIELD(rtxSuperResolution),
+        FIELD(imageAnalysis),
+    };
+#undef COPY_TEXT
+#undef FIELD
+#undef GROUP
+    for (const auto copy : groups)
+    {
+        auto candidate = result;
+        copy(candidate, loaded);
+        if (SUCCEEDED(ValidateSettings(candidate)))
+            result = candidate;
+    }
+    return result;
+}
+
 PlaceboSettings LoadSettings(const std::wstring& display)
 {
     PlaceboSettings settings;
@@ -314,12 +407,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.lutEnabled = FALSE;
     NormalizeLegacyHdrSettings(settings);
     if (FAILED(ValidateSettings(settings)))
-    {
-        PlaceboSettings defaults;
-        if (!display.empty())
-            wcscpy_s(defaults.displayProfile, display.c_str());
-        return defaults;
-    }
+        return Salvage(settings);
     return settings;
 }
 
