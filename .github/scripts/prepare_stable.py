@@ -90,11 +90,14 @@ def prepare(previous, nightly_sha, output):
 
 def main():
     previous = api("repos/mryx007/FrankyRenderer/releases/latest")["tag_name"].removeprefix("v")
-    release = api("repos/mryx007/FrankyRenderer-Nightly/releases/tags/nightly")
+    release = api("repos/mryx007/FrankyRenderer-Nightly/releases/latest")
     if release["draft"]:
         raise ValueError("The Nightly is not published")
+    tag = release["tag_name"]
+    if not re.fullmatch(r"nightly-\d{8}-[0-9a-f]{10}", tag):
+        raise ValueError("The latest Nightly must have a fixed date/commit tag")
     git("fetch", "--no-tags", "https://github.com/mryx007/FrankyRenderer-Nightly.git",
-        "+refs/tags/nightly:refs/remotes/nightly/published")
+        f"+refs/tags/{tag}:refs/remotes/nightly/published")
     nightly_sha = git("rev-parse", "refs/remotes/nightly/published^{commit}").stdout.strip()
     if f"/commit/{nightly_sha}" not in release["body"]:
         raise ValueError("Nightly source and download metadata do not match; wait for its upload to finish")

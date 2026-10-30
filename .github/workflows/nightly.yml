@@ -52,17 +52,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view nightly >/dev/null 2>&1; then
-            gh release upload nightly packages/*.zip --clobber
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
-            gh release edit nightly --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --prerelease=false --latest
+          tag="nightly-$BUILD_ID"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "This Nightly is already published; keeping its packages and notes unchanged."
           else
-            gh release create nightly packages/*.zip --target "$GITHUB_SHA" --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --latest
+            gh release create "$tag" packages/*.zip --target "$GITHUB_SHA" --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --latest
           fi
-          # New ZIPs are present before superseded ZIPs are removed.
-          gh release view nightly --json assets --jq '.assets[].name' > assets.txt
-          while IFS= read -r asset; do
-            if [[ "$asset" == SHA256SUMS.txt || ( "$asset" == FrankyRenderer-nightly-*.zip && "$asset" != *"$BUILD_ID"* ) ]]; then
-              gh release delete-asset nightly "$asset" --yes
-            fi
-          done < assets.txt
