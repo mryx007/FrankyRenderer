@@ -30,3 +30,7 @@ HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame);
 bool HasDoviSideData(IMediaSample*);
 // Applies decoder-layout (V2) Dolby Vision side data supplied by another source.
 bool ApplyDoviSideData(const std::vector<BYTE>&, VideoFrame&);
+// True when the decoder attached HDR10+ dynamic metadata to this sample.
+bool HasHdr10PlusSideData(IMediaSample*);
+// Applies decoder-layout HDR10+ side data supplied by another source.
+bool ApplyHdr10PlusSideData(const std::vector<BYTE>&, VideoFrame&);

@@ -95,6 +95,13 @@ class VideoControl final : public CBaseControlVideo
     STDMETHODIMP GetPreferredAspectRatio(long*, long*) override;
 };
 
+// HDR metadata read from the local file for one sample (see Renderer::fileMetadata).
+struct FileMetadata
+{
+    std::vector<BYTE> dovi, hdr10Plus;
+    StaticHdr container;
+};
+
 class Renderer final : public CBaseVideoRenderer,
                        public IAMFilterMiscFlags,
                        public ISpecifyPropertyPages,
@@ -131,12 +138,13 @@ class Renderer final : public CBaseVideoRenderer,
     // held sample again; skip it so each picture is presented and counted once.
     std::mutex previewLock;
     IMediaSample* previewed = nullptr;
-    // Profile 5/8 Dolby Vision metadata read from the file for samples whose
-    // decoder attached none, keyed by sample start until DoRenderSample uses it.
-    std::mutex fileDoviLock;
-    std::map<REFERENCE_TIME, std::vector<BYTE>> fileDovi;
-    bool LookupFileDovi(IMediaSample*, std::vector<BYTE>&);
-    void ClearFileDovi();
+    // HDR metadata read from the local file for samples whose decoder attached
+    // none (Dolby Vision Profile 5/8, HDR10+, static HDR10), keyed by sample
+    // start until DoRenderSample applies it.
+    std::mutex fileMetadataLock;
+    std::map<REFERENCE_TIME, FileMetadata> fileMetadata;
+    bool LookupFileMetadata(IMediaSample*, bool hdr, FileMetadata&);
+    void ClearFileMetadata();
     void SetPreviewed(IMediaSample*);
     bool TakePreviewed(IMediaSample*);
     QueuedVideoFrame pending, previous;

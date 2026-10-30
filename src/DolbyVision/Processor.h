@@ -4,6 +4,14 @@
 #include <memory>
 #include <vector>
 
+// Static HDR10 metadata from the container header (MKV Colour, MP4 mdcv/clli)
+// or from the stream (mastering display and content light level SEI).
+struct StaticHdr
+{
+    bool mastering = false, light = false;
+    pl_hdr_metadata hdr = {};
+};
+
 // Internal local-file supplementation. No registered DirectShow filter is needed.
 class DvProcessor
 {
@@ -24,6 +32,10 @@ class DvProcessor
     // Profile 5/8 RPU for the picture at start, read from the local file when
     // the decoder attaches none. S_OK fills decoder-style side data.
     HRESULT SingleLayerMetadata(IFilterGraph*, IPin*, REFERENCE_TIME start, REFERENCE_TIME segment, std::vector<BYTE>&);
+    // HDR10+ for the picture at start from the local file, as decoder-style
+    // V2 side data, when the decoder attaches none.
+    HRESULT Hdr10PlusMetadata(IFilterGraph*, IPin*, REFERENCE_TIME start, REFERENCE_TIME segment, std::vector<BYTE>&);
+    StaticHdr StaticHdrInfo() const;
     HRESULT SetDevice(ID3D11Device*, HANDLE);
     void Cancel();
     void Resume();

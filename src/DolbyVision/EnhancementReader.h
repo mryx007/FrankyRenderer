@@ -5,7 +5,6 @@
 // Reads local enhancement pictures or MEL metadata; never decodes the base layer.
 class EnhancementReader
 {
-    friend class BaseLayerRpuReader; // Shares the NAL/RPU extraction below.
     const std::atomic<bool>* cancelled = nullptr;
 
     void CheckCancelled() const

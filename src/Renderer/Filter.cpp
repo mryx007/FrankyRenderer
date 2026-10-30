@@ -34,6 +34,31 @@ static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
     return S_OK;
 }
 
+// Fills only what the decoder left out; decoder metadata always takes precedence.
+static void ApplyFileMetadata(const FileMetadata& metadata, VideoFrame& frame)
+{
+    if (!frame.dovi && !metadata.dovi.empty())
+        ApplyDoviSideData(metadata.dovi, frame);
+    auto& hdr = frame.color.hdr;
+    if (!frame.dovi && !metadata.hdr10Plus.empty() && !(hdr.scene_avg > 0))
+        ApplyHdr10PlusSideData(metadata.hdr10Plus, frame);
+    if (!pl_color_transfer_is_hdr(frame.color.transfer))
+        return;
+    const auto& container = metadata.container;
+    if (container.mastering && !(hdr.max_luma > 0))
+    {
+        hdr.min_luma = container.hdr.min_luma;
+        hdr.max_luma = container.hdr.max_luma;
+        if (container.hdr.prim.red.x > 0)
+            hdr.prim = container.hdr.prim;
+    }
+    if (container.light && !(hdr.max_cll > 0))
+    {
+        hdr.max_cll = container.hdr.max_cll;
+        hdr.max_fall = container.hdr.max_fall;
+    }
+}
+
 static HRESULT
 CaptureDib(PlaceboBackend& backend, int width, int height, bool windowGeometry, std::vector<uint8_t>& dib)
 try
@@ -947,7 +972,7 @@ HRESULT Renderer::BreakConnect()
     dv.Cancel();
     dv.Disconnect();
     SetPreviewed(nullptr);
-    ClearFileDovi();
+    ClearFileMetadata();
     backend.SetSourceCodec({});
     ResetFields(false);
     // Disconnect, unlike a temporary graph Stop, really retires this image
@@ -1212,13 +1237,15 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                 ResetFields(true, true);
         }
         // Read file metadata now, ahead of the presentation time, not in DoRenderSample.
-        std::vector<BYTE> fileMetadata;
-        if (!reconstructed && timed && LookupFileDovi(sample, fileMetadata))
+        FileMetadata fromFile;
+        if (!reconstructed && timed &&
+            LookupFileMetadata(sample, pl_color_transfer_is_hdr(current.frame.color.transfer), fromFile))
         {
-            std::lock_guard guard(fileDoviLock);
-            fileDovi[start] = std::move(fileMetadata);
-            while (fileDovi.size() > 1 && (fileDovi.begin()->first < start - 10000000 || fileDovi.size() > 64))
-                fileDovi.erase(fileDovi.begin());
+            std::lock_guard guard(fileMetadataLock);
+            fileMetadata[start] = std::move(fromFile);
+            while (fileMetadata.size() > 1 &&
+                   (fileMetadata.begin()->first < start - 10000000 || fileMetadata.size() > 64))
+                fileMetadata.erase(fileMetadata.begin());
         }
         return CBaseVideoRenderer::Receive(sample);
     }
@@ -1248,9 +1275,9 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         else
         {
             ReadHdrSideData(sample, input.frame);
-            std::vector<BYTE> fileMetadata;
-            if (!input.frame.dovi && LookupFileDovi(sample, fileMetadata))
-                ApplyDoviSideData(fileMetadata, input.frame);
+            FileMetadata fromFile;
+            if (LookupFileMetadata(sample, pl_color_transfer_is_hdr(input.frame.color.transfer), fromFile))
+                ApplyFileMetadata(fromFile, input.frame);
         }
         const auto source = dv.SourceInfo();
         if (source.present)
@@ -1359,11 +1386,11 @@ void Renderer::SetPreviewed(IMediaSample* sample)
     previewed = sample;
 }
 
-bool Renderer::LookupFileDovi(IMediaSample* sample, std::vector<BYTE>& out)
+bool Renderer::LookupFileMetadata(IMediaSample* sample, bool hdr, FileMetadata& out)
 {
-    // Only for decoders that pass Profile 5/8 pictures without their RPU.
+    // Only for decoders that pass pictures without their HDR metadata.
     REFERENCE_TIME start = 0, stop = 0;
-    if (FAILED(sample->GetTime(&start, &stop)) || HasDoviSideData(sample))
+    if (FAILED(sample->GetTime(&start, &stop)))
         return false;
     ComPtr<IPin> upstream;
     m_pInputPin->ConnectedTo(&upstream);
@@ -1372,13 +1399,20 @@ bool Renderer::LookupFileDovi(IMediaSample* sample, std::vector<BYTE>& out)
         CAutoLock render(&m_RendererLock);
         base = segment;
     }
-    return dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out) == S_OK;
+    const bool decoderDovi = HasDoviSideData(sample);
+    if (!decoderDovi)
+        dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out.dovi);
+    if (hdr && out.dovi.empty() && !decoderDovi && !HasHdr10PlusSideData(sample))
+        dv.Hdr10PlusMetadata(m_pGraph, upstream.Get(), start, base, out.hdr10Plus);
+    if (hdr)
+        out.container = dv.StaticHdrInfo();
+    return !out.dovi.empty() || !out.hdr10Plus.empty() || out.container.mastering || out.container.light;
 }
 
-void Renderer::ClearFileDovi()
+void Renderer::ClearFileMetadata()
 {
-    std::lock_guard guard(fileDoviLock);
-    fileDovi.clear();
+    std::lock_guard guard(fileMetadataLock);
+    fileMetadata.clear();
 }
 
 bool Renderer::TakePreviewed(IMediaSample* sample)
@@ -1416,15 +1450,15 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
 
     auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
-    if (!field && !layered && !frame.dovi)
+    if (!field && !layered)
     {
         REFERENCE_TIME at = 0, until = 0;
         if (SUCCEEDED(sample->GetTime(&at, &until)))
         {
-            std::lock_guard guard(fileDoviLock);
-            const auto found = fileDovi.find(at);
-            if (found != fileDovi.end())
-                ApplyDoviSideData(found->second, frame);
+            std::lock_guard guard(fileMetadataLock);
+            const auto found = fileMetadata.find(at);
+            if (found != fileMetadata.end())
+                ApplyFileMetadata(found->second, frame);
         }
     }
     if (!field)
@@ -1725,7 +1759,7 @@ void Renderer::NewSegment(REFERENCE_TIME start)
 HRESULT Renderer::BeginFlush()
 {
     SetPreviewed(nullptr);
-    ClearFileDovi();
+    ClearFileMetadata();
     return CBaseVideoRenderer::BeginFlush();
 }
 
@@ -1741,7 +1775,7 @@ STDMETHODIMP Renderer::Stop()
     Trace("Renderer stop begin");
     dv.Cancel();
     SetPreviewed(nullptr);
-    ClearFileDovi();
+    ClearFileMetadata();
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
         windowState = State_Stopped;
