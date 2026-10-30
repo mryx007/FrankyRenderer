@@ -67,9 +67,10 @@ def prepare(previous, nightly_sha, output):
         if count != 1:
             raise ValueError("Missing resource string: " + field)
     rc.write_text(text, encoding="utf-8", newline="\n")
+    packager = "src/Tools/package_release.py" if (ROOT / "src/Tools/package_release.py").is_file() else "src/Tools/package_variants.py"
     for name, pattern in (
         ("src/Tools/package.py", r'(f"FrankyRenderer )[\d.]+( - )'),
-        ("src/Tools/package_variants.py", r'(version = "nightly-" \+ build_id if channel == "nightly" else ")[\d.]+(")'),
+        (packager, r'(version = "nightly-" \+ build_id if channel == "nightly" else ")[\d.]+(")'),
     ):
         path = ROOT / name
         text, count = re.subn(pattern, rf'\g<1>{version}\2', path.read_text(encoding="utf-8"))
@@ -78,7 +79,7 @@ def prepare(previous, nightly_sha, output):
         path.write_text(text, encoding="utf-8", newline="\n")
     marker.write_text(json.dumps({"source_repository": "mryx007/FrankyRenderer-Nightly",
                                   "source_commit": nightly_sha, "version": version}, indent=2) + "\n")
-    git("add", "src/Renderer/Renderer.rc", "src/Tools/package.py", "src/Tools/package_variants.py", ".github/last-promoted-nightly.json")
+    git("add", "src/Renderer/Renderer.rc", "src/Tools/package.py", packager, ".github/last-promoted-nightly.json")
     git("commit", "-m", f"Release {version} from tested Nightly {nightly_sha[:10]}")
     sha = git("rev-parse", "HEAD").stdout.strip()
     git("bundle", "create", str(output / "candidate.bundle"), "HEAD")
