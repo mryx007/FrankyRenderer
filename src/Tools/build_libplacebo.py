@@ -2,6 +2,8 @@
 
 Requires Windows x64 and CPython 3.14. Compiler packages and Python wheels are
 verified against checked-in SHA-256 locks. No global toolchain is modified.
+The patches in deps/patches/libplacebo are applied to the verified source, in
+name order; each must apply exactly or the build stops.
 """
 
 import ctypes
@@ -18,6 +20,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / "build" / "libplacebo-runtime"
 CACHE = ROOT / "deps" / "packages"
+PATCHES = ROOT / "deps" / "patches" / "libplacebo"
 SDK = ROOT / "deps" / "msys" / "ucrt64"
 
 
@@ -40,6 +43,39 @@ def cached(url, sha256, name=None):
     return path
 
 
+def apply_patch(source, patch):
+    """Apply a unified diff whose context must match the pinned source exactly."""
+    lines = patch.read_text(encoding="ascii").splitlines()
+    i = 0
+    while i < len(lines):
+        if not lines[i].startswith("--- "):
+            i += 1
+            continue
+        target = source / lines[i + 1][4:].split("\t")[0].removeprefix("b/")
+        text = target.read_text(encoding="utf-8").split("\n")
+        i += 2
+        offset = 0
+        while i < len(lines) and lines[i].startswith("@@"):
+            start = int(lines[i].split()[1].split(",")[0].lstrip("-")) - 1 + offset
+            old, new = [], []
+            i += 1
+            while i < len(lines) and lines[i][:1] in (" ", "-", "+", ""):
+                if lines[i].startswith("--- "):
+                    break
+                kind, body = (lines[i][:1] or " "), lines[i][1:]
+                if kind != "+":
+                    old.append(body)
+                if kind != "-":
+                    new.append(body)
+                i += 1
+            if text[start:start + len(old)] != old:
+                raise RuntimeError(f"{patch.name} does not apply to {target.name} at line {start + 1}")
+            text[start:start + len(old)] = new
+            offset += len(new) - len(old)
+        target.write_text("\n".join(text), encoding="utf-8", newline="\n")
+    print("Applied libplacebo patch", patch.name, flush=True)
+
+
 def short_path(path):
     # pkgconf's includedir output and windres cannot reliably handle spaces.
     # Use existing Windows 8.3 names rather than editing upstream source.
@@ -57,7 +93,8 @@ def main():
     lock_paths = [ROOT / "deps" / name for name in (
         "libplacebo-source.lock.json", "libplacebo-build.lock.json", "libplacebo-python.lock.json")]
     source, tools, wheels = [json.loads(p.read_text()) for p in lock_paths]
-    key = hashlib.sha256(b"".join(p.read_bytes() for p in lock_paths)
+    patches = sorted(PATCHES.glob("*.patch"))
+    key = hashlib.sha256(b"".join(p.read_bytes() for p in lock_paths + patches)
                          + (ROOT / "deps" / "packages.lock.json").read_bytes()
                          + Path(__file__).read_bytes()).hexdigest()
     WORK.mkdir(parents=True, exist_ok=True)
@@ -100,6 +137,8 @@ def main():
     source_archive = cached(source["url"], source["sha256"], f"libplacebo-{source['commit']}.tar.gz")
     with tarfile.open(source_archive, "r:gz") as archive:
         archive.extractall(WORK, filter="data")
+    for patch in patches:
+        apply_patch(WORK / ("libplacebo-" + source["commit"]), patch)
     work = short_path(WORK)
     prefix = work / "toolchain" / "ucrt64"
     environment = dict(os.environ)
@@ -122,7 +161,8 @@ def main():
     ninja = str(prefix / "bin" / "ninja.exe")
     subprocess.run([ninja, "-C", str(build), "-j", "4"], env=environment, check=True)
     subprocess.run([ninja, "-C", str(build), "install"], env=environment, check=True)
-    stamp.write_text(json.dumps(dict(key=key, sha256=digest(library), commit=source["commit"]), indent=2))
+    stamp.write_text(json.dumps(dict(key=key, sha256=digest(library), commit=source["commit"],
+                                     patches=[p.name for p in patches]), indent=2))
     deploy(stage, source)
     print("Built pinned libplacebo", source["version"], source["commit"][:12])
 
@@ -139,6 +179,11 @@ def deploy(stage, source):
     for name in ("LICENSE", "COPYING"):
         if (original / name).exists():
             shutil.copy2(original / name, notices / name)
+    # LGPL: ship the exact source modifications beside the library notices.
+    shutil.rmtree(notices / "patches", ignore_errors=True)
+    for patch in sorted(PATCHES.glob("*.patch")):
+        (notices / "patches").mkdir(exist_ok=True)
+        shutil.copy2(patch, notices / "patches" / patch.name)
     shutil.copy2(WORK / "toolchain/ucrt64/share/licenses/xxhash/LICENSE", notices / "xxhash-LICENSE")
     shutil.copy2(WORK / "python-tools/glad2-2.0.8.dist-info/LICENSE", notices / "glad-LICENSE")
 

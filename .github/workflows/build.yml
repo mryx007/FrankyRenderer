@@ -51,7 +51,7 @@ jobs:
           path: |
             src/deps/packages
             src/build/libplacebo-runtime
-          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/Tools/build_libplacebo.py', 'src/Tools/fetch_dependencies.py') }}
+          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/deps/patches/libplacebo/*.patch', 'src/Tools/build_libplacebo.py', 'src/Tools/fetch_dependencies.py') }}
       - name: Restore verified dependencies
         run: |
           python src/Tools/fetch_dependencies.py

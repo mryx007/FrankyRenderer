@@ -1,0 +1,35 @@
+Number D3D11 UAV slots densely instead of reusing the shader binding index.
+
+A compute pass that samples many textures (for example deinterlacing NV12 with
+LUTs) placed its output image at UAV register 8, past the 8 UAV slots of
+Direct3D feature level 11_0, and failed with "Too many UAVs in shader".
+
+--- a/src/d3d11/gpu_pass.c
++++ b/src/d3d11/gpu_pass.c
+@@ -312,14 +312,20 @@
+         if (has_uav) {
+             // UAVs are shared between VS and PS in a raster pass. The HLSL
+             // register is shifted by uav_offset since the runtime reserves
+-            // slot 0 for the RTV, but the array index uses the bare binding
++            // slot 0 for the RTV, but the array index uses the bare slot
+             // because OMSetRenderTargetsAndUnorderedAccessViews is called
+             // with UAVStartSlot=uav_offset.
+-            hlslbind.uav.register_binding = binding + uav_offset;
+-            while (pass_p->uavs.num <= binding)
+-                PL_ARRAY_APPEND(pass, pass_p->uavs, HLSL_BINDING_NOT_USED);
+-            pass_p->uavs.elem[binding] = binding;
+-            if (binding + uav_offset >= p->max_uavs) {
++            //
++            // Number UAV slots densely instead of reusing the shared binding
++            // index: a pass sampling many textures would otherwise place its
++            // output image past the 8 UAV slots of feature level 11_0.
++            int slot = 0;
++            while (slot < pass_p->uavs.num && pass_p->uavs.elem[slot] != (int) binding)
++                slot++;
++            if (slot == pass_p->uavs.num)
++                PL_ARRAY_APPEND(pass, pass_p->uavs, (int) binding);
++            hlslbind.uav.register_binding = slot + uav_offset;
++            if (slot + uav_offset >= p->max_uavs) {
+                 PL_ERR(gpu, "Too many UAVs in shader");
+                 goto error;
+             }
