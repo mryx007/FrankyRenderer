@@ -12,8 +12,9 @@ from package import ROOT, main
 def package_release(output, channel="stable", build_id=None):
     if channel not in ("stable", "nightly"):
         raise ValueError("Unknown release channel")
-    if channel == "nightly" and not re.fullmatch(r"\d{8}-[0-9a-f]{7,40}", build_id or ""):
-        raise ValueError("Nightly builds need --build-id YYYYMMDD-<commit>")
+    # Older Nightlies used YYYYMMDD-<commit>; current ones add the UTC time.
+    if channel == "nightly" and not re.fullmatch(r"\d{8}(-\d{4})?-[0-9a-f]{7,40}", build_id or ""):
+        raise ValueError("Nightly builds need --build-id YYYYMMDD-HHMM-<commit>")
     if channel == "stable" and build_id:
         raise ValueError("--build-id is only used for nightly builds")
     if output.exists():
@@ -52,6 +53,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--channel", choices=("stable", "nightly"), default="stable")
-    parser.add_argument("--build-id", help="Nightly identifier: YYYYMMDD-<commit>")
+    parser.add_argument("--build-id", help="Nightly identifier: YYYYMMDD-HHMM-<commit>")
     args = parser.parse_args()
     package_release(args.output.resolve(), args.channel, args.build_id)

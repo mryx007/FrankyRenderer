@@ -8,7 +8,7 @@ Each ZIP name and its `INSTALL.txt` identify the build by date and commit, such 
 
 ## Publishing a test build
 
-Push tested source changes to `main` in `mryx007/FrankyRenderer-Nightly`. GitHub Actions checks formatting, builds the shared native renderer, runs the available non-GPU regression tests and verifies the packages before publishing a separate normal Nightly release with a fixed date/commit tag. Documentation-only changes do not trigger publication. The workflow can also be started manually from **Actions → Publish Nightly**.
+Push tested source changes to `main` in `mryx007/FrankyRenderer-Nightly`. GitHub Actions checks formatting, builds the shared native renderer, runs the available non-GPU regression tests and verifies the packages before publishing a separate normal Nightly release with a fixed date/time/commit tag. Documentation-only changes do not trigger publication. The workflow can also be started manually from **Actions → Publish Nightly**.
 
 Build failures leave the existing release untouched. Each release links the exact source commit and identifies the shared package by date and commit. Hardware, HDR/TV and real-player tests still require user confirmation.
 

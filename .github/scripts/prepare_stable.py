@@ -95,7 +95,7 @@ def main():
     if release["draft"]:
         raise ValueError("The Nightly is not published")
     tag = release["tag_name"]
-    if not re.fullmatch(r"nightly-\d{8}-[0-9a-f]{10}", tag):
+    if not re.fullmatch(r"nightly-\d{8}(-\d{4})?-[0-9a-f]{10}", tag):
         raise ValueError("The latest Nightly must have a fixed date/commit tag")
     git("fetch", "--no-tags", "https://github.com/mryx007/FrankyRenderer-Nightly.git",
         f"+refs/tags/{tag}:refs/remotes/nightly/published")
