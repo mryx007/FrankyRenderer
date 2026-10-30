@@ -15,6 +15,7 @@
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
 #include <atomic>
+#include <map>
 #include <mutex>
 
 class Renderer;
@@ -130,6 +131,12 @@ class Renderer final : public CBaseVideoRenderer,
     // held sample again; skip it so each picture is presented and counted once.
     std::mutex previewLock;
     IMediaSample* previewed = nullptr;
+    // Profile 5/8 Dolby Vision metadata read from the file for samples whose
+    // decoder attached none, keyed by sample start until DoRenderSample uses it.
+    std::mutex fileDoviLock;
+    std::map<REFERENCE_TIME, std::vector<BYTE>> fileDovi;
+    bool LookupFileDovi(IMediaSample*, std::vector<BYTE>&);
+    void ClearFileDovi();
     void SetPreviewed(IMediaSample*);
     bool TakePreviewed(IMediaSample*);
     QueuedVideoFrame pending, previous;

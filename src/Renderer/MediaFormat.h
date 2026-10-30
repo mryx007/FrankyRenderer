@@ -26,3 +26,7 @@ struct HdrSideDataStatus
 };
 
 HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame);
+// True when the decoder attached Dolby Vision metadata to this sample.
+bool HasDoviSideData(IMediaSample*);
+// Applies decoder-layout (V2) Dolby Vision side data supplied by another source.
+bool ApplyDoviSideData(const std::vector<BYTE>&, VideoFrame&);

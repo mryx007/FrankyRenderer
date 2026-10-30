@@ -14,3 +14,4 @@
 - Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
 - Fixed a possible crash when the player closes the settings while a list or file dialog is open.
 - Settings menu: Reset Shader resets only the selected shader; clearer messages for missing ICC/LUT files and other small fixes.
+- Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.

@@ -947,6 +947,7 @@ HRESULT Renderer::BreakConnect()
     dv.Cancel();
     dv.Disconnect();
     SetPreviewed(nullptr);
+    ClearFileDovi();
     backend.SetSourceCodec({});
     ResetFields(false);
     // Disconnect, unlike a temporary graph Stop, really retires this image
@@ -1210,6 +1211,15 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             if (buffering || previous.id)
                 ResetFields(true, true);
         }
+        // Read file metadata now, ahead of the presentation time, not in DoRenderSample.
+        std::vector<BYTE> fileMetadata;
+        if (!reconstructed && timed && LookupFileDovi(sample, fileMetadata))
+        {
+            std::lock_guard guard(fileDoviLock);
+            fileDovi[start] = std::move(fileMetadata);
+            while (fileDovi.size() > 1 && (fileDovi.begin()->first < start - 10000000 || fileDovi.size() > 64))
+                fileDovi.erase(fileDovi.begin());
+        }
         return CBaseVideoRenderer::Receive(sample);
     }
     QueuedVideoFrame output, input, past;
@@ -1236,7 +1246,12 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                 return hr;
         }
         else
+        {
             ReadHdrSideData(sample, input.frame);
+            std::vector<BYTE> fileMetadata;
+            if (!input.frame.dovi && LookupFileDovi(sample, fileMetadata))
+                ApplyDoviSideData(fileMetadata, input.frame);
+        }
         const auto source = dv.SourceInfo();
         if (source.present)
             input.frame.dvSource = source;
@@ -1344,6 +1359,28 @@ void Renderer::SetPreviewed(IMediaSample* sample)
     previewed = sample;
 }
 
+bool Renderer::LookupFileDovi(IMediaSample* sample, std::vector<BYTE>& out)
+{
+    // Only for decoders that pass Profile 5/8 pictures without their RPU.
+    REFERENCE_TIME start = 0, stop = 0;
+    if (FAILED(sample->GetTime(&start, &stop)) || HasDoviSideData(sample))
+        return false;
+    ComPtr<IPin> upstream;
+    m_pInputPin->ConnectedTo(&upstream);
+    REFERENCE_TIME base = 0;
+    {
+        CAutoLock render(&m_RendererLock);
+        base = segment;
+    }
+    return dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out) == S_OK;
+}
+
+void Renderer::ClearFileDovi()
+{
+    std::lock_guard guard(fileDoviLock);
+    fileDovi.clear();
+}
+
 bool Renderer::TakePreviewed(IMediaSample* sample)
 {
     std::lock_guard guard(previewLock);
@@ -1379,6 +1416,17 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
 
     auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
+    if (!field && !layered && !frame.dovi)
+    {
+        REFERENCE_TIME at = 0, until = 0;
+        if (SUCCEEDED(sample->GetTime(&at, &until)))
+        {
+            std::lock_guard guard(fileDoviLock);
+            const auto found = fileDovi.find(at);
+            if (found != fileDovi.end())
+                ApplyDoviSideData(found->second, frame);
+        }
+    }
     if (!field)
     {
         const auto source = dv.SourceInfo();
@@ -1677,6 +1725,7 @@ void Renderer::NewSegment(REFERENCE_TIME start)
 HRESULT Renderer::BeginFlush()
 {
     SetPreviewed(nullptr);
+    ClearFileDovi();
     return CBaseVideoRenderer::BeginFlush();
 }
 
@@ -1692,6 +1741,7 @@ STDMETHODIMP Renderer::Stop()
     Trace("Renderer stop begin");
     dv.Cancel();
     SetPreviewed(nullptr);
+    ClearFileDovi();
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
         windowState = State_Stopped;

@@ -454,6 +454,23 @@ static bool MapDovi(const BYTE* bytes, size_t count, bool extensions, VideoFrame
     return true;
 }
 
+bool HasDoviSideData(IMediaSample* sample)
+{
+    Microsoft::WRL::ComPtr<IMediaSideData> side;
+    if (!sample || FAILED(sample->QueryInterface(IID_PPV_ARGS(&side))))
+        return false;
+    constexpr GUID legacy = {0x277ee779, 0x13f4, 0x434e, {0xbd, 0xec, 0x3d, 0x6f, 0x8c, 0x0e, 0x15, 0xd2}};
+    const BYTE* data = nullptr;
+    size_t size = 0;
+    return SUCCEEDED(side->GetSideData(IID_MediaSideDataDOVIMetadataV2, &data, &size)) ||
+           SUCCEEDED(side->GetSideData(legacy, &data, &size));
+}
+
+bool ApplyDoviSideData(const std::vector<BYTE>& data, VideoFrame& frame)
+{
+    return MapDovi(data.data(), data.size(), true, frame);
+}
+
 HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame)
 {
     // Dynamic data belongs to this sample only, never to the next scene.

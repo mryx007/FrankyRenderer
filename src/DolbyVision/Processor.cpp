@@ -5,7 +5,9 @@
 #include "Runtime.h"
 #include "Transport.h"
 #include "EnhancementReader.h"
+#include "BaseLayerRpuReader.h"
 #include "../DirectShow/Include/ID3DVideoMemoryConfiguration.h"
+#include "../DirectShow/Include/IMediaSideData.h"
 using Microsoft::WRL::ComPtr;
 #include "Sample.h"
 
@@ -131,6 +133,9 @@ struct DvProcessor::State
     std::atomic<bool> modeKnown{false};
     std::unique_ptr<DvGpu> gpu;
     std::unique_ptr<EnhancementReader> reader;
+    // Profile 5/8 metadata for decoders that deliver pictures without it.
+    std::unique_ptr<BaseLayerRpuReader> rpuReader;
+    bool rpuFailed = false;
     std::wstring filename;
     ComPtr<ID3D11Device> decoderDevice;
     HANDLE decoderMutex = nullptr;
@@ -249,8 +254,105 @@ struct DvProcessor::State
     {
         reader.reset();
         gpu.reset();
+        // Keep the open file across seeks; only reposition on the next request.
+        if (rpuReader)
+            rpuReader->Invalidate();
+    }
+
+    void ForgetSource()
+    {
+        rpuReader.reset();
+        rpuFailed = false;
     }
 };
+
+// Same layout a DirectShow decoder attaches as IID_MediaSideDataDOVIMetadataV2.
+static void ToSideData(const AVDOVIMetadata* metadata, std::vector<BYTE>& out)
+{
+    MediaSideDataDOVIMetadata data = {};
+    const auto* h = av_dovi_get_header(metadata);
+    data.Header.rpu_type = h->rpu_type;
+    data.Header.rpu_format = h->rpu_format;
+    data.Header.vdr_rpu_profile = h->vdr_rpu_profile;
+    data.Header.vdr_rpu_level = h->vdr_rpu_level;
+    data.Header.chroma_resampling_explicit_filter_flag = h->chroma_resampling_explicit_filter_flag;
+    data.Header.coef_data_type = h->coef_data_type;
+    data.Header.coef_log2_denom = h->coef_log2_denom;
+    data.Header.vdr_rpu_normalized_idc = h->vdr_rpu_normalized_idc;
+    data.Header.bl_video_full_range_flag = h->bl_video_full_range_flag;
+    data.Header.bl_bit_depth = h->bl_bit_depth;
+    data.Header.el_bit_depth = h->el_bit_depth;
+    data.Header.vdr_bit_depth = h->vdr_bit_depth;
+    data.Header.spatial_resampling_filter_flag = h->spatial_resampling_filter_flag;
+    data.Header.el_spatial_resampling_filter_flag = h->el_spatial_resampling_filter_flag;
+    data.Header.disable_residual_flag = h->disable_residual_flag;
+    const auto* m = av_dovi_get_mapping(metadata);
+    data.Mapping.vdr_rpu_id = m->vdr_rpu_id;
+    data.Mapping.mapping_color_space = m->mapping_color_space;
+    data.Mapping.mapping_chroma_format_idc = m->mapping_chroma_format_idc;
+    for (int c = 0; c < 3; ++c)
+    {
+        const auto& in = m->curves[c];
+        auto& curve = data.Mapping.curves[c];
+        curve.num_pivots = in.num_pivots;
+        for (int p = 0; p < LAV_DOVI_MAX_PIECES + 1; ++p)
+            curve.pivots[p] = in.pivots[p];
+        for (int p = 0; p < LAV_DOVI_MAX_PIECES; ++p)
+        {
+            curve.mapping_idc[p] = uint8_t(in.mapping_idc[p]);
+            curve.poly_order[p] = in.poly_order[p];
+            curve.mmr_order[p] = in.mmr_order[p];
+            curve.mmr_constant[p] = in.mmr_constant[p];
+            for (int k = 0; k < 3; ++k)
+                curve.poly_coef[p][k] = in.poly_coef[p][k];
+            for (int j = 0; j < 3; ++j)
+                for (int k = 0; k < 7; ++k)
+                    curve.mmr_coef[p][j][k] = in.mmr_coef[p][j][k];
+        }
+        data.Mapping.nlq[c].nlq_offset = m->nlq[c].nlq_offset;
+        data.Mapping.nlq[c].vdr_in_max = m->nlq[c].vdr_in_max;
+        data.Mapping.nlq[c].linear_deadzone_slope = m->nlq[c].linear_deadzone_slope;
+        data.Mapping.nlq[c].linear_deadzone_threshold = m->nlq[c].linear_deadzone_threshold;
+    }
+    data.Mapping.nlq_method_idc = uint8_t(m->nlq_method_idc);
+    data.Mapping.num_x_partitions = m->num_x_partitions;
+    data.Mapping.num_y_partitions = m->num_y_partitions;
+    const auto* color = av_dovi_get_color(metadata);
+    auto& target = data.ColorMetadata;
+    target.dm_metadata_id = color->dm_metadata_id;
+    target.scene_refresh_flag = color->scene_refresh_flag;
+    for (int i = 0; i < 9; ++i)
+    {
+        target.ycc_to_rgb_matrix[i] = av_q2d(color->ycc_to_rgb_matrix[i]);
+        target.rgb_to_lms_matrix[i] = av_q2d(color->rgb_to_lms_matrix[i]);
+    }
+    for (int i = 0; i < 3; ++i)
+        target.ycc_to_rgb_offset[i] = av_q2d(color->ycc_to_rgb_offset[i]);
+    target.signal_eotf = color->signal_eotf;
+    target.signal_eotf_param0 = color->signal_eotf_param0;
+    target.signal_eotf_param1 = color->signal_eotf_param1;
+    target.signal_eotf_param2 = color->signal_eotf_param2;
+    target.signal_bit_depth = color->signal_bit_depth;
+    target.signal_color_space = color->signal_color_space;
+    target.signal_chroma_format = color->signal_chroma_format;
+    target.signal_full_range_flag = color->signal_full_range_flag;
+    target.source_min_pq = color->source_min_pq;
+    target.source_max_pq = color->source_max_pq;
+    target.source_diagonal = color->source_diagonal;
+    for (int i = 0, n = 0; i < metadata->num_ext_blocks && n < LAV_DOVI_MAX_EXTENSIONS; ++i)
+    {
+        const auto* block = av_dovi_get_ext(metadata, i);
+        if (block->level != 1)
+            continue;
+        data.Extensions[n].level = 1;
+        data.Extensions[n].Level1.min_pq = block->l1.min_pq;
+        data.Extensions[n].Level1.max_pq = block->l1.max_pq;
+        data.Extensions[n].Level1.avg_pq = block->l1.avg_pq;
+        ++n;
+    }
+    out.resize(sizeof(data));
+    memcpy(out.data(), &data, sizeof(data));
+}
 
 DvProcessor::DvProcessor() : state(std::make_unique<State>()) {}
 
@@ -296,6 +398,7 @@ void DvProcessor::Disconnect()
     state->layered = false;
     state->source = {};
     state->filename.clear();
+    state->ForgetSource();
     state->decoderDevice.Reset();
     state->nativeActive = false;
     if (state->decoderMutex)
@@ -332,6 +435,60 @@ void DvProcessor::RefreshSource(IFilterGraph* graph, IPin* peer)
         state->layered = false;
         state->source = {};
         state->filename.clear();
+        state->ForgetSource();
+    }
+}
+
+HRESULT DvProcessor::SingleLayerMetadata(
+    IFilterGraph* graph, IPin* peer, REFERENCE_TIME start, REFERENCE_TIME segment, std::vector<BYTE>& out)
+{
+    out.clear();
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    if (s.cancelled)
+        return S_FALSE;
+    HRESULT hr = s.SelectMode(graph, peer);
+    if (FAILED(hr))
+        return hr;
+    if (s.layered || s.rpuFailed || s.filename.empty() || !s.source.present ||
+        (s.source.profile != 5 && s.source.profile != 8))
+        return S_FALSE;
+    try
+    {
+        if (!s.rpuReader)
+        {
+            int size = WideCharToMultiByte(CP_UTF8, 0, s.filename.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            std::string utf8(size, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, s.filename.c_str(), -1, utf8.data(), size, nullptr, nullptr);
+            s.rpuReader = std::make_unique<BaseLayerRpuReader>(utf8.c_str(), &s.cancelled);
+            LogDv("opened base-layer RPU reader for decoder without Dolby Vision metadata");
+        }
+        const LONGLONG absolute = start + segment;
+        if (absolute < 0)
+            return S_FALSE;
+        std::unique_ptr<AVFrame, void (*)(AVFrame*)> carrier(s.rpuReader->ForTime(absolute),
+                                                             [](AVFrame* f) { av_frame_free(&f); });
+        const auto sd = carrier ? av_frame_get_side_data(carrier.get(), AV_FRAME_DATA_DOVI_METADATA) : nullptr;
+        if (!sd)
+            return S_FALSE;
+        ToSideData(reinterpret_cast<const AVDOVIMetadata*>(sd->data), out);
+        return S_OK;
+    }
+    catch (const std::bad_alloc&)
+    {
+        return E_OUTOFMEMORY;
+    }
+    catch (const std::exception& error)
+    {
+        // A cancelled read (Stop/flush) only drops the reader. Other failures
+        // keep this source on its HDR10 base layer instead of retrying per frame.
+        s.rpuReader.reset();
+        if (!s.cancelled)
+        {
+            LogDv(error.what(), start, E_FAIL);
+            s.rpuFailed = true;
+        }
+        return S_FALSE;
     }
 }
 

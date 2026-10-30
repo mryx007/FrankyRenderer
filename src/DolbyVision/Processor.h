@@ -2,6 +2,7 @@
 #include "Renderer/MediaFormat.h"
 #include <wrl/client.h>
 #include <memory>
+#include <vector>
 
 // Internal local-file supplementation. No registered DirectShow filter is needed.
 class DvProcessor
@@ -20,6 +21,9 @@ class DvProcessor
                     REFERENCE_TIME,
                     ID3D11Device*,
                     Microsoft::WRL::ComPtr<IMediaSample>&);
+    // Profile 5/8 RPU for the picture at start, read from the local file when
+    // the decoder attaches none. S_OK fills decoder-style side data.
+    HRESULT SingleLayerMetadata(IFilterGraph*, IPin*, REFERENCE_TIME start, REFERENCE_TIME segment, std::vector<BYTE>&);
     HRESULT SetDevice(ID3D11Device*, HANDLE);
     void Cancel();
     void Resume();
