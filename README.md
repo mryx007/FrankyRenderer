@@ -135,7 +135,7 @@ Keep the installation folder in place. To remove the renderer, run `Uninstall.cm
 ## Downloads
 
 - **[Stable release](https://github.com/mryx007/FrankyRenderer/releases/latest)** — recommended for normal use.
-- **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/tag/nightly)** — fixes awaiting user feedback.
+- **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/latest)** — fixes awaiting user feedback.
 - **[MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases)** — player builds with native FrankyRenderer selection.
 
 FrankyRenderer downloads provide separate MPC-BE and PotPlayer packages.
