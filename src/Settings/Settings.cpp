@@ -1,6 +1,7 @@
 #include "Settings/Settings.h"
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
+#include "Renderer/DisplayModes.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -27,12 +28,12 @@ static void Bool(HKEY key, const wchar_t* name, BOOL& value)
         value = !!saved;
 }
 
-static void String(HKEY key, const wchar_t* name, wchar_t (&value)[64])
+template <size_t N> static void String(HKEY key, const wchar_t* name, wchar_t (&value)[N])
 {
     DWORD type = 0, bytes = sizeof(value);
-    wchar_t saved[64] = {};
+    wchar_t saved[N] = {};
     if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_SZ && bytes <= sizeof(saved) && saved[63] == 0)
+        type == REG_SZ && bytes <= sizeof(saved) && saved[N - 1] == 0)
         wcscpy_s(value, saved);
 }
 
@@ -166,6 +167,9 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(maximumFramesInFlight),
         FIELD(rtxSuperResolution),
         FIELD(imageAnalysis),
+        FIELD(displayModeSwitch),
+        COPY_TEXT(displayModes),
+        FIELD(displayModeDelay),
     };
 #undef COPY_TEXT
 #undef FIELD
@@ -284,6 +288,9 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"AdaptiveSharpen", settings.adaptiveSharpen);
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
+    Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
+    String(key, L"DisplayModes", settings.displayModes);
+    Float(key, L"DisplayModeDelay", settings.displayModeDelay);
     Float(key, L"SharpenStrength", settings.sharpenStrength);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
     Bool(key, L"PeakDetect", settings.peakDetect);
@@ -434,6 +441,11 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE))
+        return E_INVALIDARG;
+    std::vector<DisplayModes::Mode> modes;
+    if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
+        !DisplayModes::Parse(s.displayModes, modes) || !std::isfinite(s.displayModeDelay) ||
+        s.displayModeDelay < 0 || s.displayModeDelay > 10)
         return E_INVALIDARG;
     if (!ValidHdrTuning(s))
         return E_INVALIDARG;
@@ -603,6 +615,9 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"AdaptiveSharpen", REG_DWORD, &s.adaptiveSharpen, 4);
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
+    save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
+    save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
+    save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);
     save(L"SharpenStrength", REG_BINARY, &s.sharpenStrength, 4);
     save(L"PeakDetect", REG_DWORD, &s.peakDetect, 4);
     save(L"PeakSmoothing", REG_BINARY, &s.peakSmoothing, 4);

@@ -14,11 +14,13 @@
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
+#include "Renderer/DisplayModes.h"
 #include <atomic>
 #include <map>
 #include <mutex>
 
 class Renderer;
+struct ModePause;
 
 class DecoderPin final : public CRendererInputPin,
                          public ID3D11DecoderConfiguration,
@@ -170,6 +172,28 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT PrepareWindow();
     std::atomic<HMONITOR> profileMonitor = nullptr;
     HRESULT UpdateDisplayProfile(bool refresh = false);
+    // Display mode switching in fullscreen. The window thread owns the switcher;
+    // other threads publish the active profile's list and request a check.
+    struct ModeConfig
+    {
+        bool enabled = false;
+        std::vector<DisplayModes::Mode> modes;
+        float delay = 0;
+    };
+    std::mutex modeLock;
+    ModeConfig modeConfig;
+    std::shared_ptr<ModePause> modePause; // guarded by modeLock
+    DisplayModes::Switcher modeSwitcher;
+    RECT modeWindow = {}; // fullscreen window rectangle when the mode was switched
+    std::atomic<uint64_t> modeHoldUntil = 0;
+    // The source's frame duration. frameDuration follows the presented samples,
+    // which Smooth Motion delivers at the display rate.
+    std::atomic<REFERENCE_TIME> contentDuration = 0;
+    void PublishDisplayModes();
+    void RequestModeCheck(UINT delay = 250);
+    void CheckDisplayMode();
+    void PausePlayback(DWORD milliseconds);
+    bool ExternalStateChange();
 
   public:
     Renderer(IUnknown*, HRESULT*);

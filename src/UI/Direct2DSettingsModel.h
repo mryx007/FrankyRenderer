@@ -4,6 +4,7 @@
 #include <cstring>
 #include "UI/Direct2DSettingsHelp.h"
 #include "Settings/ShaderParameterLabels.h"
+#include "Renderer/DisplayModes.h"
 
 // The view edits a private draft. Every mutation is validated before preview.
 inline std::wstring D2DWide(const char* s)
@@ -327,6 +328,55 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         scope.desc =
             L"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal.";
         analysis.controls.push_back(std::move(scope));
+        auto& mode = card(p,
+                          L"Display Mode",
+                          L"Switches the display to a listed mode matching the video frame rate in fullscreen and "
+                          L"restores it when leaving fullscreen or stopping.");
+        mode.controls.push_back(D2DBool(s,
+                                        L"Switch Display Mode in Fullscreen",
+                                        &s.displayModeSwitch,
+                                        L"Uses the listed mode with the lowest refresh rate that is a whole multiple of the "
+                                        L"video frame rate. Applies to this display profile only."));
+        D2DControl list;
+        list.name = L"Allowed Modes";
+        list.kind = ControlKind::Text;
+        list.placeholder = L"e.g. 2160p23, 2160p24, 2160p60";
+        list.invalidText = L"Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, 60.";
+        list.getText = [&s] { return std::wstring(s.displayModes); };
+        list.setText = [&s](const std::wstring& text)
+        {
+            std::vector<DisplayModes::Mode> modes;
+            if (text.size() >= std::size(s.displayModes) || !DisplayModes::Parse(text.c_str(), modes))
+                return false;
+            wcscpy_s(s.displayModes, text.c_str());
+            return true;
+        };
+        list.reset = [&s] { s.displayModes[0] = 0; };
+        list.enabled = [&s] { return !!s.displayModeSwitch; };
+        // The modes this profile's display offers, read once per profile.
+        std::wstring offered;
+        for (const auto& device : DisplayProfiles::Connected())
+        {
+            MONITORINFOEXW monitor = {};
+            monitor.cbSize = sizeof(monitor);
+            if (device.id != s.displayProfile || !GetMonitorInfoW(device.monitor, &monitor))
+                continue;
+            offered = DisplayModes::Describe(monitor.szDevice);
+        }
+        list.desc = L"Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and 59 mean "
+                    L"23.976, 29.97 and 59.94 Hz.";
+        if (!offered.empty())
+            list.desc += L"\n" + offered;
+        mode.controls.push_back(std::move(list));
+        auto delay = D2DNumber(s,
+                               L"Pause After Switching (seconds)",
+                               &s.displayModeDelay,
+                               0,
+                               10,
+                               .1f,
+                               L"Pauses playback while the display resynchronises after a mode change.");
+        delay.enabled = [&s] { return !!s.displayModeSwitch; };
+        mode.controls.push_back(std::move(delay));
         auto& b = card(p, L"Background & Transparency");
         for (int i = 0; i < 14; i++)
             extra(b, i);

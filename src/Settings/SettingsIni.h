@@ -80,6 +80,9 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(allowDelayedPeak);
     INI_FIELD(hdrMode);
     INI_FIELD(maximumFramesInFlight);
+    INI_FIELD(displayModeSwitch);
+    INI_FIELD(displayModes);
+    INI_FIELD(displayModeDelay);
 #undef INI_FIELD
     for (int i = 0; i < 3; ++i)
     {

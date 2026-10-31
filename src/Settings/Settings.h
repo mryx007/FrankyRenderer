@@ -55,6 +55,10 @@ struct PlaceboSettings
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
     BOOL imageAnalysis = FALSE;
+    // Display mode switching in fullscreen, e.g. L"2160p23, 2160p24, 2160p60".
+    BOOL displayModeSwitch = FALSE;
+    wchar_t displayModes[256] = {};
+    float displayModeDelay = 2; // seconds paused after a switch
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -78,7 +82,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("7ADBF525-A6F1-41E1-AC45-278B3ACCEB9E")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("883EBF97-3947-4ACF-BE58-75E3A616227D")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;
