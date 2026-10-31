@@ -39,7 +39,11 @@ int wmain()
         for (auto& control : hdrControls)
         {
             if (control.name == L"HDR Mode")
-                Require(control.choices.size() == 2, "protection is not an HDR mode");
+            {
+                Require(control.choices.size() == 3, "passthrough, display peak and SDR HDR modes");
+                for (const auto& choice : control.choices)
+                    Require(choice.label.find(L"Protection") == std::wstring::npos, "protection is not an HDR mode");
+            }
             if (control.name == L"Clipping Protection")
             {
                 hasProtection = true;

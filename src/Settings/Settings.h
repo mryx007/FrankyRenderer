@@ -49,7 +49,9 @@ struct PlaceboSettings
     float hue = 0, temperature = 0;
     BOOL colorAdjustment = TRUE;
     BOOL allowDelayedPeak = FALSE;
-    int hdrMode = 2; // 1=HDR passthrough, 2=GPU tone mapping to SDR; legacy 0 is migrated
+    // 1=HDR passthrough, 2=GPU tone mapping to SDR, 3=HDR output with highlights
+    // rolled off to the display peak; legacy 0 is migrated
+    int hdrMode = 2;
     ScalingSettings scaling;
     int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
@@ -66,7 +68,7 @@ inline void NormalizeLegacyHdrSettings(PlaceboSettings& s)
 {
     if (s.hdrMode == 0)
         s.hdrMode = s.hdrPassthrough ? 1 : 2;
-    s.hdrPassthrough = s.hdrMode == 1;
+    s.hdrPassthrough = s.hdrMode != 2;
     s.autoHdr = FALSE;
 }
 

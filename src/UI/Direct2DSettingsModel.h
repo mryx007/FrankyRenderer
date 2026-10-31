@@ -624,8 +624,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"HDR & Color Mapping",
                        L"Display output, HDR metadata, peak detection, tone mapping and gamut mapping.");
         auto& c = card(p, L"HDR Output");
-        auto mode =
-            D2DChoice(s, L"HDR Mode", &s.hdrMode, {{1, L"Passthrough HDR to Display"}, {2, L"Tone Map HDR to SDR"}});
+        auto mode = D2DChoice(
+            s,
+            L"HDR Mode",
+            &s.hdrMode,
+            {{1, L"Passthrough HDR to Display"}, {3, L"Tone Map HDR to Display Peak"}, {2, L"Tone Map HDR to SDR"}});
         mode.set = [&s](float v)
         {
             s.hdrMode = int(v);
@@ -635,6 +638,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
         protection.enabled = [&s] { return s.hdrMode != 1; };
         c.controls.push_back(std::move(protection));
+        auto peak = D2DNumber(s, L"HDR Target Peak (0 = Auto)", &s.hdrNits, 0, 10000, 1);
+        // Values between 0 and 80 nits are not valid peaks; skip them.
+        peak.set = [&s](float v) { s.hdrNits = v > 0 && v < 80 ? (v < s.hdrNits ? 0.f : 80.f) : v; };
+        peak.enabled = [&s] { return s.hdrMode == 3; };
+        c.controls.push_back(std::move(peak));
         c.controls.push_back(D2DNumber(s, L"SDR Target Brightness (nits)", &s.sdrNits, 40, 1000, 1));
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));

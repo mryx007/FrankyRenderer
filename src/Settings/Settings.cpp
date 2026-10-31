@@ -328,7 +328,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     {
         DWORD mode = 0, type = 0, bytes = 4;
         const auto result = RegQueryValueExW(key, L"HDRMode", nullptr, &type, reinterpret_cast<BYTE*>(&mode), &bytes);
-        if (result == ERROR_SUCCESS && type == REG_DWORD && bytes == 4 && mode <= 2)
+        if (result == ERROR_SUCCESS && type == REG_DWORD && bytes == 4 && mode <= 3)
             settings.hdrMode = static_cast<int>(mode);
         else if (result == ERROR_FILE_NOT_FOUND)
             settings.hdrMode = settings.hdrPassthrough ? 1 : 2;
@@ -432,7 +432,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(s))
         return E_INVALIDARG;
-    if (s.hdrMode < 1 || s.hdrMode > 2)
+    if (s.hdrMode < 1 || s.hdrMode > 3)
         return E_INVALIDARG;
     if (!ValidScaling(s.scaling))
         return E_INVALIDARG;

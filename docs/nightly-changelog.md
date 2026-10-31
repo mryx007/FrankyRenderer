@@ -22,3 +22,4 @@
 - Updated FFmpeg to the latest LAV-maintained version (30 October 2026), including newer HEVC decoding and Dolby Vision RPU parsing.
 - Fixed the Dolby Vision status for Profile 7 discs that are flagged as FEL but add no residual: they are now shown as MEL processing instead of "FEL not processed" ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
 - Fixed a washed-out picture with "Prefer 16-bit Float" output when Windows HDR is off: SDR white was written above the display's white level and clipped.
+- New HDR mode "Tone Map HDR to Display Peak": keeps HDR output but rolls off highlights above the display's peak, for monitors and laptops that do not tone map themselves. The target is "HDR Target Peak", or the peak Windows reports for the display when set to 0 ([#6](https://github.com/mryx007/FrankyRenderer/issues/6)).

@@ -1185,6 +1185,23 @@ struct PlaceboBackend::State
         return pl_color_space_is_hdr(&description.color) ? settings.sdrNits : PL_COLOR_SDR_WHITE;
     }
 
+    // Peak luminance Windows reports for the display in HDR mode, in nits; 0 if
+    // unknown or not in HDR mode. On some laptops it follows the brightness slider.
+    float DisplayPeak()
+    {
+        if (!swapchain)
+            return 0;
+        ComPtr<IDXGIOutput> output;
+        ComPtr<IDXGIOutput6> output6;
+        ComPtr<IDXGISwapChain> native;
+        native = OutputSwapchain();
+        DXGI_OUTPUT_DESC1 desc = {};
+        if (!native || FAILED(native->GetContainingOutput(&output)) || FAILED(output.As(&output6)) ||
+            FAILED(output6->GetDesc1(&desc)) || desc.ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+            return 0;
+        return std::isfinite(desc.MaxLuminance) && desc.MaxLuminance >= 80 ? desc.MaxLuminance : 0;
+    }
+
     bool HdrActive()
     {
         if (!swapchain)
@@ -1862,7 +1879,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(settings))
         return E_INVALIDARG;
-    if (settings.hdrMode < 1 || settings.hdrMode > 2)
+    if (settings.hdrMode < 1 || settings.hdrMode > 3)
         return E_INVALIDARG;
     float radius = 0;
     if (settings.scaling && !ValidScaling(*settings.scaling, &radius))
@@ -2304,8 +2321,17 @@ HRESULT PlaceboBackend::Present()
     pl_color_space hint = hdr ? s.image.color : pl_color_space_srgb;
     if (!hdr)
         hint.hdr.max_luma = PL_COLOR_SDR_WHITE;
-    if (hdr && s.settings.hdrMode != 1 && s.settings.hdrNits > 0)
-        hint.hdr.max_luma = s.settings.hdrNits;
+    if (hdr && s.settings.hdrMode == 3)
+    {
+        // HDR output with highlights rolled off to the display's peak: the
+        // target peak is HDR Target Peak, else the peak Windows reports now.
+        const float peak = s.settings.hdrNits > 0 ? s.settings.hdrNits : s.DisplayPeak();
+        hint.hdr.max_luma = peak > 0 ? peak : 1000;
+        hint.hdr.max_cll = hint.hdr.max_fall = 0;
+        hint.hdr.scene_max[0] = hint.hdr.scene_max[1] = hint.hdr.scene_max[2] = hint.hdr.scene_avg = 0;
+        hint.hdr.max_pq_y = hint.hdr.avg_pq_y = 0;
+        hint.hdr.ootf = {};
+    }
     pl_swapchain_colorspace_hint(s.swapchain, &hint);
     pl_swapchain_frame frame = {};
     if (!pl_swapchain_start_frame(s.swapchain, &frame))
@@ -2394,7 +2420,8 @@ PlaceboBackend::RenderOffscreen(
     if (hdrTarget)
     {
         target.color = pl_color_space_hdr10;
-        target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : 1000;
+        const float display = s.settings.hdrMode == 3 ? s.DisplayPeak() : 0;
+        target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : display > 0 ? display : 1000;
     }
     bool ok = s.Render(target, hdrTarget, false, windowGeometry);
     rgba.resize(static_cast<size_t>(width) * height * format->texel_size);

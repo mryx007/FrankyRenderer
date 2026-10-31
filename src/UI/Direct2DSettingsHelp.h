@@ -61,11 +61,14 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
         {L"Hue (degrees)", L"Rotate chroma hue. 0 preserves the original colors."},
         {L"Temperature (K)",
          L"Adjust white balance from warm to neutral. 6500 K preserves the original white balance."},
-        {L"HDR Mode", L"Pass HDR and its metadata to the display, or tone map HDR to SDR using GPU shaders."},
+        {L"HDR Mode",
+         L"Pass HDR and its metadata to the display; keep HDR output but roll off highlights above the display's "
+         L"peak, for monitors and laptops that do not tone map themselves; or tone map HDR to SDR."},
         {L"SDR Target Brightness (nits)",
          L"Target luminance for HDR-to-SDR tone mapping and the SDR reference white in HDR output."},
         {L"HDR Target Peak (0 = Auto)",
-         L"Override the HDR display peak in nits. 0 retains automatic display detection."},
+         L"Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak Windows reports for the "
+         L"display, which on some laptops follows the brightness setting."},
         {L"Tone Mapping Function",
          L"Compress source luminance into the output range. Algorithm-specific controls appear below."},
         {L"Gamut Mapping Function", L"Map source colors into the output display's supported color gamut."},
