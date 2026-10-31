@@ -1,2 +1,19 @@
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
+- Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
+- One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
+- Fixed a brief white properties window when opening the settings menu in MPC-BE.
+- Fixed regular single frame drops during playback, most noticeable with Smooth Motion.
+- Fixed bursts of dropped frames when switching to fullscreen or another display, resizing the window or toggling statistics with Ctrl+J.
+- Fixed missing frames after Stop and Play or a decoder change.
+- Fixed the first picture being shown twice after starting playback or seeking while paused.
+- Fixed failed rendering and screenshots of interlaced video with hardware decoding at native size on some systems.
+- Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
+- Settings previewed in an open settings dialog are reverted on the next start if the player closes unexpectedly.
+- One invalid stored setting no longer resets the whole display profile.
+- Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
+- Fixed a possible crash when the player closes the settings while a list or file dialog is open.
+- Settings menu: Reset Shader resets only the selected shader; clearer messages for missing ICC/LUT files and other small fixes.
+- Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
+- HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
+- New: display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).

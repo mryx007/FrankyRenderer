@@ -22,6 +22,10 @@
 #include <algorithm>
 #include <cmath>
 using Microsoft::WRL::ComPtr;
+
+// The former MPCVR-compatible class must stay unregistered after the packages were unified.
+static constexpr CLSID CLSID_MPCCompatible = {
+    0x71f080aa, 0x8661, 0x4093, {0xb1, 0x5e, 0x4f, 0x69, 0x03, 0xe7, 0x7d, 0x0a}};
 HINSTANCE g_hInst = nullptr;
 
 static void Check(HRESULT hr, const char* text)
@@ -849,7 +853,9 @@ int wmain(int argc, wchar_t** argv)
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--measure") == 0)
             measureTest = true;
-    hardware = argc > 1 && wcscmp(argv[1], L"--gpu") == 0;
+    for (int i = 1; i < argc; i++)
+        if (wcscmp(argv[i], L"--gpu") == 0)
+            hardware = true;
     for (int i = 1; i < argc; i++)
     {
         if (wcscmp(argv[i], L"--nv12") == 0)
@@ -908,7 +914,7 @@ int wmain(int argc, wchar_t** argv)
         if (wcscmp(argv[i], L"--focus") == 0)
             return TestVideoWindowFocus(getter, CLSID_PlaceboRenderer);
         if (wcscmp(argv[i], L"--focus-potplayer") == 0)
-            return TestVideoWindowFocus(getter, CLSID_MPCCompatible);
+            return TestVideoWindowFocus(getter, CLSID_PlaceboRenderer); // PotPlayer now uses the native class
     }
     ComPtr<IClassFactory> factory;
     Check(getter(CLSID_PlaceboRenderer, IID_PPV_ARGS(&factory)), "factory");
@@ -1487,6 +1493,37 @@ int wmain(int argc, wchar_t** argv)
             repeats,
             glitches,
             gpuMs);
+        // Toggling the statistics overlay during playback must not present
+        // extra frames: each one counted as a repeat, glitch or drop.
+        ComPtr<IQualProp> quality;
+        Check(renderer->QueryInterface(IID_IQualProp, reinterpret_cast<void**>(quality.GetAddressOf())),
+              "toggle quality interface");
+        int droppedBefore = 0, droppedAfter = 0;
+        __int64 repeatsAfter = 0, glitchesAfter = 0;
+        Check(quality->get_FramesDroppedInRenderer(&droppedBefore), "drops before statistics toggles");
+        for (int toggle = 0; toggle < 10; ++toggle)
+        {
+            Check(hostConfig->Flt_SetBool("statsEnable", toggle % 2 == 0), "toggle statistics while playing");
+            const auto until = GetTickCount64() + 80;
+            while (GetTickCount64() < until)
+            {
+                MSG msg;
+                while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+                Sleep(5);
+            }
+        }
+        Check(hostConfig->Flt_SetBool("statsEnable", false), "statistics off after toggles");
+        Check(quality->get_FramesDroppedInRenderer(&droppedAfter), "drops after statistics toggles");
+        Check(hostConfig->Flt_GetInt64("placeboStatsRepeats", &repeatsAfter), "repeats after statistics toggles");
+        Check(hostConfig->Flt_GetInt64("placeboStatsGlitches", &glitchesAfter), "glitches after statistics toggles");
+        printf("MEASURE 10 statistics toggles while playing: repeats +%lld glitches +%lld drops +%d\n",
+               repeatsAfter - repeats,
+               glitchesAfter - glitches,
+               droppedAfter - droppedBefore);
     }
     double renderMs = 0, presentMs = 0;
     Check(hostConfig->Flt_GetDouble("placeboStatsRenderCpuMs", &renderMs), "render CPU measurement");
@@ -1744,7 +1781,15 @@ int wmain(int argc, wchar_t** argv)
         if (status.rendered < beforeFrames + 5 || FAILED(status.lastResult) ||
             (hardware ? status.hardwareFrames < beforeHardware + 5 : status.hardwareFrames != beforeHardware))
         {
-            printf("FAIL reconnect did not use requested CPU/GPU path\n");
+            printf("FAIL reconnect did not use requested CPU/GPU path (phase %d, %s: frames %llu -> %llu, "
+                   "hardware frames %llu -> %llu, last result %08lX)\n",
+                   phase,
+                   hardware ? "GPU" : "CPU",
+                   static_cast<unsigned long long>(beforeFrames),
+                   static_cast<unsigned long long>(status.rendered),
+                   static_cast<unsigned long long>(beforeHardware),
+                   static_cast<unsigned long long>(status.hardwareFrames),
+                   static_cast<unsigned long>(status.lastResult));
             return 16;
         }
         Check(config->ReadPixels(64, 64, gray.data(), gray.size()), "reconnected image pixels");

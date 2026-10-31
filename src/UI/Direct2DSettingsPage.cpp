@@ -26,10 +26,11 @@ HRESULT Direct2DSettingsPage::OnActivate()
 {
     if (!config)
         return E_UNEXPECTED;
-    const auto profiles = EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings());
-    if (FAILED(profiles))
-        return profiles;
     auto hr = config->GetSettings(&draft);
+    if (FAILED(hr))
+        return hr;
+    hr =
+        PrepareDisplaySettings(draft, DisplayProfiles::Connected(), MonitorFromWindow(m_Dlg, MONITOR_DEFAULTTONEAREST));
     if (FAILED(hr))
         return hr;
     LiveSettings::Attach(m_Dlg, config, [this] { return OnApplyChanges(); });
@@ -56,7 +57,10 @@ HRESULT Direct2DSettingsPage::OnActivate()
         true);
     // Let OLE complete its own page/tab measurement before changing its frame.
     if (view)
+    {
+        frame.BeginOpening(m_Dlg);
         PostMessageW(m_Dlg, WM_APP + 304, 0, 0);
+    }
     return view ? S_OK : E_FAIL;
 }
 
@@ -106,6 +110,7 @@ INT_PTR Direct2DSettingsPage::OnReceiveMessage(HWND h, UINT msg, WPARAM w, LPARA
     if (msg == WM_APP + 304)
     {
         frame.Attach(m_Dlg, preferredSize);
+        frame.FinishOpening();
         return TRUE;
     }
     if (msg == WM_WINDOWPOSCHANGED || msg == WM_SHOWWINDOW)

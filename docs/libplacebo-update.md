@@ -13,7 +13,14 @@ Our renderer-side screenshot correction is retained.
 - `src/deps/libplacebo-python.lock.json` pins the Meson/glad code-generation tools.
 - `python src/Tools/fetch_dependencies.py` restores the runtime dependencies and builds
   libplacebo locally through `src/Tools/build_libplacebo.py`. A verified cache avoids
-  rebuilding unchanged inputs. No upstream source patch is applied.
+  rebuilding unchanged inputs. The patches in `src/deps/patches/libplacebo` are applied
+  to the verified source in name order and must match it exactly; they are part of
+  the build cache key and are shipped under `licenses/dependencies/libplacebo/patches`.
+- `0001-d3d11-dense-uav-slots.patch` numbers D3D11 UAV slots densely. Upstream reused
+  the shader binding index, so a compute pass with many inputs (deinterlacing NV12
+  with LUTs, at native size) put its output at UAV 8 and failed on feature level
+  11_0 devices, which decoders may supply. Check on every update whether upstream
+  has fixed this, and remove the patch when it has.
 - The matching API-387 headers, DLL and MSVC import definition are used together.
   Packaged `libplacebo-387.dll` retains the user-facing name `VideoProcessing.dll`.
 - Frame-mixing timestamps use the upstream double-precision representation.

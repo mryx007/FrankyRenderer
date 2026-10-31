@@ -14,10 +14,13 @@
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
+#include "Renderer/DisplayModes.h"
 #include <atomic>
+#include <map>
 #include <mutex>
 
 class Renderer;
+struct ModePause;
 
 class DecoderPin final : public CRendererInputPin,
                          public ID3D11DecoderConfiguration,
@@ -94,6 +97,13 @@ class VideoControl final : public CBaseControlVideo
     STDMETHODIMP GetPreferredAspectRatio(long*, long*) override;
 };
 
+// HDR metadata read from the local file for one sample (see Renderer::fileMetadata).
+struct FileMetadata
+{
+    std::vector<BYTE> dovi, hdr10Plus;
+    StaticHdr container;
+};
+
 class Renderer final : public CBaseVideoRenderer,
                        public IAMFilterMiscFlags,
                        public ISpecifyPropertyPages,
@@ -126,6 +136,19 @@ class Renderer final : public CBaseVideoRenderer,
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;
+    // The paused sample already presented as preview. Run renders that same
+    // held sample again; skip it so each picture is presented and counted once.
+    std::mutex previewLock;
+    IMediaSample* previewed = nullptr;
+    // HDR metadata read from the local file for samples whose decoder attached
+    // none (Dolby Vision Profile 5/8, HDR10+, static HDR10), keyed by sample
+    // start until DoRenderSample applies it.
+    std::mutex fileMetadataLock;
+    std::map<REFERENCE_TIME, FileMetadata> fileMetadata;
+    bool LookupFileMetadata(IMediaSample*, bool hdr, FileMetadata&);
+    void ClearFileMetadata();
+    void SetPreviewed(IMediaSample*);
+    bool TakePreviewed(IMediaSample*);
     QueuedVideoFrame pending, previous;
     std::atomic<bool> deinterlacingActive = false;
     bool buffering = false, smoothBuffering = false;
@@ -150,6 +173,30 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<HMONITOR> profileMonitor = nullptr;
     HRESULT UpdateDisplayProfile(bool refresh = false);
 
+    // Display mode switching in fullscreen. The window thread owns the switcher;
+    // other threads publish the active profile's list and request a check.
+    struct ModeConfig
+    {
+        bool enabled = false;
+        std::vector<DisplayModes::Mode> modes;
+        float delay = 0;
+    };
+
+    std::mutex modeLock;
+    ModeConfig modeConfig;
+    std::shared_ptr<ModePause> modePause; // guarded by modeLock
+    DisplayModes::Switcher modeSwitcher;
+    RECT modeWindow = {}; // fullscreen window rectangle when the mode was switched
+    std::atomic<uint64_t> modeHoldUntil = 0;
+    // The source's frame duration. frameDuration follows the presented samples,
+    // which Smooth Motion delivers at the display rate.
+    std::atomic<REFERENCE_TIME> contentDuration = 0;
+    void PublishDisplayModes();
+    void RequestModeCheck(UINT delay = 250);
+    void CheckDisplayMode();
+    void PausePlayback(DWORD milliseconds);
+    bool ExternalStateChange();
+
   public:
     Renderer(IUnknown*, HRESULT*);
     ~Renderer();
@@ -172,7 +219,13 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT CompleteConnect(IPin*) override;
     HRESULT BreakConnect() override;
     HRESULT EndFlush() override;
-    void Repaint();
+    // The source names the trigger in the opt-in diagnostic log.
+    void Repaint(const char* source = "other");
+    uint64_t traceDrops = 0, traceRepeats = 0, traceGlitches = 0;
+    // Tick of the last scheduled frame presented while running. A repaint
+    // during active playback is left to the next scheduled frame.
+    std::atomic<uint64_t> lastTimedPresent = 0;
+    HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
     STDMETHODIMP Stop() override;
@@ -190,6 +243,7 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Flt_GetInt(LPCSTR, int*) override;
     STDMETHODIMP Flt_GetInt64(LPCSTR, __int64*) override;
     STDMETHODIMP Flt_GetDouble(LPCSTR, double*) override;
+    STDMETHODIMP Flt_GetBin(LPCSTR, LPVOID*, unsigned*) override;
     STDMETHODIMP Flt_SetBool(LPCSTR, bool) override;
     STDMETHODIMP Flt_SetInt(LPCSTR, int) override;
 };

@@ -392,6 +392,14 @@ int wmain(int argc, wchar_t** argv)
         HWND view = FindWindowExW(dialog, nullptr, L"FrankyDirect2DSettingsHost", nullptr);
         if (!view)
             return 4;
+        SendMessageW(dialog, WM_APP + 302, 0, 0);
+        Check(page->Apply(), "apply settings before playback");
+        if (!DisplayProfiles::ValidId(mock->settings.displayProfile))
+        {
+            puts("FAIL pre-playback page applies unassigned settings");
+            return 24;
+        }
+        puts("PASS pre-playback settings page applies a display profile");
         // Closing an uncommitted host must restore the captured opening state.
         auto changed = mock->settings;
         changed.brightness = .125f;

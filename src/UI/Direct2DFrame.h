@@ -14,6 +14,7 @@
 class Direct2DFrame
 {
     HWND host = nullptr, page = nullptr, tab = nullptr;
+    HWND opening = nullptr;
     HBRUSH background = CreateSolidBrush(RGB(15, 16, 18));
     std::wstring originalTitle;
     LONG_PTR originalExStyle = 0, originalStyle = 0;
@@ -282,6 +283,45 @@ class Direct2DFrame
     }
 
   public:
+    void BeginOpening(HWND pageWindow)
+    {
+        if (host || opening)
+            return;
+        // The player may show its property sheet before processing our posted
+        // layout message. Keep that construction stage out of composition,
+        // without changing its visibility, activation or OLE measurements.
+        for (HWND candidate = GetParent(pageWindow); candidate; candidate = GetParent(candidate))
+        {
+            HWND tabs = FindWindowExW(candidate, nullptr, WC_TABCONTROLW, nullptr);
+            if (!tabs || TabCtrl_GetItemCount(tabs) < 1 || !GetDlgItem(candidate, IDOK) ||
+                !GetDlgItem(candidate, IDCANCEL))
+                continue;
+            DWORD cloaked = 0;
+            if (IsWindowVisible(candidate) ||
+                FAILED(DwmGetWindowAttribute(candidate, DWMWA_CLOAKED, &cloaked, sizeof(cloaked))) || cloaked)
+                return;
+            const BOOL cloak = TRUE;
+            if (SUCCEEDED(DwmSetWindowAttribute(candidate, DWMWA_CLOAK, &cloak, sizeof(cloak))))
+                opening = candidate;
+            return;
+        }
+    }
+
+    void FinishOpening()
+    {
+        if (!opening)
+            return;
+        if (IsWindow(opening))
+        {
+            // Complete the first Direct2D paint while the frame is composed
+            // offscreen, then reveal the finished dialog without a timer.
+            RedrawWindow(opening, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+            const BOOL cloak = FALSE;
+            DwmSetWindowAttribute(opening, DWMWA_CLOAK, &cloak, sizeof(cloak));
+        }
+        opening = nullptr;
+    }
+
     void Refresh()
     {
         Layout();
@@ -397,6 +437,7 @@ class Direct2DFrame
 
     void Detach()
     {
+        FinishOpening();
         if (IsWindow(tab))
             RemoveWindowSubclass(tab, TabProc, 305);
         if (IsWindow(closeButton))

@@ -86,24 +86,50 @@ class DoviMetadataParser
         valid.fill(false);
     }
 
+  private:
+    using Rpu = std::unique_ptr<DoviRpuOpaque, decltype(&dovi_rpu_free)>;
+    using Header = std::unique_ptr<const DoviRpuDataHeader, decltype(&dovi_rpu_free_header)>;
+
+    static Rpu Parse(const uint8_t* nal, size_t size)
+    {
+        Rpu rpu(dovi_parse_unspec62_nalu(nal, size), dovi_rpu_free);
+        check(rpu && !dovi_rpu_get_error(rpu.get()), "valid RPU bitstream");
+        return rpu;
+    }
+
+  public:
     // Null means genuine residual processing is required; keep the existing FEL decoder path.
     AVFrame* ParseMel(const uint8_t* nal, size_t size)
     {
-        std::unique_ptr<DoviRpuOpaque, decltype(&dovi_rpu_free)> rpu(dovi_parse_unspec62_nalu(nal, size),
-                                                                     dovi_rpu_free);
-        check(rpu && !dovi_rpu_get_error(rpu.get()), "valid RPU bitstream");
-        std::unique_ptr<const DoviRpuDataHeader, decltype(&dovi_rpu_free_header)> header(dovi_rpu_get_header(rpu.get()),
-                                                                                         dovi_rpu_free_header);
+        auto rpu = Parse(nal, size);
+        Header header(dovi_rpu_get_header(rpu.get()), dovi_rpu_free_header);
         check(header && header->guessed_profile == 7 && header->el_type, "Profile 7 RPU header");
         if (strcmp(header->el_type, "MEL") != 0)
             return nullptr;
+        return Convert(rpu.get(), *header);
+    }
+
+    // Profiles 5 and 8 carry a single layer; their RPU travels in the base-layer stream.
+    AVFrame* ParseSingleLayer(const uint8_t* nal, size_t size)
+    {
+        auto rpu = Parse(nal, size);
+        Header header(dovi_rpu_get_header(rpu.get()), dovi_rpu_free_header);
+        check(header && (header->guessed_profile == 5 || header->guessed_profile == 8) && header->disable_residual_flag,
+              "single-layer Profile 5/8 RPU header");
+        return Convert(rpu.get(), *header);
+    }
+
+  private:
+    AVFrame* Convert(DoviRpuOpaque* rpu, const DoviRpuDataHeader& headerData)
+    {
+        const auto* header = &headerData;
         check(header->coefficient_data_type == 0 && header->coefficient_log2_denom <= 32 &&
                   header->bl_bit_depth_minus8 <= 8 && header->el_bit_depth_minus8 <= 8 &&
                   header->vdr_bit_depth_minus8 <= 8,
-              "supported MEL coefficient representation");
+              "supported RPU coefficient representation");
         size_t bytes = 0;
         std::unique_ptr<AVDOVIMetadata, decltype(&av_free)> metadata(av_dovi_metadata_alloc(&bytes), av_free);
-        check(metadata != nullptr, "MEL metadata allocation");
+        check(metadata != nullptr, "RPU metadata allocation");
         auto h = av_dovi_get_header(metadata.get());
         h->rpu_type = header->rpu_type;
         h->rpu_format = header->rpu_format;
@@ -124,14 +150,14 @@ class DoviMetadataParser
         if (header->use_prev_vdr_rpu_flag)
         {
             check(header->prev_vdr_rpu_id < valid.size() && valid[header->prev_vdr_rpu_id],
-                  "MEL previous mapping available");
+                  "previous RPU mapping available");
             *mapping = mappings[header->prev_vdr_rpu_id];
         }
         else
         {
             std::unique_ptr<const DoviRpuDataMapping, decltype(&dovi_rpu_free_data_mapping)> data(
-                dovi_rpu_get_data_mapping(rpu.get()), dovi_rpu_free_data_mapping);
-            check(data && data->vdr_rpu_id < valid.size(), "MEL mapping id");
+                dovi_rpu_get_data_mapping(rpu), dovi_rpu_free_data_mapping);
+            check(data && data->vdr_rpu_id < valid.size(), "RPU mapping id");
             mapping->vdr_rpu_id = uint8_t(data->vdr_rpu_id);
             mapping->mapping_color_space = uint8_t(data->mapping_color_space);
             mapping->mapping_chroma_format_idc = uint8_t(data->mapping_chroma_format_idc);
@@ -157,10 +183,10 @@ class DoviMetadataParser
             mappings[mapping->vdr_rpu_id] = *mapping;
             valid[mapping->vdr_rpu_id] = true;
         }
-        std::unique_ptr<const DoviVdrDmData, decltype(&dovi_rpu_free_vdr_dm_data)> dm(
-            dovi_rpu_get_vdr_dm_data(rpu.get()), dovi_rpu_free_vdr_dm_data);
+        std::unique_ptr<const DoviVdrDmData, decltype(&dovi_rpu_free_vdr_dm_data)> dm(dovi_rpu_get_vdr_dm_data(rpu),
+                                                                                      dovi_rpu_free_vdr_dm_data);
         check(dm && !dm->compressed && dm->affected_dm_metadata_id == dm->current_dm_metadata_id,
-              "complete uncompressed MEL color metadata");
+              "complete uncompressed RPU color metadata");
         auto color = av_dovi_get_color(metadata.get());
         color->dm_metadata_id = uint8_t(dm->affected_dm_metadata_id);
         color->scene_refresh_flag = uint8_t(dm->scene_refresh_flag);
@@ -217,13 +243,13 @@ class DoviMetadataParser
             block->l1 = {dm->dm_data.level1->min_pq, dm->dm_data.level1->max_pq, dm->dm_data.level1->avg_pq};
         }
         std::unique_ptr<AVFrame, void (*)(AVFrame*)> frame(av_frame_alloc(), [](AVFrame* f) { av_frame_free(&f); });
-        check(frame != nullptr, "MEL metadata carrier");
+        check(frame != nullptr, "RPU metadata carrier");
         auto sd = av_frame_new_side_data(frame.get(), AV_FRAME_DATA_DOVI_METADATA, bytes);
-        check(sd != nullptr, "MEL frame metadata");
+        check(sd != nullptr, "RPU frame metadata");
         memcpy(sd->data, metadata.get(), bytes);
         pl_dovi_metadata mapped = {};
         pl_map_dovi_metadata(&mapped, metadata.get());
-        check(!mapped.nlq_active, "MEL must not require residual processing");
+        check(!mapped.nlq_active, "metadata must not require residual processing");
         return frame.release();
     }
 };

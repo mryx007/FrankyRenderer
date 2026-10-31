@@ -1,19 +1,15 @@
 FrankyRenderer - Windows x64
 
-Use the native package for MPC-BE or the compatibility package for PotPlayer.
-Extract the complete ZIP to a permanent folder and run Install.cmd.
-Close all players before installation or removal. Messages appear in this console.
-Run Uninstall.cmd before moving or deleting the installed folder.
+One native package for PotPlayer and MPC-BE.
+Requires PotPlayer 261030 Beta 64-bit or newer with native FrankyRenderer support,
+or MPC-BE with FrankyRenderer support.
 
-Dolby Vision Profile 7 FEL/MEL processing is integrated and detected automatically.
-No separate DV filter or menu switch is required. Existing splitters and decoders remain in use.
-Remove any old Franky DV Filter entry from your player's preferred-filter list.
-Supported: local progressive UHD P7 with 10-bit P010 or native D3D11 base frames.
-FEL uses a 1920x1080 enhancement layer. Required runtime DLLs stay beside FrankyRenderer.ax.
+Extract to a permanent folder, close all video players and run Install.cmd.
+Select FrankyRenderer in the player's video renderer settings.
+Run Uninstall.cmd before moving or removing the installed folder.
+The original MPC Video Renderer may remain installed.
+Dolby Vision Profile 7 FEL/MEL processing is automatic; no additional filter is required.
 
-MPC-BE: select FrankyRenderer in Video Renderer.
-PotPlayer: select MPC Video Renderer in Video Renderer.
-The original MPC Video Renderer must be uninstalled before installing the PotPlayer package.
-Both Franky packages can coexist in separate permanent folders.
+Tested on Windows 11 x64. Windows 10 x64 is expected to work but is untested.
 
-Tested on Windows 11 x64. Windows 10 x64 is expected to work but has not been tested.
+PotPlayer beta download: https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe
