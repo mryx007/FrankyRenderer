@@ -33,8 +33,17 @@ int main()
         Check(DisplayModes::Parse(L"", modes) && modes.empty(), "empty list");
         Check(DisplayModes::Parse(L"  23 , 24 ,, 60  ", modes) && modes.size() == 3 && !modes[0].height, "rates only");
         Check(DisplayModes::Parse(L"1080P50, 1080p50", modes) && modes.size() == 1, "duplicate removed");
-        for (const auto* bad : {L"2160", L"p24", L"2160p", L"2160p24x", L"100p24", L"2160p10", L"2160p500", L"24Hz",
-                                L"2160i50", L"-24", L"2160p23.976"})
+        for (const auto* bad : {L"2160",
+                                L"p24",
+                                L"2160p",
+                                L"2160p24x",
+                                L"100p24",
+                                L"2160p10",
+                                L"2160p500",
+                                L"24Hz",
+                                L"2160i50",
+                                L"-24",
+                                L"2160p23.976"})
             Check(!DisplayModes::Parse(bad, modes), "malformed entry rejected");
 
         const auto film = 24000. / 1001, pal = 25., ntscVideo = 60000. / 1001;

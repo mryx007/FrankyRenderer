@@ -132,7 +132,8 @@ inline std::vector<Mode> Available(const wchar_t* device)
     }
     std::sort(modes.begin(),
               modes.end(),
-              [](const Mode& a, const Mode& b) { return a.height != b.height ? a.height > b.height : a.code < b.code; });
+              [](const Mode& a, const Mode& b)
+              { return a.height != b.height ? a.height > b.height : a.code < b.code; });
     return modes;
 }
 
@@ -210,7 +211,12 @@ inline void RecoverAbandoned()
         unsigned long pid = 0;
         unsigned long long created = 0;
         wchar_t device[64] = {};
-        if (swscanf_s(name + wcslen(PendingPrefix), L"%8lX.%16llX.%63ls", &pid, &created, device, unsigned(std::size(device))) != 3)
+        if (swscanf_s(name + wcslen(PendingPrefix),
+                      L"%8lX.%16llX.%63ls",
+                      &pid,
+                      &created,
+                      device,
+                      unsigned(std::size(device))) != 3)
             continue;
         HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
         bool alive = !process && GetLastError() == ERROR_ACCESS_DENIED;
@@ -288,7 +294,8 @@ class Switcher
         DEVMODEW current = {};
         current.dmSize = sizeof(current);
         return EnumDisplaySettingsW(display, ENUM_CURRENT_SETTINGS, &current) &&
-               int(current.dmDisplayFrequency) == mode.code && (!mode.height || int(current.dmPelsHeight) == mode.height);
+               int(current.dmDisplayFrequency) == mode.code &&
+               (!mode.height || int(current.dmPelsHeight) == mode.height);
     }
 
     // Changes the display to mode; false if the display offers no such mode.
@@ -310,8 +317,9 @@ class Switcher
                 candidate.dmBitsPerPel != current.dmBitsPerPel)
                 continue;
             // Keep the current width when the display offers it, else the widest.
-            const bool better = !found || candidate.dmPelsWidth == current.dmPelsWidth ||
-                                (chosen.dmPelsWidth != current.dmPelsWidth && candidate.dmPelsWidth > chosen.dmPelsWidth);
+            const bool better =
+                !found || candidate.dmPelsWidth == current.dmPelsWidth ||
+                (chosen.dmPelsWidth != current.dmPelsWidth && candidate.dmPelsWidth > chosen.dmPelsWidth);
             if (better)
             {
                 chosen = candidate;

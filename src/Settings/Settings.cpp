@@ -444,8 +444,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     std::vector<DisplayModes::Mode> modes;
     if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
-        !DisplayModes::Parse(s.displayModes, modes) || !std::isfinite(s.displayModeDelay) ||
-        s.displayModeDelay < 0 || s.displayModeDelay > 10)
+        !DisplayModes::Parse(s.displayModes, modes) || !std::isfinite(s.displayModeDelay) || s.displayModeDelay < 0 ||
+        s.displayModeDelay > 10)
         return E_INVALIDARG;
     if (!ValidHdrTuning(s))
         return E_INVALIDARG;

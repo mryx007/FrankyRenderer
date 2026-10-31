@@ -2146,6 +2146,7 @@ void Renderer::PausePlayback(DWORD milliseconds)
     auto pause = std::make_shared<ModePause>();
     if (!pause->wake)
         return;
+
     struct Work
     {
         std::shared_ptr<ModePause> pause;
@@ -2153,11 +2154,11 @@ void Renderer::PausePlayback(DWORD milliseconds)
         DWORD milliseconds;
         HMODULE module;
     };
+
     HMODULE module = nullptr;
     // Keep this DLL loaded until the thread has returned.
-    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                            reinterpret_cast<LPCWSTR>(&ModeCheckMessage),
-                            &module))
+    if (!GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&ModeCheckMessage), &module))
         return;
     auto* work = new (std::nothrow) Work{pause, graphControl, milliseconds, module};
     if (!work)

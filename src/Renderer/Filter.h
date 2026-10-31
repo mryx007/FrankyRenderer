@@ -172,6 +172,7 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT PrepareWindow();
     std::atomic<HMONITOR> profileMonitor = nullptr;
     HRESULT UpdateDisplayProfile(bool refresh = false);
+
     // Display mode switching in fullscreen. The window thread owns the switcher;
     // other threads publish the active profile's list and request a check.
     struct ModeConfig
@@ -180,6 +181,7 @@ class Renderer final : public CBaseVideoRenderer,
         std::vector<DisplayModes::Mode> modes;
         float delay = 0;
     };
+
     std::mutex modeLock;
     ModeConfig modeConfig;
     std::shared_ptr<ModePause> modePause; // guarded by modeLock

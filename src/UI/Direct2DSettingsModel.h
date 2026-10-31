@@ -332,11 +332,12 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                           L"Display Mode",
                           L"Switches the display to a listed mode matching the video frame rate in fullscreen and "
                           L"restores it when leaving fullscreen or stopping.");
-        mode.controls.push_back(D2DBool(s,
-                                        L"Switch Display Mode in Fullscreen",
-                                        &s.displayModeSwitch,
-                                        L"Uses the listed mode with the lowest refresh rate that is a whole multiple of the "
-                                        L"video frame rate. Applies to this display profile only."));
+        mode.controls.push_back(
+            D2DBool(s,
+                    L"Switch Display Mode in Fullscreen",
+                    &s.displayModeSwitch,
+                    L"Uses the listed mode with the lowest refresh rate that is a whole multiple of the "
+                    L"video frame rate. Applies to this display profile only."));
         D2DControl list;
         list.name = L"Allowed Modes";
         list.kind = ControlKind::Text;
