@@ -39,6 +39,9 @@ def prepare(previous, nightly_sha, output):
     current_notes = git("show", f"{nightly_sha}:docs/nightly-changelog.md").stdout
     previous_notes = git("show", f"{promoted}:docs/nightly-changelog.md").stdout if promoted else ""
     notes = stable_notes(current_notes, previous_notes)
+    notice = ROOT / ".github/release-notices" / f"{version}.md"
+    if notice.is_file():
+        notes = notice.read_text(encoding="utf-8").strip() + "\n\n## Changes\n\n" + notes
     protected = ["README.md", ".github", "docs/automation.md", "docs/nightly-builds.md", "docs/build.md"]
     result = git("merge", "--no-ff", "--no-commit", nightly_sha, check=False)
     conflicts = git("diff", "--name-only", "--diff-filter=U").stdout.splitlines()
@@ -95,7 +98,7 @@ def main():
     if release["draft"]:
         raise ValueError("The Nightly is not published")
     tag = release["tag_name"]
-    if not re.fullmatch(r"nightly-\d{8}-[0-9a-f]{10}", tag):
+    if not re.fullmatch(r"nightly-\d{8}(-\d{4})?-[0-9a-f]{10}", tag):
         raise ValueError("The latest Nightly must have a fixed date/commit tag")
     git("fetch", "--no-tags", "https://github.com/mryx007/FrankyRenderer-Nightly.git",
         f"+refs/tags/{tag}:refs/remotes/nightly/published")

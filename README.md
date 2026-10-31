@@ -124,9 +124,11 @@ Click a preview to open the full-size image. The screenshots show example settin
 Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
 - **MPC-BE:** Use a recent nightly build with native FrankyRenderer support and select **FrankyRenderer** in the video renderer settings.
-- **PotPlayer:** Uninstall the original MPC Video Renderer first, then select **MPC Video Renderer** after installing FrankyRenderer.
+- **PotPlayer:** Use [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) or a newer build with native FrankyRenderer support. Select **FrankyRenderer**, not **MPC Video Renderer**, in the video renderer settings.
 
-Extract the matching ZIP to a permanent folder, close your players and run `Install.cmd`. Uninstall any previous package using the same renderer identity first. If installing both packages, use separate folders.
+**One package for both players.** FrankyRenderer now registers only its own native identity; separate MPC-BE and PotPlayer packages are no longer needed.
+
+**Upgrading from an older version:** Export your settings, close all players and uninstall the old FrankyRenderer package using its `Uninstall.cmd`. Then extract the new ZIP to a permanent folder and run `Install.cmd`.
 
 Keep the installation folder in place. To remove the renderer, run `Uninstall.cmd`.
 
@@ -138,7 +140,7 @@ Keep the installation folder in place. To remove the renderer, run `Uninstall.cm
 - **[Nightly test builds](https://github.com/mryx007/FrankyRenderer-Nightly/releases/latest)** — fixes awaiting user feedback.
 - **[MPC-BE nightly builds](https://github.com/qwerttvv/Player/releases)** — player builds with native FrankyRenderer selection.
 
-FrankyRenderer downloads provide separate MPC-BE and PotPlayer packages.
+The same x64 ZIP supports both MPC-BE and PotPlayer builds with native FrankyRenderer selection.
 
 ## Source code and dependency sources
 
@@ -157,12 +159,11 @@ Requires Windows x64, Visual Studio 2022 or later with C++ tools, a Windows SDK 
 Follow the [build guide](docs/build.md) to prepare dependencies, then run these commands from the repository root in a Visual Studio x64 developer shell:
 
 ```powershell
-.\build.cmd native
-.\build.cmd potplayer
-python src/Tools/package_variants.py --output releases/local-packages
+.\build.cmd
+python src/Tools/package_release.py --output releases/local-packages
 ```
 
-This builds both variants and creates the ZIP packages without installing them. For automated builds and releases, see [GitHub automation](docs/automation.md).
+This builds the shared native renderer and creates one ZIP without installing it. For automated builds and releases, see [GitHub automation](docs/automation.md).
 
 ## Code formatting
 

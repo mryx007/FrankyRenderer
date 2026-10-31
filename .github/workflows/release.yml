@@ -74,4 +74,4 @@ jobs:
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$base"
           git tag "v$version" "$expected"
           git push --atomic origin HEAD:refs/heads/main "refs/tags/v$version"
-          gh release create "v$version" packages/* --verify-tag --title "FrankyRenderer $version" --notes-file promotion/release-notes.md --latest
+          gh release create "v$version" packages/*.zip --verify-tag --title "FrankyRenderer $version" --notes-file promotion/release-notes.md --latest
