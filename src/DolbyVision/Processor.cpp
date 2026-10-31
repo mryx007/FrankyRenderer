@@ -5,6 +5,7 @@
 #include "Runtime.h"
 #include "Transport.h"
 #include "EnhancementReader.h"
+#include "BlurayPlaylist.h"
 #include "BaseLayerMetadataReader.h"
 #include "../DirectShow/Include/ID3DVideoMemoryConfiguration.h"
 #include "../DirectShow/Include/IMediaSideData.h"
@@ -136,7 +137,7 @@ struct DvProcessor::State
     std::atomic<bool> cancelled{false}, layered{false};
     std::atomic<bool> modeKnown{false};
     std::unique_ptr<DvGpu> gpu;
-    std::unique_ptr<EnhancementReader> reader;
+    std::unique_ptr<TitleEnhancementReader> reader;
     // Per-picture metadata for decoders that deliver pictures without it.
     std::unique_ptr<BaseLayerMetadataReader> rpuReader, hdr10PlusReader;
     bool rpuFailed = false, hdr10PlusFailed = false;
@@ -170,11 +171,14 @@ struct DvProcessor::State
                 source = {};
                 container = {};
             }
-            if (!path.empty() && GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+            // A Blu-ray playlist plays its clips; inspect the first one.
+            const auto clips = ReadBlurayPlaylist(path);
+            const auto& inspected = clips.empty() ? path : clips.front().path;
+            if (!path.empty() && GetFileAttributesW(inspected.c_str()) != INVALID_FILE_ATTRIBUTES)
             {
-                int count = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                int count = WideCharToMultiByte(CP_UTF8, 0, inspected.c_str(), -1, nullptr, 0, nullptr, nullptr);
                 std::string utf8(count, '\0');
-                WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), count, nullptr, nullptr);
+                WideCharToMultiByte(CP_UTF8, 0, inspected.c_str(), -1, utf8.data(), count, nullptr, nullptr);
                 AVFormatContext* context = nullptr;
                 // This is passive DV-container inspection, not another source
                 // filter. In particular, never execute AviSynth/VapourSynth or
@@ -216,6 +220,13 @@ struct DvProcessor::State
                     source.hdr10Base = record->dv_profile == 7 || record->dv_bl_signal_compatibility_id == 1;
                     profile7 |= record->dv_profile == 7 && record->el_present_flag && record->rpu_present_flag;
                 }
+                if (!profile7 && BlurayLayers(context).second >= 0)
+                {
+                    source.present = true;
+                    source.profile = 7;
+                    source.hdr10Base = true;
+                    profile7 = true;
+                }
             }
             if (path.empty())
             {
@@ -253,13 +264,9 @@ struct DvProcessor::State
     {
         if (reader)
             return;
-        const auto& path = filename;
-        check(layered && !path.empty(), "local Profile 7 filename required");
-        int size = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
-        std::string utf8(size, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), size, nullptr, nullptr);
+        check(layered && !filename.empty(), "local Profile 7 filename required");
         gpu = std::make_unique<DvGpu>(decoderDevice ? decoderDevice.Get() : fallback);
-        reader = std::make_unique<EnhancementReader>(utf8.c_str(), gpu->d3d->device, &cancelled);
+        reader = std::make_unique<TitleEnhancementReader>(filename, gpu->d3d->device, &cancelled);
         LogDv("opened enhancement only; existing base decoder retained");
     }
 
