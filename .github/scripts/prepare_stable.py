@@ -19,9 +19,10 @@ def api(path):
 
 
 def stable_notes(current, previous=""):
-    old = {line.strip() for line in previous.splitlines() if line.strip().startswith("- ")}
+    # An image attached after <br> may change without making the entry new.
+    old = {line.split("<br>")[0].strip() for line in previous.splitlines() if line.strip().startswith("- ")}
     entries = dict.fromkeys(line.strip() for line in current.splitlines()
-                            if line.strip().startswith("- ") and line.strip() not in old)
+                            if line.strip().startswith("- ") and line.split("<br>")[0].strip() not in old)
     if not entries:
         raise ValueError("No new changelog entries since the last stable release")
     return "\n".join(entries)

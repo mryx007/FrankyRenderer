@@ -11,9 +11,14 @@ def entries(text):
                              if line.strip().startswith("- ")))
 
 
+def key(entry):
+    # An image attached after <br> may change without making the entry new.
+    return entry.split("<br>")[0].strip()
+
+
 def new_entries(current, previous):
-    old = set(entries(previous))
-    return "\n".join(line for line in entries(current) if line not in old)
+    old = {key(line) for line in entries(previous)}
+    return "\n".join(line for line in entries(current) if key(line) not in old)
 
 
 def main():
