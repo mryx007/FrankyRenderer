@@ -778,8 +778,14 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
         pl_color_repr repr = {};
         pl_map_avdovi_metadata(&info.color, &repr, &info.dovi, reinterpret_cast<const AVDOVIMetadata*>(sd->data));
         const bool residual = info.dovi.nlq_active;
-        const auto header = av_dovi_get_header(reinterpret_cast<const AVDOVIMetadata*>(sd->data));
-        s.source.layer = header->disable_residual_flag ? DolbyVisionSource::Layer::MEL : DolbyVisionSource::Layer::FEL;
+        // Report the layer from the actual residual, not disable_residual_flag:
+        // some discs flag FEL but carry a trivial NLQ throughout, which is MEL
+        // in effect. Once a picture adds a residual the stream stays FEL, so
+        // single pictures without one do not flip the status.
+        if (residual)
+            s.source.layer = DolbyVisionSource::Layer::FEL;
+        else if (s.source.layer != DolbyVisionSource::Layer::FEL)
+            s.source.layer = DolbyVisionSource::Layer::MEL;
         check(!residual || (el->width > 0 && el->height > 0), "decoded enhancement dimensions");
         info.width[1] = residual ? el->width : 0;
         info.height[1] = residual ? el->height : 0;

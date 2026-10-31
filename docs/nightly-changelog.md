@@ -20,3 +20,4 @@
 - Fixed Dolby Vision Profile 7 on UHD Blu-ray: the enhancement layer is now used when playing a BDMV `.m2ts` clip or `.mpls` playlist, which carry no Dolby Vision descriptor ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
 - Smaller download (about 12 MB instead of 20 MB): FFmpeg is now built with only what Dolby Vision processing needs (HEVC decoding and MKV/MP4/TS reading).
 - Updated FFmpeg to the latest LAV-maintained version (30 October 2026), including newer HEVC decoding and Dolby Vision RPU parsing.
+- Fixed the Dolby Vision status for Profile 7 discs that are flagged as FEL but add no residual: they are now shown as MEL processing instead of "FEL not processed" ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
