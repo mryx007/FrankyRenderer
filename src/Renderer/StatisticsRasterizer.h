@@ -39,59 +39,139 @@ class StatisticsRasterizer
     uint64_t generation = 0;
     bool stopping = false;
 
-    static std::optional<Image> Draw(const Request& request)
+    // The box never shrinks while the view size stays the same, so changing
+    // numbers do not make it jitter. Worker thread only.
+    int keptWidth = 0, keptHeight = 0, keptViewWidth = 0, keptViewHeight = 0;
+    uint64_t keptGeneration = 0;
+
+    // Statistics text markup: a line "\x01Title" is a section heading, a line
+    // "label\tvalue" is a row with aligned columns, and "\x02g", "\x02y" or
+    // "\x02r" at the start of a value colours it green, yellow or red.
+    struct Line
     {
-        const auto& text = request.text;
-        const int viewWidth = request.width, viewHeight = request.height;
-        if (viewWidth <= 16 || viewHeight <= 0)
-            return {};
-        const int lines = 1 + static_cast<int>(std::count(text.begin(), text.end(), L'\n'));
-        int fontHeight = std::clamp(viewHeight / 45, 10, 24);
-        while (fontHeight > 10 && lines * (fontHeight + std::max(4, fontHeight / 3)) > viewHeight - 16)
-            --fontHeight;
-        const int lineHeight = fontHeight + std::max(4, fontHeight / 3),
-                  h = std::min(viewHeight, lines * lineHeight + 16);
-        HDC dc = CreateCompatibleDC(nullptr);
-        if (!dc)
-            return {};
-        HFONT font = CreateFontW(-fontHeight,
-                                 0,
-                                 0,
-                                 0,
-                                 FW_NORMAL,
-                                 FALSE,
-                                 FALSE,
-                                 FALSE,
-                                 DEFAULT_CHARSET,
-                                 OUT_DEFAULT_PRECIS,
-                                 CLIP_DEFAULT_PRECIS,
-                                 ANTIALIASED_QUALITY,
-                                 DEFAULT_PITCH,
-                                 L"Segoe UI");
-        if (!font)
+        enum class Kind
         {
-            DeleteDC(dc);
-            return {};
-        }
-        auto oldFont = SelectObject(dc, font);
-        int textWidth = 0;
-        for (size_t at = 0; at < text.size();)
+            Text,
+            Heading,
+            Row
+        } kind = Kind::Text;
+        std::wstring label, value;
+        COLORREF color = RGB(255, 255, 255);
+    };
+
+    static std::vector<Line> Parse(const std::wstring& text)
+    {
+        std::vector<Line> lines;
+        size_t at = 0;
+        while (at < text.size())
         {
             auto end = text.find(L'\n', at);
             if (end == std::wstring::npos)
                 end = text.size();
-            SIZE extent = {};
-            if (!GetTextExtentPoint32W(dc, text.data() + at, static_cast<int>(end - at), &extent))
-            {
-                SelectObject(dc, oldFont);
-                DeleteObject(font);
-                DeleteDC(dc);
-                return {};
-            }
-            textWidth = std::max(textWidth, static_cast<int>(extent.cx));
+            std::wstring raw = text.substr(at, end - at);
             at = end + 1;
+            Line line;
+            if (!raw.empty() && raw[0] == L'\x01')
+            {
+                line.kind = Line::Kind::Heading;
+                line.value = raw.substr(1);
+            }
+            else if (const auto tab = raw.find(L'\t'); tab != std::wstring::npos)
+            {
+                line.kind = Line::Kind::Row;
+                line.label = raw.substr(0, tab);
+                line.value = raw.substr(tab + 1);
+            }
+            else
+                line.value = raw;
+            if (line.value.size() >= 2 && line.value[0] == L'\x02')
+            {
+                const wchar_t code = line.value[1];
+                line.color = code == L'g'   ? RGB(110, 220, 120)
+                             : code == L'y' ? RGB(245, 200, 80)
+                             : code == L'r' ? RGB(245, 95, 85)
+                                            : line.color;
+                line.value.erase(0, 2);
+            }
+            lines.push_back(std::move(line));
         }
-        const int w = std::min(viewWidth - 16, textWidth + 16);
+        return lines;
+    }
+
+    static std::optional<Image> Draw(const Request& request, int minWidth, int minHeight)
+    {
+        const int viewWidth = request.width, viewHeight = request.height;
+        if (viewWidth <= 16 || viewHeight <= 0)
+            return {};
+        const auto lines = Parse(request.text);
+        int gaps = 0;
+        for (size_t i = 1; i < lines.size(); ++i)
+            gaps += lines[i].kind == Line::Kind::Heading;
+        // Sections are separated by half a line.
+        const auto contentHeight = [&](int lineHeight)
+        { return int(lines.size()) * lineHeight + gaps * lineHeight / 2 + 16; };
+        int fontHeight = std::clamp(viewHeight / 45, 10, 24);
+        while (fontHeight > 10 && contentHeight(fontHeight + std::max(4, fontHeight / 3)) > viewHeight)
+            --fontHeight;
+        const int lineHeight = fontHeight + std::max(4, fontHeight / 3),
+                  h = std::min(viewHeight, std::max(minHeight, contentHeight(lineHeight)));
+        HDC dc = CreateCompatibleDC(nullptr);
+        if (!dc)
+            return {};
+        const auto makeFont = [&](int weight)
+        {
+            return CreateFontW(-fontHeight,
+                               0,
+                               0,
+                               0,
+                               weight,
+                               FALSE,
+                               FALSE,
+                               FALSE,
+                               DEFAULT_CHARSET,
+                               OUT_DEFAULT_PRECIS,
+                               CLIP_DEFAULT_PRECIS,
+                               ANTIALIASED_QUALITY,
+                               DEFAULT_PITCH,
+                               L"Segoe UI");
+        };
+        HFONT font = makeFont(FW_NORMAL), bold = makeFont(FW_SEMIBOLD);
+        if (!font || !bold)
+        {
+            if (font)
+                DeleteObject(font);
+            if (bold)
+                DeleteObject(bold);
+            DeleteDC(dc);
+            return {};
+        }
+        auto oldFont = SelectObject(dc, font);
+        const auto release = [&]
+        {
+            SelectObject(dc, oldFont);
+            DeleteObject(font);
+            DeleteObject(bold);
+            DeleteDC(dc);
+        };
+        const auto extent = [&](const std::wstring& value)
+        {
+            SIZE size = {};
+            GetTextExtentPoint32W(dc, value.data(), int(value.size()), &size);
+            return int(size.cx);
+        };
+        int labelWidth = 0, textWidth = 0;
+        for (const auto& line : lines)
+            if (line.kind == Line::Kind::Row)
+                labelWidth = std::max(labelWidth, extent(line.label));
+        const int valueX = labelWidth + fontHeight;
+        for (const auto& line : lines)
+        {
+            if (line.kind == Line::Kind::Heading)
+                SelectObject(dc, bold);
+            textWidth = std::max(textWidth, (line.kind == Line::Kind::Row ? valueX : 0) + extent(line.value));
+            SelectObject(dc, font);
+        }
+        const int w = std::min(viewWidth - 16, std::max(minWidth, textWidth + 24));
         Image image;
         image.width = w;
         image.height = h;
@@ -103,9 +183,7 @@ class StatisticsRasterizer
         }
         catch (...)
         {
-            SelectObject(dc, oldFont);
-            DeleteObject(font);
-            DeleteDC(dc);
+            release();
             throw;
         }
         BITMAPINFO info = {};
@@ -119,40 +197,56 @@ class StatisticsRasterizer
         HBITMAP bitmap = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &data, nullptr, 0);
         if (!bitmap)
         {
-            SelectObject(dc, oldFont);
-            DeleteObject(font);
-            DeleteDC(dc);
+            release();
             return {};
         }
         auto oldBitmap = SelectObject(dc, bitmap);
         memset(data, 0, image.pixels.size());
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, RGB(255, 255, 255));
-        size_t pos = 0;
+        const int x = 12;
         int y = 8;
-        while (pos < text.size() && y < h)
+        for (size_t i = 0; i < lines.size() && y < h; ++i)
         {
-            auto end = text.find(L'\n', pos);
-            if (end == std::wstring::npos)
-                end = text.size();
-            TextOutW(dc, 8, y, text.data() + pos, static_cast<int>(end - pos));
+            const auto& line = lines[i];
+            if (line.kind == Line::Kind::Heading)
+            {
+                if (i > 0)
+                    y += lineHeight / 2;
+                SelectObject(dc, bold);
+                SetTextColor(dc, RGB(130, 185, 255));
+                TextOutW(dc, x, y, line.value.data(), int(line.value.size()));
+                SelectObject(dc, font);
+            }
+            else
+            {
+                int valueAt = x;
+                if (line.kind == Line::Kind::Row)
+                {
+                    SetTextColor(dc, RGB(165, 170, 180));
+                    TextOutW(dc, x, y, line.label.data(), int(line.label.size()));
+                    valueAt = x + valueX;
+                }
+                SetTextColor(dc, line.color);
+                TextOutW(dc, valueAt, y, line.value.data(), int(line.value.size()));
+            }
             y += lineHeight;
-            pos = end + 1;
         }
         GdiFlush();
+        // Text was drawn on black, so the brightest channel is the glyph
+        // coverage. Composite onto the translucent background, straight alpha;
+        // GDI stores BGR, the overlay texture RGB.
         const auto bytes = static_cast<const unsigned char*>(data);
         for (size_t i = 0; i < image.pixels.size(); i += 4)
         {
             const unsigned coverage = std::max({bytes[i], bytes[i + 1], bytes[i + 2]});
-            const unsigned alpha = 150 + coverage * 105 / 255, color = coverage * 255 / alpha;
-            image.pixels[i] = image.pixels[i + 1] = image.pixels[i + 2] = static_cast<unsigned char>(color);
+            const unsigned alpha = 150 + coverage * 105 / 255;
+            for (int c = 0; c < 3; ++c)
+                image.pixels[i + c] = static_cast<unsigned char>(bytes[i + 2 - c] * 255 / alpha);
             image.pixels[i + 3] = static_cast<unsigned char>(alpha);
         }
-        SelectObject(dc, oldFont);
         SelectObject(dc, oldBitmap);
-        DeleteObject(font);
         DeleteObject(bitmap);
-        DeleteDC(dc);
+        release();
         return image;
     }
 
@@ -169,13 +263,23 @@ class StatisticsRasterizer
                 request = std::move(pending);
                 pending.reset();
             }
+            const bool same = request->generation == keptGeneration && request->width == keptViewWidth &&
+                              request->height == keptViewHeight;
             std::optional<Image> image;
             try
             {
-                image = Draw(*request);
+                image = Draw(*request, same ? keptWidth : 0, same ? keptHeight : 0);
             }
             catch (...)
             { /* Retain the previous overlay on allocation failure. */
+            }
+            if (image)
+            {
+                keptWidth = image->width;
+                keptHeight = image->height;
+                keptViewWidth = request->width;
+                keptViewHeight = request->height;
+                keptGeneration = request->generation;
             }
             {
                 std::lock_guard guard(mutex);
