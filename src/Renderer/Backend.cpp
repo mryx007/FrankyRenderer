@@ -2312,6 +2312,12 @@ HRESULT PlaceboBackend::Present()
         return E_FAIL;
     pl_frame target = {};
     pl_frame_from_swapchain(&target, &frame);
+    // A 16-bit float swapchain is scRGB (linear, 1.0 = 80 nits), and libplacebo
+    // writes SDR white at 203 nits. With Windows HDR off the desktop shows 1.0
+    // as the display's white and clips above it, so write linear SDR with white
+    // at 1.0 there.
+    if (target.color.transfer == PL_COLOR_TRC_SCRGB && !s.HdrActive())
+        target.color.transfer = PL_COLOR_TRC_LINEAR;
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
