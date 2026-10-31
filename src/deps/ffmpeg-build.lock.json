@@ -1,0 +1,12 @@
+[
+  {
+    "package": "mingw-w64-ucrt-x86_64-make",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-make-4.4.1-5-any.pkg.tar.zst",
+    "sha256": "871f760657a360279f29b945a7fd7d9655fe46a3e1e06dd783c9e74514aa0b27"
+  },
+  {
+    "package": "mingw-w64-ucrt-x86_64-nasm",
+    "url": "https://mirror.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-nasm-2.16.03-1-any.pkg.tar.zst",
+    "sha256": "1b5c6875b4982b7a6fc4a3904046adfef5406bc810a9ef5b0afb3057bf1fd2e1"
+  }
+]

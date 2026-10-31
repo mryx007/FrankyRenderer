@@ -6,7 +6,7 @@
 - **libplacebo:** Every Monday, the stable repository compares the pinned version with the latest official release. A new version deliberately marks the check as failed, with a link in the run summary. GitHub Actions notifications must be enabled in your account to receive these alerts. No dependency is updated automatically.
 - **Bug reports:** The bug-report form collects the player, renderer version and reproduction steps. Blank issues remain available.
 
-Builds use Windows Server 2022 and Python 3.14. Existing checksum locks remain authoritative. FFmpeg headers come from the pinned upstream commit; the four pinned DLLs are extracted from the official MPC-HC 2.8.4 archive after checking both archive and file hashes. Nothing is installed or registered on a user's computer by these workflows.
+Builds use Windows Server 2022 and Python 3.14. Existing checksum locks remain authoritative. FFmpeg is built from the pinned upstream commit with only the components DV processing needs, using hash-verified compiler packages; the result is cached between runs. Nothing is installed or registered on a user's computer by these workflows.
 
 Failed builds leave the published release untouched. Successful packages are also retained as workflow artifacts for seven days. Public release ZIPs do not expire with those artifacts.
 

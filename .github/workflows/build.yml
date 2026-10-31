@@ -51,13 +51,14 @@ jobs:
           path: |
             src/deps/packages
             src/build/libplacebo-runtime
-          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/deps/patches/libplacebo/*.patch', 'src/Tools/build_libplacebo.py', 'src/Tools/fetch_dependencies.py') }}
+            src/build/ffmpeg-runtime
+          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/deps/patches/libplacebo/*.patch', 'src/Tools/build_libplacebo.py', 'src/Tools/build_ffmpeg.py', 'src/Tools/fetch_dependencies.py') }}
       - name: Restore verified dependencies
         run: |
           python src/Tools/fetch_dependencies.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python src/Tools/prepare_sdk.py
-      - name: Prepare pinned FFmpeg inputs
+      - name: Build pinned FFmpeg inputs
         shell: cmd
         run: |
           call src\Tools\vsenv.cmd

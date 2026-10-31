@@ -18,3 +18,4 @@
 - HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
 - New: display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).
 - Fixed Dolby Vision Profile 7 on UHD Blu-ray: the enhancement layer is now used when playing a BDMV `.m2ts` clip or `.mpls` playlist, which carry no Dolby Vision descriptor ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
+- Smaller download (about 12 MB instead of 20 MB): FFmpeg is now built with only what Dolby Vision processing needs (HEVC decoding and MKV/MP4/TS reading).
