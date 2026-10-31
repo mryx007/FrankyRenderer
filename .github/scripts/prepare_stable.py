@@ -43,14 +43,16 @@ def prepare(previous, nightly_sha, output):
     if notice.is_file():
         notes = notice.read_text(encoding="utf-8").strip() + "\n\n## Changes\n\n" + notes
     protected = ["README.md", ".github", "docs/automation.md", "docs/nightly-builds.md", "docs/build.md"]
-    result = git("merge", "--no-ff", "--no-commit", nightly_sha, check=False)
-    conflicts = git("diff", "--name-only", "--diff-filter=U").stdout.splitlines()
-    unexpected = [name for name in conflicts if not any(name == p or name.startswith(p + "/") for p in protected)]
-    if unexpected or (result.returncode and not conflicts):
-        git("merge", "--abort", check=False)
-        raise ValueError("Manual conflict resolution required: " + ", ".join(unexpected or [result.stderr]))
+    # Promote the tested snapshot, not a new combination of divergent renderer trees.
+    # Record Nightly ancestry, then replace the tracked tree before restoring stable docs/CI.
+    git("merge", "--strategy=ours", "--no-ff", "--no-commit", nightly_sha)
+    git("restore", "--source", nightly_sha, "--staged", "--worktree", "--", ".")
     # Preserve stable overview and automation, never replace them with the short Nightly page.
     git("restore", "--source", stable_sha, "--staged", "--worktree", "--", *protected)
+    source_diff = git("diff", "--cached", "--name-only", nightly_sha, "--", "src").stdout.strip()
+    if source_diff:
+        git("merge", "--abort", check=False)
+        raise ValueError("Candidate renderer differs from the tested Nightly: " + source_diff)
     changed = git("diff", "--cached", "--name-only", stable_sha).stdout.splitlines()
     if not any(name.startswith("src/") or name in ("build.cmd", "requirements.txt", "requirements-dev.txt", "LICENSE", "THIRD_PARTY.md") for name in changed):
         git("merge", "--abort", check=False)
