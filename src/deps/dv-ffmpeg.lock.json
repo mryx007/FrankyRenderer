@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/clsid2/FFmpeg",
-  "commit": "29e0b0813d855d55536cd11ae4a8b6de88ee6461",
+  "commit": "f8fa4c8b48296c95cd0f85c99ad76938dee4d91d",
   "use": "Enhancement-layer decoding and local file reading only; no replacement DirectShow decoder",
   "license": "LGPL-2.1-or-later",
   "libraries": [
