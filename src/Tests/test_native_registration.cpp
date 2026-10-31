@@ -64,6 +64,20 @@ int wmain(int argc, wchar_t** argv)
     const std::wstring own = L"{B864E92A-1BDF-4DA1-9004-CBF467DF239A}";
     const std::wstring page = L"{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}";
     const std::wstring alias = L"{71F080AA-8661-4093-B15E-4F6903E77D0A}";
+    using Getter = HRESULT(WINAPI*)(REFCLSID, REFIID, void**);
+    const auto getter = reinterpret_cast<Getter>(GetProcAddress(module, "DllGetClassObject"));
+    Require(getter != nullptr, "class factory export");
+    CLSID ownId{}, aliasId{};
+    Require(SUCCEEDED(CLSIDFromString(own.c_str(), &ownId)) && SUCCEEDED(CLSIDFromString(alias.c_str(), &aliasId)),
+            "renderer IDs");
+    IClassFactory* factory = nullptr;
+    Require(SUCCEEDED(getter(ownId, IID_IClassFactory, reinterpret_cast<void**>(&factory))) && factory,
+            "native renderer factory available");
+    factory->Release();
+    factory = nullptr;
+    Require(getter(aliasId, IID_IClassFactory, reinterpret_cast<void**>(&factory)) == CLASS_E_CLASSNOTAVAILABLE &&
+                !factory,
+            "MPCVR compatibility factory absent");
     const std::wstring original = L"C:\\OriginalMPCVR\\MpcVideoRenderer64.ax";
     const std::wstring category = L"CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\";
     Write(classes, L"CLSID\\" + alias + L"\\InprocServer32", original);

@@ -1,6 +1,7 @@
 #include "Settings/Settings.h"
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
+#include "Renderer/DisplayModes.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -27,12 +28,12 @@ static void Bool(HKEY key, const wchar_t* name, BOOL& value)
         value = !!saved;
 }
 
-static void String(HKEY key, const wchar_t* name, wchar_t (&value)[64])
+template <size_t N> static void String(HKEY key, const wchar_t* name, wchar_t (&value)[N])
 {
     DWORD type = 0, bytes = sizeof(value);
-    wchar_t saved[64] = {};
+    wchar_t saved[N] = {};
     if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_SZ && bytes <= sizeof(saved) && saved[63] == 0)
+        type == REG_SZ && bytes <= sizeof(saved) && saved[N - 1] == 0)
         wcscpy_s(value, saved);
 }
 
@@ -85,6 +86,102 @@ static void LoadScaling(HKEY key, PlaceboSettings& settings)
     }
     if (!ValidScaling(settings.scaling))
         settings.scaling = {};
+}
+
+// Keep every valid part of a stored profile. One out-of-range value, for
+// example after an update narrows a limit, must not reset the whole display.
+static PlaceboSettings Salvage(const PlaceboSettings& loaded)
+{
+    PlaceboSettings result;
+    wcscpy_s(result.displayProfile, loaded.displayProfile);
+    using Copy = void (*)(PlaceboSettings&, const PlaceboSettings&);
+#define GROUP(...) [](PlaceboSettings& d, const PlaceboSettings& s) { __VA_ARGS__; }
+#define FIELD(name) GROUP(d.name = s.name)
+#define COPY_TEXT(name) GROUP(memcpy(d.name, s.name, sizeof(d.name)))
+    const Copy groups[] = {
+        FIELD(tonal),
+        FIELD(userShaders),
+        FIELD(blackBars),
+        FIELD(extras),
+        // Dependent pairs first together, then individually.
+        GROUP(d.kneeMinimum = s.kneeMinimum; d.kneeMaximum = s.kneeMaximum),
+        FIELD(kneeMinimum),
+        FIELD(kneeMaximum),
+        FIELD(kneeAdaptation),
+        FIELD(splineContrast),
+        FIELD(blackCutoff),
+        FIELD(perceptualStrength),
+        FIELD(softclipKnee),
+        FIELD(contrastRecovery),
+        FIELD(contrastSmoothness),
+        FIELD(colorMapping),
+        GROUP(d.sceneLow = s.sceneLow; d.sceneHigh = s.sceneHigh),
+        FIELD(sceneLow),
+        FIELD(sceneHigh),
+        FIELD(saturation),
+        FIELD(contrast),
+        FIELD(brightness),
+        FIELD(gamma),
+        FIELD(sdrNits),
+        FIELD(deband),
+        GROUP(d.hdrMode = s.hdrMode; d.hdrPassthrough = s.hdrPassthrough),
+        FIELD(autoHdr),
+        FIELD(clippingProtection),
+        COPY_TEXT(upscaler),
+        COPY_TEXT(downscaler),
+        FIELD(deinterlacing),
+        FIELD(fieldOverride),
+        FIELD(toneMapping),
+        FIELD(hdrNits),
+        FIELD(antiringing),
+        FIELD(upscalerBlur),
+        FIELD(downscalerBlur),
+        FIELD(debandIterations),
+        FIELD(ditherMethod),
+        FIELD(debandThreshold),
+        FIELD(debandRadius),
+        FIELD(debandGrain),
+        FIELD(ditherTemporal),
+        FIELD(chromaScaler),
+        FIELD(outputFormat),
+        GROUP(memcpy(d.iccPath, s.iccPath, sizeof(d.iccPath)); d.iccEnabled = s.iccEnabled),
+        COPY_TEXT(iccPath),
+        FIELD(iccIntent),
+        GROUP(memcpy(d.lutPath, s.lutPath, sizeof(d.lutPath)); d.lutEnabled = s.lutEnabled),
+        COPY_TEXT(lutPath),
+        FIELD(adaptiveSharpen),
+        FIELD(sharpenStrength),
+        FIELD(smoothMotion),
+        FIELD(outputLevels),
+        FIELD(displayDepth),
+        FIELD(peakDetect),
+        FIELD(peakSmoothing),
+        FIELD(peakPercentile),
+        FIELD(gamutMapping),
+        FIELD(showClipping),
+        FIELD(hue),
+        FIELD(temperature),
+        FIELD(colorAdjustment),
+        FIELD(allowDelayedPeak),
+        FIELD(scaling),
+        FIELD(maximumFramesInFlight),
+        FIELD(rtxSuperResolution),
+        FIELD(imageAnalysis),
+        FIELD(displayModeSwitch),
+        COPY_TEXT(displayModes),
+        FIELD(displayModeDelay),
+    };
+#undef COPY_TEXT
+#undef FIELD
+#undef GROUP
+    for (const auto copy : groups)
+    {
+        auto candidate = result;
+        copy(candidate, loaded);
+        if (SUCCEEDED(ValidateSettings(candidate)))
+            result = candidate;
+    }
+    return result;
 }
 
 PlaceboSettings LoadSettings(const std::wstring& display)
@@ -191,6 +288,9 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"AdaptiveSharpen", settings.adaptiveSharpen);
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
+    Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
+    String(key, L"DisplayModes", settings.displayModes);
+    Float(key, L"DisplayModeDelay", settings.displayModeDelay);
     Float(key, L"SharpenStrength", settings.sharpenStrength);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
     Bool(key, L"PeakDetect", settings.peakDetect);
@@ -314,12 +414,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.lutEnabled = FALSE;
     NormalizeLegacyHdrSettings(settings);
     if (FAILED(ValidateSettings(settings)))
-    {
-        PlaceboSettings defaults;
-        if (!display.empty())
-            wcscpy_s(defaults.displayProfile, display.c_str());
-        return defaults;
-    }
+        return Salvage(settings);
     return settings;
 }
 
@@ -346,6 +441,11 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE))
+        return E_INVALIDARG;
+    std::vector<DisplayModes::Mode> modes;
+    if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
+        !DisplayModes::Parse(s.displayModes, modes) || !std::isfinite(s.displayModeDelay) || s.displayModeDelay < 0 ||
+        s.displayModeDelay > 10)
         return E_INVALIDARG;
     if (!ValidHdrTuning(s))
         return E_INVALIDARG;
@@ -515,6 +615,9 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"AdaptiveSharpen", REG_DWORD, &s.adaptiveSharpen, 4);
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
+    save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
+    save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
+    save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);
     save(L"SharpenStrength", REG_BINARY, &s.sharpenStrength, 4);
     save(L"PeakDetect", REG_DWORD, &s.peakDetect, 4);
     save(L"PeakSmoothing", REG_BINARY, &s.peakSmoothing, 4);
@@ -561,6 +664,27 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"Downscaler", REG_SZ, s.downscaler, static_cast<DWORD>((wcslen(s.downscaler) + 1) * 2));
     RegCloseKey(key);
     return HRESULT_FROM_WIN32(result);
+}
+
+HRESULT PrepareDisplaySettings(PlaceboSettings& settings,
+                               const std::vector<DisplayProfiles::Device>& devices,
+                               HMONITOR preferred)
+{
+    const auto result = EnsureDisplayProfiles(devices, LoadSettings());
+    if (FAILED(result))
+        return result;
+    // A playing renderer already identifies its output. Do not switch that
+    // profile just because its settings dialog is on another screen.
+    if (settings.displayProfile[0])
+        return DisplayProfiles::ValidId(settings.displayProfile) ? S_OK : E_INVALIDARG;
+    const auto selected = std::find_if(
+        devices.begin(), devices.end(), [&](const auto& device) { return preferred && device.monitor == preferred; });
+    if (selected == devices.end())
+        return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+    // Before playback there is no video HWND/profile. Bind the editor to its
+    // own display instead of exposing the legacy, unassigned settings store.
+    settings = LoadSettings(selected->id);
+    return S_OK;
 }
 
 HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& devices, const PlaceboSettings& legacy)

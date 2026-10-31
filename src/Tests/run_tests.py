@@ -18,8 +18,11 @@ TESTS = {
     'display-profiles': 'test_display_profiles', 'direct2d-model': 'test_direct2d_model',
     'direct2d-page': 'test_direct2d_page', 'choice-popup': 'test_choice_popup',
     'settings-ini': 'test_settings_ini', 'rtx-scaling': 'test_rtx_scaling',
-    'registration': 'test_registration',
+    'registration': 'test_registration', 'display-modes': 'test_display_modes',
 }
+# These tests exercise the live-preview session (Cancel restores the opening
+# state), which PLACEBO_RENDERER_TEST_DEFER_APPLY deliberately switches off.
+LIVE_APPLY = {'test_display_profiles', 'test_direct2d_page'}
 FILTER_FLAGS = (
     'flush-race', 'gpu', 'nv12', 'p016', 'srv', 'interlaced', 'bff', 'weave',
     'eos', 'yadif', 'force-bff', 'motion', 'sharpen', 'measure', 'startup',
@@ -59,7 +62,10 @@ def main():
     key = r'Software\PlaceboRendererTest_' + uuid.uuid4().hex
     env = os.environ.copy()
     env['PLACEBO_RENDERER_TEST_ROOT'] = key
-    env['PLACEBO_RENDERER_TEST_DEFER_APPLY'] = '1'
+    if options.test in LIVE_APPLY:
+        env.pop('PLACEBO_RENDERER_TEST_DEFER_APPLY', None)
+    else:
+        env['PLACEBO_RENDERER_TEST_DEFER_APPLY'] = '1'
     try:
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key) as settings:
             winreg.SetValueEx(settings, 'AutoHDR', 0, winreg.REG_DWORD, 0)

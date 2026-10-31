@@ -1236,7 +1236,7 @@ struct PlaceboBackend::State
         return S_OK;
     }
 
-    bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false)
+    bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
         blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
@@ -1316,7 +1316,7 @@ struct PlaceboBackend::State
             target.lut = colors->lut;
             target.lut_type = PL_LUT_NATIVE;
         }
-        if (!IsRectEmpty(&targetRect))
+        if (windowGeometry && !IsRectEmpty(&targetRect))
             target.crop = {static_cast<float>(targetRect.left),
                            static_cast<float>(targetRect.top),
                            static_cast<float>(targetRect.right),
@@ -2346,7 +2346,8 @@ HRESULT PlaceboBackend::Present()
 }
 
 HRESULT
-PlaceboBackend::RenderOffscreen(int width, int height, std::vector<uint8_t>& rgba, bool hdrTarget, int textureDepth)
+PlaceboBackend::RenderOffscreen(
+    int width, int height, std::vector<uint8_t>& rgba, bool hdrTarget, int textureDepth, bool windowGeometry)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
@@ -2389,7 +2390,7 @@ PlaceboBackend::RenderOffscreen(int width, int height, std::vector<uint8_t>& rgb
         target.color = pl_color_space_hdr10;
         target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : 1000;
     }
-    bool ok = s.Render(target, hdrTarget);
+    bool ok = s.Render(target, hdrTarget, false, windowGeometry);
     rgba.resize(static_cast<size_t>(width) * height * format->texel_size);
     pl_tex_transfer_params transfer = {};
     transfer.tex = tex;

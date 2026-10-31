@@ -454,6 +454,44 @@ static bool MapDovi(const BYTE* bytes, size_t count, bool extensions, VideoFrame
     return true;
 }
 
+bool HasDoviSideData(IMediaSample* sample)
+{
+    Microsoft::WRL::ComPtr<IMediaSideData> side;
+    if (!sample || FAILED(sample->QueryInterface(IID_PPV_ARGS(&side))))
+        return false;
+    constexpr GUID legacy = {0x277ee779, 0x13f4, 0x434e, {0xbd, 0xec, 0x3d, 0x6f, 0x8c, 0x0e, 0x15, 0xd2}};
+    const BYTE* data = nullptr;
+    size_t size = 0;
+    return SUCCEEDED(side->GetSideData(IID_MediaSideDataDOVIMetadataV2, &data, &size)) ||
+           SUCCEEDED(side->GetSideData(legacy, &data, &size));
+}
+
+bool ApplyDoviSideData(const std::vector<BYTE>& data, VideoFrame& frame)
+{
+    return MapDovi(data.data(), data.size(), true, frame);
+}
+
+bool HasHdr10PlusSideData(IMediaSample* sample)
+{
+    Microsoft::WRL::ComPtr<IMediaSideData> side;
+    if (!sample || FAILED(sample->QueryInterface(IID_PPV_ARGS(&side))))
+        return false;
+    constexpr GUID legacy = {0x183ed511, 0x8910, 0x4262, {0x88, 0xf6, 0x49, 0x46, 0xbc, 0x79, 0x9c, 0x84}};
+    const BYTE* data = nullptr;
+    size_t size = 0;
+    return SUCCEEDED(side->GetSideData(IID_MediaSideDataHDR10Plus, &data, &size)) ||
+           SUCCEEDED(side->GetSideData(legacy, &data, &size));
+}
+
+bool ApplyHdr10PlusSideData(const std::vector<BYTE>& data, VideoFrame& frame)
+{
+    if (data.size() != sizeof(MediaSideDataHDR10Plus))
+        return false;
+    MediaSideDataHDR10Plus in;
+    std::memcpy(&in, data.data(), sizeof(in));
+    return MapDynamicHdr(in, frame.color.hdr);
+}
+
 HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame)
 {
     // Dynamic data belongs to this sample only, never to the next scene.

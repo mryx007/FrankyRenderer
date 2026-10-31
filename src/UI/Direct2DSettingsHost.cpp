@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <type_traits>
 #include <commdlg.h>
 #include <commctrl.h>
@@ -30,7 +31,8 @@ enum class ControlKind
     SliderInt,
     SliderFloat,
     Choice,
-    Action
+    Action,
+    Text
 };
 
 struct ChoiceItem
@@ -57,6 +59,10 @@ struct D2DControl
     std::function<bool()> enabled;
     std::function<void(HWND)> action;
     std::function<std::wstring()> detail;
+    // Text controls; setText rejects invalid input.
+    std::function<std::wstring()> getText;
+    std::function<bool(const std::wstring&)> setText;
+    std::wstring placeholder, invalidText;
     std::wstring actionLabel;
     bool headerToggle = false;
 
@@ -93,6 +99,12 @@ struct D2DPage
 };
 
 #include "UI/Direct2DSettingsModel.h"
+
+// The native search field inside the drawn sidebar search box.
+static D2D1_RECT_F SearchEditRect()
+{
+    return D2D1::RectF(26, 22, SettingsLayout::SidebarWidth - 48, 43);
+}
 
 static float SliderFraction(const D2DControl& c, float value)
 {
@@ -198,6 +210,11 @@ class Direct2DHostWindow
     std::wstring m_error;
     bool m_pending = false;
     int m_keyboardIndex = -1;
+    float m_editOriginal = 0;
+    bool m_editAdjusted = false;
+    // Popups and file dialogs run nested message loops in which the player
+    // may destroy this window. Callers check this flag before touching members.
+    std::shared_ptr<bool> m_alive = std::make_shared<bool>(true);
 
     float Scale() const
     {
@@ -249,6 +266,8 @@ class Direct2DHostWindow
     ComPtr<IDWriteTextFormat> m_fmtCardSubtitle;
     ComPtr<IDWriteTextFormat> m_fmtLabel;
     ComPtr<IDWriteTextFormat> m_fmtDesc;
+    // Text fields: regular weight, drawn with GDI metrics like their edit control.
+    ComPtr<IDWriteTextFormat> m_fmtTextField;
     ComPtr<IDWriteTextFormat> m_fmtValue;
     ComPtr<IDWriteTextFormat> m_fmtIcon;
 
@@ -284,6 +303,7 @@ class Direct2DHostWindow
 
     ~Direct2DHostWindow()
     {
+        *m_alive = false;
         if (m_editFont)
             DeleteObject(m_editFont);
         if (m_editBrush)
@@ -383,6 +403,14 @@ HRESULT Direct2DHostWindow::InitD2D()
                                        m_fmtDesc.GetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
+                                       DWRITE_FONT_WEIGHT_NORMAL,
+                                       DWRITE_FONT_STYLE_NORMAL,
+                                       DWRITE_FONT_STRETCH_NORMAL,
+                                       11.0f,
+                                       L"en-us",
+                                       m_fmtTextField.GetAddressOf());
+    m_pDWriteFactory->CreateTextFormat(fontName,
+                                       nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
@@ -399,12 +427,14 @@ HRESULT Direct2DHostWindow::InitD2D()
                                        m_fmtIcon.GetAddressOf());
 
     if (!m_fmtTitle || !m_fmtSubtitle || !m_fmtNav || !m_fmtCardTitle || !m_fmtCardSubtitle || !m_fmtLabel ||
-        !m_fmtDesc || !m_fmtValue || !m_fmtIcon)
+        !m_fmtDesc || !m_fmtTextField || !m_fmtValue || !m_fmtIcon)
         return E_FAIL;
     if (m_fmtDesc)
         m_fmtDesc->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
     if (m_fmtValue)
         m_fmtValue->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+    // One line like the single-line edit control.
+    m_fmtTextField->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
     m_fmtIcon->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
     m_fmtIcon->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
@@ -509,7 +539,7 @@ void Direct2DHostWindow::DiscardDeviceResources()
 void Direct2DHostWindow::Render()
 {
     if (!m_fmtTitle || !m_fmtSubtitle || !m_fmtNav || !m_fmtCardTitle || !m_fmtCardSubtitle || !m_fmtLabel ||
-        !m_fmtDesc || !m_fmtValue || !m_fmtIcon)
+        !m_fmtDesc || !m_fmtTextField || !m_fmtValue || !m_fmtIcon)
         return;
     if (FAILED(CreateDeviceResources()))
         return;
@@ -557,12 +587,15 @@ void Direct2DHostWindow::Render()
             m_pRenderTarget->DrawLine(
                 D2D1::Point2F(26.0f, 22.0f), D2D1::Point2F(26.0f, 42.0f), m_brushAccentHover.Get(), 1.5f);
             D2D1_RECT_F hintRect = D2D1::RectF(32, 23, sidebarW - 46, 43);
-            m_pRenderTarget->DrawText(L"Type to filter...", 16, m_fmtNav.Get(), hintRect, m_brushTextDim.Get());
+            constexpr wchar_t hint[] = L"Type to filter...";
+            m_pRenderTarget->DrawText(
+                hint, UINT32(std::size(hint) - 1), m_fmtNav.Get(), hintRect, m_brushTextDim.Get());
         }
         else
         {
+            constexpr wchar_t prompt[] = L"🔍  Filter settings...";
             m_pRenderTarget->DrawText(
-                L"🔍  Filter settings...", 21, m_fmtNav.Get(), searchPromptRect, m_brushTextDim.Get());
+                prompt, UINT32(std::size(prompt) - 1), m_fmtNav.Get(), searchPromptRect, m_brushTextDim.Get());
         }
     }
     else
@@ -789,7 +822,10 @@ void Direct2DHostWindow::Render()
             auto resetText = reset;
             resetText.left += 16;
             resetText.top += 8;
-            m_pRenderTarget->DrawText(L"Reset Page", 10, m_fmtNav.Get(), resetText, m_brushTextMuted.Get());
+            // The shader page shows one shader at a time; reset only that one.
+            const wchar_t* resetLabel = page.name == L"Shaders" ? L"Reset Shader" : L"Reset Page";
+            m_pRenderTarget->DrawText(
+                resetLabel, UINT32(wcslen(resetLabel)), m_fmtNav.Get(), resetText, m_brushTextMuted.Get());
             HitRegion resetHit;
             resetHit.type = HitRegion::ResetBtn;
             resetHit.rect = reset;
@@ -1266,6 +1302,34 @@ void Direct2DHostWindow::Render()
                     m_hitRegions.push_back(hr);
             }
 
+            else if (ctrl.kind == ControlKind::Text)
+            {
+                D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 15, rightEdge, rowY + 43);
+                const D2D1_ROUNDED_RECT rounded = D2D1::RoundedRect(r, 4, 4);
+                m_pRenderTarget->FillRoundedRectangle(rounded, m_brushInputBg.Get());
+                m_pRenderTarget->DrawRoundedRectangle(rounded, m_brushBorderCard.Get(), 1.0f);
+                const auto value = ctrl.getText ? ctrl.getText() : std::wstring();
+                const auto& shown = value.empty() ? ctrl.placeholder : value;
+                auto text = r;
+                text.left += 8;
+                text.right -= 6;
+                text.top += 6;
+                m_pRenderTarget->PushAxisAlignedClip(r, D2D1_ANTIALIAS_MODE_ALIASED);
+                m_pRenderTarget->DrawText(shown.c_str(),
+                                          (UINT32)shown.size(),
+                                          m_fmtTextField.Get(),
+                                          text,
+                                          value.empty() ? m_brushTextMuted.Get() : m_brushTextMain.Get(),
+                                          D2D1_DRAW_TEXT_OPTIONS_CLIP,
+                                          DWRITE_MEASURING_MODE_GDI_CLASSIC);
+                m_pRenderTarget->PopAxisAlignedClip();
+                HitRegion h;
+                h.type = HitRegion::Number;
+                h.rect = r;
+                h.pControl = &ctrl;
+                if (enabled)
+                    m_hitRegions.push_back(h);
+            }
             else if (ctrl.kind == ControlKind::Action)
             {
                 D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 15, rightEdge, rowY + 43);
@@ -1331,6 +1395,7 @@ void Direct2DHostWindow::Render()
     if (hr == D2DERR_RECREATE_TARGET)
     {
         DiscardDeviceResources();
+        InvalidateRect(m_hwnd, nullptr, FALSE);
     }
 }
 
@@ -1338,8 +1403,11 @@ void Direct2DHostWindow::Changed()
 {
     if (FAILED(ValidateSettings(*m_pSettings)))
     {
+        m_error = m_pSettings->iccEnabled && !m_pSettings->iccPath[0] ? L"Select an ICC profile file first."
+                  : m_pSettings->lutEnabled && !m_pSettings->lutPath[0]
+                      ? L"Select a 3D LUT file first."
+                      : L"Value or combination is outside the supported range.";
         *m_pSettings = m_accepted;
-        m_error = L"Value or combination is outside the supported range.";
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
@@ -1420,7 +1488,11 @@ void Direct2DHostWindow::TransferIni(bool importing)
     dialog.lpstrTitle = importing ? L"Import renderer settings" : L"Export renderer settings";
     dialog.Flags =
         OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (importing ? OFN_FILEMUSTEXIST : OFN_OVERWRITEPROMPT);
-    if (!(importing ? GetOpenFileNameW(&dialog) : GetSaveFileNameW(&dialog)))
+    const auto alive = m_alive;
+    const BOOL chosen = importing ? GetOpenFileNameW(&dialog) : GetSaveFileNameW(&dialog);
+    if (!*alive)
+        return;
+    if (!chosen)
     {
         if (CommDlgExtendedError())
             m_error = L"Could not open the INI file dialog.";
@@ -1529,8 +1601,9 @@ void Direct2DHostWindow::SelectDisplayProfile(const D2D1_RECT_F& rect)
     RECT anchor = {
         int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
     MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+    const auto alive = m_alive;
     const int selected = popup.Show(m_hwnd, anchor, Scale());
-    if (selected < 0 || devices[selected].id == m_pSettings->displayProfile)
+    if (!*alive || selected < 0 || devices[selected].id == m_pSettings->displayProfile)
         return;
     AdoptDisplayProfile(devices[selected].id);
 }
@@ -1549,25 +1622,81 @@ void Direct2DHostWindow::AdoptDisplayProfile(const std::wstring& id)
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
+// Parses an edited number; rejects partial input and values outside the control.
+static bool ParseEditNumber(const D2DControl& c, std::wstring number, float& out)
+{
+    std::replace(number.begin(), number.end(), L',', L'.');
+    if (number.empty())
+        return false;
+    wchar_t* end = nullptr;
+    errno = 0;
+    const double v = wcstod(number.c_str(), &end);
+    if (end == number.c_str() || *end || errno == ERANGE || !std::isfinite(v) || v < c.minVal || v > c.maxVal ||
+        (c.kind == ControlKind::SliderInt && std::floor(v) != v))
+        return false;
+    out = float(v);
+    return true;
+}
+
 void Direct2DHostWindow::EndEdit(bool accept)
 {
     if (m_edit)
     {
         HWND edit = m_edit;
+        wchar_t text[256];
+        GetWindowTextW(edit, text, 256);
         if (m_renamingDisplay && accept)
         {
-            wchar_t name[128];
-            GetWindowTextW(edit, name, 128);
-            if (SUCCEEDED(DisplayProfiles::Rename(m_pSettings->displayProfile, name)))
+            if (SUCCEEDED(DisplayProfiles::Rename(m_pSettings->displayProfile, text)))
                 m_devices = DisplayProfiles::All();
             else
                 m_error = L"Enter a display name (1 to 80 characters).";
             InvalidateRect(m_hwnd, nullptr, FALSE);
         }
+        // Clear the edit state first: committing can rebuild the pages.
+        auto control = m_editControl;
         m_edit = nullptr;
         m_editControl = nullptr;
         m_renamingDisplay = false;
         DestroyWindow(edit);
+        if (!control)
+            return;
+        float value = 0;
+        if (control->kind == ControlKind::Text)
+        {
+            if (!accept || (control->getText && control->getText() == text))
+                return;
+            if (!control->setText || !control->setText(text))
+            {
+                m_error = control->invalidText.empty() ? L"Invalid text." : control->invalidText;
+                InvalidateRect(m_hwnd, nullptr, FALSE);
+                return;
+            }
+            Changed();
+        }
+        else if (!accept)
+        {
+            if (m_editAdjusted)
+            {
+                control->set(m_editOriginal);
+                Changed();
+            }
+        }
+        else if (!ParseEditNumber(*control, text, value))
+        {
+            if (m_editAdjusted)
+            {
+                control->set(m_editOriginal);
+                Changed();
+            }
+            m_error = L"Enter a number within the supported range.";
+            InvalidateRect(m_hwnd, nullptr, FALSE);
+        }
+        else if (value != control->Value())
+        {
+            control->set(value);
+            Changed();
+        }
     }
 }
 
@@ -1576,6 +1705,8 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
     EndEdit();
     m_editControl = control;
     m_renamingDisplay = renameDisplay;
+    m_editOriginal = control ? control->Value() : 0;
+    m_editAdjusted = false;
     float scale = Scale();
     wchar_t text[64] = {};
     if (control)
@@ -1593,7 +1724,12 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
                              nullptr,
                              nullptr);
     SendMessageW(m_edit, EM_SETLIMITTEXT, 127, 0);
-    if (renameDisplay)
+    if (control && control->kind == ControlKind::Text)
+    {
+        SendMessageW(m_edit, EM_SETLIMITTEXT, 255, 0);
+        SetWindowTextW(m_edit, control->getText ? control->getText().c_str() : L"");
+    }
+    else if (renameDisplay)
     {
         SendMessageW(m_edit, EM_SETLIMITTEXT, 80, 0);
         for (const auto& device : m_devices)
@@ -1604,7 +1740,9 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
         SetWindowTextW(m_edit, m_searchQuery.c_str());
     if (m_editFont)
         DeleteObject(m_editFont);
-    m_editFont = CreateFontW(-int(14 * scale),
+    const bool textControl = control && control->kind == ControlKind::Text;
+    // Text controls match the 11 DIP regular font they are drawn with.
+    m_editFont = CreateFontW(-int((textControl ? 11 : 14) * scale + .5f),
                              0,
                              0,
                              0,
@@ -1619,6 +1757,8 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
                              0,
                              L"Segoe UI");
     SendMessageW(m_edit, WM_SETFONT, reinterpret_cast<WPARAM>(m_editFont), TRUE);
+    if (textControl)
+        SendMessageW(m_edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
     SetWindowSubclass(m_edit, EditProc, 1, reinterpret_cast<DWORD_PTR>(this));
     SetFocus(m_edit);
     SendMessageW(m_edit, EM_SETSEL, 0, -1);
@@ -1645,23 +1785,8 @@ void Direct2DHostWindow::EditChanged()
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
-    std::wstring number = text;
-    std::replace(number.begin(), number.end(), L',', L'.');
-    if (number.empty() || number == L"-" || number == L"+" || number.back() == L'.')
-        return;
-    wchar_t* end = nullptr;
-    errno = 0;
-    double v = wcstod(number.c_str(), &end);
-    auto c = m_editControl;
-    if (end == number.c_str() || *end || errno == ERANGE || !std::isfinite(v) || v < c->minVal || v > c->maxVal ||
-        (c->kind == ControlKind::SliderInt && std::floor(v) != v))
-    {
-        m_error = L"Enter a number within the supported range.";
-        InvalidateRect(m_hwnd, nullptr, FALSE);
-        return;
-    }
-    c->set(float(v));
-    Changed();
+    // Numbers apply on Enter, Tab or leaving the field; partial input such as
+    // "10" on the way to "1000" must not reach the renderer.
 }
 
 LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR data)
@@ -1669,7 +1794,8 @@ LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM
     auto p = reinterpret_cast<Direct2DHostWindow*>(data);
     if (msg == WM_GETDLGCODE)
         return DLGC_WANTALLKEYS;
-    if (msg == WM_KILLFOCUS && p->m_renamingDisplay)
+    // Leaving the field (for example to the host's OK button) commits it.
+    if (msg == WM_KILLFOCUS && (p->m_renamingDisplay || p->m_editControl))
     {
         p->EndEdit();
         return 0;
@@ -1692,16 +1818,24 @@ LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM
         }
         if (w == VK_RETURN || w == VK_ESCAPE || w == VK_TAB)
         {
-            p->EndEdit();
+            p->EndEdit(w != VK_ESCAPE);
             SetFocus(p->m_hwnd);
             return 0;
         }
-        if (p->m_editControl && (w == VK_UP || w == VK_DOWN))
+        if (p->m_editControl && p->m_editControl->kind != ControlKind::Text && (w == VK_UP || w == VK_DOWN))
         {
+            // Arrow steps preview immediately; Escape still restores the opening value.
             auto c = p->m_editControl;
-            float v = std::clamp(c->Value() + (w == VK_UP ? c->stepVal : -c->stepVal), c->minVal, c->maxVal);
+            wchar_t current[128];
+            GetWindowTextW(h, current, 128);
+            float v = c->Value();
+            ParseEditNumber(*c, current, v);
+            v = std::clamp(v + (w == VK_UP ? c->stepVal : -c->stepVal), c->minVal, c->maxVal);
+            c->set(v);
+            p->m_editAdjusted = true;
+            p->Changed();
             wchar_t text[64];
-            swprintf_s(text, L"%.9g", double(v));
+            swprintf_s(text, L"%.9g", double(c->Value()));
             SetWindowTextW(h, text);
             SendMessageW(h, EM_SETSEL, 0, -1);
             return 0;
@@ -1712,6 +1846,7 @@ LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM
 
 void Direct2DHostWindow::OnLButtonDown(float x, float y)
 {
+    const auto alive = m_alive;
     EndEdit();
     SetFocus(m_hwnd);
     for (const auto& h : m_hitRegions)
@@ -1743,19 +1878,14 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         else if (h.type == HitRegion::SearchBox)
         {
             m_searchFocused = true;
-            auto r = h.rect;
-            r.left += 10;
-            r.top += 6;
-            r.right -= 32;
-            r.bottom -= 5;
-            BeginEdit(nullptr, r);
+            BeginEdit(nullptr, SearchEditRect());
         }
         else if (h.type == HitRegion::SearchClearBtn)
         {
             m_searchQuery.clear();
             m_scrollY = 0;
             m_searchFocused = true;
-            BeginEdit(nullptr, D2D1::RectF(26, 22, 194, 43));
+            BeginEdit(nullptr, SearchEditRect());
         }
         else if (h.type == HitRegion::ShaderItem)
         {
@@ -1764,10 +1894,16 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         }
         else if (h.type == HitRegion::ResetBtn)
         {
+            const bool shaders = m_pages[m_activePage].name == L"Shaders";
             for (auto& card : m_pages[m_activePage].cards)
+            {
+                if (shaders && card.title != ShaderCatalog[m_selectedShader].label)
+                    continue;
                 for (auto& c : card.controls)
-                    if (c.reset)
+                    // The chain order belongs to all shaders, not the selected one.
+                    if (c.reset && !(shaders && c.name == L"Chain Position"))
                         c.reset();
+            }
             Changed();
         }
         else if (h.type == HitRegion::RenameDisplay)
@@ -1789,6 +1925,8 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
         {
             TransferIni(h.type == HitRegion::ImportBtn);
+            if (!*alive)
+                return;
         }
         else if (h.type == HitRegion::ApplyBtn)
         {
@@ -1809,6 +1947,16 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                 c->reset();
                 Changed();
             }
+            else if (h.type == HitRegion::Number && c->kind == ControlKind::Text)
+            {
+                // Edit exactly where the drawn text sits, so it does not jump.
+                auto r = h.rect;
+                r.left += 8;
+                r.right -= 6;
+                r.top += 6;
+                r.bottom -= 5;
+                BeginEdit(c, r);
+            }
             else if (h.type == HitRegion::Number)
             {
                 BeginEdit(c, h.rect);
@@ -1824,6 +1972,8 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
             {
                 if (c->action)
                     c->action(m_hwnd);
+                if (!*alive)
+                    return;
                 Changed();
             }
             else if (h.type == HitRegion::DropdownHeader)
@@ -1843,6 +1993,8 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                                int(h.rect.bottom * Scale())};
                 MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
                 const int selected = popup.Show(m_hwnd, anchor, Scale());
+                if (!*alive)
+                    return;
                 if (selected >= 0)
                 {
                     c->set(float(choices[selected].value));
@@ -1934,7 +2086,8 @@ void Direct2DHostWindow::OnKeyDown(WPARAM key)
 {
     if (key == 'F' && (GetKeyState(VK_CONTROL) & 0x8000))
     {
-        BeginEdit(nullptr, D2D1::RectF(26, 22, 194, 43));
+        m_searchFocused = true;
+        BeginEdit(nullptr, SearchEditRect());
         return;
     }
     if (key == VK_NEXT || key == VK_PRIOR || key == VK_HOME || key == VK_END)
@@ -1961,8 +2114,10 @@ void Direct2DHostWindow::OnKeyDown(WPARAM key)
         const auto h = m_hitRegions[m_keyboardIndex];
         if (key == VK_SPACE || key == VK_RETURN)
         {
+            const auto alive = m_alive;
             OnLButtonDown((h.rect.left + h.rect.right) / 2, (h.rect.top + h.rect.bottom) / 2);
-            OnLButtonUp(0, 0);
+            if (*alive)
+                OnLButtonUp(0, 0);
             return;
         }
         if ((key == VK_UP || key == VK_DOWN) && h.pControl &&

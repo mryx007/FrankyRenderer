@@ -150,8 +150,12 @@ class PlaceboBackend
     int Rotation() const;
     void SetFlip(bool mirror);
     bool Flip() const;
-    HRESULT
-    RenderOffscreen(int width, int height, std::vector<uint8_t>& rgba, bool hdrTarget = false, int textureDepth = 8);
+    HRESULT RenderOffscreen(int width,
+                            int height,
+                            std::vector<uint8_t>& rgba,
+                            bool hdrTarget = false,
+                            int textureDepth = 8,
+                            bool windowGeometry = false);
     void Flush(bool preserveBlackBars = true);
     ID3D11Device* Device() const;
     std::string LastError() const;

@@ -1,5 +1,6 @@
 #pragma once
 #include "Settings/Settings.h"
+#include "Settings/SettingsJournal.h"
 #include <commctrl.h>
 #include <functional>
 #include <map>
@@ -94,6 +95,7 @@ inline LRESULT CALLBACK Host(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR id, 
             for (const auto& [profileId, metadata] : s->metadataOpenings)
                 DisplayProfiles::WriteMetadata(profileId, metadata);
         }
+        SettingsJournal::End();
         sessions.erase(h);
         s->config->Release();
         RemoveWindowSubclass(h, Host, id);
@@ -198,6 +200,7 @@ inline void Attach(HWND page, IPlaceboSettings* config, std::function<HRESULT()>
             return;
         }
         sessions[host] = s;
+        SettingsJournal::Begin();
     }
     AttachEditor(page, std::move(apply));
     EnumChildWindows(host, HideApply, 0);

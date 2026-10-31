@@ -89,7 +89,9 @@ int wmain(int argc, wchar_t** argv)
             potplayer |= wcscmp(argv[i], L"--potplayer") == 0;
             motion |= wcscmp(argv[i], L"--motion") == 0;
         }
-        auto renderer = Load(argv[1], potplayer ? CLSID_MPCCompatible : CLSID_PlaceboRenderer);
+        // Both players use the same native class since the packages were unified.
+        (void)potplayer;
+        auto renderer = Load(argv[1], CLSID_PlaceboRenderer);
         ComPtr<IGraphBuilder> graph;
         Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)), "graph");
         Check(graph->AddFilter(splitter.Get(), L"Existing LAV splitter"), "add splitter");

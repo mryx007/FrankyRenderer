@@ -109,6 +109,109 @@ class Source final : public CBaseFilter
 class RendererRestartTest
 {
   public:
+    static void Screenshots()
+    {
+        HRESULT hr = S_OK;
+        auto renderer = new Renderer(nullptr, &hr);
+        Check(hr, "screenshot renderer");
+        ComPtr<IBaseFilter> filter;
+        Check(renderer->QueryInterface(IID_PPV_ARGS(&filter)), "screenshot renderer interface");
+        auto source = new Source(&hr);
+        Check(hr, "screenshot source");
+        ComPtr<IBaseFilter> sourceRef;
+        Check(source->QueryInterface(IID_PPV_ARGS(&sourceRef)), "screenshot source interface");
+        ComPtr<IGraphBuilder> graph;
+        Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)),
+              "screenshot graph");
+        Check(graph->AddFilter(sourceRef.Get(), L"Source"), "add screenshot source");
+        Check(graph->AddFilter(filter.Get(), L"Renderer"), "add screenshot renderer");
+        Check(graph->ConnectDirect(&source->output, renderer->GetPin(0), &source->output.type),
+              "screenshot connection");
+        HWND host = CreateWindowExW(0,
+                                    L"STATIC",
+                                    L"Private screenshot test",
+                                    WS_OVERLAPPEDWINDOW,
+                                    0,
+                                    0,
+                                    256,
+                                    256,
+                                    nullptr,
+                                    nullptr,
+                                    GetModuleHandleW(nullptr),
+                                    nullptr);
+        Require(host != nullptr, "screenshot owner window");
+        ComPtr<IVideoWindow> video;
+        Check(filter.As(&video), "screenshot video window");
+        Check(video->put_Owner(reinterpret_cast<OAHWND>(host)), "screenshot video owner");
+        PlaceboSettings settings;
+        Check(renderer->GetSettings(&settings), "screenshot settings");
+        settings.hdrMode = 2;
+        settings.smoothMotion = FALSE;
+        settings.ditherMethod = 3;
+        Check(renderer->SetSettings(&settings), "apply screenshot settings");
+        ComPtr<IMediaControl> playback;
+        Check(graph.As(&playback), "screenshot playback");
+        Check(playback->Run(), "run screenshot graph");
+        for (int i = 0; i < 8; ++i)
+            source->output.Send(1, i);
+        Check(video->SetWindowPosition(0, 0, 128, 128), "screenshot viewport");
+        ComPtr<IBasicVideo> basic;
+        Check(filter.As(&basic), "screenshot basic video");
+        Check(basic->SetDestinationPosition(32, 32, 64, 64), "offset window destination");
+        long bytes = 0;
+        Check(basic->GetCurrentImage(&bytes, nullptr), "source screenshot size query");
+        Require(bytes == long(sizeof(BITMAPINFOHEADER) + 64 * 64 * 4), "source screenshot buffer size");
+        std::vector<BYTE> full(bytes);
+        Check(basic->GetCurrentImage(&bytes, reinterpret_cast<long*>(full.data())), "source screenshot pixels");
+        const auto* header = reinterpret_cast<const BITMAPINFOHEADER*>(full.data());
+        Require(header->biWidth == 64 && header->biHeight == -64 && header->biBitCount == 32,
+                "source screenshot DIB header");
+        bool wholeImage = true;
+        const auto* pixels = full.data() + sizeof(BITMAPINFOHEADER);
+        for (int y : {0, 8, 32, 55, 63})
+            for (int x : {0, 8, 32, 55, 63})
+                wholeImage &= pixels[(y * 64 + x) * 4 + 1] > 50;
+        ComPtr<IExFilterConfig> config;
+        Check(filter.As(&config), "screenshot host interface");
+        LPVOID displayed = nullptr;
+        unsigned displayedBytes = 0;
+        hr = config->Flt_GetBin("displayedImage", &displayed, &displayedBytes);
+        printf("Screenshot reproduction: complete source=%d, displayed result=%08lx\n", wholeImage, hr);
+        Check(hr, "MPC-BE displayedImage request");
+        const auto* shown = static_cast<const BITMAPINFOHEADER*>(displayed);
+        Require(shown && shown->biWidth == 128 && shown->biHeight == -128 && shown->biBitCount == 32,
+                "displayed screenshot uses the viewport dimensions");
+        Require(displayedBytes == sizeof(BITMAPINFOHEADER) + 128 * 128 * 4, "displayed screenshot allocation size");
+        const auto* shownPixels = static_cast<const BYTE*>(displayed) + sizeof(BITMAPINFOHEADER);
+        Require(shownPixels[(64 * 128 + 64) * 4 + 1] > 50 && shownPixels[(8 * 128 + 8) * 4 + 1] < 3,
+                "displayed screenshot preserves window placement and black borders");
+        const auto* displayedStart = static_cast<const BYTE*>(displayed);
+        std::vector<BYTE> displayedReference(displayedStart, displayedStart + displayedBytes);
+        LocalFree(displayed);
+        Require(wholeImage, "source screenshot must ignore window destination geometry");
+        Check(playback->Pause(), "pause screenshot graph");
+        std::vector<BYTE> paused(full.size());
+        Check(basic->GetCurrentImage(&bytes, reinterpret_cast<long*>(paused.data())), "paused source screenshot");
+        Require(paused == full, "paused source screenshot preserves complete pixels");
+        displayed = nullptr;
+        Check(config->Flt_GetBin("displayedImage", &displayed, &displayedBytes), "paused displayed screenshot");
+        Require(displayedBytes == displayedReference.size() &&
+                    !memcmp(displayed, displayedReference.data(), displayedBytes),
+                "paused displayed screenshot preserves viewport pixels");
+        LocalFree(displayed);
+        long shortBufferBytes = bytes - 1;
+        Require(basic->GetCurrentImage(&shortBufferBytes, reinterpret_cast<long*>(full.data())) == E_OUTOFMEMORY &&
+                    shortBufferBytes == bytes,
+                "source screenshot reports an undersized buffer");
+        Require(config->Flt_GetBin("displayedImage", nullptr, &displayedBytes) == E_POINTER,
+                "displayed screenshot validates output pointer");
+        Check(playback->Stop(), "stop screenshot graph");
+        video->put_Owner(0);
+        DestroyWindow(host);
+        puts(
+            "PASS screenshots: complete source frame, displayed viewport, live/paused pixels, offset destination, DIB sizes and LocalFree ownership");
+    }
+
     static void Run(bool motion)
     {
         HRESULT hr = S_OK;
@@ -323,6 +426,7 @@ int main()
     SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", key);
     SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_DEFER_APPLY", L"1");
     Check(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED), "COM");
+    RendererRestartTest::Screenshots();
     RendererRestartTest::Run(false);
     RendererRestartTest::Run(true);
     RegDeleteTreeW(HKEY_CURRENT_USER, key);

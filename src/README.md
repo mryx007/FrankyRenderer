@@ -11,4 +11,4 @@
 - **deps/** — dependency locks and locally restored SDKs.
 - **build/** — generated objects, binaries, caches and logs; not tracked in Git.
 
-Run production builds from the repository root using `build.cmd native` or `build.cmd potplayer`. Packages retain their existing layout and installation commands.
+Run production builds from the repository root using `build.cmd`. Packages retain their existing layout and installation commands.

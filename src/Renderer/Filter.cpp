@@ -12,12 +12,42 @@
 #include "Renderer/VideoBackground.h"
 #include "Renderer/MonitorChange.h"
 #include "Renderer/ResizeGesture.h"
+#include "Settings/SettingsJournal.h"
 #include <wrl/client.h>
+#include <process.h>
 #include <dxgi1_2.h>
 #include <vector>
 #include <cstring>
 #include <algorithm>
 using Microsoft::WRL::ComPtr;
+
+namespace
+{
+constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
+constexpr UINT_PTR ModeTimer = 0x46524d44;
+}
+
+// Pauses the graph while the display resynchronises after a mode change and
+// resumes it unless the player changed the state itself in the meantime.
+struct ModePause
+{
+    std::atomic<bool> cancelled = false;
+    std::atomic<DWORD> thread = 0;
+    HANDLE wake = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+
+    ~ModePause()
+    {
+        if (wake)
+            CloseHandle(wake);
+    }
+
+    void Cancel()
+    {
+        cancelled = true;
+        if (wake)
+            SetEvent(wake);
+    }
+};
 
 static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
 {
@@ -31,6 +61,71 @@ static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
     frame.color = info.color;
     frame.dvLayered = info.dovi.nlq_active && info.width[1] > 0;
     return S_OK;
+}
+
+// Fills only what the decoder left out; decoder metadata always takes precedence.
+static void ApplyFileMetadata(const FileMetadata& metadata, VideoFrame& frame)
+{
+    if (!frame.dovi && !metadata.dovi.empty())
+        ApplyDoviSideData(metadata.dovi, frame);
+    auto& hdr = frame.color.hdr;
+    if (!frame.dovi && !metadata.hdr10Plus.empty() && !(hdr.scene_avg > 0))
+        ApplyHdr10PlusSideData(metadata.hdr10Plus, frame);
+    if (!pl_color_transfer_is_hdr(frame.color.transfer))
+        return;
+    const auto& container = metadata.container;
+    if (container.mastering && !(hdr.max_luma > 0))
+    {
+        hdr.min_luma = container.hdr.min_luma;
+        hdr.max_luma = container.hdr.max_luma;
+        if (container.hdr.prim.red.x > 0)
+            hdr.prim = container.hdr.prim;
+    }
+    if (container.light && !(hdr.max_cll > 0))
+    {
+        hdr.max_cll = container.hdr.max_cll;
+        hdr.max_fall = container.hdr.max_fall;
+    }
+}
+
+static HRESULT
+CaptureDib(PlaceboBackend& backend, int width, int height, bool windowGeometry, std::vector<uint8_t>& dib)
+try
+{
+    if (width <= 0 || height <= 0)
+        return VFW_E_NOT_CONNECTED;
+    const uint64_t pixelBytes = uint64_t(width) * height * 4;
+    if (sizeof(BITMAPINFOHEADER) + pixelBytes > LONG_MAX)
+        return E_OUTOFMEMORY;
+    std::vector<uint8_t> pixels;
+    const HRESULT hr = backend.RenderOffscreen(width, height, pixels, false, 8, windowGeometry);
+    if (FAILED(hr))
+        return hr;
+    if (pixels.size() != pixelBytes)
+        return E_UNEXPECTED;
+    BITMAPINFOHEADER header = {};
+    header.biSize = sizeof(header);
+    header.biWidth = width;
+    header.biHeight = -height;
+    header.biPlanes = 1;
+    header.biBitCount = 32;
+    header.biCompression = BI_RGB;
+    header.biSizeImage = static_cast<DWORD>(pixelBytes);
+    dib.resize(sizeof(header) + pixels.size());
+    memcpy(dib.data(), &header, sizeof(header));
+    auto out = dib.data() + sizeof(header);
+    for (size_t i = 0; i < pixels.size(); i += 4)
+    {
+        out[i] = pixels[i + 2];
+        out[i + 1] = pixels[i + 1];
+        out[i + 2] = pixels[i];
+        out[i + 3] = 255;
+    }
+    return S_OK;
+}
+catch (const std::bad_alloc&)
+{
+    return E_OUTOFMEMORY;
 }
 
 DecoderPin::DecoderPin(Renderer* renderer, HRESULT* hr) : CRendererInputPin(renderer, hr, L"Input"), owner(renderer) {}
@@ -325,7 +420,8 @@ BOOL VideoWindow::OnSize(LONG width, LONG height)
     }
     if (GetWindowLongPtrW(GetWindowHWND(), GWL_STYLE) & WS_CHILD)
         VideoBackground::Resize(GetParent(GetWindowHWND()));
-    owner->Repaint();
+    owner->RequestModeCheck();
+    owner->Repaint("window size");
     return TRUE;
 }
 
@@ -378,6 +474,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
     // Prepare newly exposed parent space before the GPU child grows over it.
     if (GetOwnerWindow())
         VideoBackground::Resize(GetOwnerWindow());
+    if (owner->windowState.load() == State_Running)
+        Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
 }
 
@@ -451,15 +549,32 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         {
             KillTimer(hwnd, ResizeGesture::Timer);
             owner->backend.HoldForResize(false);
-            owner->Repaint();
+            owner->Repaint("resize timer");
         }
         return 0;
     }
     if (msg == WM_TIMER && w == repaintTimer)
     {
         KillTimer(hwnd, repaintTimer);
-        owner->Repaint();
+        owner->Repaint("retry timer");
         return 0;
+    }
+    if (msg == ModeCheckMessage)
+    {
+        // Fullscreen transitions resize several times; check once they settle.
+        SetTimer(hwnd, ModeTimer, static_cast<UINT>(w), nullptr);
+        return 0;
+    }
+    if (msg == WM_TIMER && w == ModeTimer)
+    {
+        KillTimer(hwnd, ModeTimer);
+        owner->CheckDisplayMode();
+        return 0;
+    }
+    if (msg == WM_DESTROY && owner->modeSwitcher.Active())
+    {
+        Trace("Display mode restored on window close");
+        owner->modeSwitcher.Restore();
     }
     if (msg == WM_CREATE)
     {
@@ -477,14 +592,15 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     {
         KillTimer(hwnd, ResizeGesture::Timer);
         owner->backend.HoldForResize(false);
-        owner->Repaint();
+        owner->Repaint("resize end");
         return 0;
     }
     if (msg == MonitorChange::Message)
     {
         Trace("Monitor-change repaint received monitor=%p", MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
         owner->refreshDirty = true;
-        owner->Repaint();
+        owner->RequestModeCheck();
+        owner->Repaint("monitor change");
         return 0;
     }
     if (msg == WM_KEYDOWN && w == 'J' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) &&
@@ -527,14 +643,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         BeginPaint(hwnd, &ps);
         owner->backend.PaintLoadingBackground(ps.hdc);
         EndPaint(hwnd, &ps);
-        owner->Repaint();
+        owner->Repaint("WM_PAINT");
         return 0;
     }
     if (msg == WM_DISPLAYCHANGE)
     {
         owner->UpdateDisplayProfile(true);
         owner->refreshDirty = true;
-        owner->Repaint();
+        owner->Repaint("display change");
         return 0;
     }
     return CBaseControlWindow::OnReceiveMessage(hwnd, msg, w, l);
@@ -657,33 +773,25 @@ HRESULT VideoControl::GetStaticImage(long* size, long* image)
         *size = required;
         return E_OUTOFMEMORY;
     }
-    std::vector<uint8_t> pixels;
-    HRESULT hr = owner->backend.RenderOffscreen(width, height, pixels);
+    std::vector<uint8_t> dib;
+    HRESULT hr = CaptureDib(owner->backend, width, height, false, dib);
     if (FAILED(hr))
         return hr;
-    BITMAPINFOHEADER hdr = {};
-    hdr.biSize = sizeof(hdr);
-    hdr.biWidth = width;
-    hdr.biHeight = -height;
-    hdr.biPlanes = 1;
-    hdr.biBitCount = 32;
-    hdr.biCompression = BI_RGB;
-    hdr.biSizeImage = width * height * 4;
-    memcpy(image, &hdr, sizeof(hdr));
-    auto out = reinterpret_cast<BYTE*>(image) + sizeof(hdr);
-    for (size_t i = 0; i < pixels.size(); i += 4)
-    {
-        out[i] = pixels[i + 2];
-        out[i + 1] = pixels[i + 1];
-        out[i + 2] = pixels[i];
-        out[i + 3] = 255;
-    }
+    memcpy(image, dib.data(), dib.size());
     *size = required;
     return S_OK;
 }
 
+// Restore settings a crashed player left in uncommitted live preview first.
+static PlaceboSettings InitialSettings()
+{
+    SettingsJournal::Recover();
+    DisplayModes::RecoverAbandoned();
+    return LoadSettings();
+}
+
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
-    : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(LoadSettings())
+    : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
     smoothEnabled = !!settings.smoothMotion;
     motionRadius = BackendSettings(settings).motionRadius;
@@ -698,6 +806,7 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     }
     if (FAILED(*hr))
         return;
+    PublishDisplayModes();
     window = std::make_unique<VideoWindow>(this, &m_InterfaceLock, GetOwner(), hr);
     if (FAILED(*hr))
         return;
@@ -716,6 +825,12 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
 
 Renderer::~Renderer()
 {
+    {
+        std::lock_guard lock(modeLock);
+        if (modePause)
+            modePause->Cancel();
+    }
+    SetPreviewed(nullptr);
     Trace("Renderer destruction begin; rendered=%llu hardware=%llu last=%08lX",
           status.rendered,
           status.hardwareFrames,
@@ -817,6 +932,8 @@ HRESULT Renderer::SetMediaType(const CMediaType* mt)
     ResetFields();
     format = candidate;
     frameDuration = format.basic.AvgTimePerFrame;
+    contentDuration = format.averageDuration;
+    RequestModeCheck();
     source = format.source;
     backend.SetGeometry(source, target);
     {
@@ -911,6 +1028,8 @@ HRESULT Renderer::BreakConnect()
 {
     dv.Cancel();
     dv.Disconnect();
+    SetPreviewed(nullptr);
+    ClearFileMetadata();
     backend.SetSourceCodec({});
     ResetFields(false);
     // Disconnect, unlike a temporary graph Stop, really retires this image
@@ -1174,6 +1293,17 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             if (buffering || previous.id)
                 ResetFields(true, true);
         }
+        // Read file metadata now, ahead of the presentation time, not in DoRenderSample.
+        FileMetadata fromFile;
+        if (!reconstructed && timed &&
+            LookupFileMetadata(sample, pl_color_transfer_is_hdr(current.frame.color.transfer), fromFile))
+        {
+            std::lock_guard guard(fileMetadataLock);
+            fileMetadata[start] = std::move(fromFile);
+            while (fileMetadata.size() > 1 &&
+                   (fileMetadata.begin()->first < start - 10000000 || fileMetadata.size() > 64))
+                fileMetadata.erase(fileMetadata.begin());
+        }
         return CBaseVideoRenderer::Receive(sample);
     }
     QueuedVideoFrame output, input, past;
@@ -1200,7 +1330,12 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                 return hr;
         }
         else
+        {
             ReadHdrSideData(sample, input.frame);
+            FileMetadata fromFile;
+            if (LookupFileMetadata(sample, pl_color_transfer_is_hdr(input.frame.color.transfer), fromFile))
+                ApplyFileMetadata(fromFile, input.frame);
+        }
         const auto source = dv.SourceInfo();
         if (source.present)
             input.frame.dvSource = source;
@@ -1239,7 +1374,8 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             return hr;
         buffering = true;
         smoothBuffering = smooth;
-        deinterlacingActive = fields;
+        if (deinterlacingActive.exchange(fields) != fields)
+            RequestModeCheck(); // deinterlaced video presents twice the frame rate
         if (smooth)
         {
             try
@@ -1267,19 +1403,95 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     return output.id ? DeliverFields(output, past.id, future) : S_OK;
 }
 
+HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop)
+{
+    // The base heuristic times DoRenderSample, which includes waiting for the
+    // DXGI queue, as render cost. It then drops samples half a duration late:
+    // about 4 ms for Smooth Motion's display-rate outputs, which ordinary clock
+    // jitter reaches. Present such samples; drop only when clearly behind.
+    const HRESULT hr = CBaseVideoRenderer::ShouldDrawSampleNow(sample, start, stop);
+    REFERENCE_TIME now = 0;
+    if (hr != E_FAIL || !m_pClock || FAILED(m_pClock->GetTime(&now)))
+        return hr;
+    const REFERENCE_TIME late = now - m_tStart - *start;
+    const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * (*stop - *start), 250000);
+    if (late > limit)
+        return hr;
+    // The base class marked a drop; keep its next decision on the normal path.
+    m_nNormal = 0;
+    return S_OK;
+}
+
 void Renderer::OnReceiveFirstSample(IMediaSample* sample)
 {
     // The base renderer holds a paused sample until Run or the next flush.
     // Present its preview before that wait, including after a paused seek.
+    SetPreviewed(nullptr);
     const HRESULT hr = DoRenderSample(sample);
     if (FAILED(hr))
         Trace("Paused preview failed result=%08lX", static_cast<unsigned long>(hr));
+    else
+        SetPreviewed(sample);
+}
+
+void Renderer::SetPreviewed(IMediaSample* sample)
+{
+    std::lock_guard guard(previewLock);
+    if (sample)
+        sample->AddRef();
+    if (previewed)
+        previewed->Release();
+    previewed = sample;
+}
+
+bool Renderer::LookupFileMetadata(IMediaSample* sample, bool hdr, FileMetadata& out)
+{
+    // Only for decoders that pass pictures without their HDR metadata.
+    REFERENCE_TIME start = 0, stop = 0;
+    if (FAILED(sample->GetTime(&start, &stop)))
+        return false;
+    ComPtr<IPin> upstream;
+    m_pInputPin->ConnectedTo(&upstream);
+    REFERENCE_TIME base = 0;
+    {
+        CAutoLock render(&m_RendererLock);
+        base = segment;
+    }
+    const bool decoderDovi = HasDoviSideData(sample);
+    if (!decoderDovi)
+        dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out.dovi);
+    if (hdr && out.dovi.empty() && !decoderDovi && !HasHdr10PlusSideData(sample))
+        dv.Hdr10PlusMetadata(m_pGraph, upstream.Get(), start, base, out.hdr10Plus);
+    if (hdr)
+        out.container = dv.StaticHdrInfo();
+    return !out.dovi.empty() || !out.hdr10Plus.empty() || out.container.mastering || out.container.light;
+}
+
+void Renderer::ClearFileMetadata()
+{
+    std::lock_guard guard(fileMetadataLock);
+    fileMetadata.clear();
+}
+
+bool Renderer::TakePreviewed(IMediaSample* sample)
+{
+    std::lock_guard guard(previewLock);
+    // Any later render ends the preview: allocators recycle sample objects,
+    // so only the very next render of the held sample is the duplicate.
+    const bool same = previewed && previewed == sample;
+    if (previewed)
+        previewed->Release();
+    previewed = nullptr;
+    return same;
 }
 
 HRESULT Renderer::DoRenderSample(IMediaSample* sample)
 {
     if (!sample)
         return E_POINTER;
+    // Run delivers the held paused sample again; its preview is still on screen.
+    if (TakePreviewed(sample))
+        return S_OK;
     HRESULT hr = PrepareWindow();
     if (FAILED(hr))
         return hr;
@@ -1296,6 +1508,17 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
 
     auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
+    if (!field && !layered)
+    {
+        REFERENCE_TIME at = 0, until = 0;
+        if (SUCCEEDED(sample->GetTime(&at, &until)))
+        {
+            std::lock_guard guard(fileMetadataLock);
+            const auto found = fileMetadata.find(at);
+            if (found != fileMetadata.end())
+                ApplyFileMetadata(found->second, frame);
+        }
+    }
     if (!field)
     {
         const auto source = dv.SourceInfo();
@@ -1424,6 +1647,26 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
     if (SUCCEEDED(hr))
         hr = backend.Present();
+    if (hr == S_OK && m_State == State_Running)
+        lastTimedPresent = GetTickCount64();
+    if (TraceEnabled())
+    {
+        // Opt-in diagnostics: name the moment a drop, repeat or glitch appears.
+        const auto measured = backend.Measurements();
+        const uint64_t drops = measured.drops, repeats = measured.repeats, glitches = measured.glitches;
+        if (drops != traceDrops || repeats != traceRepeats || glitches != traceGlitches)
+            Trace("Counters drop %llu->%llu rep %llu->%llu glitch %llu->%llu at stream %lld ms",
+                  static_cast<unsigned long long>(traceDrops),
+                  static_cast<unsigned long long>(drops),
+                  static_cast<unsigned long long>(traceRepeats),
+                  static_cast<unsigned long long>(repeats),
+                  static_cast<unsigned long long>(traceGlitches),
+                  static_cast<unsigned long long>(glitches),
+                  static_cast<long long>(start / 10000));
+        traceDrops = drops;
+        traceRepeats = repeats;
+        traceGlitches = glitches;
+    }
     PlaceboStatus snapshot;
     HRESULT previousResult;
     {
@@ -1513,12 +1756,25 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
 void Renderer::ToggleStatistics()
 {
     backend.ShowStatistics(!backend.StatisticsVisible());
-    if (window && window->WindowExists())
+    // Running playback shows or hides the overlay with its next scheduled
+    // frame. An extra untimed present here would repeat the current frame,
+    // delay the next one and count as repeats, glitches and drops.
+    if (windowState.load() != State_Running && window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
-void Renderer::Repaint()
+void Renderer::Repaint(const char* source)
 {
+    // During playback the next scheduled frame follows within one display
+    // period and already renders at the new size, monitor and settings. An
+    // extra untimed present here repeats the current frame, takes a vsync from
+    // the schedule and makes the following frames late (repeats and drops).
+    // After the end of the stream nothing follows, so keep repainting there.
+    if (windowState.load() == State_Running && GetTickCount64() - lastTimedPresent.load() < 250)
+    {
+        Trace("Repaint during playback left to the next frame: %s", source);
+        return;
+    }
     // The host can synchronously resize the video while holding this lock.
     // Never block its window thread behind that call; retry the repaint later.
     if (!m_InterfaceLock.TryLock())
@@ -1560,6 +1816,8 @@ void Renderer::NewSegment(REFERENCE_TIME start)
 
 HRESULT Renderer::BeginFlush()
 {
+    SetPreviewed(nullptr);
+    ClearFileMetadata();
     return CBaseVideoRenderer::BeginFlush();
 }
 
@@ -1573,7 +1831,11 @@ HRESULT Renderer::EndFlush()
 STDMETHODIMP Renderer::Stop()
 {
     Trace("Renderer stop begin");
+    if (ExternalStateChange())
+        modeHoldUntil = 0;
     dv.Cancel();
+    SetPreviewed(nullptr);
+    ClearFileMetadata();
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
         windowState = State_Stopped;
@@ -1586,6 +1848,9 @@ STDMETHODIMP Renderer::Stop()
     // Stop also occurs during an audio-track rebuild. It ends scheduling,
     // not the video connection: discard temporal inputs but leave the last
     // presented swapchain surface alone until a new picture arrives.
+    // The display mode, too, survives that rebuild: restore it only if the
+    // graph is still stopped a moment later.
+    RequestModeCheck(1500);
     Trace("Renderer stop completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
 }
@@ -1593,6 +1858,7 @@ STDMETHODIMP Renderer::Stop()
 STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
 {
     Trace("Renderer run begin start=%lld", start);
+    const bool external = ExternalStateChange();
     backend.ResetPresentationMeasurement();
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
@@ -1600,19 +1866,35 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
         windowState = State_Running;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
+    // Playback started while the display still resynchronises after a mode
+    // change made while paused: hold it for the rest of the configured time.
+    const auto now = GetTickCount64(), until = modeHoldUntil.exchange(0);
+    if (SUCCEEDED(hr) && external && until > now)
+        PausePlayback(static_cast<DWORD>(until - now));
+    RequestModeCheck();
     return hr;
 }
 
 STDMETHODIMP Renderer::Pause()
 {
     Trace("Renderer pause begin");
+    ExternalStateChange();
     backend.ResetPresentationMeasurement();
+    // Stop and disconnect cancel waiting DV work. A new streaming run starts
+    // here, not at Run: the decoder already delivers the preroll while paused,
+    // and a still-cancelled processor would silently swallow those samples.
+    {
+        CAutoLock state(&m_InterfaceLock);
+        if (m_State == State_Stopped)
+            dv.Resume();
+    }
     HRESULT hr = CBaseVideoRenderer::Pause();
     Trace("Renderer base pause returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
         windowState = State_Paused;
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
+    RequestModeCheck();
     return hr;
 }
 
@@ -1757,6 +2039,7 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
         return hr;
     }
     settings = *next;
+    PublishDisplayModes();
     smoothEnabled = !!settings.smoothMotion;
     motionRadius = BackendSettings(settings).motionRadius;
     motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
@@ -1765,6 +2048,171 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
     Trace("Settings queued without waiting for renderer");
     return S_OK;
+}
+
+void Renderer::PublishDisplayModes()
+{
+    ModeConfig next;
+    next.enabled = !!settings.displayModeSwitch;
+    DisplayModes::Parse(settings.displayModes, next.modes);
+    next.delay = settings.displayModeDelay;
+    {
+        std::lock_guard lock(modeLock);
+        modeConfig = std::move(next);
+    }
+    RequestModeCheck();
+}
+
+void Renderer::RequestModeCheck(UINT delay)
+{
+    if (window && window->WindowExists())
+        PostMessageW(window->GetWindowHWND(), ModeCheckMessage, delay, 0);
+}
+
+// Runs on the window thread without renderer locks: a mode change notifies
+// every top-level window synchronously, including the player's.
+void Renderer::CheckDisplayMode()
+{
+    if (!window || !window->WindowExists())
+        return;
+    ModeConfig config;
+    {
+        std::lock_guard lock(modeLock);
+        config = modeConfig;
+    }
+    const HWND video = window->GetWindowHWND(), root = GetAncestor(video, GA_ROOT);
+    MONITORINFOEXW monitor = {};
+    monitor.cbSize = sizeof(monitor);
+    if (!GetMonitorInfoW(MonitorFromWindow(video, MONITOR_DEFAULTTONEAREST), &monitor))
+        return;
+    RECT bounds = {};
+    const bool visible = root && IsWindowVisible(video) && !IsIconic(root) && GetWindowRect(root, &bounds);
+    const bool covers = visible && bounds.left <= monitor.rcMonitor.left && bounds.top <= monitor.rcMonitor.top &&
+                        bounds.right >= monitor.rcMonitor.right && bounds.bottom >= monitor.rcMonitor.bottom;
+    const bool sameDisplay = modeSwitcher.Active() && modeSwitcher.Device() == monitor.szDevice;
+    // After a resolution change the player may keep its fullscreen window at
+    // the previous size; that window is still fullscreen.
+    const bool fullscreen = covers || (visible && sameDisplay && EqualRect(&bounds, &modeWindow));
+    const auto state = windowState.load();
+    const auto duration = contentDuration.load();
+    double rate = duration > 0 ? 1e7 / double(duration) : 0;
+    if (deinterlacingActive)
+        rate *= 2;
+    const int chosen =
+        config.enabled && fullscreen && state != State_Stopped ? DisplayModes::Choose(config.modes, rate) : -1;
+    if (chosen < 0)
+    {
+        if (modeSwitcher.Active())
+        {
+            Trace("Display mode restored: enabled=%d fullscreen=%d state=%d rate=%.3f",
+                  config.enabled,
+                  fullscreen,
+                  int(state),
+                  rate);
+            modeSwitcher.Restore();
+            refreshDirty = true;
+        }
+        return;
+    }
+    const auto& mode = config.modes[chosen];
+    if (sameDisplay && modeSwitcher.Current() == mode)
+        return;
+    if (!modeSwitcher.Active() && DisplayModes::Switcher::Matches(monitor.szDevice, mode))
+        return;
+    if (!modeSwitcher.Switch(monitor.szDevice, mode))
+    {
+        Trace("Display mode %ls not available on %ls", DisplayModes::Name(mode).c_str(), monitor.szDevice);
+        return;
+    }
+    modeWindow = bounds;
+    refreshDirty = true;
+    Trace("Display mode %ls on %ls for %.3f fps", DisplayModes::Name(mode).c_str(), monitor.szDevice, rate);
+    const auto milliseconds = static_cast<DWORD>(config.delay * 1000 + .5f);
+    if (!milliseconds)
+        return;
+    if (state == State_Running)
+        PausePlayback(milliseconds);
+    else
+        modeHoldUntil = GetTickCount64() + milliseconds;
+}
+
+// The pause runs on its own thread: the graph manager may be waiting on the
+// window thread (window placement) while holding the lock this call needs.
+void Renderer::PausePlayback(DWORD milliseconds)
+{
+    ComPtr<IMediaControl> graphControl;
+    if (!m_pGraph || FAILED(m_pGraph->QueryInterface(IID_PPV_ARGS(&graphControl))))
+        return;
+    auto pause = std::make_shared<ModePause>();
+    if (!pause->wake)
+        return;
+
+    struct Work
+    {
+        std::shared_ptr<ModePause> pause;
+        ComPtr<IMediaControl> control;
+        DWORD milliseconds;
+        HMODULE module;
+    };
+
+    HMODULE module = nullptr;
+    // Keep this DLL loaded until the thread has returned.
+    if (!GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&ModeCheckMessage), &module))
+        return;
+    auto* work = new (std::nothrow) Work{pause, graphControl, milliseconds, module};
+    if (!work)
+    {
+        FreeLibrary(module);
+        return;
+    }
+    {
+        std::lock_guard lock(modeLock);
+        if (modePause)
+            modePause->Cancel();
+        modePause = pause;
+    }
+    const auto run = [](void* parameter) -> unsigned
+    {
+        std::unique_ptr<Work> work(static_cast<Work*>(parameter));
+        const HMODULE module = work->module;
+        const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        work->pause->thread = GetCurrentThreadId();
+        if (!work->pause->cancelled)
+        {
+            Trace("Playback paused for %lu ms after the display mode change", work->milliseconds);
+            if (SUCCEEDED(work->control->Pause()) &&
+                WaitForSingleObject(work->pause->wake, work->milliseconds) == WAIT_TIMEOUT && !work->pause->cancelled)
+                work->control->Run();
+        }
+        work->pause->thread = 0;
+        work.reset();
+        if (SUCCEEDED(com))
+            CoUninitialize();
+        FreeLibraryAndExitThread(module, 0);
+    };
+    const auto thread = _beginthreadex(nullptr, 0, run, work, 0, nullptr);
+    if (!thread)
+    {
+        pause->Cancel();
+        delete work;
+        FreeLibrary(module);
+        return;
+    }
+    CloseHandle(reinterpret_cast<HANDLE>(thread));
+}
+
+// True for state changes by the player. Those cancel a pending resume after
+// a display mode change; the pause thread's own Pause and Run do not.
+bool Renderer::ExternalStateChange()
+{
+    std::lock_guard lock(modeLock);
+    if (modePause && modePause->thread == GetCurrentThreadId())
+        return false;
+    if (modePause)
+        modePause->Cancel();
+    modePause.reset();
+    return true;
 }
 
 HRESULT Renderer::UpdateDisplayProfile(bool refresh)
@@ -1800,6 +2248,7 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
     if (FAILED(hr))
         return hr;
     settings = selected;
+    PublishDisplayModes();
     Trace("Profile activated id=%ls monitor=%p HDRMode=%d brightness=%.4f",
           settings.displayProfile,
           monitor,
@@ -1846,6 +2295,32 @@ STDMETHODIMP Renderer::ReadPixels(int width, int height, BYTE* rgba, SIZE_T byte
         memcpy(rgba, pixels.data(), pixels.size());
     }
     return hr;
+}
+
+STDMETHODIMP Renderer::Flt_GetBin(LPCSTR field, LPVOID* value, unsigned* size)
+{
+    if (!field || !value || !size)
+        return E_POINTER;
+    *value = nullptr;
+    *size = 0;
+    if (strcmp(field, "displayedImage"))
+        return E_INVALIDARG;
+    CAutoLock guard(&m_InterfaceLock);
+    RECT viewport = {};
+    if (!window || !window->WindowExists() || !GetClientRect(window->GetWindowHWND(), &viewport))
+        return VFW_E_NOT_CONNECTED;
+    std::vector<uint8_t> dib;
+    const HRESULT hr = CaptureDib(backend, viewport.right, viewport.bottom, true, dib);
+    if (FAILED(hr))
+        return hr;
+    // MPC-BE's allocator presenter releases this DIB with LocalFree.
+    const auto result = LocalAlloc(LMEM_FIXED, dib.size());
+    if (!result)
+        return E_OUTOFMEMORY;
+    memcpy(result, dib.data(), dib.size());
+    *value = result;
+    *size = static_cast<unsigned>(dib.size());
+    return S_OK;
 }
 
 STDMETHODIMP Renderer::Flt_GetBool(LPCSTR field, bool* value)
@@ -2006,7 +2481,8 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
     if (!strcmp(field, "statsEnable"))
     {
         backend.ShowStatistics(value);
-        if (window && window->WindowExists())
+        // As with Ctrl+J: running playback picks up the change on its next frame.
+        if (windowState.load() != State_Running && window && window->WindowExists())
             PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
         return S_OK;
     }
