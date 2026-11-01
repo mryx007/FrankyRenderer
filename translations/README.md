@@ -12,7 +12,7 @@ pick a language under General > Themes > Language.
 
 ## Contributing a translation
 
-Translate on Weblate (link in the main README once the project is set up). Only translate the
+Translate on [Weblate](https://hosted.weblate.org/projects/frankyrenderer/). Only translate the
 text; keep placeholders such as `%d` and `%s` and keep technical names (filter names such as
 `ewa_lanczos`) unchanged.
 
