@@ -68,5 +68,53 @@ int main()
         Require(detector.measured && bounds.left == 0 && bounds.right == 640 && bounds.top > 0 && bounds.bottom < 480,
                 "detector still finds top and bottom bars");
     }
-    puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration");
+    {
+        // End credits: a centred text column on black. Blurred by the probe
+        // downscale, its lines and an occasional full-width heading pass the
+        // row/column coverage checks, but the text fills little of its box.
+        constexpr int width = 256, height = 144;
+        auto credits = [&]
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = 10; y < height - 10; ++y)
+            {
+                const int line = (y - 10) / 8;
+                if ((y - 10) % 8 >= 6)
+                    continue; // spacing between text lines
+                for (int x = 80; x < 176; ++x)
+                    if (line % 6 == 0 || (x - 80) % 8 < 3)
+                        pixels[(y * width + x) * 4 + 1] = 220;
+            }
+            return pixels;
+        };
+        auto letterbox = [&]
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = 18; y < height - 18; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.delay = 0;
+        BlackBarDetector detector;
+        const auto text = credits();
+        for (int sample = 0; sample < 6; ++sample)
+            detector.Observe(text.data(), width, height, width * 4, 1920, 1080, settings, sample * 200);
+        Require(!detector.measured, "credits alone never establish a crop");
+        const auto film = letterbox();
+        for (int sample = 0; sample < 3; ++sample)
+            detector.Observe(film.data(), width, height, width * 4, 1920, 1080, settings, 2000 + sample * 200);
+        const auto before = detector.Bounds(1920, 1080);
+        Require(detector.measured && before.left == 0 && before.right == 1920, "letterboxed film crop");
+        for (int sample = 0; sample < 20; ++sample)
+            detector.Observe(text.data(), width, height, width * 4, 1920, 1080, settings, 3000 + sample * 200);
+        const auto after = detector.Bounds(1920, 1080);
+        Require(after.left == before.left && after.right == before.right && after.top == before.top &&
+                    after.bottom == before.bottom,
+                "end credits keep the film crop instead of zooming into the text column");
+    }
+    puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration; "
+         "end credits");
 }

@@ -138,6 +138,23 @@ class BlackBarDetector
             confirmations = 0;
             return false;
         }
+        // A picture fills its bounds; text on black (end credits, title cards)
+        // spans a wide box but lights only part of it, even when the probe
+        // downscale blurs its lines into near-solid rows.
+        {
+            const int top = edge(rows), bottom = edge(rr), left = edge(cols), right = edge(cc);
+            long long lit = 0;
+            for (int y = top; y < h - bottom; ++y)
+                lit += rows[y];
+            const double area = double(std::max(1, w - left - right)) * std::max(1, h - top - bottom);
+            // Measured: film frames, dark scenes included, fill >= 0.5 of their
+            // bounds; end credits 0.15-0.25.
+            if (lit < area * .4)
+            {
+                confirmations = 0;
+                return false;
+            }
+        }
         const RECT old = Bounds(sourceW, sourceH);
         if (!Near(candidate, next))
         {
