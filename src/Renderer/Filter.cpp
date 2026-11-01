@@ -1453,10 +1453,15 @@ bool Renderer::LookupFileMetadata(IMediaSample* sample, bool hdr, FileMetadata& 
     ComPtr<IPin> upstream;
     m_pInputPin->ConnectedTo(&upstream);
     REFERENCE_TIME base = 0;
+    bool deep = false;
     {
         CAutoLock render(&m_RendererLock);
         base = segment;
+        deep = Layout(format.frame.format).depth > 8;
     }
+    // 8-bit SDR pictures carry neither Dolby Vision nor HDR: leave the file alone.
+    if (!deep && !hdr)
+        return false;
     const bool decoderDovi = HasDoviSideData(sample);
     if (!decoderDovi)
         dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out.dovi);

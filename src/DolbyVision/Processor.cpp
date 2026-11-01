@@ -51,6 +51,14 @@ class DeviceMutexGuard
     }
 };
 
+// Dolby Vision and HDR need more than 8 bits; only such pictures, or ones a
+// decoder still marks as HDR after reducing them to 8 bits, justify looking
+// into the source file.
+static bool MayCarryHdr(const MediaFormat& format)
+{
+    return Layout(format.frame.format).depth > 8 || pl_color_transfer_is_hdr(format.frame.color.transfer);
+}
+
 // Follow only the connected video/stream path. During initial type negotiation
 // the pin is not connected yet, so accept an unambiguous file source in the graph.
 static std::wstring SourcePath(IFilterGraph* graph, IPin* upstream)
@@ -704,6 +712,11 @@ HRESULT DvProcessor::CheckFormat(IFilterGraph* graph, IPin* peer, const MediaFor
 {
     RefreshSource(graph, peer);
     std::lock_guard guard(state->lock);
+    // 8-bit SDR pictures carry neither Dolby Vision nor HDR, so their file is
+    // not inspected. Decoders offer the source's own depth first, so a 10-bit
+    // source still negotiates P010 before any 8-bit fallback.
+    if (!state->modeKnown && !MayCarryHdr(format))
+        return S_OK;
     auto hr = state->SelectMode(graph, peer);
     if (FAILED(hr))
         return hr;
@@ -726,6 +739,8 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
     std::lock_guard guard(s.lock);
     if (s.cancelled)
         return S_OK;
+    if (!s.modeKnown && !MayCarryHdr(format))
+        return S_FALSE;
     auto hr = s.SelectMode(graph, peer);
     if (FAILED(hr))
         return hr;
