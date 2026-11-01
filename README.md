@@ -143,6 +143,12 @@ Keep the installation folder in place. To remove the renderer, run `Uninstall.cm
 
 The same x64 ZIP supports both MPC-BE and PotPlayer builds with native FrankyRenderer selection.
 
+## Translations
+
+The settings menu is translated on [Weblate](https://hosted.weblate.org/projects/frankyrenderer/). Anyone can help there, no Git knowledge needed. New translations ship with the Nightly builds first.
+
+[![Translation status](https://hosted.weblate.org/widget/frankyrenderer/svg-badge.svg)](https://hosted.weblate.org/projects/frankyrenderer/)
+
 ## Source code and dependency sources
 
 The renderer source and build instructions are available in this repository. [Dependency sources](docs/dependency-sources.md) lists the exact official source packages, build recipes and SHA-256 checksums corresponding to the bundled runtime libraries.
