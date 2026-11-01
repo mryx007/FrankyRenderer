@@ -213,8 +213,7 @@ int wmain(int argc, wchar_t** argv)
             return 15;
         if (GetWindowLongPtrW(host, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)
             return 17;
-        if (GetWindowLongPtrW(host, GWL_EXSTYLE) &
-            (WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_WINDOWEDGE | WS_EX_STATICEDGE))
+        if (GetWindowLongPtrW(host, GWL_EXSTYLE) & (WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE))
             return 19;
         if ((GetWindowLongPtrW(tabs, GWL_STYLE) & WS_VISIBLE) || r.left ||
             r.top != MulDiv(36, int(GetDpiForWindow(host)), 96) || r.right != client.right || r.bottom >= client.bottom)
@@ -243,20 +242,23 @@ int wmain(int argc, wchar_t** argv)
             draw.hDC = dc;
             draw.rcItem = closeBounds;
             SendMessageW(host, WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw));
-            if (GetPixel(dc, 1, 1) != RGB(15, 16, 18))
+            // The frame follows the menu theme (default Indigo in the test root).
+            const auto palette = CurrentMenuPalette();
+            const auto frame = MenuColorRef(palette.app);
+            if (GetPixel(dc, 1, 1) != frame)
                 return 20;
             SendMessageW(close, WM_MOUSEMOVE, 0, MAKELPARAM(10, 10));
             SendMessageW(host, WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw));
-            if (GetPixel(dc, 1, 1) != RGB(36, 38, 43))
+            if (GetPixel(dc, 1, 1) != MenuColorRef(MixColor(palette.app, palette.textMain, .1f)))
                 return 21;
             draw.itemState = ODS_SELECTED;
             SendMessageW(host, WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw));
-            if (GetPixel(dc, 1, 1) != RGB(60, 64, 72))
+            if (GetPixel(dc, 1, 1) != MenuColorRef(MixColor(palette.app, palette.textMain, .2f)))
                 return 22;
             draw.itemState = 0;
             SendMessageW(close, WM_MOUSELEAVE, 0, 0);
             SendMessageW(host, WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw));
-            if (GetPixel(dc, 1, 1) != RGB(15, 16, 18))
+            if (GetPixel(dc, 1, 1) != frame)
                 return 23;
             SelectObject(dc, old);
             DeleteObject(image);
@@ -319,7 +321,225 @@ int wmain(int argc, wchar_t** argv)
             if (r.left || r.top != MulDiv(36, int(GetDpiForWindow(host)), 96) || r.right != client.right)
                 return 27;
         }
+        if (!(GetWindowLongPtrW(host, GWL_STYLE) & WS_THICKFRAME))
+            return 29;
+        GetWindowRect(host, &expected);
+        const int midX = (expected.left + expected.right) / 2;
+        const int midY = (expected.top + expected.bottom) / 2;
+
+        struct Edge
+        {
+            int x, y, hit;
+        };
+
+        const Edge edges[] = {{expected.left + 1, midY, HTLEFT},
+                              {expected.right - 1, midY, HTRIGHT},
+                              {midX, expected.top + 1, HTTOP},
+                              {midX, expected.bottom - 1, HTBOTTOM},
+                              {expected.left + 1, expected.top + 1, HTTOPLEFT},
+                              {expected.right - 1, expected.top + 1, HTTOPRIGHT},
+                              {expected.left + 1, expected.bottom - 1, HTBOTTOMLEFT},
+                              {expected.right - 1, expected.bottom - 1, HTBOTTOMRIGHT}};
+        for (const auto& edge : edges)
+            if (SendMessageW(host, WM_NCHITTEST, 0, MAKELPARAM(edge.x, edge.y)) != edge.hit)
+                return 32;
+        puts("PASS mouse resize hit testing on all four edges and corners");
+        HWND grip = GetDlgItem(host, 0x7f11);
+        if (!grip)
+            return 33;
+        const int gripWidth = int(expected.right - expected.left);
+        const int gripHeight = int(expected.bottom - expected.top);
+        SendMessageW(grip, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(5, 5));
+        SendMessageW(grip, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(25, 20));
+        SendMessageW(grip, WM_LBUTTONUP, 0, MAKELPARAM(25, 20));
+        GetWindowRect(host, &expected);
+        if (expected.right - expected.left != gripWidth + 20 || expected.bottom - expected.top != gripHeight + 15)
+            return 34;
+        puts("PASS resize grip handles mouse down, movement and release through the frame host");
+        const int directions[] = {HTBOTTOMRIGHT, HTLEFT, HTRIGHT, HTTOP, HTBOTTOM, HTTOPLEFT, HTTOPRIGHT, HTBOTTOMLEFT};
+        for (int index = 0; index < 8; ++index)
+        {
+            HWND handle = GetDlgItem(host, 0x7f11 + index);
+            if (!handle)
+                return 35;
+            RECT before;
+            GetWindowRect(host, &before);
+            RECT wanted = before;
+            const int direction = directions[index];
+            int dx = 0, dy = 0;
+            if (direction == HTLEFT || direction == HTTOPLEFT || direction == HTBOTTOMLEFT)
+                wanted.left += dx = 10;
+            if (direction == HTRIGHT || direction == HTTOPRIGHT || direction == HTBOTTOMRIGHT)
+                wanted.right += dx = -10;
+            if (direction == HTTOP || direction == HTTOPLEFT || direction == HTTOPRIGHT)
+                wanted.top += dy = 10;
+            if (direction == HTBOTTOM || direction == HTBOTTOMLEFT || direction == HTBOTTOMRIGHT)
+                wanted.bottom += dy = -10;
+            SendMessageW(handle, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(2, 2));
+            SendMessageW(handle, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(2 + dx, 2 + dy));
+            SendMessageW(handle, WM_LBUTTONUP, 0, MAKELPARAM(2 + dx, 2 + dy));
+            RECT actual;
+            GetWindowRect(host, &actual);
+            if (!EqualRect(&wanted, &actual))
+            {
+                printf("FAIL resize direction %d\n", direction);
+                return 36;
+            }
+            // The real outer border sends non-client input to the frame,
+            // rather than client input to one of the inner handle windows.
+            before = actual;
+            wanted = before;
+            POINT start = {(before.left + before.right) / 2, (before.top + before.bottom) / 2};
+            if (direction == HTLEFT || direction == HTTOPLEFT || direction == HTBOTTOMLEFT)
+            {
+                start.x = before.left + 1;
+                wanted.left += dx;
+            }
+            if (direction == HTRIGHT || direction == HTTOPRIGHT || direction == HTBOTTOMRIGHT)
+            {
+                start.x = before.right - 1;
+                wanted.right += dx;
+            }
+            if (direction == HTTOP || direction == HTTOPLEFT || direction == HTTOPRIGHT)
+            {
+                start.y = before.top + 1;
+                wanted.top += dy;
+            }
+            if (direction == HTBOTTOM || direction == HTBOTTOMLEFT || direction == HTBOTTOMRIGHT)
+            {
+                start.y = before.bottom - 1;
+                wanted.bottom += dy;
+            }
+            const auto hit = SendMessageW(host, WM_NCHITTEST, 0, MAKELPARAM(start.x, start.y));
+            if (hit != direction)
+                return 38;
+            SendMessageW(host, WM_NCLBUTTONDOWN, hit, MAKELPARAM(start.x, start.y));
+            if (GetCapture() != host)
+                return 39;
+            POINT moved = {start.x + dx, start.y + dy};
+            ScreenToClient(host, &moved);
+            SendMessageW(host, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(moved.x, moved.y));
+            SendMessageW(host, WM_LBUTTONUP, 0, 0);
+            GetWindowRect(host, &actual);
+            if (!EqualRect(&wanted, &actual))
+            {
+                printf("FAIL outer border resize direction %d\n", direction);
+                return 40;
+            }
+        }
+        GetWindowRect(host, &expected);
+        puts("PASS all eight resize handles move only their own edges, keeping opposite edges anchored");
+        puts("PASS outer border hit, mouse down, captured movement and release for all eight directions");
+        {
+            HDC dc = CreateCompatibleDC(nullptr);
+            HBITMAP bitmap = CreateBitmap(2, 2, 1, 32, nullptr);
+            auto previous = SelectObject(dc, bitmap);
+            HWND title = FindWindowExW(host, nullptr, L"STATIC", L"FrankyRenderer");
+            if (!title)
+                return 41;
+            for (HWND container :
+                 {child, wrapper, GetDlgItem(host, 0x7f10), GetDlgItem(host, IDOK), GetDlgItem(host, IDCANCEL), title})
+            {
+                SetPixel(dc, 0, 0, RGB(255, 255, 255));
+                if (!SendMessageW(container, WM_ERASEBKGND, reinterpret_cast<WPARAM>(dc), 0) ||
+                    GetPixel(dc, 0, 0) != MenuColorRef(CurrentMenuPalette().app))
+                {
+                    printf("FAIL erase background for %s control %d: %08lX\n",
+                           container == title     ? "title"
+                           : container == child   ? "page"
+                           : container == wrapper ? "wrapper"
+                                                  : "button",
+                           GetDlgCtrlID(container),
+                           GetPixel(dc, 0, 0));
+                    return 37;
+                }
+            }
+            SelectObject(dc, previous);
+            DeleteObject(bitmap);
+            DeleteDC(dc);
+        }
+        puts("PASS intermediate page containers erase with the menu background");
+        puts("PASS close, OK, Cancel and title erase with the menu background");
+        {
+            HWND title = FindWindowExW(host, nullptr, L"STATIC", L"FrankyRenderer");
+            if (GetWindowLongPtrW(title, GWL_EXSTYLE) & WS_EX_TRANSPARENT)
+                return 42;
+            auto pixelsFor = [](HWND control)
+            {
+                RECT rect;
+                GetClientRect(control, &rect);
+                BITMAPINFO info = {};
+                info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                info.bmiHeader.biWidth = rect.right;
+                info.bmiHeader.biHeight = -rect.bottom;
+                info.bmiHeader.biPlanes = 1;
+                info.bmiHeader.biBitCount = 32;
+                info.bmiHeader.biCompression = BI_RGB;
+                HDC dc = CreateCompatibleDC(nullptr);
+                void* pixels = nullptr;
+                HBITMAP image = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
+                auto previous = SelectObject(dc, image);
+                const size_t count = size_t(rect.right) * rect.bottom;
+                std::fill_n(static_cast<DWORD*>(pixels), count, 0x00ff00ff);
+                SendMessageW(control, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(dc), PRF_CLIENT);
+                GdiFlush();
+                std::vector<DWORD> result(static_cast<DWORD*>(pixels), static_cast<DWORD*>(pixels) + count);
+                SelectObject(dc, previous);
+                DeleteObject(image);
+                DeleteDC(dc);
+                return result;
+            };
+            const HWND controls[] = {
+                GetDlgItem(host, IDOK), GetDlgItem(host, IDCANCEL), GetDlgItem(host, 0x7f10), title};
+            std::vector<std::vector<DWORD>> before;
+            for (HWND control : controls)
+            {
+                before.push_back(pixelsFor(control));
+                if (std::find(before.back().begin(), before.back().end(), 0x00ff00ff) != before.back().end())
+                    return 43;
+            }
+            SendMessageW(host, WM_ENTERSIZEMOVE, 0, 0);
+            RECT bounds;
+            GetWindowRect(host, &bounds);
+            SetWindowPos(
+                host, nullptr, bounds.left + 2, bounds.top + 2, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            SendMessageW(host, WM_EXITSIZEMOVE, 0, 0);
+            for (int i = 0; i < 4; ++i)
+                if (pixelsFor(controls[i]) != before[size_t(i)])
+                    return 44;
+            const auto gripPixels = pixelsFor(GetDlgItem(host, 0x7f11));
+            if (!std::all_of(
+                    gripPixels.begin(), gripPixels.end(), [&](DWORD pixel) { return pixel == gripPixels.front(); }))
+                return 45;
+            puts("PASS complete chrome rendering remains identical after movement; opaque title and no visible grip");
+        }
+        SendMessageW(host, WM_ENTERSIZEMOVE, 0, 0);
+        const int resizedWidth =
+            std::min(int(expected.right - expected.left) + 70, int(monitor.rcWork.right - monitor.rcWork.left));
+        const int resizedHeight =
+            std::min(int(expected.bottom - expected.top) + 40, int(monitor.rcWork.bottom - monitor.rcWork.top));
+        SetWindowPos(host, nullptr, 0, 0, resizedWidth, resizedHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        GetWindowRect(host, &expected);
+        if (expected.right - expected.left != resizedWidth || expected.bottom - expected.top != resizedHeight)
+            return 30;
+        SendMessageW(host, WM_EXITSIZEMOVE, 0, 0);
         frame.Detach();
+        Direct2DFrame reopened;
+        reopened.Attach(child, SIZE{1040, 720});
+        RECT restored;
+        GetWindowRect(host, &restored);
+        if (std::abs((restored.right - restored.left) - resizedWidth) > 1 ||
+            std::abs((restored.bottom - restored.top) - resizedHeight) > 1)
+        {
+            printf("FAIL restored window: wanted %d x %d, got %ld x %ld\n",
+                   resizedWidth,
+                   resizedHeight,
+                   restored.right - restored.left,
+                   restored.bottom - restored.top);
+            return 31;
+        }
+        reopened.Detach();
+        puts("PASS interactive resize survives host layout changes and restores in a new frame");
         TabCtrl_SetCurSel(tabs, 1);
         if (!(GetWindowLongPtrW(tabs, GWL_STYLE) & WS_VISIBLE) || TabCtrl_GetCurSel(tabs) != 1)
             return 28;

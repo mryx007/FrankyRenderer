@@ -6,6 +6,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include "UI/MenuTheme.h"
 
 // A bounded selection window; native popup menus do not support wheel scrolling.
 class ChoicePopup
@@ -61,18 +62,21 @@ class ChoicePopup
             FillRect(dc, &rect, brush);
             DeleteObject(brush);
         };
-        fill(bounds, RGB(43, 45, 50));
+        const auto palette = CurrentMenuPalette();
+        fill(bounds, MenuColorRef(palette.border));
         InflateRect(&bounds, -1, -1);
-        fill(bounds, RGB(18, 19, 22));
+        fill(bounds, MenuColorRef(palette.light ? palette.card : palette.input));
         auto old = SelectObject(dc, font);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, RGB(235, 237, 240));
+        SetTextColor(dc, MenuColorRef(palette.textMain));
         for (int row = 0; row < rows && first + row < int(labels.size()); ++row)
         {
             const int index = first + row;
-            RECT rect = {1, 1 + row * rowHeight, width - 13, 1 + (row + 1) * rowHeight};
+            // Leave room for the scroll thumb only when the list scrolls.
+            RECT rect = {
+                1, 1 + row * rowHeight, width - (int(labels.size()) > rows ? 13 : 1), 1 + (row + 1) * rowHeight};
             if (index == active)
-                fill(rect, RGB(42, 45, 51));
+                fill(rect, MenuColorRef(palette.activeBg));
             RECT text = rect;
             text.left += rowHeight;
             if (described)
@@ -83,10 +87,10 @@ class ChoicePopup
                     dc, labels[index].c_str(), -1, &title, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
                 text.top += rowHeight / 2;
                 SelectObject(dc, descriptionFont);
-                SetTextColor(dc, RGB(188, 194, 204));
+                SetTextColor(dc, MenuColorRef(palette.textMuted));
                 DrawTextW(dc, descriptions[index].c_str(), -1, &text, DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX);
                 SelectObject(dc, font);
-                SetTextColor(dc, RGB(235, 237, 240));
+                SetTextColor(dc, MenuColorRef(palette.textMain));
             }
             else
                 DrawTextW(
@@ -98,7 +102,7 @@ class ChoicePopup
             }
         }
         if (int(labels.size()) > rows)
-            fill(Thumb(), RGB(79, 84, 93));
+            fill(Thumb(), MenuColorRef(palette.toggleOff));
         SelectObject(dc, old);
         if (bitmap)
         {
@@ -208,7 +212,8 @@ class ChoicePopup
                     MulDiv(y - 1 - self->dragOffset, int(self->labels.size()) - self->rows, std::max(1, travel));
                 self->Scroll(index - self->first);
             }
-            else if (x > 0 && x < self->width - 13 && y > 0 && y < 1 + self->rows * self->rowHeight)
+            else if (x > 0 && x < self->width - (int(self->labels.size()) > self->rows ? 13 : 1) && y > 0 &&
+                     y < 1 + self->rows * self->rowHeight)
             {
                 const int hovered = std::min(int(self->labels.size()) - 1, self->first + (y - 1) / self->rowHeight);
                 if (hovered != self->active)
@@ -265,15 +270,6 @@ class ChoicePopup
                         std::min({described ? 8 : 12,
                                   int(labels.size()),
                                   int(monitor.rcWork.bottom - monitor.rcWork.top - 16) / rowHeight}));
-        width = std::min(std::max(int((described ? 480 : 320) * scale), int(anchor.right - anchor.left)),
-                         int(monitor.rcWork.right - monitor.rcWork.left));
-        const int height = rows * rowHeight + 2;
-        const int x = std::clamp(int(anchor.left), int(monitor.rcWork.left), int(monitor.rcWork.right) - width);
-        int y = anchor.bottom;
-        if (y + height > monitor.rcWork.bottom)
-            y = std::max(int(monitor.rcWork.top), int(anchor.top) - height);
-        active = std::max(0, selected);
-        Move(active);
         font = CreateFontW(-int(14 * scale),
                            0,
                            0,
@@ -302,11 +298,45 @@ class ChoicePopup
                                       CLEARTYPE_QUALITY,
                                       0,
                                       L"Segoe UI");
+        // As wide as the longest entry, at least the field; grow leftwards and
+        // stay inside the settings window (and the monitor).
+        int longest = 0;
+        if (HDC dc = GetDC(owner))
+        {
+            const auto old = SelectObject(dc, font);
+            for (const auto& label : labels)
+            {
+                SIZE extent = {};
+                GetTextExtentPoint32W(dc, label.c_str(), int(label.size()), &extent);
+                longest = std::max(longest, int(extent.cx));
+            }
+            SelectObject(dc, old);
+            ReleaseDC(owner, dc);
+        }
+        RECT area = monitor.rcWork;
+        RECT host = {};
+        if (GetWindowRect(GetAncestor(owner, GA_ROOT), &host))
+            IntersectRect(&area, &area, &host);
+        const int needed = longest + rowHeight + int(28 * scale);
+        width = std::min(std::max({int(anchor.right - anchor.left), needed, described ? int(480 * scale) : 0}),
+                         int(area.right - area.left));
+        const int height = rows * rowHeight + 2;
+        const int x = std::clamp(int(anchor.right) - width, int(area.left), int(area.right) - width);
+        int y = anchor.bottom + int(4 * scale);
+        if (y + height > monitor.rcWork.bottom)
+            y = std::max(int(monitor.rcWork.top), int(anchor.top) - height - int(4 * scale));
+        active = std::max(0, selected);
+        Move(active);
         HWND previousFocus = GetFocus();
         window = CreateWindowExW(
             WS_EX_TOOLWINDOW, wc.lpszClassName, L"", WS_POPUP, x, y, width, height, owner, nullptr, module, this);
         if (window)
         {
+            // Windows 11 rounds the list's corners; the border follows the theme.
+            const int corners = 3; // DWMWCP_ROUNDSMALL
+            DwmSetWindowAttribute(window, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &corners, sizeof(corners));
+            const COLORREF border = MenuColorRef(CurrentMenuPalette().border);
+            DwmSetWindowAttribute(window, 34 /* DWMWA_BORDER_COLOR */, &border, sizeof(border));
             ShowWindow(window, SW_SHOWNOACTIVATE);
             SetFocus(window);
             SetCapture(window);

@@ -406,10 +406,13 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                        L"Difference threshold for detecting banding.",
                                        def.threshold,
                                        true));
+        d.controls.back().logarithmic = true;
         d.controls.push_back(
             D2DNumber(s, L"Radius", &s.debandRadius, 0, 1000, .1f, L"Search radius in pixels.", def.radius, true));
+        d.controls.back().logarithmic = true;
         d.controls.push_back(
             D2DNumber(s, L"Grain", &s.debandGrain, 0, 1000, .001f, L"Grain added after debanding.", def.grain, true));
+        d.controls.back().logarithmic = true;
         auto& a = card(p, L"Adaptive Sharpen");
         a.controls.push_back(D2DBool(s, L"Enhance Edges and Details", &s.adaptiveSharpen));
         a.controls.push_back(D2DNumber(s, L"Strength", &s.sharpenStrength, 0, 2, .001f));

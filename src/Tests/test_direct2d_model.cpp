@@ -97,20 +97,20 @@ int wmain()
                                      double(c.maxVal));
                             Require(false, "default inside supported range");
                         }
-                        if (c.Default() == c.minVal || c.Default() == c.maxVal)
-                        {
-                            Require(SliderFraction(c, c.minVal) == 0 && SliderFraction(c, c.maxVal) == 1,
-                                    "boundary defaults map to slider ends");
-                            Require(SliderValue(c, 0) == c.minVal && SliderValue(c, 1) == c.maxVal,
-                                    "boundary slider reaches both bounds");
-                        }
-                        else
-                            Require(SliderFraction(c, c.Default()) == .5f && SliderValue(c, .5f) == c.Default(),
-                                    "interior defaults stay centered, including positive-only ranges");
+                        Require(SliderFraction(c, c.minVal) == 0 && SliderFraction(c, c.maxVal) == 1,
+                                "slider endpoints match the actual range");
+                        Require(SliderValue(c, 0) == c.minVal && SliderValue(c, 1) == c.maxVal,
+                                "slider reaches both bounds");
+                        const float middle = float((double(c.minVal) + c.maxVal) / 2);
+                        Require(c.logarithmic || (SliderValue(c, .5f) == middle &&
+                                                  std::abs(SliderFraction(c, middle) - .5f) < 1e-5f),
+                                "slider midpoint is half the value range, independent of the default");
                         for (float f : {0.f, .1f, .25f, .5f, .75f, .9f, 1.f})
                         {
                             float v = SliderValue(c, f);
                             Require(std::isfinite(v) && v >= c.minVal && v <= c.maxVal, "slider stays in range");
+                            Require(std::abs(SliderFraction(c, v) - f) < 1e-5f,
+                                    "slider display and dragging use the same mapping");
                         }
                     }
                 }
@@ -125,6 +125,31 @@ int wmain()
                                     return c;
             throw std::runtime_error("missing control");
         };
+        auto& iterations = find(L"Processing", L"Debanding", L"Iterations");
+        for (const auto* name : {L"Threshold", L"Radius", L"Grain"})
+        {
+            auto& control = find(L"Processing", L"Debanding", name);
+            Require(control.logarithmic && control.minVal == 0 && control.maxVal == 1000,
+                    "deband sliders retain full range with fine control near zero");
+            Require(SliderFraction(control, control.Default()) > .1f,
+                    "normal debanding values occupy usable track space");
+            float previous = -1;
+            for (float value : {0.f, .001f, .01f, .1f, 1.f, 3.f, 4.f, 16.f, 100.f, 1000.f})
+            {
+                const float position = SliderFraction(control, value);
+                Require(position > previous &&
+                            std::abs(SliderValue(control, position) - value) <= std::max(.0001f, value * 1e-5f),
+                        "log slider is continuous through zero, ordered and invertible");
+                previous = position;
+            }
+        }
+        Require(iterations.kind == ControlKind::SliderInt && iterations.Default() == 1 &&
+                    SliderFraction(iterations, 1) == 1.f / 16.f,
+                "iteration default sits near the left end rather than halfway along the track");
+        for (int value = 0; value <= 16; ++value)
+            Require(SliderFraction(iterations, float(value)) == value / 16.f &&
+                        SliderValue(iterations, value / 16.f) == float(value),
+                    "all iteration values, including zero, have uniform slider spacing");
         auto& algorithm = find(L"Processing", L"Deinterlacing", L"Algorithm");
         Require(algorithm.Value() == 1 && algorithm.choices[1].label == L"Bwdif", "Bwdif index");
         algorithm.set(2);
@@ -316,6 +341,146 @@ int wmain()
         host->Render();
         Require(host->m_pRenderTarget != nullptr, "Direct2D render target");
         {
+            const auto savedSettings = s;
+            auto savedPages = host->m_pages;
+            s.debandThreshold = 1.5f;
+            D2DControl number;
+            number.name = L"Threshold";
+            number.desc = L"Number entry test";
+            number.kind = ControlKind::SliderFloat;
+            number.minVal = 0;
+            number.maxVal = 10;
+            number.stepVal = .001f;
+            number.get = [&] { return s.debandThreshold; };
+            number.set = [&](float value) { s.debandThreshold = value; };
+            number.defaultValue = [] { return 1.5f; };
+            number.reset = [&] { s.debandThreshold = 1.5f; };
+            host->m_pages = {{L"Numbers", L"", L"Numbers", L"", {{L"Numbers", L"", {number}}}}};
+            host->m_activePage = host->m_activeCard = 0;
+            host->m_scrollY = 0;
+            auto region = [&](HitRegion::Type type)
+            {
+                host->Render();
+                for (const auto& hit : host->m_hitRegions)
+                    if (hit.type == type)
+                        return hit;
+                throw std::runtime_error("missing number interaction");
+            };
+            auto click = [&](HitRegion::Type type)
+            {
+                const auto hit = region(type);
+                host->OnLButtonDown((hit.rect.left + hit.rect.right) / 2, (hit.rect.top + hit.rect.bottom) / 2);
+            };
+            click(HitRegion::Increment);
+            Require(std::abs(s.debandThreshold - 1.51f) < 1e-5f, "plus uses a modestly coarser step");
+            host->m_stepStarted = GetTickCount64() - 2000;
+            SendMessageW(view, WM_TIMER, 18, 0);
+            Require(std::abs(s.debandThreshold - 1.61f) < 1e-5f, "holding plus repeats and accelerates");
+            host->OnLButtonUp(0, 0);
+            Require(!host->m_stepControl && GetCapture() != view, "release stops number repetition");
+            const auto stopped = s.debandThreshold;
+            SendMessageW(view, WM_TIMER, 18, 0);
+            Require(s.debandThreshold == stopped, "late timer cannot continue stepping after release");
+            click(HitRegion::Decrement);
+            host->OnLButtonUp(0, 0);
+            Require(std::abs(s.debandThreshold - 1.60f) < 1e-5f, "minus lowers the value");
+            click(HitRegion::Number);
+            Require(host->m_edit != nullptr, "number field starts direct editing");
+            SetWindowTextW(host->m_edit, L"2,003");
+            host->EndEdit();
+            Require(std::abs(s.debandThreshold - 2.003f) < 1e-5f, "direct entry retains fine decimal precision");
+            Require(NumberText(number, s.debandThreshold) == L"2.003", "drawn number does not hide fine precision");
+            Require(NumberText(number, 0) == L"0" && NumberText(number, 3) == L"3" && NumberText(number, .5f) == L"0.5",
+                    "values inside number fields do not gain trailing decimal zeros");
+            Require(NumberText(number, 0, true) == L"0" && NumberText(number, 2, true) == L"2.0" &&
+                        NumberText(number, 100, true) == L"100" && NumberText(number, 1000, true) == L"1000",
+                    "small nonzero range endpoints have one decimal, large whole endpoints stay compact");
+            auto integer = number;
+            integer.kind = ControlKind::SliderInt;
+            Require(NumberText(integer, 1) == L"1", "integer fields do not gain decimal places");
+            Require(NumberText(integer, 0, true) == L"0", "integer range endpoints remain whole numbers");
+            click(HitRegion::Number);
+            SetWindowTextW(host->m_edit, L"11");
+            host->EndEdit();
+            Require(std::abs(s.debandThreshold - 2.003f) < 1e-5f, "out-of-range direct entry is rejected");
+            click(HitRegion::ResetValue);
+            Require(s.debandThreshold == 1.5f, "individual reset remains available");
+            s.debandThreshold = 10;
+            host->Render();
+            for (const auto& hit : host->m_hitRegions)
+                Require(hit.type != HitRegion::Increment && hit.type != HitRegion::Slider,
+                        "upper limit disables plus and numbers have no slider track");
+            s.debandThreshold = 0;
+            host->Render();
+            for (const auto& hit : host->m_hitRegions)
+                Require(hit.type != HitRegion::Decrement, "lower limit disables minus");
+            click(HitRegion::Number);
+            wchar_t zeroText[64];
+            GetWindowTextW(host->m_edit, zeroText, 64);
+            Require(!wcscmp(zeroText, L"0"), "zero remains plain zero while editing the field");
+            host->EndEdit(false);
+            click(HitRegion::Increment);
+            host->StopNumberRepeat();
+            Require(!host->m_stepControl && GetCapture() != view,
+                    "cancelling repeat releases mouse capture even without a button-up event");
+            host->m_pages = std::move(savedPages);
+            s = host->m_accepted = savedSettings;
+            host->m_pending = false;
+            host->m_error.clear();
+            host->Render();
+            puts("PASS number fields: plus/minus, accelerated hold, release, fine direct entry, limits and reset");
+        }
+        {
+            int processing = -1;
+            for (int i = 0; i < int(host->m_pages.size()); ++i)
+                if (host->m_pages[i].name == L"Processing")
+                    processing = i;
+            Require(processing >= 0, "processing navigation exists");
+            const int savedPage = host->m_activePage, savedCard = host->m_activeCard;
+            host->m_navigationOpen = false;
+            host->m_navigationProgress = 0;
+            host->m_activePage = processing;
+            host->m_activeCard = 1;
+            host->m_scrollY = 24;
+            host->m_contentStarted = 123;
+            host->m_contentProgress = 1;
+            for (int i = 0; i < 5; ++i)
+                host->OnLButtonDown(30, 62.f + processing * 36.f + 16.f);
+            Require(host->m_activeCard == 1 && host->m_scrollY == 24 && host->m_contentStarted == 123 &&
+                        host->m_contentProgress == 1,
+                    "repeated active rail clicks preserve tab, scroll and animation state");
+            host->m_navigationOpen = true;
+            host->m_navigationProgress = 1;
+            host->Render();
+            Require(host->m_pRenderTarget != nullptr, "rounded sidebar renders without a device error");
+            HitRegion activeItem;
+            for (const auto& hit : host->m_hitRegions)
+                if (hit.type == HitRegion::NavItem && hit.pageIndex == processing)
+                    activeItem = hit;
+            Require(activeItem.type == HitRegion::NavItem, "active expanded navigation item exists");
+            host->m_scrollY = 24;
+            host->OnLButtonDown((activeItem.rect.left + activeItem.rect.right) / 2,
+                                (activeItem.rect.top + activeItem.rect.bottom) / 2);
+            Require(!host->m_navigationOpen && host->m_activeCard == 1 && host->m_scrollY == 24 &&
+                        host->m_contentStarted == 123 && host->m_contentProgress == 1,
+                    "active drawer item closes navigation without restarting its page");
+            host->m_navigationProgress = 0;
+            const int nextPage = (processing + 1) % int(host->m_pages.size());
+            host->OnLButtonDown(30, 62.f + nextPage * 36.f + 16.f);
+            Require(host->m_activePage == nextPage && host->m_activeCard == 0 && host->m_scrollY == 0 &&
+                        host->m_contentProgress == 0,
+                    "different page still resets state and starts its transition");
+            host->m_searchQuery = L"Threshold";
+            host->OnLButtonDown(30, 62.f + nextPage * 36.f + 16.f);
+            Require(host->m_searchQuery.empty(), "selecting a page still leaves search results");
+            host->m_activePage = savedPage;
+            host->m_activeCard = savedCard;
+            host->m_contentProgress = 1;
+            host->m_previousCard = -1;
+            host->Render();
+            puts("PASS repeated active navigation clicks do not restart the page or reset its state");
+        }
+        {
             auto savedPages = host->m_pages;
             D2DControl control;
             control.name = L"Test";
@@ -324,14 +489,15 @@ int wmain()
             host->m_activePage = 0;
             host->m_scrollY = 0;
             host->m_pRenderTarget->SetDpi(96.f, 96.f);
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 190))), "fitting layout target");
+            // The reset action has its own header row above cards without tabs.
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 210))), "fitting layout target");
             host->Render();
             Require(host->m_maxScrollY == 0, "last card fits without scrolling into trailing padding");
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 180))), "overflow layout target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 200))), "overflow layout target");
             host->Render();
             Require(host->m_maxScrollY > 0, "actual clipped content remains scrollable");
             host->m_scrollY = host->m_maxScrollY;
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 190))), "restore fitting target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 224))), "restore fitting target");
             host->Render();
             Require(host->m_maxScrollY == 0 && host->m_scrollY == 0, "resize removes stale scroll offset");
             for (const auto& hit : host->m_hitRegions)
@@ -352,8 +518,21 @@ int wmain()
             {
                 host->m_activePage = page;
                 host->m_scrollY = 0;
+                // Settings beside the closed icon rail.
+                host->m_navigationOpen = false;
+                host->m_navigationProgress = 0;
                 host->Render();
                 const auto size = host->m_pRenderTarget->GetSize();
+                // Controls scrolled out of view have empty (clipped) hit areas.
+                for (const auto& hit : host->m_hitRegions)
+                    if ((hit.type == HitRegion::DropdownHeader || hit.type == HitRegion::Slider) &&
+                        hit.rect.right > hit.rect.left)
+                        Require(hit.rect.left >= 60 && hit.rect.right <= size.width - 16,
+                                "Full HD controls remain inside content area");
+                // Navigation, display and transfer controls in the open drawer.
+                host->m_navigationOpen = true;
+                host->m_navigationProgress = 1;
+                host->Render();
                 float navBottom = 0, actionsTop = size.height;
                 for (const auto& hit : host->m_hitRegions)
                 {
@@ -366,11 +545,10 @@ int wmain()
                                 "Full HD action buttons remain inside sidebar");
                         actionsTop = std::min(actionsTop, hit.rect.top - 72.f);
                     }
-                    if (hit.type == HitRegion::DropdownHeader || hit.type == HitRegion::Slider)
-                        Require(hit.rect.left >= SettingsLayout::SidebarWidth && hit.rect.right <= size.width - 16,
-                                "Full HD controls remain inside content area");
                 }
                 Require(navBottom < actionsTop, "Full HD navigation does not overlap device or transfer controls");
+                host->m_navigationOpen = false;
+                host->m_navigationProgress = 0;
             }
         }
         Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(1100, 850))), "restore model render target");
@@ -398,6 +576,8 @@ int wmain()
         }
         Require(headerSwitches == 1, "custom card renders one heading switch without duplicate row");
         host->m_searchQuery.clear();
+        // Tabs keep pages short; a low view still has to scroll.
+        Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(1100, 360))), "low render target");
         host->Render();
         bool scrollbar = false, apply = false;
         for (const auto& hit : host->m_hitRegions)
@@ -406,15 +586,23 @@ int wmain()
             apply |= hit.type == HitRegion::ApplyBtn;
         }
         Require(scrollbar && !apply, "visible page scrollbar and no live preview button");
+        Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(1100, 850))), "restore model render target");
+        // Import and export live in the navigation drawer.
+        host->m_navigationOpen = true;
+        host->m_navigationProgress = 1;
+        host->Render();
         int transferButtons = 0;
         for (const auto& hit : host->m_hitRegions)
             if (hit.type == HitRegion::ImportBtn || hit.type == HitRegion::ExportBtn)
             {
                 ++transferButtons;
-                Require(hit.rect.left >= 16 && hit.rect.right <= 224 && hit.rect.bottom <= 850,
+                Require(hit.rect.left >= 16 && hit.rect.right <= SettingsLayout::SidebarWidth - 16 &&
+                            hit.rect.bottom <= 850,
                         "import/export fit inside sidebar");
             }
         Require(transferButtons == 2, "import and export buttons visible");
+        host->m_navigationOpen = false;
+        host->m_navigationProgress = 0;
         const auto beforeImport = s;
         auto imported = SettingsIni::Parse(SettingsIni::Serialize(beforeImport));
         imported.brightness = .1875f;
@@ -437,14 +625,15 @@ int wmain()
                 "INI import applies once and refreshes accepted settings");
         Require(SUCCEEDED(host->ApplyImported(beforeImport)), "restore before import test");
         host->m_preview = {};
-        for (int index : {3, 4, 6})
+        // General, Processing and Color: first tabs fit without scrolling.
+        for (int index : {0, 1, 3})
         {
             host->m_activePage = index;
             host->m_scrollY = 0;
             host->Render();
             Require(host->m_maxScrollY == 0, "short sections fit without unnecessary scrolling");
         }
-        host->m_activePage = 7;
+        host->m_activePage = 5; // Shaders
         host->Render();
         int shaderRows = 0, enabledSwitches = 0;
         bool shaderScrollbar = false;
@@ -487,6 +676,8 @@ int wmain()
             Require(SUCCEEDED(host->ApplyImported(portable)) && importedId == bId && s.displayProfile == bId,
                     "import targets selected device and cannot change profile identity");
             host->m_activePage = 0;
+            host->m_navigationOpen = true;
+            host->m_navigationProgress = 1;
             host->Render();
             int displayHits = 0, renameHits = 0;
             for (const auto& hit : host->m_hitRegions)
@@ -494,7 +685,8 @@ int wmain()
                 if (hit.type == HitRegion::DisplayProfile)
                 {
                     ++displayHits;
-                    Require(hit.rect.top > 430 && hit.rect.right <= 224, "device selector fits below navigation");
+                    Require(hit.rect.top > 430 && hit.rect.right <= SettingsLayout::SidebarWidth - 16,
+                            "device selector fits below navigation");
                 }
                 if (hit.type == HitRegion::RenameDisplay)
                     ++renameHits;
