@@ -4,6 +4,7 @@
 #include "Settings/SettingsBackup.h"
 #include "Settings/LiveSettings.h"
 #include "UI/MenuTheme.h"
+#include "UI/Translation.h"
 #include <d2d1.h>
 #include <dwrite.h>
 #include <wrl/client.h>
@@ -47,6 +48,7 @@ struct ChoiceItem
 
 struct D2DControl
 {
+    std::wstring id; // English name; name is translated for display
     std::wstring name;
     std::wstring desc;
     ControlKind kind;
@@ -103,6 +105,69 @@ struct D2DPage
 };
 
 #include "UI/Direct2DSettingsModel.h"
+
+// Menu texts outside the settings model, for the translation template.
+static constexpr const wchar_t* MenuTexts[] = {L"Display",
+                                               L"Rename",
+                                               L"Import",
+                                               L"Export",
+                                               L"Reset Page",
+                                               L"Reset Shader",
+                                               L"Saved",
+                                               L"Save (%d)",
+                                               L"Search settings  (Ctrl+F)",
+                                               L"Search Results",
+                                               L"Matching settings for: \"%s\"",
+                                               L"No settings matching this term found.",
+                                               L"All Off",
+                                               L"Settings saved.",
+                                               L"Could not save settings.",
+                                               L"Select an ICC profile file first.",
+                                               L"Select a 3D LUT file first.",
+                                               L"Value or combination is outside the supported range.",
+                                               L"Could not open the INI file dialog.",
+                                               L"All display profiles exported.",
+                                               L"INI backup exported.",
+                                               L"All display profiles imported.",
+                                               L"INI imported. Select Save to keep it.",
+                                               L"INI settings imported.",
+                                               L"Could not apply INI settings. Check external ICC and LUT files.",
+                                               L"Could not read display profiles.",
+                                               L"Enter a display name (1 to 80 characters).",
+                                               L"Enter a number within the supported range.",
+                                               L"Automatic (Windows)",
+                                               L"English"};
+
+// Translates everything the settings model only displays. Page names, card
+// titles and tab names stay English here: the menu logic uses them as
+// identifiers, so they are translated when drawn.
+static void TranslatePages(std::vector<D2DPage>& pages)
+{
+    for (auto& page : pages)
+    {
+        page.subtitle = Tr(page.subtitle);
+        for (auto& card : page.cards)
+        {
+            card.subtitle = Tr(card.subtitle);
+            for (auto& c : card.controls)
+            {
+                c.id = c.name;
+                c.name = Tr(c.name);
+                c.desc = Tr(c.desc);
+                c.placeholder = Tr(c.placeholder);
+                c.invalidText = Tr(c.invalidText);
+                c.actionLabel = Tr(c.actionLabel);
+                for (auto& choice : c.choices)
+                {
+                    choice.label = Tr(choice.label);
+                    choice.description = Tr(choice.description);
+                }
+                if (c.detail)
+                    c.detail = [detail = c.detail] { return Tr(detail()); };
+            }
+        }
+    }
+}
 
 // The native search field inside the drawn header search box.
 static D2D1_RECT_F SearchEditRect(const D2D1_RECT_F& box)
@@ -254,7 +319,9 @@ static bool MatchesFilter(const std::wstring& text, const std::wstring& query)
 static bool
 ControlMatches(const D2DControl& control, const D2DCard& card, const D2DPage& page, const std::wstring& query)
 {
-    return MatchesFilter(page.name + L" " + card.title + L" " + control.name + L" " + control.desc, query);
+    return MatchesFilter(page.name + L" " + Tr(page.name) + L" " + card.title + L" " + Tr(card.title) + L" " +
+                             control.id + L" " + control.name + L" " + control.desc,
+                         query);
 }
 
 class Direct2DHostWindow
@@ -273,6 +340,7 @@ class Direct2DHostWindow
     float m_contentProgress = 1;
     int m_previousCard = -1;
     int m_paletteVersion = -1;
+    int m_languageVersion = g_menuLanguageVersion;
 
     struct ToggleTween
     {
@@ -628,6 +696,32 @@ static std::vector<D2DPage> PreviewPages(PlaceboSettings& settings)
         };
         look.controls.push_back(choice(L"Theme", L"", MenuThemeNames, &g_menuTheme, true));
         look.controls.push_back(choice(L"Accent Color", L"", MenuAccentNames, &g_menuAccent, false));
+        {
+            // Automatic follows the Windows display language; embedded
+            // translations are listed by their own name ("Deutsch").
+            auto languages = std::make_shared<std::vector<std::wstring>>(std::vector<std::wstring>{L"", L"en"});
+            for (const auto& name : MenuTranslation::Embedded())
+                languages->push_back(name);
+            D2DControl c;
+            c.name = L"Language";
+            c.desc = L"Language of this settings window. Automatic follows Windows; missing translations show English.";
+            c.kind = ControlKind::Choice;
+            c.choices.push_back({0, L"Automatic (Windows)"});
+            c.choices.push_back({1, L"English"});
+            for (int i = 2; i < int(languages->size()); ++i)
+                c.choices.push_back({i, MenuTranslation::NativeName((*languages)[i])});
+            c.get = [languages]
+            {
+                const auto current = g_menuLanguage == L"en" ? g_menuLanguage : MenuTranslation::Upper(g_menuLanguage);
+                const auto found = std::find(languages->begin(), languages->end(), current);
+                return float(found == languages->end() ? 0 : found - languages->begin());
+            };
+            c.set = [languages](float v)
+            { SetMenuLanguage((*languages)[std::clamp(int(v), 0, int(languages->size()) - 1)]); };
+            c.defaultValue = [] { return 0.f; };
+            c.reset = [] { SetMenuLanguage(L""); };
+            look.controls.push_back(std::move(c));
+        }
         result[0].cards.push_back(std::move(look));
     }
     return result;
@@ -692,6 +786,7 @@ void Direct2DHostWindow::InitPages()
 {
     StopNumberRepeat();
     m_pages = PreviewPages(*m_pSettings);
+    TranslatePages(m_pages);
     CountUnsaved();
 }
 
@@ -924,6 +1019,12 @@ void Direct2DHostWindow::Render()
         !m_fmtDesc || !m_fmtTextField || !m_fmtValue || !m_fmtIcon)
         return;
     // A new theme or accent colour rebuilds all brushes.
+    // A new menu language rebuilds the translated settings model.
+    if (m_languageVersion != g_menuLanguageVersion)
+    {
+        m_languageVersion = g_menuLanguageVersion;
+        InitPages();
+    }
     if (m_paletteVersion != g_menuPaletteVersion)
     {
         DiscardDeviceResources();
@@ -1025,8 +1126,8 @@ void Direct2DHostWindow::Render()
                                       D2D1::RectF(21, navY + 3, 43, navY + 27),
                                       isActive ? m_brushAccent.Get() : m_brushTextMuted.Get());
             D2D1_RECT_F textRect = D2D1::RectF(48, navY + 6, sidebarW - 12, navY + 26);
-            m_pRenderTarget->DrawText(
-                m_pages[i].name.c_str(), (UINT32)m_pages[i].name.length(), m_fmtNav.Get(), textRect, textBrush);
+            const auto pageName = Tr(m_pages[i].name);
+            m_pRenderTarget->DrawText(pageName.c_str(), (UINT32)pageName.length(), m_fmtNav.Get(), textRect, textBrush);
 
             HitRegion hitNav;
             hitNav.type = HitRegion::NavItem;
@@ -1045,13 +1146,17 @@ void Direct2DHostWindow::Render()
             const auto deviceRect = D2D1::RectF(16, transferY - 48, sidebarW - 16, transferY - 14);
             m_displayRect = deviceRect;
             auto caption = D2D1::RectF(16, transferY - 70, 140, transferY - 48);
-            m_pRenderTarget->DrawText(L"Display", 7, m_fmtNav.Get(), caption, m_brushTextMuted.Get());
+            const auto displayCaption = Tr(L"Display");
+            m_pRenderTarget->DrawText(
+                displayCaption.c_str(), UINT32(displayCaption.size()), m_fmtNav.Get(), caption, m_brushTextMuted.Get());
             const auto renameRect = D2D1::RectF(sidebarW - 83, transferY - 72, sidebarW - 16, transferY - 49);
             const auto renameAlignment = m_fmtNav->GetTextAlignment();
             const auto renameParagraph = m_fmtNav->GetParagraphAlignment();
             m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
             m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-            m_pRenderTarget->DrawText(L"Rename", 6, m_fmtNav.Get(), renameRect, m_brushTextMain.Get());
+            const auto renameLabel = Tr(L"Rename");
+            m_pRenderTarget->DrawText(
+                renameLabel.c_str(), UINT32(renameLabel.size()), m_fmtNav.Get(), renameRect, m_brushTextMain.Get());
             m_fmtNav->SetTextAlignment(renameAlignment);
             m_fmtNav->SetParagraphAlignment(renameParagraph);
             HitRegion renameHit;
@@ -1060,7 +1165,7 @@ void Direct2DHostWindow::Render()
             m_hitRegions.push_back(renameHit);
             m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushInputBg.Get());
             m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushBorderCard.Get(), 1.f);
-            auto name = std::wstring(L"Display");
+            auto name = Tr(L"Display");
             bool named = false;
             for (const auto& device : m_devices)
                 if (device.id == m_pSettings->displayProfile)
@@ -1109,7 +1214,9 @@ void Direct2DHostWindow::Render()
             auto text = rect;
             text.top += 8;
             m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            m_pRenderTarget->DrawText(i ? L"Export" : L"Import", 6, m_fmtNav.Get(), text, m_brushTextMain.Get());
+            const auto transferLabel = Tr(i ? L"Export" : L"Import");
+            m_pRenderTarget->DrawText(
+                transferLabel.c_str(), UINT32(transferLabel.size()), m_fmtNav.Get(), text, m_brushTextMain.Get());
             m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
             HitRegion hit;
             hit.type = i ? HitRegion::ExportBtn : HitRegion::ImportBtn;
@@ -1120,8 +1227,9 @@ void Direct2DHostWindow::Render()
         {
             const float statusBottom = transferY - (m_displayProfiles ? 80.f : 8.f);
             const auto r = D2D1::RectF(16, statusBottom - 57.f, sidebarW - 16, statusBottom);
-            m_pRenderTarget->DrawText(m_error.c_str(),
-                                      (UINT32)m_error.size(),
+            const auto status = Tr(m_error);
+            m_pRenderTarget->DrawText(status.c_str(),
+                                      (UINT32)status.size(),
                                       m_fmtDesc.Get(),
                                       r,
                                       m_brushAccentHover.Get(),
@@ -1155,7 +1263,8 @@ void Direct2DHostWindow::Render()
     if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))
     {
         // The shader page shows one shader at a time; reset only that one.
-        const wchar_t* resetLabel = m_pages[m_activePage].name == L"Shaders" ? L"Reset Shader" : L"Reset Page";
+        const auto resetText = Tr(m_pages[m_activePage].name == L"Shaders" ? L"Reset Shader" : L"Reset Page");
+        const wchar_t* resetLabel = resetText.c_str();
         // Sized to its label so the hover highlight hugs the text.
         float labelWidth = 80.f;
         ComPtr<IDWriteTextLayout> measured;
@@ -1181,9 +1290,10 @@ void Direct2DHostWindow::Render()
     // how many settings differ from what was last saved.
     if (m_standalone)
     {
-        wchar_t label[32] = L"Saved";
+        wchar_t label[64] = {};
+        wcsncpy_s(label, Tr(L"Saved").c_str(), _TRUNCATE);
         if (m_unsaved)
-            swprintf_s(label, L"Save (%d)", m_unsaved);
+            swprintf_s(label, Tr(L"Save (%d)").c_str(), m_unsaved);
         const auto save = D2D1::RectF(headerActionsLeft - 114, currentY, headerActionsLeft - 10, currentY + 32);
         m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(save, 5, 5),
                                               m_unsaved ? m_brushActiveBg.Get() : m_brushInputBg.Get());
@@ -1213,8 +1323,9 @@ void Direct2DHostWindow::Render()
 
             // Page Header
             D2D1_RECT_F titleRect = D2D1::RectF(contentX, currentY, headerActionsLeft - 16, currentY + 28.0f);
+            const auto pageTitle = Tr(page.title);
             m_pRenderTarget->DrawText(
-                page.title.c_str(), (UINT32)page.title.length(), m_fmtTitle.Get(), titleRect, m_brushTextMain.Get());
+                pageTitle.c_str(), (UINT32)pageTitle.length(), m_fmtTitle.Get(), titleRect, m_brushTextMain.Get());
 
             currentY += 44.f;
             if (page.name != L"Shaders" && tabs.size() > 1)
@@ -1223,7 +1334,7 @@ void Direct2DHostWindow::Render()
                 float tabX = contentX;
                 for (size_t i = 0; i < tabs.size(); ++i)
                 {
-                    auto label = tabs[i];
+                    auto label = Tr(tabs[i]);
                     if (label.starts_with(L"Custom: "))
                         label.erase(0, 8);
                     const auto suffix = label.find(L" (Chroma / Alpha)");
@@ -1310,9 +1421,13 @@ void Direct2DHostWindow::Render()
     {
         // Global Search Header
         D2D1_RECT_F titleRect = D2D1::RectF(contentX, currentY, headerActionsLeft - 16, currentY + 28.0f);
-        m_pRenderTarget->DrawText(L"Search Results", 14, m_fmtTitle.Get(), titleRect, m_brushTextMain.Get());
+        const auto searchTitle = Tr(L"Search Results");
+        m_pRenderTarget->DrawText(
+            searchTitle.c_str(), UINT32(searchTitle.size()), m_fmtTitle.Get(), titleRect, m_brushTextMain.Get());
 
-        std::wstring queryHint = L"Matching settings for: \"" + m_searchQuery + L"\"";
+        wchar_t hint[512] = {};
+        swprintf_s(hint, Tr(L"Matching settings for: \"%s\"").c_str(), m_searchQuery.c_str());
+        std::wstring queryHint = hint;
         D2D1_RECT_F subRect = D2D1::RectF(contentX, currentY + 34.0f, contentX + contentW, currentY + 54.0f);
         m_pRenderTarget->DrawText(
             queryHint.c_str(), (UINT32)queryHint.length(), m_fmtSubtitle.Get(), subRect, m_brushTextMuted.Get());
@@ -1347,8 +1462,9 @@ void Direct2DHostWindow::Render()
         D2D1_RECT_F emptyRect = D2D1::RectF(contentX, currentY + 40.0f, contentX + contentW, currentY + 70.0f);
         if (m_fmtNav)
             m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        const auto noMatches = Tr(L"No settings matching this term found.");
         m_pRenderTarget->DrawText(
-            L"No settings matching this term found.", 37, m_fmtNav.Get(), emptyRect, m_brushTextDim.Get());
+            noMatches.c_str(), UINT32(noMatches.size()), m_fmtNav.Get(), emptyRect, m_brushTextDim.Get());
         if (m_fmtNav)
             m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     }
@@ -1417,7 +1533,8 @@ void Direct2DHostWindow::Render()
         auto text = button;
         text.left += 18;
         text.top += 7;
-        m_pRenderTarget->DrawText(L"All Off", 7, m_fmtNav.Get(), text, m_brushTextMain.Get());
+        const auto allOff = Tr(L"All Off");
+        m_pRenderTarget->DrawText(allOff.c_str(), UINT32(allOff.size()), m_fmtNav.Get(), text, m_brushTextMain.Get());
         auto& controls = m_pages[m_activePage].cards.front().controls;
         if (!controls.empty())
         {
@@ -1481,14 +1598,14 @@ void Direct2DHostWindow::Render()
         const auto& card = *item.pCard;
         const auto& visibleControls = item.visibleControls;
 
-        std::wstring headerTitle = card.title;
+        std::wstring headerTitle = Tr(card.title);
         D2DControl* headerToggle = nullptr;
         for (const auto& control : card.controls)
             if (control.headerToggle)
                 headerToggle = const_cast<D2DControl*>(&control);
         if (isSearching)
         {
-            headerTitle += L"  (" + item.pageName + L")";
+            headerTitle += L"  (" + Tr(item.pageName) + L")";
         }
 
         std::vector<float> rowHeights, descriptionOffsets;
@@ -1972,7 +2089,7 @@ void Direct2DHostWindow::DrawSearchBox(D2D1_RECT_F box)
     if (!typing)
     {
         const bool empty = m_searchQuery.empty();
-        const auto& shown = empty ? std::wstring(L"Search settings  (Ctrl+F)") : m_searchQuery;
+        const auto& shown = empty ? Tr(L"Search settings  (Ctrl+F)") : m_searchQuery;
         const auto wrap = m_fmtNav->GetWordWrapping();
         m_fmtNav->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
         m_pRenderTarget->DrawText(shown.c_str(),
@@ -2564,7 +2681,7 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                     continue;
                 for (auto& c : card.controls)
                     // The chain order belongs to all shaders, not the selected one.
-                    if (c.reset && !(shaders && c.name == L"Chain Position"))
+                    if (c.reset && !(shaders && c.id == L"Chain Position"))
                         c.reset();
             }
             Changed();
@@ -3107,6 +3224,7 @@ HWND Direct2DSettingsHost::Create(HWND parent,
                                   bool displayProfiles)
 {
     LoadMenuAppearance();
+    LoadMenuLanguage();
     HMODULE hInstance = nullptr;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                        reinterpret_cast<LPCWSTR>(&Direct2DSettingsHost::Create),
@@ -3179,4 +3297,50 @@ void Direct2DSettingsHost::Save(HWND hwnd, PlaceboSettings* outSettings)
     {
         *outSettings = *pThis->m_pSettings;
     }
+}
+
+std::vector<std::pair<std::wstring, std::wstring>> Direct2DSettingsHost::TranslatableTexts()
+{
+    std::vector<std::pair<std::wstring, std::wstring>> out;
+    auto add = [&](const std::wstring& text, const std::wstring& note)
+    {
+        // Technical names (filter ids such as ewa_lanczos) and plain numbers stay as they are.
+        const bool technical =
+            std::all_of(text.begin(),
+                        text.end(),
+                        [](wchar_t c) { return iswlower(c) || iswdigit(c) || c == L'_' || c == L'.' || c == L'-'; });
+        if (!text.empty() && !technical && std::any_of(text.begin(), text.end(), iswalpha))
+            out.emplace_back(text, note);
+    };
+    PlaceboSettings draft;
+    for (const auto& page : PreviewPages(draft))
+    {
+        add(page.name, L"Category");
+        add(page.title, L"Category heading");
+        add(page.subtitle, L"Category description");
+        for (const auto& tab : CardTabs(page))
+            add(tab, L"Tab (" + page.name + L")");
+        for (const auto& card : page.cards)
+        {
+            const auto where = page.name + L" > " + card.title;
+            add(card.title, L"Section heading (" + page.name + L")");
+            add(card.subtitle, L"Section description (" + where + L")");
+            for (const auto& c : card.controls)
+            {
+                add(c.name, L"Setting name (" + where + L")");
+                add(c.desc, L"Setting description (" + where + L" > " + c.name + L")");
+                add(c.placeholder, L"Input hint (" + where + L" > " + c.name + L")");
+                add(c.invalidText, L"Input error (" + where + L" > " + c.name + L")");
+                add(c.actionLabel, L"Button (" + where + L" > " + c.name + L")");
+                for (const auto& choice : c.choices)
+                {
+                    add(choice.label, L"Choice (" + where + L" > " + c.name + L")");
+                    add(choice.description, L"Choice description (" + where + L" > " + c.name + L")");
+                }
+            }
+        }
+    }
+    for (const auto* text : MenuTexts)
+        add(text, L"Menu text; keep %d and %s placeholders");
+    return out;
 }

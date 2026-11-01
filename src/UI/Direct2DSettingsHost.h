@@ -1,6 +1,9 @@
 #pragma once
 #include <windows.h>
 #include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 #include "Settings/Settings.h"
 
 class Direct2DSettingsHost
@@ -15,4 +18,6 @@ class Direct2DSettingsHost
     static void Destroy(HWND hwnd);
     static void Resize(HWND hwnd, const RECT& bounds);
     static void Save(HWND hwnd, PlaceboSettings* outSettings);
+    // Every English menu text with a note for translators, in menu order.
+    static std::vector<std::pair<std::wstring, std::wstring>> TranslatableTexts();
 };

@@ -34,3 +34,5 @@ STRINGTABLE
 BEGIN
  216 "FrankyRenderer"
 END
+// Menu translations, generated from translations/*.po by Tools/translations.py.
+#include "translations.rc"
