@@ -632,11 +632,6 @@ class Direct2DFrame
                 auto r = draw->rcItem;
                 DrawTextW(draw->hDC, label, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(draw->hDC, old);
-                if (draw->itemState & ODS_FOCUS)
-                {
-                    InflateRect(&r, -3, -3);
-                    DrawFocusRect(draw->hDC, &r);
-                }
                 return TRUE;
             }
         }
