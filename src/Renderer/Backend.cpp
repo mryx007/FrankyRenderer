@@ -12,6 +12,7 @@
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/PresentationMeasurement.h"
 #include "Renderer/GpuMeasurement.h"
+#include "Renderer/RenderProbe.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/ShaderCache.h"
 #include <deque>
@@ -158,6 +159,7 @@ struct PlaceboBackend::State
     DropMeasurement drops;
     std::mutex dropsLock;
     DurationMeasurement renderCpu, presentCpu;
+    RenderProbe renderProbe;
     GpuMeasurement renderGpu;
 
     uint64_t DropTotal()
@@ -388,6 +390,7 @@ struct PlaceboBackend::State
         unpack422.Reset();
         renderGpu.Reset();
         renderCpu.Reset();
+        renderProbe.Reset();
         presentCpu.Reset();
         presentation.Reset(false);
         statisticsBitmap.Reset();
@@ -1184,6 +1187,22 @@ struct PlaceboBackend::State
         };
         render(L"Render", false);
         render(L"Render peak 5s", true);
+        if (const auto* peak = renderProbe.Peak(now))
+        {
+            int first = 0, second = 1;
+            if (peak->ms[second] > peak->ms[first])
+                std::swap(first, second);
+            for (int i = 2; i < RenderProbe::Count; ++i)
+                if (peak->ms[i] > peak->ms[first])
+                {
+                    second = first;
+                    first = i;
+                }
+                else if (peak->ms[i] > peak->ms[second])
+                    second = i;
+            row(L"CPU peak work") << std::setprecision(2) << RenderProbe::Names[first] << L" " << peak->ms[first]
+                                  << L" ms" << dot << RenderProbe::Names[second] << L" " << peak->ms[second] << L" ms";
+        }
         if (presentCpu.count)
             row(L"Present") << std::setprecision(2) << presentCpu.Average() << L" ms" << dot << L"peak "
                             << presentCpu.Maximum(now) << L" ms (CPU call)";
@@ -1316,6 +1335,7 @@ struct PlaceboBackend::State
         if (!rendered)
             return E_FAIL;
         renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        renderProbe.Record(GetTickCount64(), renderCpu.last);
         QueryPerformanceCounter(&begin);
         const HRESULT result = nativeSwapchain.Submit();
         QueryPerformanceCounter(&end);
@@ -1330,7 +1350,9 @@ struct PlaceboBackend::State
 
     bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
-        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars);
+        RenderProbe::Scope probe(renderProbe, showStatistics.load());
+        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars, &probe);
+        probe.Next(RenderProbe::Setup);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
         bool cropBars = autoZoom && blackBars.detector.measured;
 
@@ -1459,6 +1481,7 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
+        probe.Next(RenderProbe::Rtx);
         if (settings.rtxSuperResolution)
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
@@ -1487,6 +1510,7 @@ struct PlaceboBackend::State
             }
         }
         // Apply after preprocessing, to the main image and every temporal sample.
+        probe.Next(RenderProbe::Hooks);
         // MPC-HC's SetFlip convention mirrors the source horizontally.
         auto transform = [&](pl_frame& frame)
         {
@@ -1659,6 +1683,7 @@ struct PlaceboBackend::State
         auto& overlayInfo = overlays[0];
         auto& part = parts[0];
 
+        probe.Next(RenderProbe::PlayerOverlay);
         if (painter)
         {
             const int w = target.planes[0].texture->params.w, h = target.planes[0].texture->params.h;
@@ -1689,6 +1714,7 @@ struct PlaceboBackend::State
             target.num_overlays = 1;
         }
         const bool statistics = showStatistics.load();
+        probe.Next(RenderProbe::StatisticsInfo);
         // The overlay box keeps its largest size while shown; start over each
         // time the statistics are switched on.
         if (statistics && !statisticsShown)
@@ -1697,6 +1723,7 @@ struct PlaceboBackend::State
         if (statistics)
         {
             UpdateStatistics(target);
+            probe.Next(RenderProbe::StatisticsUpload);
             if (statisticsBitmap.Update(d3d->gpu,
                                         statisticsText,
                                         target.planes[0].texture->params.w,
@@ -1709,6 +1736,7 @@ struct PlaceboBackend::State
                 target.num_overlays = index + 1;
             }
         }
+        probe.Next(RenderProbe::Analysis);
         if (settings.imageAnalysis)
         {
             const int index = target.num_overlays;
@@ -1721,6 +1749,7 @@ struct PlaceboBackend::State
                 target.num_overlays = index + 1;
             }
         }
+        probe.Next(RenderProbe::Draw);
         if (mixing && settings.smoothMotion)
         {
             const pl_frame* frames[16] = {};
@@ -2441,7 +2470,10 @@ HRESULT PlaceboBackend::Present()
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)
+    {
         s.renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        s.renderProbe.Record(GetTickCount64(), s.renderCpu.last);
+    }
     const bool submitted = pl_swapchain_submit_frame(s.swapchain);
     if (!rendered || !submitted)
         return E_FAIL;
@@ -2524,6 +2556,7 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
     s.presentation.Reset(false, true);
     s.presentationTimed = false;
     s.renderCpu.Reset();
+    s.renderProbe.Reset();
     s.presentCpu.Reset();
     s.renderGpu.Reset();
     s.statisticsText.clear();

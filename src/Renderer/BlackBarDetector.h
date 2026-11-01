@@ -1,5 +1,6 @@
 #pragma once
 #include "Settings/BlackBarSettings.h"
+#include "Renderer/BlackBarPixels.h"
 #include <algorithm>
 #include <cstdint>
 #include <vector>
@@ -61,20 +62,7 @@ class BlackBarDetector
             return false;
         const int limit = static_cast<int>(settings.threshold * 2.55f);
         std::vector<int> rows(h), cols(w);
-        int bright = 0;
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-            {
-                const auto p = pixels + size_t(y) * pitch + x * 4;
-                const int v = std::max({p[0], p[1], p[2]});
-                if (v > limit)
-                {
-                    ++rows[y];
-                    ++cols[x];
-                }
-                if (v > limit + 12)
-                    ++bright;
-            }
+        const int bright = CountBlackBarPixels(pixels, w, h, pitch, limit, rows.data(), cols.data());
         if (bright < std::max(16, w * h / 100))
         {
             confirmations = 0;
