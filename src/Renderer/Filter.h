@@ -11,6 +11,7 @@
 #include "DirectShow/Include/FilterInterfaces.h"
 #include "DirectShow/Include/FilterInterfacesImpl.h"
 #include "Renderer/MediaFormat.h"
+#include "Renderer/MotionTiming.h"
 #include "Settings/Settings.h"
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
@@ -165,6 +166,16 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<bool> smoothEnabled = false;
     std::atomic<double> motionPeriod = 0;
     std::atomic<bool> refreshDirty = true;
+    // Display-synchronous Smooth Motion; the streaming thread owns the slots,
+    // state changes only request a fresh anchor.
+    VsyncSlots vsyncSlots;
+    std::atomic<bool> vsyncReanchor = true;
+    uint64_t surplusTicks = 0;
+    unsigned lateTicks = 0;
+    HANDLE refreshTimer = nullptr;
+    LONGLONG traceSlot = 0;
+    uint64_t tracePhaseAt = 0;
+    double tracePhaseLow = 1e9, tracePhaseHigh = -1e9, traceOffsetLow = 1e9, traceOffsetHigh = -1e9;
     HMONITOR motionMonitor = nullptr;
     std::vector<QueuedVideoFrame> motionQueue, motionPast;
     std::atomic<float> motionRadius = 0;
@@ -235,6 +246,8 @@ class Renderer final : public CBaseVideoRenderer,
     // during active playback is left to the next scheduled frame.
     std::atomic<uint64_t> lastTimedPresent = 0;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
+    HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    bool WaitForQpc(int64_t until, int64_t deadline);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
     STDMETHODIMP Stop() override;

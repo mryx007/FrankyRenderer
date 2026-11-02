@@ -136,6 +136,42 @@ struct PlaceboBackend::State
     DurationMeasurement renderCpu, presentCpu;
     RenderProbe renderProbe;
     GpuMeasurement renderGpu;
+    uint64_t traceGpuCount = 0, traceSummary = 0, traceFrames = 0;
+    double traceCpuMax = 0, traceGpuMax = 0;
+
+    // Opt-in diagnostics: render peaks and presentation queue every 10 s.
+    void TraceRender(uint64_t now)
+    {
+        if (!TraceEnabled())
+            return;
+        ++traceFrames;
+        traceCpuMax = std::max(traceCpuMax, renderCpu.last);
+        if (renderGpu.duration.count != traceGpuCount)
+        {
+            traceGpuCount = renderGpu.duration.count;
+            traceGpuMax = std::max(traceGpuMax, renderGpu.duration.last);
+        }
+        if (!traceSummary)
+            traceSummary = now;
+        if (now - traceSummary < 10000)
+            return;
+        Trace("Render summary %llu frames, peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
+              "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue",
+              static_cast<unsigned long long>(traceFrames),
+              traceCpuMax,
+              traceGpuMax,
+              presentCpu.Maximum(now),
+              static_cast<unsigned long long>(traceQueued[0]),
+              static_cast<unsigned long long>(traceQueued[1]),
+              static_cast<unsigned long long>(traceQueued[2]),
+              static_cast<unsigned long long>(traceQueued[3]),
+              static_cast<unsigned long long>(driftSkips),
+              static_cast<unsigned long long>(backlog.skipped));
+        std::fill(std::begin(traceQueued), std::end(traceQueued), 0);
+        traceSummary = now;
+        traceFrames = 0;
+        traceCpuMax = traceGpuMax = 0;
+    }
 
     uint64_t DropTotal()
     {
@@ -163,7 +199,7 @@ struct PlaceboBackend::State
 
     int64_t presentationDue = 0;
     int64_t presentationMediaTime = -1;
-    bool presentationTimed = false;
+    bool presentationTimed = false, presentationLocked = false;
     ULONGLONG periodUpdated = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
@@ -186,6 +222,54 @@ struct PlaceboBackend::State
         return output;
     }
 
+    PresentBacklog backlog;
+    uint64_t driftSkips = 0, traceQueued[4] = {};
+
+    bool SkipForBacklog(bool refreshLocked)
+    {
+        // Drift is noticed from scanout latency before the queue deepens; the
+        // queue depth remains the safety net when latency feedback is missing.
+        // Refresh-locked ticks already absorb drift and vary by design within
+        // one refresh of their due time, which is not a surplus. Late ticks
+        // are left out before they queue, so only a blocking queue counts.
+        if (presentation.drift.TakeSurplus() && !refreshLocked)
+        {
+            backlog.Reset();
+            ++driftSkips;
+            Trace("Smooth Motion tick left out: reference clock ahead of scanout (total %llu)",
+                  static_cast<unsigned long long>(driftSkips));
+            return true;
+        }
+        ComPtr<IDXGISwapChain> native = OutputSwapchain();
+        UINT submitted = 0;
+        DXGI_FRAME_STATISTICS shown = {};
+        if (!native || FAILED(native->GetLastPresentCount(&submitted)) || FAILED(native->GetFrameStatistics(&shown)) ||
+            !shown.PresentCount || submitted < shown.PresentCount)
+        {
+            backlog.Reset();
+            return false;
+        }
+        // Statistics stop advancing while nothing is composed (file change,
+        // occlusion); a stale PresentCount is not a queue.
+        LARGE_INTEGER now = {}, frequency = {};
+        QueryPerformanceCounter(&now);
+        QueryPerformanceFrequency(&frequency);
+        const double period = measuredPeriod > 0 ? measuredPeriod : 1e6;
+        if (now.QuadPart - shown.SyncQPCTime.QuadPart > 4 * period * frequency.QuadPart / 1e7)
+        {
+            backlog.Reset();
+            return false;
+        }
+        const UINT queued = submitted - shown.PresentCount;
+        ++traceQueued[std::min<UINT>(queued, 3)];
+        if (!backlog.Skip(queued, refreshLocked ? 3 : 2))
+            return false;
+        Trace("Smooth Motion tick left out: %u presents queued ahead of scanout (total %llu)",
+              queued,
+              static_cast<unsigned long long>(backlog.skipped));
+        return true;
+    }
+
     void DestroySwapchain()
     {
         nativeSwapchain.Destroy();
@@ -197,6 +281,7 @@ struct PlaceboBackend::State
         lastSyncQpc = 0;
         lastSyncRefresh = 0;
         stableCadence = true;
+        backlog.Reset();
     }
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     std::function<void(ID3D11Texture2D*)> presentProbe;
@@ -1226,6 +1311,7 @@ struct PlaceboBackend::State
             return E_FAIL;
         renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
         renderProbe.Record(GetTickCount64(), renderCpu.last);
+        TraceRender(GetTickCount64());
         QueryPerformanceCounter(&begin);
         const HRESULT result = nativeSwapchain.Submit();
         QueryPerformanceCounter(&end);
@@ -2267,8 +2353,8 @@ HRESULT PlaceboBackend::Present()
     std::lock_guard guard(s.lock);
     s.ApplyMeasurementReset();
     const auto due = s.presentationDue;
-    const bool timed = s.presentationTimed;
-    s.presentationTimed = false;
+    const bool timed = s.presentationTimed, locked = s.presentationLocked;
+    s.presentationTimed = s.presentationLocked = false;
     if (s.resizeHold)
         return S_FALSE;
     if (s.resizeResumed.exchange(false))
@@ -2278,6 +2364,8 @@ HRESULT PlaceboBackend::Present()
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
+    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(locked))
+        return S_FALSE;
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
     const bool nativeWanted =
         s.settings.hdrMode == 1 && s.settings.hdrPassthrough && pl_color_space_is_hdr(&s.image.color);
@@ -2395,6 +2483,7 @@ HRESULT PlaceboBackend::Present()
     {
         s.renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
         s.renderProbe.Record(GetTickCount64(), s.renderCpu.last);
+        s.TraceRender(GetTickCount64());
     }
     const bool submitted = pl_swapchain_submit_frame(s.swapchain);
     if (!rendered || !submitted)
@@ -2477,6 +2566,7 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
         s.MeasurePresentation(0, false);
     s.presentation.Reset(false, true);
     s.presentationTimed = false;
+    s.backlog.Reset();
     s.renderCpu.Reset();
     s.renderProbe.Reset();
     s.presentCpu.Reset();
@@ -2705,13 +2795,30 @@ std::wstring PlaceboBackend::StatisticsText() const
     return s.statisticsText;
 }
 
-void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime)
+void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, bool refreshLocked)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
     s.presentationDue = due;
     s.presentationMediaTime = mediaTime;
     s.presentationTimed = running && due > 0;
+    s.presentationLocked = refreshLocked;
+}
+
+bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    LARGE_INTEGER now = {}, frequency = {};
+    QueryPerformanceCounter(&now);
+    QueryPerformanceFrequency(&frequency);
+    if (!s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
+        now.QuadPart - s.lastSyncQpc > frequency.QuadPart / 2)
+        return false;
+    qpc = s.lastSyncQpc;
+    refresh = s.lastSyncRefresh;
+    period = s.measuredPeriod * frequency.QuadPart / 1e7;
+    return true;
 }
 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)

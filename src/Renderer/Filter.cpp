@@ -831,6 +831,8 @@ Renderer::~Renderer()
             modePause->Cancel();
     }
     SetPreviewed(nullptr);
+    if (refreshTimer)
+        CloseHandle(refreshTimer);
     Trace("Renderer destruction begin; rendered=%llu hardware=%llu last=%08lX",
           status.rendered,
           status.hardwareFrames,
@@ -1017,6 +1019,7 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
 
 void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
 {
+    vsyncReanchor = true;
     pending = {};
     previous = {};
     followingQueued = {};
@@ -1424,14 +1427,131 @@ HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* star
     const HRESULT hr = CBaseVideoRenderer::ShouldDrawSampleNow(sample, start, stop);
     REFERENCE_TIME now = 0;
     if (hr != E_FAIL || !m_pClock || FAILED(m_pClock->GetTime(&now)))
-        return hr;
+        return ScheduleOnRefresh(sample, start, stop, hr);
     const REFERENCE_TIME late = now - m_tStart - *start;
     const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * (*stop - *start), 250000);
     if (late > limit)
-        return hr;
+        return ScheduleOnRefresh(sample, start, stop, hr);
     // The base class marked a drop; keep its next decision on the normal path.
     m_nNormal = 0;
-    return S_OK;
+    return ScheduleOnRefresh(sample, start, stop, S_OK);
+}
+
+bool Renderer::WaitForQpc(int64_t until, int64_t deadline)
+{
+    LARGE_INTEGER now = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&now);
+    if (now.QuadPart >= deadline)
+        return false;
+    // Bounded: a stale target must never hold up the stream.
+    if (until <= now.QuadPart || until - now.QuadPart > frequency.QuadPart / 20)
+        return true;
+    if (!refreshTimer)
+        refreshTimer =
+            CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    const int64_t margin = frequency.QuadPart / 2000;
+    if (refreshTimer && until - now.QuadPart > margin)
+    {
+        LARGE_INTEGER due = {};
+        due.QuadPart = -static_cast<LONGLONG>(double(until - margin - now.QuadPart) * 1e7 / frequency.QuadPart);
+        if (SetWaitableTimer(refreshTimer, &due, 0, nullptr, nullptr, FALSE))
+            WaitForSingleObject(refreshTimer, 100);
+    }
+    do
+    {
+        YieldProcessor();
+        QueryPerformanceCounter(&now);
+    } while (now.QuadPart < until);
+    return true;
+}
+
+HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop, HRESULT decided)
+{
+    ComPtr<IMediaSample> fieldInterface;
+    sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
+    auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
+    if (vsyncReanchor.exchange(false))
+        vsyncSlots.Reset();
+    REFERENCE_TIME wanted = 0, until = 0, clock = 0;
+    int64_t syncQpc = 0;
+    uint32_t syncRefresh = 0;
+    double period = 0;
+    // Without feedback (a repaint can interrupt DXGI statistics briefly) the
+    // tick follows the reference clock; the slots continue once it returns.
+    if (decided == E_FAIL || !field || !field->motion || m_State != State_Running ||
+        FAILED(sample->GetTime(&wanted, &until)) || !backend.VsyncGrid(syncQpc, syncRefresh, period))
+        return decided;
+    LARGE_INTEGER before = {}, after = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&before);
+    if (FAILED(m_pClock->GetTime(&clock)))
+        return decided;
+    QueryPerformanceCounter(&after);
+    const double qpcNow = (double(before.QuadPart) + double(after.QuadPart)) / 2;
+    const double streamNow = double(clock - m_tStart), perUnit = frequency.QuadPart / 1e7;
+    // The refresh this tick belongs on, from its own time stamp.
+    const double dueQpc = qpcNow + (double(wanted) - streamNow) * perUnit;
+    LONGLONG slot = 0;
+    const double position = syncRefresh + (dueQpc - double(syncQpc)) / period;
+    if (!vsyncSlots.Assign(position, slot))
+    {
+        field->surplus = true;
+        ++surplusTicks;
+        Trace("Smooth Motion tick surplus at stream %lld ms: reference clock ahead of the display (total %llu)",
+              static_cast<long long>(wanted / 10000),
+              static_cast<unsigned long long>(surplusTicks));
+        return S_OK;
+    }
+    if (TraceEnabled())
+    {
+        // Opt-in: the reading behind each repeated refresh and phase extremes.
+        const double offset = position - double(slot);
+        tracePhaseLow = std::min(tracePhaseLow, vsyncSlots.Phase());
+        tracePhaseHigh = std::max(tracePhaseHigh, vsyncSlots.Phase());
+        traceOffsetLow = std::min(traceOffsetLow, offset);
+        traceOffsetHigh = std::max(traceOffsetHigh, offset);
+        if (traceSlot && slot > traceSlot + 1)
+            Trace("Smooth Motion refresh repeated at stream %lld ms: reference clock behind the display",
+                  static_cast<long long>(wanted / 10000));
+        traceSlot = slot;
+        const auto now = GetTickCount64();
+        if (now - tracePhaseAt >= 10000)
+        {
+            Trace("Smooth Motion phase %.2f..%.2f, single readings %.2f..%.2f refreshes",
+                  tracePhaseLow,
+                  tracePhaseHigh,
+                  traceOffsetLow,
+                  traceOffsetHigh);
+            tracePhaseAt = now;
+            tracePhaseLow = traceOffsetLow = 1e9;
+            tracePhaseHigh = traceOffsetHigh = -1e9;
+        }
+    }
+    // Present one refresh ahead of the refresh the tick belongs on.
+    double presentQpc = double(syncQpc) + double(slot - LONGLONG(syncRefresh) - 1) * period;
+    // A tick arriving after its refresh has passed would queue behind the
+    // next ones and leave every later tick a refresh behind. Leave it out,
+    // unless ticks keep arriving late: then show them rather than freeze.
+    if (presentQpc + period < qpcNow && ++lateTicks <= 12)
+    {
+        field->surplus = true;
+        Trace("Smooth Motion tick left out at stream %lld ms: arrived %.1f ms after its refresh",
+              static_cast<long long>(wanted / 10000),
+              (qpcNow - presentQpc - period) / frequency.QuadPart * 1e3);
+        return S_OK;
+    }
+    lateTicks = 0;
+    field->refreshLocked = true;
+    field->presentQpc = static_cast<int64_t>(presentQpc);
+    field->deadlineQpc = static_cast<int64_t>(presentQpc + period);
+    // The reference clock wakes this thread with up to a refresh of jitter;
+    // wake early and meet the refresh on the performance counter instead.
+    presentQpc -= 1.5 * period;
+    const auto target = static_cast<REFERENCE_TIME>(std::llround(streamNow + (presentQpc - qpcNow) / perUnit));
+    *start = target;
+    *stop = target + static_cast<REFERENCE_TIME>(std::llround(period / perUnit));
+    return target > streamNow ? S_FALSE : S_OK;
 }
 
 void Renderer::OnReceiveFirstSample(IMediaSample* sample)
@@ -1515,6 +1635,9 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     ComPtr<IMediaSample> fieldInterface;
     sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
     auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
+    // Its display refresh already holds the previous tick.
+    if (field && field->surplus)
+        return S_OK;
     VideoFrame frame = field ? field->frame.frame : format.frame;
     ComPtr<IDvLayerSample> layered;
     if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&layered))))
@@ -1658,10 +1781,18 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
     if (sample->IsDiscontinuity() == S_OK)
         backend.ResetPresentationMeasurement();
-    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start);
+    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start, field && field->refreshLocked);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
+    // A refresh-locked tick that woke after its refresh would queue behind
+    // the next ones; its refresh shows the previous picture anyway.
+    if (SUCCEEDED(hr) && field && field->refreshLocked && !WaitForQpc(field->presentQpc, field->deadlineQpc))
+    {
+        Trace("Smooth Motion tick left out at stream %lld ms: woke after its refresh",
+              static_cast<long long>(start / 10000));
+        return S_OK;
+    }
     if (SUCCEEDED(hr))
         hr = backend.Present();
     if (hr == S_OK && m_State == State_Running)
@@ -1877,6 +2008,7 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     Trace("Renderer run begin start=%lld", start);
     const bool external = ExternalStateChange();
     backend.ResetPresentationMeasurement();
+    vsyncReanchor = true;
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
@@ -1897,6 +2029,7 @@ STDMETHODIMP Renderer::Pause()
     Trace("Renderer pause begin");
     ExternalStateChange();
     backend.ResetPresentationMeasurement();
+    vsyncReanchor = true;
     // Stop and disconnect cancel waiting DV work. A new streaming run starts
     // here, not at Run: the decoder already delivers the preroll while paused,
     // and a still-cancelled processor would silently swallow those samples.

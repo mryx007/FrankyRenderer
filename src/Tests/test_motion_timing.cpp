@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/MotionTiming.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -75,6 +76,59 @@ int main()
     Check(MotionIntervalEnd(100000, 517083, 800000) == 517083, "large discontinuity is not bridged");
     Check(MotionIntervalEnd(100000, 517083, 90000) == 517083, "backward seek is not bridged");
     Check(MotionIntervalEnd(100000, 90000, 520000) == 90000, "invalid interval remains invalid");
+
+    // One hour at 120 Hz with the reference clock 100 ppm fast, exact and
+    // 100 ppm slow, plus clock conversion jitter of up to 0.4 refresh and
+    // readings two refreshes early.
+    struct Run
+    {
+        int surplus = 0, repeats = 0, widest = 0;
+    };
+
+    auto run = [](double ppm)
+    {
+        VsyncSlots slots;
+        Run result;
+        LONGLONG previous = 0;
+        bool first = true;
+        for (int tick = 0; tick < 120 * 3600; ++tick)
+        {
+            const double jitter = tick % 31 == 0 ? -2 : (static_cast<LONGLONG>(tick) * 7919 % 9 - 4) * .1;
+            LONGLONG slot = 0;
+            if (!slots.Assign(5000.3 + tick / (1 + ppm * 1e-6) + jitter, slot))
+            {
+                ++result.surplus;
+                continue;
+            }
+            // The first second settles an anchor taken from a single reading.
+            if (!first && tick >= 120)
+            {
+                result.repeats += int(slot - previous - 1);
+                result.widest = std::max(result.widest, int(slot - previous));
+            }
+            first = false;
+            previous = slot;
+        }
+        return result;
+    };
+    const auto fast = run(100), exact = run(0), slow = run(-100);
+    Check(fast.surplus >= 42 && fast.surplus <= 44 && !fast.repeats, "fast clock leaves out only surplus ticks");
+    Check(!exact.surplus && !exact.repeats, "jitter alone never leaves out or repeats a refresh");
+    Check(!slow.surplus && slow.repeats >= 42 && slow.repeats <= 44 && slow.widest == 2,
+          "slow clock repeats single refreshes only");
+    VsyncSlots slots;
+    LONGLONG slot = 0;
+    Check(slots.Assign(9000.2, slot) && slot == 9000 && slots.Assign(9001.1, slot) && slot == 9001,
+          "consecutive refreshes");
+    Check(slots.Assign(9000.0, slot) && slot == 9002 && slots.Assign(9005.1, slot) && slot == 9003,
+          "single readings refreshes off do not leave out or repeat");
+    Check(slots.Assign(9004.9, slot) && slot == 9004, "a few ticks shown outside the grid continue it");
+    Check(slots.Assign(9009.2, slot) && slot == 9009, "ticks dropped outside the grid anchor again");
+    Check(slots.Assign(4000.4, slot) && slot == 4000, "a backward seek anchors again");
+    Check(slots.Assign(4500.6, slot) && slot == 4501, "a forward jump anchors again");
+    printf("PASS display-synchronous refreshes: %d surplus (fast), %d repeats (slow), none with jitter alone\n",
+           fast.surplus,
+           slow.repeats);
     puts(
         "PASS captured overlap, rounded film/50/59.94/60/120 fps, exact display grid, empty intervals, faster-source fallback, EOS and discontinuities");
 }

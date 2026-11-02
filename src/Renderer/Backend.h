@@ -169,8 +169,13 @@ class PlaceboBackend
     void SetSourceCodec(const std::string& codec);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;
-    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1);
+    // refreshLocked: Smooth Motion scheduled this present on its own display
+    // refresh, so it cannot drift ahead of scanout.
+    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, bool refreshLocked = false);
     void ResetPresentationMeasurement(bool counters = false);
+    // Last observed vsync (QPC, absolute refresh count) and refresh period in
+    // QPC units; false while DXGI feedback is missing, stale or irregular.
+    bool VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const;
     void RestartDropMeasurement(int rawBeforeReset);
     MeasurementSnapshot Measurements() const;
     BlackBarStatus BlackBars() const;

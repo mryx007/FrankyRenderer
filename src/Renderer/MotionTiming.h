@@ -80,6 +80,64 @@ inline bool MotionIntervalValid(LONGLONG start, LONGLONG stop, double period)
            period <= 500000;
 }
 
+// Display-synchronous Smooth Motion: every tick is bound to one display
+// refresh (absolute DXGI refresh count) and at most one tick per refresh is
+// presented, scheduled one refresh ahead of it. The reference clock and the
+// display drift apart; a tick landing on an occupied refresh is surplus (fast
+// clock) and an unclaimed refresh simply repeats (slow clock), so no picture
+// ever queues up. A single clock reading can be off by refreshes (audio clock
+// to QPC conversion), so ticks stay on consecutive refreshes and only the
+// smoothed phase decides: once it is three quarters of a refresh off, one
+// tick is left out or one refresh repeats, which leaves it a quarter off.
+class VsyncSlots
+{
+    LONGLONG last = 0;
+    double phase = 0;
+    bool anchored = false;
+
+  public:
+    void Reset()
+    {
+        anchored = false;
+    }
+
+    double Phase() const
+    {
+        return phase;
+    }
+
+    // position: wanted refresh as a fractional refresh count. False: surplus.
+    bool Assign(double position, LONGLONG& slot)
+    {
+        if (!std::isfinite(position))
+            return false;
+        const double offset = position - double(last + 1);
+        // Seeks, restarts, display changes and ticks shown or dropped outside
+        // the grid are not drift: anchor again.
+        if (!anchored || offset < -4 || offset > 3)
+        {
+            last = slot = static_cast<LONGLONG>(std::llround(position));
+            phase = position - double(last);
+            anchored = true;
+            return true;
+        }
+        if (std::abs(offset) <= 3)
+            phase += (offset - phase) * .05;
+        if (phase < -.75)
+        {
+            phase += 1;
+            return false;
+        }
+        if (phase > .75)
+        {
+            phase -= 1;
+            ++last;
+        }
+        slot = ++last;
+        return true;
+    }
+};
+
 inline std::vector<MotionTick> MotionTicks(LONGLONG start, LONGLONG stop, double period)
 {
     std::vector<MotionTick> result;

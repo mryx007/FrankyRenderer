@@ -1,7 +1,9 @@
 #include "Renderer/PresentationMeasurement.h"
 #define NOMINMAX
 #include "Renderer/MotionTiming.h"
+#include <algorithm>
 #include <cstdio>
+#include <utility>
 #include <cstdlib>
 
 static void Require(bool ok, const char* message)
@@ -185,4 +187,112 @@ int main()
     }
     Require(longRun.glitches == 0, "fractional refresh remains accurate over millions of presentations");
     puts("PASS 2,000,000 fractional-refresh presentations without accumulated rounding errors");
+
+    // Reference clock 100 ppm fast against a 120 Hz scanout for one hour. Windowed
+    // flip presentation normally reports one picture ahead of scanout before a
+    // submit (measured); DXGI blocks Present once three are waiting.
+    auto simulate = [](bool resync, uint64_t& skipped)
+    {
+        PresentBacklog backlog;
+        uint32_t queued = 1, deepest = 0;
+        uint64_t blocked = 0;
+        double clock = 0;
+        for (uint32_t refresh = 0; refresh < 120 * 3600; ++refresh)
+        {
+            clock += 1.0001;
+            int ticks = 0;
+            while (clock >= 1)
+            {
+                clock -= 1;
+                ++ticks;
+            }
+            for (int t = 0; t < ticks; ++t)
+            {
+                if (resync && backlog.Skip(queued))
+                    continue;
+                if (queued >= 3)
+                    ++blocked;
+                else
+                    ++queued;
+            }
+            deepest = std::max(deepest, queued);
+            if (queued > 1)
+                --queued;
+        }
+        skipped = backlog.skipped;
+        return std::pair(deepest, blocked);
+    };
+    uint64_t skipped = 0;
+    const auto drifting = simulate(false, skipped);
+    Require(drifting.first == 3 && drifting.second > 0, "uncorrected clock drift fills the swapchain queue");
+    const auto corrected = simulate(true, skipped);
+    // Jitter may still meet a fresh surplus before the backlog is confirmed;
+    // without resync every later jitter blocks for the rest of playback.
+    Require(corrected.second * 20 < drifting.second, "resync drains the backlog instead of blocking indefinitely");
+    Require(skipped >= 40 && skipped <= 60, "only the surplus pictures are left out");
+    printf("PASS clock drift: %llu blocked presents uncorrected, %llu with %llu ticks left out per hour\n",
+           static_cast<unsigned long long>(drifting.second),
+           static_cast<unsigned long long>(corrected.second),
+           static_cast<unsigned long long>(skipped));
+
+    PresentBacklog jitter;
+    for (int tick = 0; tick < 120 * 3600; ++tick)
+        jitter.Skip(tick % 37 == 0 || tick % 53 < 20 ? 2 : 1);
+    Require(!jitter.skipped, "ordinary queue jitter never leaves out a tick");
+    // Refresh-locked presents land exactly on a vsync and read one or two
+    // ahead by chance, even two for a full second; only three is a backlog.
+    PresentBacklog locked;
+    for (int tick = 0; tick < 120 * 600; ++tick)
+        locked.Skip(tick % 600 < 300 ? 2 : 1 + ((static_cast<unsigned>(tick) * 2654435761u) >> 31), 3);
+    Require(!locked.skipped, "refresh-locked presents on a vsync boundary are no backlog");
+    for (unsigned tick = 0; tick < PresentBacklog::Ticks; ++tick)
+        locked.Skip(3, 3);
+    Require(locked.skipped == 1, "a lasting third queued picture still is");
+    puts("PASS queue jitter without a lasting backlog leaves every tick in place");
+
+    // Scanout shows one picture per refresh, never before it was submitted.
+    // Ticks come from a reference clock off by `ppm`; their reported due time
+    // carries the clock conversion noise of the first test.
+    struct Scanout
+    {
+        uint64_t skipped = 0;
+        double worst = 0;
+    };
+
+    auto scanout = [&](double ppm, bool resync)
+    {
+        PresentationMeasurement measurement;
+        measurement.Period(period);
+        Scanout result;
+        int64_t slot = 0;
+        uint32_t id = 0;
+        for (int64_t tick = 1; tick <= 120 * 3600; ++tick)
+        {
+            if (resync && measurement.drift.TakeSurplus())
+            {
+                ++result.skipped;
+                continue;
+            }
+            const int64_t timeline = tick * period;
+            const auto due = static_cast<int64_t>(std::llround(timeline / (1 + ppm * 1e-6)));
+            slot = std::max(slot + 1, (due + period - 1) / period);
+            const int64_t actual = slot * period;
+            if (tick > 600)
+                result.worst = std::max(result.worst, double(actual - due) / period);
+            const int64_t noise = tick % 31 == 0 ? -2 * period : tick % 7 == 0 ? period : 0;
+            measurement.Submit(++id, epoch + due + noise, true, timeline);
+            measurement.Observe(id, static_cast<uint32_t>(slot + 100), true, true, epoch + actual);
+        }
+        return result;
+    };
+    const auto ahead = scanout(100, false), resynced = scanout(100, true);
+    Require(ahead.worst > 40, "a fast reference clock keeps adding scanout delay");
+    Require(resynced.worst < 1.5 && resynced.skipped >= 40 && resynced.skipped <= 44,
+            "latency drift leaves out exactly the surplus ticks");
+    const auto steady = scanout(0, true), behind = scanout(-100, true);
+    Require(!steady.skipped && !behind.skipped, "noise and a slow clock leave every tick in place");
+    printf("PASS reference clock 100 ppm fast: delay %.1f refreshes uncorrected, %.1f with %llu ticks left out\n",
+           ahead.worst,
+           resynced.worst,
+           static_cast<unsigned long long>(resynced.skipped));
 }

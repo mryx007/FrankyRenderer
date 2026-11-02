@@ -34,3 +34,4 @@
 - RTX Video HDR for SDR videos (NVIDIA RTX, Windows HDR on).
 - Quality selector shows "Measured" after a measurement and switches to "Custom" as soon as any setting changes.
 - "Measure this PC" now includes active shaders, Adaptive Sharpen and Smooth Motion.
+- Fixed Smooth Motion slowly falling behind during long playback: render peaks above 100 % in the statistics, blocking presents and dropped frames that only went away after pausing. The audio clock and the display drift apart, and surplus pictures piled up in the display queue. Smooth Motion now presents every picture on its own display refresh and leaves out or repeats a single interpolated picture when the clocks drift.
