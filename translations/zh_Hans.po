@@ -9,14 +9,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: zh_Hans\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
+"projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"PO-Revision-Date: 2026-11-02 12:54+0000\n"
+"X-Generator: Weblate 2026.11.dev0\n"
 
 #. Category
 #. Category heading
 msgid "General"
-msgstr ""
+msgstr "常规"
 
 #. Category description
 msgid "Output precision, display mode switching, background and image analysis."
@@ -45,43 +48,43 @@ msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Auto (libplacebo)"
-msgstr ""
+msgstr "自动 (libplacebo)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "8-bit Integer (SDR)"
-msgstr ""
+msgstr "8-bit 整数 (SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 10-bit Integer"
-msgstr ""
+msgstr "偏好 10-bit 整数"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 16-bit Float"
-msgstr ""
+msgstr "偏好 16-bit 浮点数"
 
 #. Setting name (General > Output)
 msgid "RGB Output Levels"
-msgstr ""
+msgstr "RGB 输出级别"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr ""
+msgstr "匹配显示器和 GPU 驱动 RGB 色域。"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "Auto (Output)"
-msgstr ""
+msgstr "自动 (输出)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "PC Levels (0–255)"
-msgstr ""
+msgstr "PC 级别 (0–255)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "TV Levels (16–235)"
-msgstr ""
+msgstr "TV 级别 (16–235)"
 
 #. Setting name (General > Output)
 msgid "Dither Target Bit Depth"
-msgstr ""
+msgstr "抖动目标位深"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
@@ -89,39 +92,46 @@ msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "Auto (Output Texture)"
-msgstr ""
+msgstr "自动 (输出纹理)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "4 Bit"
-msgstr ""
+msgstr "4 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "5 Bit"
-msgstr ""
+msgstr "5 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "6 Bit"
-msgstr ""
+msgstr "6 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "8 Bit"
-msgstr ""
+msgstr "8 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "10 Bit"
-msgstr ""
+msgstr "10 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "12 Bit"
-msgstr ""
+msgstr "12 Bit"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#, fuzzy
 msgid "16 Bit"
-msgstr ""
+msgstr "16 Bit"
 
 #. Setting name (General > Output)
 msgid "Max Frames in Flight"
-msgstr ""
+msgstr "最大在途帧"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
@@ -130,7 +140,7 @@ msgstr ""
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
 msgid "Image Analysis"
-msgstr ""
+msgstr "图像分析"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid "Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal."
@@ -138,7 +148,7 @@ msgstr ""
 
 #. Section heading (General)
 msgid "Display Mode"
-msgstr ""
+msgstr "显示模式"
 
 #. Section description (General > Display Mode)
 msgid "Switches the display to a listed mode matching the video frame rate in fullscreen and restores it when leaving fullscreen or stopping."
