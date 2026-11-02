@@ -1,5 +1,6 @@
 #pragma once
 #include "Settings/Settings.h"
+#include "Settings/SettingsIni.h"
 #include <cstdint>
 #include <cstring>
 #include <iterator>
@@ -47,9 +48,36 @@ inline void ApplyQualityPreset(PlaceboSettings& s, const QualityPreset& p)
     s.contrastRecovery = p.contrastRecovery;
 }
 
+// PlaceboSettings::measuredQuality records where the values came from and
+// qualityStamp fingerprints every setting at that moment: any later change,
+// covered by a preset or not, reads as Custom.
+inline constexpr int PresetSource = 256;
+
+inline uint32_t QualityStamp(const PlaceboSettings& s)
+{
+    PlaceboSettings copy = s;
+    uint32_t hash = 2166136261u;
+    SettingsIni::Visit(copy,
+                       [&](const std::string& section, const std::string& name, auto& value)
+                       {
+                           if (name == "measuredQuality" || name == "qualityStamp")
+                               return;
+                           for (char c : section + "." + name + "=" + SettingsIni::Encode(value) + ";")
+                               hash = (hash ^ uint8_t(c)) * 16777619u;
+                       });
+    return hash ? hash : 1;
+}
+
+inline void MarkQuality(PlaceboSettings& s, int source)
+{
+    s.measuredQuality = source;
+    s.qualityStamp = QualityStamp(s);
+}
+
 inline void ApplyQualityPreset(PlaceboSettings& s, int index)
 {
     ApplyQualityPreset(s, QualityPresets[index]);
+    MarkQuality(s, PresetSource + index);
 }
 
 // Whether the settings a preset covers equal it. Values of a disabled stage
@@ -129,11 +157,43 @@ inline QualityPreset MeasuredPreset(uint32_t upgrades)
 inline void ApplyMeasuredQuality(PlaceboSettings& s, uint32_t upgrades)
 {
     ApplyQualityPreset(s, MeasuredPreset(upgrades));
-    s.measuredQuality = int(MeasuredFlag | (upgrades & (MeasuredFlag - 1)));
+    MarkQuality(s, int(MeasuredFlag | (upgrades & (MeasuredFlag - 1))));
 }
 
-// Whether the settings still equal the last measurement for this profile.
-inline bool MatchMeasuredQuality(const PlaceboSettings& s)
+// What the quality selector shows: the chosen preset, Measured, or Custom
+// (preset < 0 and !measured) once anything changed since.
+struct QualityOrigin
 {
-    return (s.measuredQuality & MeasuredFlag) && SameQuality(s, MeasuredPreset(uint32_t(s.measuredQuality)));
+    int preset = -1;
+    bool measured = false;
+};
+
+inline QualityOrigin CurrentQuality(const PlaceboSettings& s)
+{
+    QualityOrigin origin;
+    const uint32_t stamp = QualityStamp(s);
+    if (s.measuredQuality && s.qualityStamp == stamp)
+    {
+        if (s.measuredQuality >= PresetSource)
+            origin.preset = s.measuredQuality - PresetSource;
+        else
+            origin.measured = true;
+    }
+    else if (!s.measuredQuality)
+    {
+        // Nothing chosen yet: untouched defaults are the Default preset.
+        PlaceboSettings defaults;
+        wcscpy_s(defaults.displayProfile, s.displayProfile);
+        if (QualityStamp(defaults) == stamp)
+            origin.preset = 1;
+    }
+    return origin;
+}
+
+// The preset a set of upgrades equals, or -1.
+inline int MeasuredPresetMatch(uint32_t upgrades)
+{
+    PlaceboSettings applied;
+    ApplyQualityPreset(applied, MeasuredPreset(upgrades));
+    return MatchQualityPreset(applied);
 }

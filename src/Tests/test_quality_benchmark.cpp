@@ -43,16 +43,41 @@ int main()
         }
         Require(result.ok && !result.upgrades, "nothing fits an impossible budget");
 
+        // A generous budget at 4K, where 2x upscaling shaders take part (as in playback).
         auto generous = display;
-        generous.refresh = .25; // 2 s
+        generous.refresh = .25; // 3 s
+        generous.width = 3840;
+        generous.height = 2160;
         {
             QualityBenchmark benchmark;
             result = benchmark.Run(PlaceboSettings{}, generous);
         }
+        const auto light = result;
         Require(result.ok && result.upgrades == 127, "every upgrade fits a generous budget");
         PlaceboSettings applied;
         ApplyMeasuredQuality(applied, result.upgrades);
         Require(MatchQualityPreset(applied) == 2, "all upgrades equal the High Quality preset");
+
+        // Active shaders and Smooth Motion are part of the measured work.
+        {
+            PlaceboSettings loaded;
+            for (int id = 0; id < ShaderCount; ++id)
+                if (!strcmp(ShaderCatalog[id].file, "ArtCNN_C4F16.glsl"))
+                    loaded.userShaders.shaders[id].enabled = 1;
+            loaded.smoothMotion = TRUE;
+            BenchmarkResult heavy;
+            {
+                QualityBenchmark benchmark;
+                heavy = benchmark.Run(loaded, generous);
+            }
+            printf("All upgrades: %.2f ms plain, %.2f ms with ArtCNN and Smooth Motion\n",
+                   light.milliseconds,
+                   heavy.milliseconds);
+            printf("Measured shaders: %d\n", heavy.hooks);
+            Require(heavy.hooks == 1, "the profile's enabled shaders are measured");
+            Require(light.ok && heavy.ok && heavy.milliseconds > light.milliseconds * 1.2,
+                    "shaders and Smooth Motion raise the measured cost");
+        }
 
         // HDR output (passthrough) renders into a 10-bit target.
         PlaceboSettings hdr;
@@ -62,13 +87,6 @@ int main()
             result = benchmark.Run(hdr, display);
         }
         Require(result.ok, "measurement with HDR output");
-
-        // The real profile, whatever its other options are.
-        {
-            QualityBenchmark benchmark;
-            result = benchmark.Run(LoadSettings(), display);
-        }
-        Require(result.ok, "measurement with the stored settings");
 
         std::atomic<bool> cancel = true;
         {

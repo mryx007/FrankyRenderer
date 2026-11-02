@@ -66,20 +66,41 @@ int main()
     strcpy_s(s.scaling.filters[0].filter, "lanczos");
     Require(MatchQualityPreset(s) == -1, "another upscaler shows Custom");
     {
-        // A measured mix that is no preset is recognised as Measured until changed.
+        // The header names where the values came from until anything changes.
         PlaceboSettings measured;
         measured.smoothMotion = TRUE;
         ApplyMeasuredQuality(measured, MeasureDither | MeasurePeakDetection | MeasureLanczos | MeasureDeband);
         Require(SUCCEEDED(ValidateSettings(measured)), "measured settings validate");
-        Require(MatchQualityPreset(measured) == -1 && MatchMeasuredQuality(measured), "a measured mix shows Measured");
+        Require(CurrentQuality(measured).measured && CurrentQuality(measured).preset < 0,
+                "a measurement shows Measured");
         Require(!strcmp(measured.scaling.filters[0].filter, "lanczos") && measured.deband && measured.smoothMotion,
                 "measured upgrades apply and other settings stay");
-        strcpy_s(measured.scaling.filters[0].filter, "bicubic");
-        Require(!MatchMeasuredQuality(measured), "a hand change after measuring shows Custom");
-        PlaceboSettings none;
-        ApplyMeasuredQuality(none, 0);
-        Require(MatchQualityPreset(none) == 0, "no upgrades equal the Fast preset");
-        Require(!MatchMeasuredQuality(PlaceboSettings{}), "never measured is not Measured");
+        auto changed = measured;
+        changed.brightness = .01f;
+        Require(!CurrentQuality(changed).measured && CurrentQuality(changed).preset < 0,
+                "any change after measuring, even outside the preset, shows Custom");
+
+        PlaceboSettings all;
+        ApplyMeasuredQuality(all, 127);
+        Require(CurrentQuality(all).measured && MeasuredPresetMatch(127) == 2,
+                "a measurement equal to High Quality still shows Measured and names the preset");
+
+        PlaceboSettings chosen;
+        ApplyQualityPreset(chosen, 1);
+        Require(CurrentQuality(chosen).preset == 1 && !CurrentQuality(chosen).measured,
+                "a chosen preset shows its name");
+        chosen.userShaders.shaders[3].enabled = 1;
+        Require(CurrentQuality(chosen).preset < 0, "enabling a shader after choosing a preset shows Custom");
+
+        Require(CurrentQuality(PlaceboSettings{}).preset == 1, "untouched defaults show Default");
+        PlaceboSettings edited;
+        edited.saturation = 1.1f;
+        Require(CurrentQuality(edited).preset < 0, "edited settings that were never chosen show Custom");
+
+        // The origin survives an INI round trip and a profile save.
+        const auto text = SettingsIni::Serialize(all);
+        Require(CurrentQuality(SettingsIni::Parse(text)).measured, "the origin survives INI export and import");
     }
-    puts("PASS quality presets: libplacebo parity, recognition, Custom, untouched settings, measured upgrades");
+    puts(
+        "PASS quality presets: libplacebo parity, recognition, origin shown until any change, Measured, INI round trip");
 }

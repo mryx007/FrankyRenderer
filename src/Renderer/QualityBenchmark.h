@@ -1,10 +1,13 @@
 #pragma once
 // Measures which quality upgrades this display's GPU can afford. Test frames
 // are rendered off screen with the playback option code (RenderOptions.h) at
-// the display's resolution; an upgrade is kept while the slower of two typical
-// sources (1080p SDR, 4K HDR10) stays within half of a refresh interval. The
-// other half is left for shaders, Smooth Motion, subtitles and load spikes.
+// the display's resolution, together with the profile's active shaders,
+// Adaptive Sharpen and Smooth Motion frame mixing. An upgrade is kept while the
+// slower of two typical sources (1080p SDR, 4K HDR10) stays within three
+// quarters of a refresh interval; the rest is left for subtitles, presentation
+// and load spikes.
 #include "Renderer/RenderOptions.h"
+#include "Renderer/ShaderHooks.h"
 #include "Settings/QualityPresets.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
@@ -32,6 +35,7 @@ struct BenchmarkResult
     bool ok = false;
     uint32_t upgrades = 0;
     double milliseconds = 0, budget = 0;
+    int hooks = 0; // shaders measured with the upgrades
 };
 
 // The display mode and GPU of a monitor, in physical pixels.
@@ -84,6 +88,31 @@ class QualityBenchmark
     pl_renderer renderer = nullptr;
     pl_options options = nullptr;
     Source sources[2];
+    std::vector<const pl_hook*> hooks;
+    bool mixing = false;
+    uint64_t signature = 0;
+
+    // One presented picture. With Smooth Motion every call brings one new
+    // video frame into the mix, the most work a refresh can need.
+    bool RenderOnce(Source& s)
+    {
+        pl_render_params params = options->params;
+        params.hooks = hooks.data();
+        params.num_hooks = int(hooks.size());
+        if (!mixing)
+            return pl_render_image(renderer, &s.frame, &s.output, &params);
+        const pl_frame* frames[] = {&s.frame, &s.frame};
+        const uint64_t signatures[] = {signature, signature + 1};
+        const double timestamps[] = {-.5, .5};
+        ++signature;
+        pl_frame_mix mix = {};
+        mix.num_frames = 2;
+        mix.frames = frames;
+        mix.signatures = signatures;
+        mix.timestamps = timestamps;
+        mix.vsync_duration = 1;
+        return pl_render_image_mix(renderer, &mix, &s.output, &params);
+    }
 
     // NV12 / P010-like 4:2:0 frame with picture detail, so scalers and
     // debanding do representative work.
@@ -166,29 +195,30 @@ class QualityBenchmark
         return true;
     }
 
-    // Average milliseconds per frame; the fastest of three batches filters out
+    // Average milliseconds per frame; the fastest of five batches filters out
     // other GPU work such as a playing video.
     double Measure(Source& s, double limit, const std::atomic<bool>* cancel)
     {
         const pl_gpu gpu = d3d->gpu;
         for (int i = 0; i < 2; ++i)
-            if (!pl_render_image(renderer, &s.frame, &s.output, &options->params))
+            if (!RenderOnce(s))
                 return -1;
         pl_gpu_finish(gpu);
         double best = 1e9;
-        for (int batch = 0; batch < 3 && !(cancel && *cancel); ++batch)
+        for (int batch = 0; batch < 5 && !(cancel && *cancel); ++batch)
         {
-            constexpr int frames = 6;
+            constexpr int frames = 8;
             const auto start = std::chrono::steady_clock::now();
             for (int i = 0; i < frames; ++i)
-                if (!pl_render_image(renderer, &s.frame, &s.output, &options->params))
+                if (!RenderOnce(s))
                     return -1;
             pl_gpu_finish(gpu);
             best = std::min(
                 best,
                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / frames);
-            // Clearly too slow: more batches cannot change the decision.
-            if (best > limit * 2)
+            // Clearly too slow or clearly fast enough: more batches cannot
+            // change the decision. Close calls get all five.
+            if (best > limit * 2 || (batch >= 1 && best < limit / 2))
                 break;
         }
         return best;
@@ -206,6 +236,8 @@ class QualityBenchmark
                     pl_tex_destroy(d3d->gpu, &tex);
                 pl_tex_destroy(d3d->gpu, &s.target);
             }
+        for (auto& hook : hooks)
+            pl_mpv_user_shader_destroy(&hook);
         pl_options_free(&options);
         pl_renderer_destroy(&renderer);
         pl_d3d11_destroy(&d3d);
@@ -219,7 +251,7 @@ class QualityBenchmark
                         const std::atomic<bool>* cancel = nullptr)
     {
         BenchmarkResult result;
-        result.budget = 500. / std::max(1., display.refresh);
+        result.budget = 750. / std::max(1., display.refresh);
         auto params = pl_d3d11_default_params;
         params.adapter_luid = display.adapter;
         d3d = pl_d3d11_create(nullptr, &params);
@@ -231,6 +263,29 @@ class QualityBenchmark
         if (!renderer || !options || !MakeSource(sources[0], 1920, 1080, false, display) ||
             !MakeSource(sources[1], 3840, 2160, true, display))
             return result;
+        // The same hooks as playback, in its order; one that fails there is
+        // skipped there too.
+        if (settings.adaptiveSharpen)
+            if (const pl_hook* sharpen = ParseSharpenShader(d3d->gpu, settings.sharpenStrength))
+                hooks.push_back(sharpen);
+        for (int id : settings.userShaders.order)
+            if (settings.userShaders.shaders[id].enabled)
+                if (const pl_hook* hook = ParseUserShader(d3d->gpu, id, settings.userShaders.shaders[id]))
+                    hooks.push_back(hook);
+        mixing = settings.smoothMotion != FALSE;
+        result.hooks = int(hooks.size());
+        // An idle GPU runs at low clocks at first; keep it busy briefly so the
+        // first candidates are not measured slower than the later ones.
+        if (FAILED(BuildRenderOptions(options, BackendSettings(settings))))
+            return result;
+        const auto warm = std::chrono::steady_clock::now();
+        while (std::chrono::steady_clock::now() - warm < std::chrono::milliseconds(600) && !(cancel && *cancel))
+        {
+            for (auto& s : sources)
+                if (!RenderOnce(s))
+                    return result;
+            pl_gpu_finish(d3d->gpu);
+        }
 
         auto cost = [&](uint32_t upgrades)
         {

@@ -62,9 +62,11 @@ struct PlaceboSettings
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};
     float displayModeDelay = 2; // seconds paused after a switch
-    // MeasuredFlag | accepted upgrades of the last quality measurement
-    // (Settings/QualityPresets.h); 0 = never measured for this profile.
+    // Where the quality values came from (Settings/QualityPresets.h): 0 none,
+    // MeasuredFlag | upgrades = measured, PresetSource + i = preset i.
+    // qualityStamp fingerprints all settings at that moment.
     int measuredQuality = 0;
+    uint32_t qualityStamp = 0;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -88,7 +90,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("DE6F5558-E997-4CFD-B4AE-5AE328D9686C")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("322DB0D4-840D-4D31-AFA9-2BFCCA325A35")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;

@@ -76,7 +76,7 @@ def main():
         print('Native test PID', process.pid, flush=True)
         timed_out = False
         try:
-            output = process.communicate(timeout=6 if options.flush_race else 35)[0]
+            output = process.communicate(timeout=6 if options.flush_race else 90 if options.test == 'test_quality_benchmark' else 35)[0]
         except subprocess.TimeoutExpired:
             timed_out = True
             process.kill()

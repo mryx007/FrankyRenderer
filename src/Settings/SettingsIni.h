@@ -60,6 +60,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(outputLevels);
     INI_FIELD(displayDepth);
     INI_FIELD(measuredQuality);
+    INI_FIELD(qualityStamp);
     INI_FIELD(peakDetect);
     INI_FIELD(peakSmoothing);
     INI_FIELD(sceneLow);

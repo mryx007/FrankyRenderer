@@ -20,7 +20,7 @@
 #include <iomanip>
 #pragma comment(lib, "gdi32.lib")
 #include "Renderer/SharpenShader.h"
-#include "Renderer/UserShaderSource.h"
+#include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
@@ -105,33 +105,7 @@ struct PlaceboBackend::State
             return true;
         userFailed[id] = false;
         cached = c;
-        const auto shaderSource = LoadUserShaderSource(id);
-        const pl_hook* hook = shaderSource.empty()
-                                  ? nullptr
-                                  : pl_mpv_user_shader_parse(d3d->gpu, shaderSource.data(), shaderSource.size());
-        if (hook)
-            for (int p = 0; p < ShaderCatalog[id].count; p++)
-                if (c.overrides & (1u << p))
-                {
-                    const pl_hook_par* found = nullptr;
-                    for (int n = 0; n < hook->num_parameters; n++)
-                        if (!strcmp(hook->parameters[n].name, ShaderCatalog[id].parameters[p].name))
-                        {
-                            found = &hook->parameters[n];
-                            break;
-                        }
-                    if (!found)
-                    {
-                        pl_mpv_user_shader_destroy(&hook);
-                        break;
-                    }
-                    if (found->type == PL_VAR_FLOAT)
-                        found->data->f = c.values[p];
-                    else if (found->type == PL_VAR_SINT)
-                        found->data->i = static_cast<int>(c.values[p]);
-                    else if (found->type == PL_VAR_UINT)
-                        found->data->u = static_cast<unsigned>(c.values[p]);
-                }
+        const pl_hook* hook = ParseUserShader(d3d->gpu, id, c);
         if (!hook)
         {
             userFailed[id] = true;
@@ -760,21 +734,7 @@ struct PlaceboBackend::State
     {
         if (sharpenHook && sharpenCached == settings.sharpenStrength)
             return true;
-        std::string shaderText = AdaptiveSharpenSource;
-        auto stage = shaderText.find("//!HOOK OUTPUT");
-        if (stage == std::string::npos)
-            return false;
-        shaderText.replace(stage, 14, "//!HOOK PREOUTPUT");
-        auto first = shaderText.find("#define curve_height"), last = shaderText.find('\n', first);
-        if (first == std::string::npos || last == std::string::npos)
-            return false;
-        char value[32];
-        auto converted = std::to_chars(value, value + 32, settings.sharpenStrength);
-        if (converted.ec != std::errc{})
-            return false;
-        shaderText.replace(
-            first, last - first, std::string("#define curve_height ") + std::string(value, converted.ptr));
-        const pl_hook* next = pl_mpv_user_shader_parse(d3d->gpu, shaderText.data(), shaderText.size());
+        const pl_hook* next = ParseSharpenShader(d3d->gpu, settings.sharpenStrength);
         if (!next)
             return false;
         pl_mpv_user_shader_destroy(&sharpenHook);

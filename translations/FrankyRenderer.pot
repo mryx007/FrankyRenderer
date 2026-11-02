@@ -2649,6 +2649,10 @@ msgid "Measured: %s (%.1f of %.1f ms)"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
+msgid "Measured: same as %s (%.1f of %.1f ms)"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
 msgid "Could not measure this display."
 msgstr ""
 

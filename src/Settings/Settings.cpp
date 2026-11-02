@@ -154,7 +154,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(smoothMotion),
         FIELD(outputLevels),
         FIELD(displayDepth),
-        FIELD(measuredQuality),
+        GROUP(d.measuredQuality = s.measuredQuality; d.qualityStamp = s.qualityStamp),
         FIELD(peakDetect),
         FIELD(peakSmoothing),
         FIELD(peakPercentile),
@@ -430,8 +430,14 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     value = 0;
     if (RegQueryValueExW(key, L"MeasuredQuality", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
             ERROR_SUCCESS &&
-        type == REG_DWORD && size == 4 && value <= 255)
+        type == REG_DWORD && size == 4 && value <= 258)
         settings.measuredQuality = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (RegQueryValueExW(key, L"QualityStamp", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4)
+        settings.qualityStamp = value;
     size = 4;
     value = 0;
     if (RegQueryValueExW(key, L"ICCIntent", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
@@ -492,7 +498,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (s.deinterlacing < 0 || s.deinterlacing > 2)
         return E_INVALIDARG;
-    if (s.measuredQuality < 0 || s.measuredQuality > 255)
+    if (s.measuredQuality < 0 || s.measuredQuality > 258 || (s.measuredQuality > 0 && s.measuredQuality < 128))
         return E_INVALIDARG;
     if (s.fieldOverride < 0 || s.fieldOverride > 2)
         return E_INVALIDARG;
@@ -684,6 +690,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"OutputLevels", REG_DWORD, &s.outputLevels, 4);
     save(L"DisplayDepth", REG_DWORD, &s.displayDepth, 4);
     save(L"MeasuredQuality", REG_DWORD, &s.measuredQuality, 4);
+    save(L"QualityStamp", REG_DWORD, &s.qualityStamp, 4);
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);

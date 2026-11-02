@@ -32,3 +32,5 @@
 - New shaders: RAVU Zoom R3 and RAVU Zoom AR R3.
 - XySubFilter support.
 - RTX Video HDR for SDR videos (NVIDIA RTX, Windows HDR on).
+- Quality selector shows "Measured" after a measurement and switches to "Custom" as soon as any setting changes.
+- "Measure this PC" now includes active shaders, Adaptive Sharpen and Smooth Motion.

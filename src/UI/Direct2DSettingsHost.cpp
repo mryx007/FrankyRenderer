@@ -148,6 +148,7 @@ static constexpr const wchar_t* MenuTexts[] = {L"Display",
                                                L"Measure this PC",
                                                L"Picks the best settings for this PC.",
                                                L"Measured: %s (%.1f of %.1f ms)",
+                                               L"Measured: same as %s (%.1f of %.1f ms)",
                                                L"Could not measure this display.",
                                                L"Measurement failed.",
                                                L"Reset All",
@@ -533,6 +534,22 @@ class Direct2DHostWindow
     void ResetAll();
     // Short notice at the bottom of the window, visible with a closed sidebar.
     std::wstring m_toast;
+    // Quality origin, recomputed only when the settings change.
+    PlaceboSettings m_qualitySettings = {};
+    QualityOrigin m_quality;
+    bool m_qualityKnown = false;
+
+    QualityOrigin Quality()
+    {
+        if (!m_qualityKnown || memcmp(&m_qualitySettings, m_pSettings, sizeof(PlaceboSettings)))
+        {
+            m_qualitySettings = *m_pSettings;
+            m_quality = CurrentQuality(*m_pSettings);
+            m_qualityKnown = true;
+        }
+        return m_quality;
+    }
+
     void ShowToast(const std::wstring& text);
     void DrawToast(D2D1_SIZE_F size);
     void AdoptDisplayProfile(const std::wstring& id);
@@ -1315,10 +1332,10 @@ void Direct2DHostWindow::Render()
     // The quality preset stays visible on every page; it shows Custom once a
     // setting it covers was changed by hand. In a narrow window the page title
     // keeps its room: the caption goes first, then the search narrows.
-    const int qualityPreset = MatchQualityPreset(*m_pSettings);
-    auto presetName = Tr(qualityPreset >= 0                   ? QualityPresetNames[qualityPreset]
-                         : MatchMeasuredQuality(*m_pSettings) ? L"Measured"
-                                                              : L"Custom");
+    const auto origin = Quality();
+    auto presetName = Tr(origin.preset >= 0 ? QualityPresetNames[origin.preset]
+                         : origin.measured  ? L"Measured"
+                                            : L"Custom");
     if (m_measurement)
         presetName = Tr(L"Measuring…") + L" " + std::to_wstring(int(m_measurement->progress * 100)) + L"%";
     auto presetLabel = Tr(L"Quality") + L": " + presetName;
@@ -2463,9 +2480,8 @@ void Direct2DHostWindow::SelectQualityPreset(const D2D1_RECT_F& rect)
     const int measure = int(popup.labels.size());
     popup.labels.push_back(Tr(L"Measure this PC"));
     popup.descriptions.push_back(Tr(L"Picks the best settings for this PC."));
-    popup.selected = MatchQualityPreset(*m_pSettings);
-    if (popup.selected < 0 && MatchMeasuredQuality(*m_pSettings))
-        popup.selected = measure;
+    const auto origin = Quality();
+    popup.selected = origin.measured ? measure : origin.preset;
     RECT anchor = {
         int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
     MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
@@ -2539,12 +2555,22 @@ void Direct2DHostWindow::FinishMeasurement()
     m_hitRegions.clear();
     InitPages();
     Changed();
+    // Name the preset when the result equals one, so an unchanged header
+    // label still shows that the measurement happened.
     wchar_t summary[256] = {};
-    swprintf_s(summary,
-               Tr(L"Measured: %s (%.1f of %.1f ms)").c_str(),
-               DescribeMeasuredQuality(job->result.upgrades).c_str(),
-               job->result.milliseconds,
-               job->result.budget);
+    const int same = MeasuredPresetMatch(job->result.upgrades);
+    if (same >= 0)
+        swprintf_s(summary,
+                   Tr(L"Measured: same as %s (%.1f of %.1f ms)").c_str(),
+                   Tr(QualityPresetNames[same]).c_str(),
+                   job->result.milliseconds,
+                   job->result.budget);
+    else
+        swprintf_s(summary,
+                   Tr(L"Measured: %s (%.1f of %.1f ms)").c_str(),
+                   DescribeMeasuredQuality(job->result.upgrades).c_str(),
+                   job->result.milliseconds,
+                   job->result.budget);
     ShowToast(summary);
 }
 
@@ -2573,7 +2599,7 @@ void Direct2DHostWindow::ResetAll()
 void Direct2DHostWindow::ShowToast(const std::wstring& text)
 {
     m_toast = text;
-    SetTimer(m_hwnd, 20, 8000, nullptr);
+    SetTimer(m_hwnd, 20, 4000, nullptr);
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
