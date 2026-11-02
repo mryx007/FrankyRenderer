@@ -26,7 +26,7 @@ jobs:
       - id: id
         # Date and UTC time first: GitHub lists releases by tag name, so several
         # Nightlies on one day must still sort newest first.
-        run: echo "value=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA:0:10}" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(date -u +%Y%m%d-%H%M)" >> "$GITHUB_OUTPUT"
   build:
     needs: identify
     uses: ./.github/workflows/build.yml
