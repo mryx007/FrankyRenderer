@@ -22,6 +22,7 @@
 #include "Renderer/SharpenShader.h"
 #include "Renderer/UserShaderSource.h"
 #include "Renderer/RtxScaling.h"
+#include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include <libplacebo/shaders/custom.h>
 #include <charconv>
@@ -715,9 +716,9 @@ struct PlaceboBackend::State
             const bool scalingChanged = previous.scaling.has_value() != settings.scaling.has_value() ||
                                         (previous.scaling && settings.scaling &&
                                          memcmp(&*previous.scaling, &*settings.scaling, sizeof(ScalingSettings)));
-            if (!settings.rtxSuperResolution)
+            if (!settings.rtxSuperResolution && !settings.rtxHdr)
                 rtx.Reset();
-            else if (previous.rtxSuperResolution != settings.rtxSuperResolution ||
+            else if (previous.rtxSuperResolution != settings.rtxSuperResolution || previous.rtxHdr != settings.rtxHdr ||
                      previous.deinterlacing != settings.deinterlacing ||
                      previous.chromaUpscaler != settings.chromaUpscaler || scalingChanged)
                 rtx.Invalidate();
@@ -748,79 +749,8 @@ struct PlaceboBackend::State
         HRESULT latency = ConfigureLatency();
         if (FAILED(latency))
             return latency;
-        pl_options_reset(options, &pl_render_default_params);
-        if (!settings.scaling)
-        {
-            if (!pl_options_set_str(options, "upscaler", settings.upscaler.c_str()) ||
-                !pl_options_set_str(options, "downscaler", settings.downscaler.c_str()))
-                return E_INVALIDARG;
-            if (settings.chromaUpscaler != "auto" &&
-                !pl_options_set_str(options, "plane_upscaler", settings.chromaUpscaler.c_str()))
-                return E_INVALIDARG;
-        }
-        else if (!ApplyScaling(options, *settings.scaling))
-            return E_INVALIDARG;
-        if (settings.toneMapping != "auto")
-        {
-            if (!pl_options_set_str(options, "tone_mapping", settings.toneMapping.c_str()))
-                return E_INVALIDARG;
-            options->params.color_map_params = &options->color_map_params;
-        }
-        options->peak_detect_params = pl_peak_detect_default_params;
-        options->peak_detect_params.smoothing_period = settings.peakSmoothing;
-        options->peak_detect_params.scene_threshold_low = settings.sceneLow;
-        options->peak_detect_params.scene_threshold_high = settings.sceneHigh;
-        options->peak_detect_params.percentile = settings.peakPercentile;
-        options->params.peak_detect_params = settings.peakDetect ? &options->peak_detect_params : nullptr;
-        options->peak_detect_params.black_cutoff = settings.blackCutoff;
-        options->peak_detect_params.allow_delayed = settings.allowDelayedPeak;
-        if (settings.gamutMapping &&
-            !pl_options_set_str(options, "gamut_mapping", GamutChoices[settings.gamutMapping].name))
-            return E_INVALIDARG;
-        options->color_map_params.contrast_recovery = settings.contrastRecovery;
-        options->color_map_params.contrast_smoothness = settings.contrastSmoothness;
-        options->color_map_params.tone_constants.knee_adaptation = settings.kneeAdaptation;
-        options->color_map_params.tone_constants.spline_contrast = settings.splineContrast;
-        options->color_map_params.tone_constants.knee_minimum = settings.kneeMinimum;
-        options->color_map_params.tone_constants.knee_maximum = settings.kneeMaximum;
-        options->color_map_params.tone_constants.knee_default = std::clamp(
-            options->color_map_params.tone_constants.knee_default, settings.kneeMinimum, settings.kneeMaximum);
-        options->color_map_params.gamut_constants.perceptual_strength = settings.perceptualStrength;
-        options->color_map_params.gamut_constants.softclip_knee = settings.softclipKnee;
-        options->color_map_params.show_clipping = settings.showClipping;
-        options->params.color_map_params = &options->color_map_params;
-        if (!ApplyMappingOverrides(options, settings.colorMapping))
-            return E_INVALIDARG;
-        if (!settings.scaling)
-        {
-            options->params.antiringing_strength = settings.antiringing;
-            if (settings.upscalerBlur > 0 && options->params.upscaler && options->params.upscaler->kernel)
-            {
-                options->upscaler = *options->params.upscaler;
-                options->upscaler.blur = settings.upscalerBlur;
-                options->params.upscaler = &options->upscaler;
-            }
-            if (settings.downscalerBlur > 0 && options->params.downscaler && options->params.downscaler->kernel)
-            {
-                options->downscaler = *options->params.downscaler;
-                options->downscaler.blur = settings.downscalerBlur;
-                options->params.downscaler = &options->downscaler;
-            }
-        }
-        options->deband_params = pl_deband_default_params;
-        options->deband_params.iterations = settings.debandIterations;
-        options->deband_params.threshold = settings.debandThreshold;
-        options->deband_params.radius = settings.debandRadius;
-        options->deband_params.grain = settings.debandGrain;
-        options->params.deband_params = settings.deband ? &options->deband_params : nullptr;
-        options->dither_params = pl_dither_default_params;
-        const pl_dither_method methods[] = {PL_DITHER_BLUE_NOISE, PL_DITHER_ORDERED_FIXED, PL_DITHER_WHITE_NOISE};
-        if (settings.ditherMethod < 3)
-            options->dither_params.method = methods[settings.ditherMethod];
-        options->dither_params.temporal = settings.ditherTemporal;
-        options->params.dither_params = settings.ditherMethod == 3 ? nullptr : &options->dither_params;
-        if (!ApplyExtras(options, settings.extras))
-            return E_INVALIDARG;
+        if (HRESULT hr = BuildRenderOptions(options, settings); FAILED(hr))
+            return hr;
         deinterlace.algo = settings.deinterlacing == 2 ? PL_DEINTERLACE_YADIF : PL_DEINTERLACE_BWDIF;
         options->params.deinterlace_params = settings.deinterlacing ? &deinterlace : nullptr;
         return S_OK;
@@ -1117,9 +1047,9 @@ struct PlaceboBackend::State
                                : sharpenState == 2 ? L"bypassed"
                                                    : L"off");
         {
-            auto& value = row(L"RTX VSR");
+            auto& value = row(L"RTX Video");
             value << rtx.Status();
-            if (settings.rtxSuperResolution)
+            if (settings.rtxSuperResolution || settings.rtxHdr)
                 value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
         }
         if (settings.blackBars.enabled)
@@ -1482,19 +1412,30 @@ struct PlaceboBackend::State
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         probe.Next(RenderProbe::Rtx);
-        if (settings.rtxSuperResolution)
+        // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
+        const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
+        if (settings.rtxSuperResolution || rtxHdr)
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
             if (rotation % 180)
                 std::swap(outW, outH);
-            auto current = rtx.Get(d3d, context.Get(), image, rtxKey, outW, outH, options->params);
+            auto current = rtx.Get(
+                d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
             for (int i = 0; ready && mixing && i < mixCount; ++i)
             {
-                auto mixed = rtx.Get(d3d, context.Get(), mixFrames[i], mixSignatures[i], outW, outH, options->params);
+                auto mixed = rtx.Get(d3d,
+                                     context.Get(),
+                                     mixFrames[i],
+                                     mixSignatures[i],
+                                     outW,
+                                     outH,
+                                     options->params,
+                                     settings.rtxSuperResolution,
+                                     rtxHdr);
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));
@@ -1507,6 +1448,19 @@ struct PlaceboBackend::State
                 if (mixing)
                     for (int i = 0; i < mixCount; ++i)
                         mixFrames[i] = rtxFrames[i + 1]->image;
+                // The driver maps to the brightness set in the NVIDIA app; treat
+                // its output as mastered for this display so it is not tone mapped.
+                auto display = [&](pl_frame& frame)
+                {
+                    if (!pl_color_space_is_hdr(&frame.color) || !rtxHdr)
+                        return;
+                    frame.color.hdr = {};
+                    frame.color.hdr.max_luma = target.color.hdr.max_luma > 0 ? target.color.hdr.max_luma : 1000;
+                    frame.color.hdr.min_luma = target.color.hdr.min_luma;
+                };
+                display(image);
+                for (int i = 0; mixing && i < mixCount; ++i)
+                    display(mixFrames[i]);
             }
         }
         // Apply after preprocessing, to the main image and every temporal sample.
@@ -2422,13 +2376,21 @@ HRESULT PlaceboBackend::Present()
     }
     if (!pl_swapchain_resize(s.swapchain, &width, &height))
         return E_FAIL;
-    const bool hdr =
-        s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() && pl_color_space_is_hdr(&s.image.color);
+    // RTX Video HDR outputs HDR10 for SDR sources while Windows HDR is on.
+    const bool rtxHdr = s.settings.rtxHdr && s.HdrActive() && !pl_color_space_is_hdr(&s.image.color) &&
+                        s.rtx.HdrUsable() && s.image.num_planes;
+    const bool hdr = rtxHdr || (s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() &&
+                                pl_color_space_is_hdr(&s.image.color));
     // The swapchain hint selects the signal format, not the tone-map peak.
     // libplacebo 7.360.1 treats SDR hints above 203 nits as HDR and may select
     // PQ on 10-bit buffers. Keep SDR signalling fixed; apply the user's peak
     // only to the render target below, after its SDR transfer is established.
-    pl_color_space hint = hdr ? s.image.color : pl_color_space_srgb;
+    pl_color_space hint = rtxHdr ? pl_color_space_hdr10 : hdr ? s.image.color : pl_color_space_srgb;
+    if (rtxHdr)
+    {
+        const float peak = s.DisplayPeak();
+        hint.hdr.max_luma = peak > 0 ? peak : 1000;
+    }
     if (!hdr)
         hint.hdr.max_luma = PL_COLOR_SDR_WHITE;
     if (hdr && s.settings.hdrMode == 3)

@@ -650,6 +650,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
         c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
+        c.controls.push_back(D2DBool(s,
+                                     L"RTX Video HDR",
+                                     &s.rtxHdr,
+                                     L"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, an "
+                                     L"RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));

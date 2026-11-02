@@ -835,6 +835,16 @@ Renderer::~Renderer()
           status.rendered,
           status.hardwareFrames,
           static_cast<unsigned long>(status.lastResult));
+    // A subtitle renderer must drop its consumer before this object goes away.
+    if (auto provider = xySub->Disconnect())
+    {
+        provider->Disconnect();
+        Trace("Subtitle renderer disconnected");
+    }
+    {
+        std::lock_guard guard(overlayLock);
+        hostSubtitles = {};
+    }
     backend.SetOverlayPainter({});
     Trace("Renderer subtitle bridge released");
     const HWND video = window ? window->GetWindowHWND() : nullptr;
@@ -889,6 +899,8 @@ STDMETHODIMP Renderer::NonDelegatingQueryInterface(REFIID id, void** out)
         return GetInterface(static_cast<ISpecifyPropertyPages*>(this), out);
     if (id == __uuidof(ISubRender11))
         return GetInterface(static_cast<ISubRender11*>(this), out);
+    if (id == __uuidof(ISubRenderConsumer2) || id == __uuidof(ISubRenderConsumer) || id == __uuidof(ISubRenderOptions))
+        return GetInterface(static_cast<ISubRenderConsumer2*>(this), out);
     if (id == __uuidof(IPlaceboSettings))
         return GetInterface(static_cast<IPlaceboSettings*>(this), out);
     if (id == __uuidof(IPlaceboDiagnostics))
@@ -1955,7 +1967,11 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
 
     if (!next)
     {
-        backend.SetOverlayPainter({});
+        {
+            std::lock_guard guard(overlayLock);
+            hostSubtitles = {};
+        }
+        InstallSubtitleOverlay();
         return S_OK;
     }
     ComPtr<IUnknown> callbackIdentity, ownerIdentity;
@@ -1973,30 +1989,226 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     if (callbackIdentity.Get() != ownerIdentity.Get())
         bridge->retained = next;
     Trace("Subtitle callback ownership: aggregate=%d", !bridge->retained);
-    backend.SetOverlayPainter(
+    PlaceboBackend::OverlayPainter painter =
         [this, bridge](ID3D11Device* device, ID3D11DeviceContext*, int width, int height, const RECT& video) -> HRESULT
+    {
+        if (bridge->device.Get() != device)
         {
-            if (bridge->device.Get() != device)
+            if (bridge->device)
             {
-                if (bridge->device)
-                {
-                    bridge->callback->SetDevice11(nullptr);
-                    bridge->device.Reset();
-                }
-                HRESULT hr = bridge->callback->SetDevice11(device);
-                if (FAILED(hr))
-                    return hr;
-                bridge->device = device;
+                bridge->callback->SetDevice11(nullptr);
+                bridge->device.Reset();
             }
-            const RECT viewport = {0, 0, width, height};
-            HRESULT hr = bridge->callback->Render11(
-                frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
-            // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
-            // cleared before the callback; keep the video and its empty overlay.
-            // Device initialization failures above remain actual errors.
-            return hr == E_FAIL ? S_FALSE : hr;
+            HRESULT hr = bridge->callback->SetDevice11(device);
+            if (FAILED(hr))
+                return hr;
+            bridge->device = device;
+        }
+        const RECT viewport = {0, 0, width, height};
+        HRESULT hr = bridge->callback->Render11(
+            frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
+        // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
+        // cleared before the callback; keep the video and its empty overlay.
+        // Device initialization failures above remain actual errors.
+        return hr == E_FAIL ? S_FALSE : hr;
+    };
+    {
+        std::lock_guard guard(overlayLock);
+        hostSubtitles = std::move(painter);
+    }
+    InstallSubtitleOverlay();
+    return S_OK;
+}
+
+void Renderer::InstallSubtitleOverlay()
+{
+    PlaceboBackend::OverlayPainter host;
+    bool subtitleRenderer = false;
+    {
+        std::lock_guard guard(overlayLock);
+        host = hostSubtitles;
+        subtitleRenderer = xySubInstalled;
+    }
+    if (!subtitleRenderer)
+    {
+        backend.SetOverlayPainter(host, true);
+        return;
+    }
+    auto bridge = xySub;
+    auto paint =
+        [this, bridge](
+            ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video, bool inverted)
+    {
+        const auto frame = format.frame;
+        XySubBridge::Info info;
+        info.original = {frame.width, frame.height};
+        info.arAdjusted = info.original;
+        if (frame.aspectX > 0 && frame.aspectY > 0)
+            info.arAdjusted.cx = LONG(std::lround(double(frame.height) * frame.aspectX / frame.aspectY));
+        info.frameDuration = contentDuration.load() > 0 ? contentDuration.load() : frameDuration.load();
+        info.video = video;
+        info.display = {width, height};
+        bridge->Update(info);
+        const HRESULT hr =
+            bridge->Paint(device, context, width, height, video, frameStart.load(), frameStop.load(), inverted);
+        // A subtitle failure must never cost the video picture.
+        if (FAILED(hr))
+            Trace("Subtitle renderer frame failed: %08lX", static_cast<unsigned long>(hr));
+        return S_OK;
+    };
+    if (!host)
+    {
+        backend.SetOverlayPainter(
+            [paint](ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video)
+            { return paint(device, context, width, height, video, false); });
+        return;
+    }
+    // The host draws first into its inverted-alpha target; subtitle renderer
+    // bitmaps are then blended over it before the renderer restores alpha.
+    backend.SetOverlayPainter(
+        [host, paint](ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video)
+        {
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> target;
+            context->OMGetRenderTargets(1, &target, nullptr);
+            D3D11_VIEWPORT viewport = {};
+            UINT viewports = 1;
+            context->RSGetViewports(&viewports, &viewport);
+            const HRESULT hr = host(device, context, width, height, video);
+            if (FAILED(hr))
+                return hr;
+            auto view = target.Get();
+            context->OMSetRenderTargets(1, &view, nullptr);
+            context->RSSetViewports(1, &viewport);
+            paint(device, context, width, height, video, true);
+            return S_OK;
         },
         true);
+}
+
+STDMETHODIMP Renderer::GetBool(LPCSTR field, bool* value)
+{
+    return !field || !value ? E_POINTER : E_INVALIDARG;
+}
+
+STDMETHODIMP Renderer::GetInt(LPCSTR field, int* value)
+{
+    return XySubBridge::Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetSize(LPCSTR field, SIZE* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetRect(LPCSTR field, RECT* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetUlonglong(LPCSTR field, ULONGLONG* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetDouble(LPCSTR field, double* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetString(LPCSTR field, LPWSTR* value, int* chars)
+{
+    return XySubBridge::Get(field, value, chars);
+}
+
+STDMETHODIMP Renderer::GetBin(LPCSTR field, LPVOID* value, int*)
+{
+    return !field || !value ? E_POINTER : E_INVALIDARG;
+}
+
+// Consumer fields are read-only for the subtitle renderer.
+STDMETHODIMP Renderer::SetBool(LPCSTR, bool)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetInt(LPCSTR, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetSize(LPCSTR, SIZE)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetRect(LPCSTR, RECT)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetUlonglong(LPCSTR, ULONGLONG)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetDouble(LPCSTR, double)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetString(LPCSTR, LPWSTR, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetBin(LPCSTR, LPVOID, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::GetMerit(ULONG* merit)
+{
+    if (!merit)
+        return E_POINTER;
+    *merit = 0x00040000; // recommended merit for video renderers
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Connect(ISubRenderProvider* provider)
+{
+    if (!provider)
+        return E_POINTER;
+    Trace("Subtitle renderer connected");
+    xySub->Connect(provider);
+    bool install = false;
+    {
+        std::lock_guard guard(overlayLock);
+        install = !xySubInstalled;
+        xySubInstalled = true;
+    }
+    // Installed once and kept: Disconnect may arrive from inside a frame request.
+    if (install)
+        InstallSubtitleOverlay();
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Disconnect()
+{
+    Trace("Subtitle renderer disconnect request");
+    auto provider = xySub->Disconnect();
+    provider.Reset();
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::DeliverFrame(REFERENCE_TIME start, REFERENCE_TIME, LPVOID context, ISubRenderFrame* frame)
+{
+    xySub->Deliver(start, context, frame);
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Clear(REFERENCE_TIME)
+{
+    xySub->Clear();
     return S_OK;
 }
 

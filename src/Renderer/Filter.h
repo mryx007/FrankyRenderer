@@ -7,6 +7,7 @@
 #include <d3d11.h>
 #include "DirectShow/Include/ID3DVideoMemoryConfiguration.h"
 #include "DirectShow/Include/ISubRender11.h"
+#include "Renderer/XySubConsumer.h"
 #include "DirectShow/Include/FilterInterfaces.h"
 #include "DirectShow/Include/FilterInterfacesImpl.h"
 #include "Renderer/MediaFormat.h"
@@ -108,6 +109,7 @@ class Renderer final : public CBaseVideoRenderer,
                        public IAMFilterMiscFlags,
                        public ISpecifyPropertyPages,
                        public ISubRender11,
+                       public ISubRenderConsumer2,
                        public IPlaceboSettings,
                        public IPlaceboDiagnostics,
                        public CExFilterConfigImpl
@@ -133,6 +135,13 @@ class Renderer final : public CBaseVideoRenderer,
     RECT source = {}, target = {};
     REFERENCE_TIME segment = 0;
     std::atomic<REFERENCE_TIME> frameStart = 0, frameStop = 0, frameDuration = 0;
+    // Player subtitles (ISubRender11) and a subtitle renderer such as
+    // XySubFilter (ISubRenderConsumer) share the overlay; both may be active.
+    std::mutex overlayLock;
+    PlaceboBackend::OverlayPainter hostSubtitles;
+    std::shared_ptr<XySubBridge> xySub = std::make_shared<XySubBridge>();
+    bool xySubInstalled = false;
+    void InstallSubtitleOverlay();
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;
@@ -234,6 +243,28 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT OnStartStreaming() override;
     STDMETHODIMP GetPages(CAUUID*) override;
     STDMETHODIMP SetCallback11(ISubRender11Callback*) override;
+    // ISubRenderConsumer2 (SubRenderIntf.h)
+    STDMETHODIMP GetBool(LPCSTR, bool*) override;
+    STDMETHODIMP GetInt(LPCSTR, int*) override;
+    STDMETHODIMP GetSize(LPCSTR, SIZE*) override;
+    STDMETHODIMP GetRect(LPCSTR, RECT*) override;
+    STDMETHODIMP GetUlonglong(LPCSTR, ULONGLONG*) override;
+    STDMETHODIMP GetDouble(LPCSTR, double*) override;
+    STDMETHODIMP GetString(LPCSTR, LPWSTR*, int*) override;
+    STDMETHODIMP GetBin(LPCSTR, LPVOID*, int*) override;
+    STDMETHODIMP SetBool(LPCSTR, bool) override;
+    STDMETHODIMP SetInt(LPCSTR, int) override;
+    STDMETHODIMP SetSize(LPCSTR, SIZE) override;
+    STDMETHODIMP SetRect(LPCSTR, RECT) override;
+    STDMETHODIMP SetUlonglong(LPCSTR, ULONGLONG) override;
+    STDMETHODIMP SetDouble(LPCSTR, double) override;
+    STDMETHODIMP SetString(LPCSTR, LPWSTR, int) override;
+    STDMETHODIMP SetBin(LPCSTR, LPVOID, int) override;
+    STDMETHODIMP GetMerit(ULONG*) override;
+    STDMETHODIMP Connect(ISubRenderProvider*) override;
+    STDMETHODIMP Disconnect() override;
+    STDMETHODIMP DeliverFrame(REFERENCE_TIME, REFERENCE_TIME, LPVOID, ISubRenderFrame*) override;
+    STDMETHODIMP Clear(REFERENCE_TIME) override;
     STDMETHODIMP GetSettings(PlaceboSettings*) override;
     STDMETHODIMP SetSettings(const PlaceboSettings*) override;
     STDMETHODIMP GetStatus(PlaceboStatus*) override;

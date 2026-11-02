@@ -154,6 +154,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(smoothMotion),
         FIELD(outputLevels),
         FIELD(displayDepth),
+        FIELD(measuredQuality),
         FIELD(peakDetect),
         FIELD(peakSmoothing),
         FIELD(peakPercentile),
@@ -166,6 +167,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(scaling),
         FIELD(maximumFramesInFlight),
         FIELD(rtxSuperResolution),
+        FIELD(rtxHdr),
         FIELD(imageAnalysis),
         FIELD(displayModeSwitch),
         COPY_TEXT(displayModes),
@@ -199,9 +201,29 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     {
         DWORD t = 0, n = sizeof(UserShaderSettings);
         UserShaderSettings saved;
-        const auto result = RegQueryValueExW(key, L"UserShadersV2", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n);
+        const auto result = RegQueryValueExW(key, L"UserShadersV3", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n);
+
+        // V2 held the first 21 shaders; the added ones start disabled.
+        struct V2Shaders
+        {
+            ShaderConfig shaders[21];
+            int order[21];
+        } v2;
+
+        DWORD v2Size = sizeof(v2);
         if (result == ERROR_SUCCESS && t == REG_BINARY && n == sizeof(saved) && ValidUserShaders(saved))
             settings.userShaders = saved;
+        else if (result == ERROR_FILE_NOT_FOUND &&
+                 RegQueryValueExW(key, L"UserShadersV2", nullptr, &t, reinterpret_cast<BYTE*>(&v2), &v2Size) ==
+                     ERROR_SUCCESS)
+        {
+            UserShaderSettings migrated;
+            std::copy(std::begin(v2.shaders), std::end(v2.shaders), migrated.shaders);
+            std::copy(std::begin(v2.order), std::end(v2.order), migrated.order);
+            CompleteShaderOrder(migrated.order, 21);
+            if (t == REG_BINARY && v2Size == sizeof(v2) && ValidUserShaders(migrated))
+                settings.userShaders = migrated;
+        }
         else if (result == ERROR_FILE_NOT_FOUND)
         {
             // V1 contained an additional Adaptive Sharpen at index 0. Keep the
@@ -212,13 +234,15 @@ PlaceboSettings LoadSettings(const std::wstring& display)
                 int order[22];
             } old;
 
+            constexpr int legacyCount = 21; // V1 shaders after dropping index 0
+
             n = sizeof(old);
             if (RegQueryValueExW(key, L"UserShadersV1", nullptr, &t, reinterpret_cast<BYTE*>(&old), &n) ==
                     ERROR_SUCCESS &&
                 t == REG_BINARY && n == sizeof(old))
             {
                 UserShaderSettings migrated;
-                for (int i = 0; i < ShaderCount; i++)
+                for (int i = 0; i < legacyCount; i++)
                     migrated.shaders[i] = old.shaders[i + 1];
                 uint32_t seen = 0;
                 int count = 0;
@@ -234,7 +258,8 @@ PlaceboSettings LoadSettings(const std::wstring& display)
                     if (id)
                         migrated.order[count++] = id - 1;
                 }
-                if (valid && count == ShaderCount && ValidUserShaders(migrated))
+                CompleteShaderOrder(migrated.order, count);
+                if (valid && count == legacyCount && ValidUserShaders(migrated))
                     settings.userShaders = migrated;
             }
         }
@@ -287,6 +312,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"ShowClipping", settings.showClipping);
     Bool(key, L"AdaptiveSharpen", settings.adaptiveSharpen);
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
+    Bool(key, L"RtxHdr", settings.rtxHdr);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
     Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
     String(key, L"DisplayModes", settings.displayModes);
@@ -402,6 +428,12 @@ PlaceboSettings LoadSettings(const std::wstring& display)
                 settings.displayDepth = depth;
     size = 4;
     value = 0;
+    if (RegQueryValueExW(key, L"MeasuredQuality", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 255)
+        settings.measuredQuality = static_cast<int>(value);
+    size = 4;
+    value = 0;
     if (RegQueryValueExW(key, L"ICCIntent", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 1)
         settings.iccIntent = static_cast<int>(value);
@@ -440,7 +472,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
-    if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE))
+    if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE) || (s.rtxHdr != FALSE && s.rtxHdr != TRUE))
         return E_INVALIDARG;
     std::vector<DisplayModes::Mode> modes;
     if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
@@ -459,6 +491,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (!range(s.sharpenStrength, 0, 2))
         return E_INVALIDARG;
     if (s.deinterlacing < 0 || s.deinterlacing > 2)
+        return E_INVALIDARG;
+    if (s.measuredQuality < 0 || s.measuredQuality > 255)
         return E_INVALIDARG;
     if (s.fieldOverride < 0 || s.fieldOverride > 2)
         return E_INVALIDARG;
@@ -525,6 +559,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.showClipping = !!s.showClipping;
     out.adaptiveSharpen = !!s.adaptiveSharpen;
     out.rtxSuperResolution = !!s.rtxSuperResolution;
+    out.rtxHdr = !!s.rtxHdr;
     out.imageAnalysis = !!s.imageAnalysis;
     out.sharpenStrength = s.sharpenStrength;
     out.peakDetect = !!s.peakDetect;
@@ -594,7 +629,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
             result = RegSetValueExW(key, name, 0, type, static_cast<const BYTE*>(data), bytes);
     };
     save(L"HdrTonalV1", REG_BINARY, &s.tonal, sizeof(s.tonal));
-    save(L"UserShadersV2", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
+    save(L"UserShadersV3", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
     save(L"BlackBarsV1", REG_BINARY, &s.blackBars, sizeof(s.blackBars));
     save(L"RendererExtrasV1", REG_BINARY, &s.extras, sizeof(s.extras));
     save(L"ColorMappingV1", REG_BINARY, &s.colorMapping, sizeof(s.colorMapping));
@@ -614,6 +649,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"ShowClipping", REG_DWORD, &s.showClipping, 4);
     save(L"AdaptiveSharpen", REG_DWORD, &s.adaptiveSharpen, 4);
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
+    save(L"RtxHdr", REG_DWORD, &s.rtxHdr, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
     save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
     save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
@@ -647,6 +683,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"ChromaScaler", REG_DWORD, &s.chromaScaler, 4);
     save(L"OutputLevels", REG_DWORD, &s.outputLevels, 4);
     save(L"DisplayDepth", REG_DWORD, &s.displayDepth, 4);
+    save(L"MeasuredQuality", REG_DWORD, &s.measuredQuality, 4);
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);

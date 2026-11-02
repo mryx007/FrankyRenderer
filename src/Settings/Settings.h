@@ -56,11 +56,15 @@ struct PlaceboSettings
     int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
+    BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on
     BOOL imageAnalysis = FALSE;
     // Display mode switching in fullscreen, e.g. L"2160p23, 2160p24, 2160p60".
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};
     float displayModeDelay = 2; // seconds paused after a switch
+    // MeasuredFlag | accepted upgrades of the last quality measurement
+    // (Settings/QualityPresets.h); 0 = never measured for this profile.
+    int measuredQuality = 0;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -84,7 +88,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("883EBF97-3947-4ACF-BE58-75E3A616227D")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("DE6F5558-E997-4CFD-B4AE-5AE328D9686C")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;

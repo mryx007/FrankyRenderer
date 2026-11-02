@@ -1397,6 +1397,14 @@ msgstr ""
 msgid "Highlight values outside the target range to help evaluate mapping settings."
 msgstr ""
 
+#. Setting name (HDR > HDR Output)
+msgid "RTX Video HDR"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > RTX Video HDR)
+msgid "AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
+msgstr ""
+
 #. Section heading (HDR)
 msgid "HDR Peak Detection"
 msgstr ""
@@ -1888,7 +1896,17 @@ msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
-msgid "RAVU Zoom"
+msgid "RAVU Zoom AR R2"
+msgstr ""
+
+#. Tab (Shaders)
+#. Section heading (Shaders)
+msgid "RAVU Zoom R3"
+msgstr ""
+
+#. Tab (Shaders)
+#. Section heading (Shaders)
+msgid "RAVU Zoom AR R3"
 msgstr ""
 
 #. Tab (Shaders)
@@ -2450,8 +2468,16 @@ msgstr ""
 msgid "Adjust Sharpen for this shader. The default preserves the shader author's setting."
 msgstr ""
 
-#. Section description (Shaders > RAVU Zoom)
-msgid "Adaptive upscaling with anti-ringing."
+#. Section description (Shaders > RAVU Zoom AR R2)
+msgid "Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom."
+msgstr ""
+
+#. Section description (Shaders > RAVU Zoom R3)
+msgid "Adaptive upscaling with radius 3. More detail than R2, slower."
+msgstr ""
+
+#. Section description (Shaders > RAVU Zoom AR R3)
+msgid "Radius 3 with anti-ringing. Highest RAVU quality, slowest."
 msgstr ""
 
 #. Section description (Shaders > Anime4K CNN 2x M)
@@ -2516,6 +2542,10 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search settings  (Ctrl+F)"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Search settings"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
@@ -2588,4 +2618,76 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a number within the supported range."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Quality"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Custom"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Measured"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Measuring…"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Measure this PC"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Picks the best settings for this PC."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Measured: %s (%.1f of %.1f ms)"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Could not measure this display."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Measurement failed."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset All"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset all settings for this display to their defaults? Theme and language stay."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "All settings reset to defaults."
+msgstr ""
+
+#. Quality preset (header)
+msgid "Fast"
+msgstr ""
+
+#. Quality preset description (header)
+msgid "For weak integrated GPUs."
+msgstr ""
+
+#. Quality preset (header)
+msgid "Default"
+msgstr ""
+
+#. Quality preset description (header)
+msgid "Balanced. Fine for most PCs."
+msgstr ""
+
+#. Quality preset (header)
+msgid "High Quality"
+msgstr ""
+
+#. Quality preset description (header)
+msgid "Sharpest picture. For dedicated GPUs."
 msgstr ""

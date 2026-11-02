@@ -481,6 +481,30 @@ class Direct2DFrame
             PostMessageW(h, WM_CLOSE, 0, 0);
             return 0;
         }
+        // A thick frame without caption keeps a visible resize band above the
+        // client area. Start the client at the window's top edge so the header
+        // and close button reach the rounded corner; WM_NCHITTEST below still
+        // resizes from that edge. Maximized windows keep their normal frame.
+        if (msg == WM_NCCALCSIZE && w && !IsZoomed(h))
+        {
+            auto& client = reinterpret_cast<NCCALCSIZE_PARAMS*>(l)->rgrc[0];
+            const LONG top = client.top;
+            const LRESULT result = DefSubclassProc(h, msg, w, l);
+            client.top = top;
+            return result;
+        }
+        // The system frame painting still assumes that top band and draws a
+        // light bar over the header, e.g. when focus changes. Let it paint,
+        // then repaint the header strip with the window's own content.
+        if ((msg == WM_NCPAINT || msg == WM_NCACTIVATE) && !IsZoomed(h))
+        {
+            const LRESULT result = DefSubclassProc(h, msg, w, l);
+            RECT band;
+            GetClientRect(h, &band);
+            band.bottom = MulDiv(12, int(GetDpiForWindow(h)), 96);
+            RedrawWindow(h, &band, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+            return result;
+        }
         if (msg == WM_NCHITTEST)
         {
             // OLE property-frame hosts can keep fixed-dialog hit testing even

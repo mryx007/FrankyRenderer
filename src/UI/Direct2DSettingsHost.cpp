@@ -5,6 +5,9 @@
 #include "Settings/LiveSettings.h"
 #include "UI/MenuTheme.h"
 #include "UI/Translation.h"
+#include "Settings/QualityPresets.h"
+#include "Renderer/QualityBenchmark.h"
+#include <thread>
 #include <d2d1.h>
 #include <dwrite.h>
 #include <wrl/client.h>
@@ -116,6 +119,7 @@ static constexpr const wchar_t* MenuTexts[] = {L"Display",
                                                L"Saved",
                                                L"Save (%d)",
                                                L"Search settings  (Ctrl+F)",
+                                               L"Search settings",
                                                L"Search Results",
                                                L"Matching settings for: \"%s\"",
                                                L"No settings matching this term found.",
@@ -136,7 +140,20 @@ static constexpr const wchar_t* MenuTexts[] = {L"Display",
                                                L"Enter a display name (1 to 80 characters).",
                                                L"Enter a number within the supported range.",
                                                L"Automatic (Windows)",
-                                               L"English"};
+                                               L"English",
+                                               L"Quality",
+                                               L"Custom",
+                                               L"Measured",
+                                               L"Measuring…",
+                                               L"Measure this PC",
+                                               L"Picks the best settings for this PC.",
+                                               L"Measured: %s (%.1f of %.1f ms)",
+                                               L"Could not measure this display.",
+                                               L"Measurement failed.",
+                                               L"Reset All",
+                                               L"Reset all settings for this display to their defaults? Theme and "
+                                               L"language stay.",
+                                               L"All settings reset to defaults."};
 
 // Translates everything the settings model only displays. Page names, card
 // titles and tab names stay English here: the menu logic uses them as
@@ -268,10 +285,12 @@ struct HitRegion
         SearchBox,
         SearchClearBtn,
         ResetBtn,
+        ResetAllBtn,
         ApplyBtn,
         ImportBtn,
         ExportBtn,
         DisplayProfile,
+        QualityPresetBtn,
         RenameDisplay,
         Number,
         Decrement,
@@ -496,6 +515,26 @@ class Direct2DHostWindow
     void Changed();
     void Preview();
     void SelectDisplayProfile(const D2D1_RECT_F& rect);
+    void SelectQualityPreset(const D2D1_RECT_F& rect);
+
+    // Quality measurement runs on its own thread; timer 19 polls it.
+    struct Measurement
+    {
+        std::atomic<float> progress = 0;
+        std::atomic<bool> cancel = false, done = false;
+        BenchmarkResult result;
+        std::wstring profile;
+    };
+
+    std::shared_ptr<Measurement> m_measurement;
+    std::thread m_measureThread;
+    void StartMeasurement();
+    void FinishMeasurement();
+    void ResetAll();
+    // Short notice at the bottom of the window, visible with a closed sidebar.
+    std::wstring m_toast;
+    void ShowToast(const std::wstring& text);
+    void DrawToast(D2D1_SIZE_F size);
     void AdoptDisplayProfile(const std::wstring& id);
     void TransferIni(bool importing);
     HRESULT ApplyImported(const PlaceboSettings& candidate);
@@ -599,6 +638,11 @@ class Direct2DHostWindow
     ~Direct2DHostWindow()
     {
         *m_alive = false;
+        if (m_measureThread.joinable())
+        {
+            m_measurement->cancel = true;
+            m_measureThread.join();
+        }
         if (m_editFont)
             DeleteObject(m_editFont);
         if (m_editBrush)
@@ -1258,7 +1302,35 @@ void Direct2DHostWindow::Render()
 
     // Search stays at the right edge; page reset sits on the row below it.
     const float searchRight = contentX + contentW;
-    const float searchWidth = std::min(260.f, contentW - (m_standalone ? 294.f : 180.f));
+    auto measure = [&](const std::wstring& text)
+    {
+        ComPtr<IDWriteTextLayout> layout;
+        DWRITE_TEXT_METRICS metrics = {};
+        if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                text.c_str(), UINT32(text.size()), m_fmtNav.Get(), 400, 40, layout.GetAddressOf())) &&
+            SUCCEEDED(layout->GetMetrics(&metrics)))
+            return std::ceil(metrics.widthIncludingTrailingWhitespace);
+        return 120.f;
+    };
+    // The quality preset stays visible on every page; it shows Custom once a
+    // setting it covers was changed by hand. In a narrow window the page title
+    // keeps its room: the caption goes first, then the search narrows.
+    const int qualityPreset = MatchQualityPreset(*m_pSettings);
+    auto presetName = Tr(qualityPreset >= 0                   ? QualityPresetNames[qualityPreset]
+                         : MatchMeasuredQuality(*m_pSettings) ? L"Measured"
+                                                              : L"Custom");
+    if (m_measurement)
+        presetName = Tr(L"Measuring…") + L" " + std::to_wstring(int(m_measurement->progress * 100)) + L"%";
+    auto presetLabel = Tr(L"Quality") + L": " + presetName;
+    const float saveWidth = m_standalone ? 114.f : 0.f, titleRoom = 200.f;
+    float searchWidth = std::min(260.f, contentW);
+    float presetWidth = measure(presetLabel) + 50;
+    if (contentW - searchWidth - saveWidth - presetWidth - 10 < titleRoom)
+    {
+        presetLabel = presetName;
+        presetWidth = measure(presetLabel) + 50;
+    }
+    searchWidth = std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - 10 - titleRoom));
     float headerActionsLeft = searchRight - searchWidth;
     if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))
     {
@@ -1285,6 +1357,24 @@ void Direct2DHostWindow::Render()
         resetHit.type = HitRegion::ResetBtn;
         resetHit.rect = reset;
         m_hitRegions.push_back(resetHit);
+        // Everything for this display, e.g. to start over.
+        const auto allText = Tr(L"Reset All");
+        float allWidth = 80.f;
+        ComPtr<IDWriteTextLayout> allLayout;
+        if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                allText.c_str(), UINT32(allText.size()), m_fmtNav.Get(), 400, 40, allLayout.GetAddressOf())) &&
+            SUCCEEDED(allLayout->GetMetrics(&metrics)))
+            allWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
+        const auto all = D2D1::RectF(reset.left - allWidth - 28, reset.top, reset.left - 4, reset.bottom);
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        m_pRenderTarget->DrawText(allText.c_str(), UINT32(allText.size()), m_fmtNav.Get(), all, m_brushTextMuted.Get());
+        m_fmtNav->SetParagraphAlignment(paragraph);
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        HitRegion allHit;
+        allHit.type = HitRegion::ResetAllBtn;
+        allHit.rect = all;
+        m_hitRegions.push_back(allHit);
     }
     // The standalone settings window edits a draft; Save keeps it and shows
     // how many settings differ from what was last saved.
@@ -1311,6 +1401,29 @@ void Direct2DHostWindow::Render()
         saveHit.rect = save;
         m_hitRegions.push_back(saveHit);
         headerActionsLeft = save.left - 10;
+    }
+    {
+        const auto& label = presetLabel;
+        const auto box = D2D1::RectF(headerActionsLeft - presetWidth, currentY, headerActionsLeft - 10, currentY + 32);
+        m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(box, 5, 5), m_brushInputBg.Get());
+        m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(box, 5, 5), m_brushBorderCard.Get(), 1);
+        const auto paragraph = m_fmtNav->GetParagraphAlignment();
+        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        m_pRenderTarget->DrawText(label.c_str(),
+                                  UINT32(label.size()),
+                                  m_fmtNav.Get(),
+                                  D2D1::RectF(box.left + 12, box.top, box.right - 26, box.bottom),
+                                  m_brushTextMain.Get(),
+                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        m_fmtNav->SetParagraphAlignment(paragraph);
+        const float x = box.right - 16, y = box.top + 15;
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x - 4, y - 2), D2D1::Point2F(x, y + 2), m_brushTextMuted.Get(), 1.6f);
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x, y + 2), D2D1::Point2F(x + 4, y - 2), m_brushTextMuted.Get(), 1.6f);
+        HitRegion presetHit;
+        presetHit.type = HitRegion::QualityPresetBtn;
+        presetHit.rect = box;
+        m_hitRegions.push_back(presetHit);
+        headerActionsLeft = box.left - 10;
     }
     DrawSearchBox(D2D1::RectF(searchRight - searchWidth, currentY, searchRight, currentY + 32));
 
@@ -2014,6 +2127,7 @@ void Direct2DHostWindow::Render()
         m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
     }
     DrawInteractionFeedback();
+    DrawToast(size);
     HRESULT hr = m_pRenderTarget->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET)
     {
@@ -2089,7 +2203,9 @@ void Direct2DHostWindow::DrawSearchBox(D2D1_RECT_F box)
     if (!typing)
     {
         const bool empty = m_searchQuery.empty();
-        const auto& shown = empty ? Tr(L"Search settings  (Ctrl+F)") : m_searchQuery;
+        // A narrowed box drops the shortcut hint instead of clipping it.
+        const auto hint = Tr(box.right - box.left < 240 ? L"Search settings" : L"Search settings  (Ctrl+F)");
+        const auto& shown = empty ? hint : m_searchQuery;
         const auto wrap = m_fmtNav->GetWordWrapping();
         m_fmtNav->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
         m_pRenderTarget->DrawText(shown.c_str(),
@@ -2330,6 +2446,153 @@ void Direct2DHostWindow::SelectDisplayProfile(const D2D1_RECT_F& rect)
     if (!*alive || selected < 0 || devices[selected].id == m_pSettings->displayProfile)
         return;
     AdoptDisplayProfile(devices[selected].id);
+}
+
+void Direct2DHostWindow::SelectQualityPreset(const D2D1_RECT_F& rect)
+{
+    EndEdit();
+    if (m_measurement)
+        return;
+    ChoicePopup popup;
+    for (size_t i = 0; i < std::size(QualityPresetNames); ++i)
+    {
+        popup.labels.push_back(Tr(QualityPresetNames[i]));
+        popup.descriptions.push_back(Tr(QualityPresetDescriptions[i]));
+    }
+    // The last entry measures instead of applying fixed values.
+    const int measure = int(popup.labels.size());
+    popup.labels.push_back(Tr(L"Measure this PC"));
+    popup.descriptions.push_back(Tr(L"Picks the best settings for this PC."));
+    popup.selected = MatchQualityPreset(*m_pSettings);
+    if (popup.selected < 0 && MatchMeasuredQuality(*m_pSettings))
+        popup.selected = measure;
+    RECT anchor = {
+        int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
+    MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+    const auto alive = m_alive;
+    const int selected = popup.Show(m_hwnd, anchor, Scale());
+    if (!*alive || selected < 0)
+        return;
+    if (selected == measure)
+    {
+        StartMeasurement();
+        return;
+    }
+    ApplyQualityPreset(*m_pSettings, selected);
+    // Controls hold their own copies of choice lists; rebuild them for the new values.
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_hitRegions.clear();
+    InitPages();
+    Changed();
+}
+
+void Direct2DHostWindow::StartMeasurement()
+{
+    // The display profile being edited decides the GPU and display mode.
+    HMONITOR monitor = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
+    for (const auto& device : m_devices)
+        if (device.connected && device.id == m_pSettings->displayProfile && device.monitor)
+            monitor = device.monitor;
+    BenchmarkTarget target;
+    if (!FindBenchmarkTarget(monitor, target) &&
+        !FindBenchmarkTarget(MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST), target))
+    {
+        ShowToast(Tr(L"Could not measure this display."));
+        return;
+    }
+    auto job = std::make_shared<Measurement>();
+    job->profile = m_pSettings->displayProfile;
+    const PlaceboSettings settings = *m_pSettings;
+    m_measurement = job;
+    m_measureThread = std::thread(
+        [job, settings, target]
+        {
+            QualityBenchmark benchmark;
+            job->result = benchmark.Run(settings, target, &job->progress, &job->cancel);
+            job->done = true;
+        });
+    SetTimer(m_hwnd, 19, 100, nullptr);
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Direct2DHostWindow::FinishMeasurement()
+{
+    KillTimer(m_hwnd, 19);
+    m_measureThread.join();
+    const auto job = std::move(m_measurement);
+    // A profile switch while measuring leaves the new profile untouched.
+    if (job->profile != m_pSettings->displayProfile)
+    {
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
+    if (!job->result.ok)
+    {
+        ShowToast(Tr(L"Measurement failed."));
+        return;
+    }
+    EndEdit();
+    ApplyMeasuredQuality(*m_pSettings, job->result.upgrades);
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_hitRegions.clear();
+    InitPages();
+    Changed();
+    wchar_t summary[256] = {};
+    swprintf_s(summary,
+               Tr(L"Measured: %s (%.1f of %.1f ms)").c_str(),
+               DescribeMeasuredQuality(job->result.upgrades).c_str(),
+               job->result.milliseconds,
+               job->result.budget);
+    ShowToast(summary);
+}
+
+void Direct2DHostWindow::ResetAll()
+{
+    EndEdit();
+    const auto alive = m_alive;
+    const int answer =
+        MessageBoxW(m_hwnd,
+                    Tr(L"Reset all settings for this display to their defaults? Theme and language stay.").c_str(),
+                    Tr(L"Reset All").c_str(),
+                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+    if (!*alive || answer != IDYES)
+        return;
+    PlaceboSettings defaults;
+    wcscpy_s(defaults.displayProfile, m_pSettings->displayProfile);
+    *m_pSettings = defaults;
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_hitRegions.clear();
+    InitPages();
+    Changed();
+    ShowToast(Tr(L"All settings reset to defaults."));
+}
+
+void Direct2DHostWindow::ShowToast(const std::wstring& text)
+{
+    m_toast = text;
+    SetTimer(m_hwnd, 20, 8000, nullptr);
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Direct2DHostWindow::DrawToast(D2D1_SIZE_F size)
+{
+    if (m_toast.empty())
+        return;
+    ComPtr<IDWriteTextLayout> layout;
+    DWRITE_TEXT_METRICS metrics = {};
+    const float maxWidth = std::max(120.f, size.width - 48.f);
+    if (FAILED(m_pDWriteFactory->CreateTextLayout(
+            m_toast.c_str(), UINT32(m_toast.size()), m_fmtNav.Get(), maxWidth - 32, 200, layout.GetAddressOf())) ||
+        FAILED(layout->GetMetrics(&metrics)))
+        return;
+    const float w = std::ceil(metrics.width) + 32, h = std::ceil(metrics.height) + 20;
+    const auto box = D2D1::RectF((size.width - w) / 2, size.height - h - 20, (size.width + w) / 2, size.height - 20);
+    m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(box, 8, 8), m_brushBgCardHeader.Get());
+    m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(box, 8, 8), m_brushAccent.Get(), 1);
+    m_pRenderTarget->DrawTextLayout(D2D1::Point2F(box.left + 16, box.top + 10), layout.Get(), m_brushTextMain.Get());
 }
 
 void Direct2DHostWindow::AdoptDisplayProfile(const std::wstring& id)
@@ -2700,6 +2963,17 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         {
             const auto rect = h.rect;
             SelectDisplayProfile(rect);
+            return;
+        }
+        else if (h.type == HitRegion::ResetAllBtn)
+        {
+            ResetAll();
+            return;
+        }
+        else if (h.type == HitRegion::QualityPresetBtn)
+        {
+            const auto rect = h.rect;
+            SelectQualityPreset(rect);
             return;
         }
         else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
@@ -3144,6 +3418,21 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
             pThis->Animate();
             return 0;
         }
+        if (pThis && wParam == 20)
+        {
+            KillTimer(hwnd, 20);
+            pThis->m_toast.clear();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        if (pThis && wParam == 19)
+        {
+            if (pThis->m_measurement && pThis->m_measurement->done)
+                pThis->FinishMeasurement();
+            else
+                InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
         break;
     case WM_MOUSELEAVE:
         if (pThis)
@@ -3342,5 +3631,10 @@ std::vector<std::pair<std::wstring, std::wstring>> Direct2DSettingsHost::Transla
     }
     for (const auto* text : MenuTexts)
         add(text, L"Menu text; keep %d and %s placeholders");
+    for (size_t i = 0; i < std::size(QualityPresetNames); ++i)
+    {
+        add(QualityPresetNames[i], L"Quality preset (header)");
+        add(QualityPresetDescriptions[i], L"Quality preset description (header)");
+    }
     return out;
 }

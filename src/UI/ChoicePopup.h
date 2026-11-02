@@ -81,11 +81,16 @@ class ChoicePopup
             text.left += rowHeight;
             if (described)
             {
+                // Heading and description as one block with padding to the highlight.
+                const int pad = rowHeight / 8;
                 RECT title = text;
-                title.bottom = title.top + rowHeight / 2;
+                title.top += pad;
+                title.bottom = title.top + rowHeight * 2 / 5;
                 DrawTextW(
                     dc, labels[index].c_str(), -1, &title, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-                text.top += rowHeight / 2;
+                text.top = title.bottom;
+                text.bottom -= pad;
+                text.right -= pad;
                 SelectObject(dc, descriptionFont);
                 SetTextColor(dc, MenuColorRef(palette.textMuted));
                 DrawTextW(dc, descriptions[index].c_str(), -1, &text, DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX);
@@ -265,16 +270,18 @@ class ChoicePopup
         described =
             descriptions.size() == labels.size() &&
             std::any_of(descriptions.begin(), descriptions.end(), [](const auto& text) { return !text.empty(); });
-        rowHeight = std::max(1, int((described ? 56 : 32) * scale));
+        rowHeight = std::max(1, int((described ? 60 : 32) * scale));
         rows = std::max(1,
                         std::min({described ? 8 : 12,
                                   int(labels.size()),
                                   int(monitor.rcWork.bottom - monitor.rcWork.top - 16) / rowHeight}));
+        // Semibold like the menu's DirectWrite text: GDI renders Segoe UI
+        // "medium" as regular, which looked thinner than the closed field.
         font = CreateFontW(-int(14 * scale),
                            0,
                            0,
                            0,
-                           FW_MEDIUM,
+                           FW_SEMIBOLD,
                            FALSE,
                            FALSE,
                            FALSE,

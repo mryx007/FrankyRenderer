@@ -1,8 +1,9 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <iterator>
-inline constexpr int ShaderCount = 21, ShaderParameterLimit = 12;
+inline constexpr int ShaderCount = 23, ShaderParameterLimit = 12;
 
 struct ShaderParameterInfo
 {
@@ -172,7 +173,13 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      false,
      1,
      {{"SHARP", 0.0f, 0.0f, 1.0f, true}}},
-    {"ravu_zoom_ar_r2.glsl", L"RAVU Zoom", L"Image Upscaling", L"Adaptive upscaling with anti-ringing.", false, 0, {}},
+    {"ravu_zoom_ar_r2.glsl",
+     L"RAVU Zoom AR R2",
+     L"Image Upscaling",
+     L"Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom.",
+     false,
+     0,
+     {}},
     {"Anime4K_Upscale_CNN_x2_M.glsl",
      L"Anime4K CNN 2x M",
      L"Anime Upscaling",
@@ -208,6 +215,22 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      false,
      1,
      {{"LBD", 1.0f, 0.0f, 3.0f, false}}},
+    // Appended so stored shader indices keep their meaning; the chain order
+    // places them after RAVU Zoom AR R2.
+    {"ravu_zoom_r3.glsl",
+     L"RAVU Zoom R3",
+     L"Image Upscaling",
+     L"Adaptive upscaling with radius 3. More detail than R2, slower.",
+     false,
+     0,
+     {}},
+    {"ravu_zoom_ar_r3.glsl",
+     L"RAVU Zoom AR R3",
+     L"Image Upscaling",
+     L"Radius 3 with anti-ringing. Highest RAVU quality, slowest.",
+     false,
+     0,
+     {}},
 };
 
 struct ShaderConfig
@@ -219,8 +242,47 @@ struct ShaderConfig
 struct UserShaderSettings
 {
     ShaderConfig shaders[ShaderCount];
-    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20};
 };
+
+// Index of RAVU Zoom AR R2; shaders added later join the chain after it.
+inline constexpr int ShaderRavuR2 = 15, ShaderAddedFirst = 21;
+
+// Completes a chain order saved before shaders were added: keeps the first
+// occurrence of every known shader and inserts missing ones after RAVU Zoom
+// AR R2 (or at the end). A complete order is left unchanged.
+inline void CompleteShaderOrder(int (&order)[ShaderCount], int savedCount = ShaderCount)
+{
+    int kept[ShaderCount] = {}, count = 0;
+    uint32_t seen = 0;
+    for (int i = 0; i < savedCount; i++)
+        if (order[i] >= 0 && order[i] < ShaderCount && !(seen & (1u << order[i])))
+        {
+            seen |= 1u << order[i];
+            kept[count++] = order[i];
+        }
+    if (count == ShaderCount)
+    {
+        std::copy(kept, kept + ShaderCount, order);
+        return;
+    }
+    int at = count;
+    for (int i = 0; i < count; i++)
+        if (kept[i] == ShaderRavuR2)
+            at = i + 1;
+    int merged[ShaderCount] = {}, n = 0;
+    for (int i = 0; i < at; i++)
+        merged[n++] = kept[i];
+    for (int id = ShaderAddedFirst; id < ShaderCount; id++)
+        if (!(seen & (1u << id)))
+            merged[n++] = id, seen |= 1u << id;
+    for (int i = at; i < count; i++)
+        merged[n++] = kept[i];
+    for (int id = 0; id < ShaderCount; id++)
+        if (!(seen & (1u << id)))
+            merged[n++] = id;
+    std::copy(merged, merged + ShaderCount, order);
+}
 
 inline bool ValidUserShaders(const UserShaderSettings& s)
 {

@@ -6,6 +6,7 @@
 - **xxHash and glad-generated OpenGL loader** - compiled into libplacebo. Their original notices are included beside the libplacebo license; their source/build inputs are pinned in the libplacebo build-tool locks.
 - **libdovi**, **Little CMS**, **shaderc**, **SPIRV-Cross**, **Vulkan loader** and GCC runtime libraries - runtime dependencies obtained from MSYS2. Their exact package versions, URLs and SHA256 hashes are recorded in `src/deps/packages.lock.json`. Package license files are restored under `src/deps/msys/ucrt64/share/licenses`.
 - **PlayKit shader collection** - upstream https://github.com/hooke007/mpv_PlayKit . Included source files retain their original authorship and licenses; see `src/Shaders/PlayKit` and its source manifest. Collection licensing does not replace individual shader licenses.
+- **SubRenderIntf.h** (subtitle renderer interface used by XySubFilter) - BSD license, (C) 2011-2015 madshi; included unchanged under `src/DirectShow/Include`.
 - **Adaptive Sharpen** - original shader source and notice are retained under `src/Shaders` and in the embedded source header.
 
 Bundled source notices take precedence for their respective components. The renderer's name change does not change third-party ownership or licensing.
