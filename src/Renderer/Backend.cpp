@@ -1616,11 +1616,6 @@ struct PlaceboBackend::State
                 userFailed[id] = false;
                 continue;
             }
-            if (ShaderCatalog[id].outputStage && target.color.transfer == PL_COLOR_TRC_LINEAR)
-            {
-                userShaderMessage = L"output-stage shaders bypassed for linear scRGB";
-                continue;
-            }
             if (PrepareUserShader(id))
             {
                 hooks[count++] = userHooks[id];
