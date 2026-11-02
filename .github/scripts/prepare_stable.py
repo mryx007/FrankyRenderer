@@ -111,8 +111,8 @@ def main():
     existing = subprocess.run(["gh", "api", f"repos/mryx007/FrankyRenderer/releases/tags/v{version}"], capture_output=True)
     if existing.returncode == 0:
         raise ValueError("The next stable release already exists")
-    git("config", "user.name", "github-actions[bot]")
-    git("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
+    git("config", "user.name", "mryx007")
+    git("config", "user.email", "149878151+mryx007@users.noreply.github.com")
     print(json.dumps(prepare(previous, nightly_sha, ROOT / "promotion")))
 
 
