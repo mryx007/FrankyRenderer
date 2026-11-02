@@ -1,7 +1,7 @@
 """Settings menu translations (gettext, maintained on Weblate).
 
-  translations.py rc OUT        resource script embedding translations/*.po
-                                (called by build.cmd; empty without translations)
+  translations.py rc OUT        resource script embedding translations/*.po that
+                                are at least 95% translated (called by build.cmd)
   translations.py template      rebuild translations/FrankyRenderer.pot from the
                                 menu (builds and runs Tools/menu_texts.cpp)
 
@@ -18,6 +18,48 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRANSLATIONS = ROOT.parent / "translations"
 TEMPLATE = TRANSLATIONS / "FrankyRenderer.pot"
+# A language ships once this share of the template is translated, so Weblate
+# pull requests can be merged at any time without half-translated menus.
+MINIMUM = 0.95
+
+
+def read_po(path):
+    """(msgid, msgstr, usable) per entry. Usable matches UI/Translation.h:
+    singular, not fuzzy and translated."""
+    entries, entry, field = [], {}, None
+
+    def finish():
+        if entry.get("msgid"):
+            usable = bool(entry.get("msgstr")) and not entry.get("plural") and not entry.get("fuzzy")
+            entries.append((entry["msgid"], entry.get("msgstr", ""), usable))
+        entry.clear()
+
+    for line in path.read_text(encoding="utf-8-sig").splitlines() + [""]:
+        line = line.strip()
+        if not line:
+            finish()
+            field = None
+        elif line.startswith("#,"):
+            entry["fuzzy"] = "fuzzy" in line
+        elif line.startswith("#"):
+            continue
+        elif line.startswith('"'):
+            if field:
+                entry[field] += unescape(line[1:-1])
+        else:
+            key, _, value = line.partition(" ")
+            if key == "msgid_plural" or key.startswith("msgstr["):
+                entry["plural"] = True
+            field = key if key in ("msgid", "msgstr", "msgctxt") else None
+            if field:
+                entry[field] = unescape(value[1:-1])
+    return entries
+
+
+def completeness(po):
+    texts = {text for text, _, _ in read_po(TEMPLATE)}
+    translated = {text for text, _, usable in read_po(po) if usable and text in texts}
+    return len(translated) / max(1, len(texts))
 
 
 def write_rc(out):
@@ -25,7 +67,11 @@ def write_rc(out):
     for po in sorted(TRANSLATIONS.glob("*.po")):
         if not po.stem.replace("_", "").replace("@", "").isalnum():
             raise ValueError(f"Unexpected translation file name: {po.name}")
-        lines.append(f'{po.stem} PO "{str(po.resolve()).replace(chr(92), chr(92) * 2)}"')
+        share = completeness(po)
+        shipped = share >= MINIMUM
+        print(f"{po.name}: {share:.0%} translated" + ("" if shipped else f", below {MINIMUM:.0%}: not embedded"))
+        if shipped:
+            lines.append(f'{po.stem} PO "{str(po.resolve()).replace(chr(92), chr(92) * 2)}"')
     Path(out).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

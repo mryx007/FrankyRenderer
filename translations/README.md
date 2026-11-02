@@ -26,8 +26,10 @@ python src/Tools/translations.py template
 
 Weblate picks up the new template and marks changed texts for review.
 
-The renderer build (`src/Tools/build.cmd`) embeds every `translations/*.po` file into
-`FrankyRenderer.ax`; no extra files are shipped.
+The renderer build (`src/Tools/build.cmd`) embeds every `translations/*.po` file that is at
+least 95% translated into `FrankyRenderer.ax`; no extra files are shipped. Weblate pull requests
+can therefore be merged at any time: a language appears in the menu once it reaches 95%. The
+build log lists the share of every language.
 
 ### Weblate component settings
 
