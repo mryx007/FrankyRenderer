@@ -31,6 +31,16 @@ least 95% translated into `FrankyRenderer.ax`; no extra files are shipped. Webla
 can therefore be merged at any time: a language appears in the menu once it reaches 95%. The
 build log lists the share of every language.
 
+Weblate PRs containing only added or modified `translations/<language>.po` files
+are validated automatically, then approved for the normal Code checks workflow
+(including the Windows build). After those checks succeed, the PR is squash-merged.
+The automation checks Weblate's account and fork, the exact PR revision, UTF-8 PO
+syntax and printf placeholders. Other files, deletions, conflicts and failed
+checks require manual review. Incomplete languages can be merged; the 95% build
+threshold is unchanged. Merging updates source only, without publishing a Nightly
+or installing the renderer. Approval is checked every 15 minutes (GitHub may delay
+scheduled runs); check completion also triggers the automation immediately.
+
 ### Weblate component settings
 
 | Setting | Value |
