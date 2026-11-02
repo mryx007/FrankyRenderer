@@ -472,6 +472,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                        pl_render_default_params.antiringing_strength,
                                        true));
         c.controls.push_back(D2DBool(s, L"Enable Smooth Motion", &s.smoothMotion));
+        c.controls.push_back(D2DChoice(
+            s,
+            L"Present in Advance",
+            &s.presentAhead,
+            {{0, L"Automatic"}, {1, L"1 Refresh"}, {2, L"2 Refreshes"}, {3, L"3 Refreshes"}, {4, L"4 Refreshes"}},
+            L"Smooth Motion pictures handed to the display ahead of time. More absorbs "
+            L"render peaks on slower PCs but adds latency. Automatic starts at one and "
+            L"adds more only after late pictures."));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,

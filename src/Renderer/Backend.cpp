@@ -199,7 +199,8 @@ struct PlaceboBackend::State
 
     int64_t presentationDue = 0;
     int64_t presentationMediaTime = -1;
-    bool presentationTimed = false, presentationLocked = false;
+    bool presentationTimed = false;
+    int presentationLead = 0;
     ULONGLONG periodUpdated = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
@@ -225,14 +226,14 @@ struct PlaceboBackend::State
     PresentBacklog backlog;
     uint64_t driftSkips = 0, traceQueued[4] = {};
 
-    bool SkipForBacklog(bool refreshLocked)
+    bool SkipForBacklog(int refreshLead)
     {
         // Drift is noticed from scanout latency before the queue deepens; the
         // queue depth remains the safety net when latency feedback is missing.
         // Refresh-locked ticks already absorb drift and vary by design within
         // one refresh of their due time, which is not a surplus. Late ticks
         // are left out before they queue, so only a blocking queue counts.
-        if (presentation.drift.TakeSurplus() && !refreshLocked)
+        if (presentation.drift.TakeSurplus() && !refreshLead)
         {
             backlog.Reset();
             ++driftSkips;
@@ -262,7 +263,7 @@ struct PlaceboBackend::State
         }
         const UINT queued = submitted - shown.PresentCount;
         ++traceQueued[std::min<UINT>(queued, 3)];
-        if (!backlog.Skip(queued, refreshLocked ? 3 : 2))
+        if (!backlog.Skip(queued, refreshLead ? refreshLead + 2 : 2))
             return false;
         Trace("Smooth Motion tick left out: %u presents queued ahead of scanout (total %llu)",
               queued,
@@ -325,6 +326,8 @@ struct PlaceboBackend::State
     ComPtr<IDXGIDevice1> latencyDevice;
     UINT originalLatency = 0;
     bool latencyChanged = false;
+    // Highest Smooth Motion lead the frame latency allows without blocking.
+    std::atomic<int> presentCeiling = 2;
     OverlayPainter painter;
     ComPtr<ID3D11Texture2D> overlayTexture;
     ComPtr<ID3D11RenderTargetView> overlayView;
@@ -399,16 +402,31 @@ struct PlaceboBackend::State
         overlayTexture.Reset();
     }
 
+    // Smooth Motion presenting more than two refreshes ahead was requested
+    // explicitly, like a manual frames-in-flight value; queue one more.
+    int FramesInFlight() const
+    {
+        return std::max(settings.maximumFramesInFlight, settings.presentAhead > 2 ? settings.presentAhead + 1 : 0);
+    }
+
     HRESULT ConfigureLatency()
     {
         if (!d3d)
             return S_OK;
+        const int requested = FramesInFlight();
         if (!latencyDevice)
         {
             // Auto must not touch a decoder-owned device. Capture its original
             // value only when the user first requests a manual override.
-            if (!settings.maximumFramesInFlight)
+            if (!requested)
+            {
+                ComPtr<IDXGIDevice1> device;
+                UINT current = 0;
+                if (SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&device))) &&
+                    SUCCEEDED(device->GetMaximumFrameLatency(&current)))
+                    presentCeiling = std::max(1, int(current) - 1);
                 return S_OK;
+            }
             ComPtr<IDXGIDevice1> device;
             HRESULT hr = d3d->device->QueryInterface(IID_PPV_ARGS(&device));
             if (FAILED(hr))
@@ -418,8 +436,7 @@ struct PlaceboBackend::State
                 return hr;
             latencyDevice = std::move(device);
         }
-        const UINT wanted =
-            settings.maximumFramesInFlight ? static_cast<UINT>(settings.maximumFramesInFlight) : originalLatency;
+        const UINT wanted = requested ? static_cast<UINT>(requested) : originalLatency;
         UINT actual = 0;
         HRESULT hr = latencyDevice->GetMaximumFrameLatency(&actual);
         if (FAILED(hr))
@@ -431,6 +448,7 @@ struct PlaceboBackend::State
                 return hr;
         }
         latencyChanged = wanted != originalLatency;
+        presentCeiling = std::max(1, int(wanted) - 1);
         return S_OK;
     }
 
@@ -1996,6 +2014,8 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (settings.maximumFramesInFlight < 0 || settings.maximumFramesInFlight > 16)
         return E_INVALIDARG;
+    if (settings.presentAhead < 0 || settings.presentAhead > 4)
+        return E_INVALIDARG;
     if (!ValidHdrTuning(settings))
         return E_INVALIDARG;
     // Validate without the render lock: a host callback can synchronously need
@@ -2353,8 +2373,10 @@ HRESULT PlaceboBackend::Present()
     std::lock_guard guard(s.lock);
     s.ApplyMeasurementReset();
     const auto due = s.presentationDue;
-    const bool timed = s.presentationTimed, locked = s.presentationLocked;
-    s.presentationTimed = s.presentationLocked = false;
+    const bool timed = s.presentationTimed;
+    const int lead = s.presentationLead;
+    s.presentationTimed = false;
+    s.presentationLead = 0;
     if (s.resizeHold)
         return S_FALSE;
     if (s.resizeResumed.exchange(false))
@@ -2364,7 +2386,7 @@ HRESULT PlaceboBackend::Present()
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
-    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(locked))
+    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
         return S_FALSE;
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
     const bool nativeWanted =
@@ -2390,8 +2412,7 @@ HRESULT PlaceboBackend::Present()
             return S_FALSE;
         if (s.swapchain)
             s.DestroySwapchain();
-        HRESULT result =
-            s.nativeSwapchain.Ensure(s.d3d, s.window, bounds.right, bounds.bottom, s.settings.maximumFramesInFlight);
+        HRESULT result = s.nativeSwapchain.Ensure(s.d3d, s.window, bounds.right, bounds.bottom, s.FramesInFlight());
         if (SUCCEEDED(result) && s.nativeHdr.Activate(monitor, s.image.color))
             return s.PresentNative(due, timed);
         s.failedNativeMonitor = monitor;
@@ -2795,14 +2816,19 @@ std::wstring PlaceboBackend::StatisticsText() const
     return s.statisticsText;
 }
 
-void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, bool refreshLocked)
+void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, int refreshLead)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
     s.presentationDue = due;
     s.presentationMediaTime = mediaTime;
     s.presentationTimed = running && due > 0;
-    s.presentationLocked = refreshLocked;
+    s.presentationLead = refreshLead;
+}
+
+int PlaceboBackend::PresentAheadCeiling() const
+{
+    return state->presentCeiling;
 }
 
 bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const

@@ -129,6 +129,51 @@ int main()
     printf("PASS display-synchronous refreshes: %d surplus (fast), %d repeats (slow), none with jitter alone\n",
            fast.surplus,
            slow.repeats);
+
+    // Presenting in advance: a tick every 8 ms, 125 per second.
+    PresentLead lead;
+    lead.Configure(0, 2);
+    ULONGLONG now = 1000;
+    for (int i = 0; i < 125 * 60; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 1, "automatic presents one refresh ahead while every tick is on time");
+    lead.Restart(now);
+    for (int i = 0; i < 300; ++i, now += 8)
+        lead.Tight(now);
+    Check(lead.Current() == 1, "tight ticks while playback starts or seeks do not add latency");
+    for (int i = 0; i < 125 * 60; ++i, now += 8)
+        lead.OnTime(now);
+    for (int i = 0; i < 600; ++i, now += 8)
+        if (i % 300 == 0)
+            lead.Tight(now);
+        else
+            lead.OnTime(now);
+    Check(lead.Current() == 1, "isolated tight ticks do not add latency");
+    for (int i = 0; i < 3; ++i, now += 100)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "a burst of tight ticks adds one refresh");
+    for (int i = 0; i < 20; ++i, now += 8)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "ticks tight while the queue fills do not raise again");
+    for (int i = 0; i < 5; ++i, now += 300)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "the frame latency limit caps automatic");
+    for (int i = 0; i < 125 * 59; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 2, "less than a quiet minute keeps the lead");
+    for (int i = 0; i < 125 * 2; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 1, "a quiet minute gives the refresh back");
+    lead.Configure(3, 2);
+    Check(lead.Current() == 2, "a fixed value never exceeds what the queue allows");
+    lead.Configure(3, 4);
+    for (int i = 0; i < 10; ++i, now += 100)
+        lead.Tight(now);
+    Check(lead.Current() == 3, "a fixed value ignores tight ticks");
+    lead.Configure(0, 4);
+    Check(lead.Current() == 1, "automatic resumes where it was");
+    puts("PASS present in advance: automatic adds a refresh after bursts of tight ticks, gives it back after a quiet "
+         "minute, respects the frame latency limit and fixed values");
     puts(
         "PASS captured overlap, rounded film/50/59.94/60/120 fps, exact display grid, empty intervals, faster-source fallback, EOS and discontinuities");
 }

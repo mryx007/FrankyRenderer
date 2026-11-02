@@ -166,6 +166,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(allowDelayedPeak),
         FIELD(scaling),
         FIELD(maximumFramesInFlight),
+        FIELD(presentAhead),
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
         FIELD(imageAnalysis),
@@ -402,6 +403,12 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.maximumFramesInFlight = static_cast<int>(value);
     size = 4;
     value = 0;
+    if (RegQueryValueExW(key, L"PresentAhead", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 4)
+        settings.presentAhead = static_cast<int>(value);
+    size = 4;
+    value = 0;
     if (RegQueryValueExW(key, L"OutputFormat", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
             ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(OutputChoices))
@@ -475,6 +482,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (!ValidScaling(s.scaling))
         return E_INVALIDARG;
     if (s.maximumFramesInFlight < 0 || s.maximumFramesInFlight > 16)
+        return E_INVALIDARG;
+    if (s.presentAhead < 0 || s.presentAhead > 4)
         return E_INVALIDARG;
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
@@ -555,6 +564,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.scaling = s.scaling;
     ValidScaling(s.scaling, &out.motionRadius);
     out.maximumFramesInFlight = s.maximumFramesInFlight;
+    out.presentAhead = s.presentAhead;
     out.kneeAdaptation = s.kneeAdaptation;
     out.splineContrast = s.splineContrast;
     out.kneeMinimum = s.kneeMinimum;
@@ -692,6 +702,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"MeasuredQuality", REG_DWORD, &s.measuredQuality, 4);
     save(L"QualityStamp", REG_DWORD, &s.qualityStamp, 4);
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
+    save(L"PresentAhead", REG_DWORD, &s.presentAhead, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);
     save(L"ICCEnabled", REG_DWORD, &s.iccEnabled, 4);

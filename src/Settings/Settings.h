@@ -53,7 +53,9 @@ struct PlaceboSettings
     // rolled off to the display peak; legacy 0 is migrated
     int hdrMode = 2;
     ScalingSettings scaling;
-    int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
+    int maximumFramesInFlight = 0; // 0=retain the device's original DXGI latency
+    // Smooth Motion refreshes presented in advance; 0=automatic, 1-4 fixed.
+    int presentAhead = 0;
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
     BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on

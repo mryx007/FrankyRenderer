@@ -823,6 +823,34 @@ msgid "Blend video frames to reduce judder when video and display refresh rates 
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+msgid "Present in Advance"
+msgstr ""
+
+#. Setting description (Scaling > Filters > Present in Advance)
+msgid "Smooth Motion pictures handed to the display ahead of time. More absorbs render peaks on slower PCs but adds latency. Automatic starts at one and adds more only after late pictures."
+msgstr ""
+
+#. Choice (Scaling > Filters > Present in Advance)
+msgid "Automatic"
+msgstr ""
+
+#. Choice (Scaling > Filters > Present in Advance)
+msgid "1 Refresh"
+msgstr ""
+
+#. Choice (Scaling > Filters > Present in Advance)
+msgid "2 Refreshes"
+msgstr ""
+
+#. Choice (Scaling > Filters > Present in Advance)
+msgid "3 Refreshes"
+msgstr ""
+
+#. Choice (Scaling > Filters > Present in Advance)
+msgid "4 Refreshes"
+msgstr ""
+
+#. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
 msgstr ""
 

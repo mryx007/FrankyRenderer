@@ -46,6 +46,7 @@ int wmain()
         original.saturation = 1.2345678f;
         original.autoHdr = FALSE;
         original.maximumFramesInFlight = 6;
+        original.presentAhead = 3;
         original.tonal.exposure[2] = .375f;
         original.tonal.contrast[1] = -.125f;
         original.blackBars.enabled = TRUE;
@@ -66,6 +67,7 @@ int wmain()
         const auto text = SettingsIni::Serialize(original);
         auto restored = SettingsIni::Parse(text);
         Require(restored.imageAnalysis, "Image analysis flag was lost");
+        Require(restored.presentAhead == 3, "Present in advance was lost");
         Require(SettingsIni::Serialize(restored) == text, "Backup round-trip changed values");
         Require(restored.saturation == original.saturation, "Float precision was lost");
         Require(restored.debandThreshold == -1 && restored.scaling.antiringing == -1, "Default sentinel was lost");

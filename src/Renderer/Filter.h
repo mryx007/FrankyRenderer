@@ -173,6 +173,11 @@ class Renderer final : public CBaseVideoRenderer,
     uint64_t surplusTicks = 0;
     unsigned lateTicks = 0;
     HANDLE refreshTimer = nullptr;
+    PresentLead presentLead;
+    std::atomic<int> presentAheadSetting = 0;
+    int traceLead = 0;
+    unsigned traceTight = 0;
+    double traceMargin = 1e9;
     LONGLONG traceSlot = 0;
     uint64_t tracePhaseAt = 0;
     double tracePhaseLow = 1e9, tracePhaseHigh = -1e9, traceOffsetLow = 1e9, traceOffsetHigh = -1e9;

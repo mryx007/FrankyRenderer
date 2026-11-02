@@ -794,6 +794,7 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
     smoothEnabled = !!settings.smoothMotion;
+    presentAheadSetting = settings.presentAhead;
     motionRadius = BackendSettings(settings).motionRadius;
     motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
     Trace("Renderer created; public DirectShow/libplacebo implementation");
@@ -1472,7 +1473,10 @@ HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start,
     sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
     auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
     if (vsyncReanchor.exchange(false))
+    {
         vsyncSlots.Reset();
+        presentLead.Restart(GetTickCount64());
+    }
     REFERENCE_TIME wanted = 0, until = 0, clock = 0;
     int64_t syncQpc = 0;
     uint32_t syncRefresh = 0;
@@ -1518,33 +1522,59 @@ HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start,
         const auto now = GetTickCount64();
         if (now - tracePhaseAt >= 10000)
         {
-            Trace("Smooth Motion phase %.2f..%.2f, single readings %.2f..%.2f refreshes",
+            Trace("Smooth Motion phase %.2f..%.2f, single readings %.2f..%.2f refreshes, %u ticks after their "
+                  "planned present (least %.1f ms before their refresh)",
                   tracePhaseLow,
                   tracePhaseHigh,
                   traceOffsetLow,
-                  traceOffsetHigh);
+                  traceOffsetHigh,
+                  traceTight,
+                  traceTight ? traceMargin : 0.);
+            traceTight = 0;
+            traceMargin = 1e9;
             tracePhaseAt = now;
             tracePhaseLow = traceOffsetLow = 1e9;
             tracePhaseHigh = traceOffsetHigh = -1e9;
         }
     }
-    // Present one refresh ahead of the refresh the tick belongs on.
-    double presentQpc = double(syncQpc) + double(slot - LONGLONG(syncRefresh) - 1) * period;
+    // Present the configured number of refreshes ahead of the tick's refresh.
+    const auto tickNow = GetTickCount64();
+    presentLead.Configure(presentAheadSetting, backend.PresentAheadCeiling());
+    const int lead = presentLead.Current();
+    if (lead != traceLead)
+    {
+        Trace("Smooth Motion presents %d refresh(es) in advance", lead);
+        traceLead = lead;
+    }
+    const double refreshQpc = double(syncQpc) + double(slot - LONGLONG(syncRefresh)) * period;
+    double presentQpc = refreshQpc - lead * period;
     // A tick arriving after its refresh has passed would queue behind the
     // next ones and leave every later tick a refresh behind. Leave it out,
     // unless ticks keep arriving late: then show them rather than freeze.
-    if (presentQpc + period < qpcNow && ++lateTicks <= 12)
+    if (refreshQpc < qpcNow && ++lateTicks <= 12)
     {
         field->surplus = true;
+        presentLead.Tight(tickNow);
         Trace("Smooth Motion tick left out at stream %lld ms: arrived %.1f ms after its refresh",
               static_cast<long long>(wanted / 10000),
-              (qpcNow - presentQpc - period) / frequency.QuadPart * 1e3);
+              (qpcNow - refreshQpc) / frequency.QuadPart * 1e3);
         return S_OK;
     }
     lateTicks = 0;
+    // Only ticks that miss their refresh (left out above or after the wait)
+    // raise the lead. Arriving after the planned present is routine: the
+    // first tick of each new picture follows its upload and still has
+    // milliseconds to spare before its refresh.
+    presentLead.OnTime(tickNow);
+    if (presentQpc < qpcNow)
+    {
+        ++traceTight;
+        traceMargin = (std::min)(traceMargin, (refreshQpc - qpcNow) / frequency.QuadPart * 1e3);
+    }
     field->refreshLocked = true;
+    field->lead = lead;
     field->presentQpc = static_cast<int64_t>(presentQpc);
-    field->deadlineQpc = static_cast<int64_t>(presentQpc + period);
+    field->deadlineQpc = static_cast<int64_t>(refreshQpc);
     // The reference clock wakes this thread with up to a refresh of jitter;
     // wake early and meet the refresh on the performance counter instead.
     presentQpc -= 1.5 * period;
@@ -1781,7 +1811,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
     if (sample->IsDiscontinuity() == S_OK)
         backend.ResetPresentationMeasurement();
-    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start, field && field->refreshLocked);
+    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
@@ -1789,6 +1819,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     // the next ones; its refresh shows the previous picture anyway.
     if (SUCCEEDED(hr) && field && field->refreshLocked && !WaitForQpc(field->presentQpc, field->deadlineQpc))
     {
+        presentLead.Tight(GetTickCount64());
         Trace("Smooth Motion tick left out at stream %lld ms: woke after its refresh",
               static_cast<long long>(start / 10000));
         return S_OK;
@@ -2391,6 +2422,7 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     settings = *next;
     PublishDisplayModes();
     smoothEnabled = !!settings.smoothMotion;
+    presentAheadSetting = settings.presentAhead;
     motionRadius = BackendSettings(settings).motionRadius;
     motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
     // Never render or change the display mode synchronously from the page.
@@ -2606,6 +2638,7 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
           settings.brightness);
     profileMonitor = monitor;
     smoothEnabled = !!settings.smoothMotion;
+    presentAheadSetting = settings.presentAhead;
     motionRadius = BackendSettings(settings).motionRadius;
     motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
     refreshDirty = true;

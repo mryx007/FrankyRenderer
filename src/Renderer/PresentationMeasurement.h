@@ -270,7 +270,7 @@ class PresentBacklog
 
     // queued: presents submitted but not yet scanned out, before this one.
     // depth: the lowest backlog. Refresh-locked presents land exactly on a
-    // vsync and read one or two by chance; for them only three is one.
+    // vsync and read their lead or one more by chance; only lead + 2 is one.
     bool Skip(uint32_t queued, uint32_t depth = 2)
     {
         if (queued < depth)

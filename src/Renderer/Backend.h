@@ -75,6 +75,7 @@ struct RenderSettings
     float blackCutoff = 1, perceptualStrength = .8f, softclipKnee = .7f;
     bool showClipping = false;
     int maximumFramesInFlight = 0;
+    int presentAhead = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
     bool smoothMotion = false;
@@ -169,13 +170,16 @@ class PlaceboBackend
     void SetSourceCodec(const std::string& codec);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;
-    // refreshLocked: Smooth Motion scheduled this present on its own display
-    // refresh, so it cannot drift ahead of scanout.
-    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, bool refreshLocked = false);
+    // refreshLead: Smooth Motion scheduled this present on its own display
+    // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
+    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
     // Last observed vsync (QPC, absolute refresh count) and refresh period in
     // QPC units; false while DXGI feedback is missing, stale or irregular.
     bool VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const;
+    // Highest number of refreshes Smooth Motion may present ahead without the
+    // frame latency limit blocking Present.
+    int PresentAheadCeiling() const;
     void RestartDropMeasurement(int rawBeforeReset);
     MeasurementSnapshot Measurements() const;
     BlackBarStatus BlackBars() const;
