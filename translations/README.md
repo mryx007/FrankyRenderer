@@ -33,7 +33,8 @@ build log lists the share of every language.
 
 Weblate PRs containing only added or modified `translations/<language>.po` files
 are validated automatically, then approved for the normal Code checks workflow
-(including the Windows build). After those checks succeed, the PR is squash-merged.
+(including the Windows build). After those checks succeed, the PR is merged with
+its original commits intact, so Weblate can synchronize without rebase conflicts.
 The automation checks Weblate's account and fork, the exact PR revision, UTF-8 PO
 syntax and printf placeholders. Other files, deletions, conflicts and failed
 checks require manual review. Incomplete languages can be merged; the 95% build

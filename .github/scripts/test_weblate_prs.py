@@ -14,7 +14,8 @@ def pull():
     return {"state": "open", "draft": False, "user": {"id": worker.WEBLATE_ID},
             "base": {"repo": {"full_name": worker.REPO}, "ref": "main", "sha": "base"},
             "head": {"repo": {"full_name": worker.FORK, "owner": {"id": worker.WEBLATE_ID}},
-                     "sha": "tested", "ref": "weblate-menu"}, "changed_files": 1, "mergeable": True}
+                     "sha": "tested", "ref": "weblate-menu"}, "changed_files": 1, "mergeable": True,
+            "merge_commit_sha": "computed-merge"}
 
 
 FILES = [{"filename": "translations/de.po", "status": "modified"}]
@@ -51,7 +52,7 @@ class TranslationPolicy(unittest.TestCase):
             if key == "missing_file": pr["changed_files"] = 2
             self.assertFalse(worker.eligible(pr, FILES))
 
-    def run_process(self, conclusion, changed=False, dry_run=False):
+    def run_process(self, conclusion, changed=False, dry_run=False, moved_base=False, bad_tree=False):
         calls = []
         reads = 0
         def api(path, method="GET", body=None):
@@ -66,7 +67,11 @@ class TranslationPolicy(unittest.TestCase):
                 return {"workflow_runs": [{"id": 10, "head_sha": "tested", "head_branch": "weblate-menu",
                         "head_repository": {"full_name": worker.FORK}, "pull_requests": [],
                         "conclusion": conclusion, "status": "completed"}]}
-            if path == "pulls/1/merge": return {"merged": True, "sha": "merged"}
+            if path == "git/commits/computed-merge":
+                return {"parents": [{"sha": "base"}, {"sha": "other" if bad_tree else "tested"}], "tree": {"sha": "merge-tree"}}
+            if path == "git/ref/heads/main": return {"object": {"sha": "new-main" if moved_base else "base"}}
+            if path == "git/commits": return {"sha": "merged"}
+            if path == "git/refs/heads/main": return None
             if path == "actions/runs/10/approve": return None
             raise AssertionError(path)
         with patch.object(worker, "api", side_effect=api), patch.object(worker, "pages", return_value=deepcopy(FILES)), \
@@ -80,9 +85,12 @@ class TranslationPolicy(unittest.TestCase):
 
     def test_merge_pins_successful_head(self):
         calls = self.run_process("success")
-        merge = [body for path, method, body in calls if path == "pulls/1/merge"]
-        self.assertEqual(merge[0]["sha"], "tested")
-        self.assertEqual(merge[0]["merge_method"], "squash")
+        merge = [body for path, method, body in calls if path == "git/commits"]
+        self.assertEqual(merge[0]["parents"], ["base", "tested"])
+        self.assertEqual(merge[0]["tree"], "merge-tree")
+        self.assertEqual(merge[0]["author"]["name"], "mryx007")
+        update = [body for path, method, body in calls if path == "git/refs/heads/main"]
+        self.assertFalse(update[0]["force"])
 
     def test_failures_and_dry_run_never_merge(self):
         for conclusion in ["failure", "cancelled", "timed_out"]:
@@ -93,6 +101,12 @@ class TranslationPolicy(unittest.TestCase):
         for conclusion in ["success", "action_required"]:
             with self.assertRaisesRegex(ValueError, "PR changed"):
                 self.run_process(conclusion, changed=True)
+
+    def test_changed_merge_tree_or_base_stops_merge(self):
+        with self.assertRaisesRegex(ValueError, "merge tree"):
+            self.run_process("success", bad_tree=True)
+        with self.assertRaisesRegex(ValueError, "Main changed"):
+            self.run_process("success", moved_base=True)
 
 
 if __name__ == "__main__":

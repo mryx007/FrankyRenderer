@@ -101,13 +101,25 @@ def process(number, dry_run=False):
     if dry_run:
         print(f"PR #{number}: dry run; would merge {sha}")
         return
-    result = api(f"pulls/{number}/merge", "PUT", {
-        "sha": sha, "merge_method": "squash",
-        "commit_title": f"Update menu translations (#{number})", "commit_message": "",
+    # Preserve Weblate's individual commits. Squashing breaks its next rebase.
+    # Use GitHub's computed merge tree, but attribute our merge commit to the
+    # repository owner, so the automation does not reintroduce a bot author.
+    base = fresh["base"]["sha"]
+    merge = api(f"git/commits/{fresh['merge_commit_sha']}")
+    if [parent["sha"] for parent in merge["parents"]] != [base, sha]:
+        raise ValueError("GitHub merge tree no longer matches the checked PR")
+    if api("git/ref/heads/main")["object"]["sha"] != base:
+        raise ValueError("Main changed before merge; retry after refreshing")
+    identity = {"name": "mryx007", "email": "149878151+mryx007@users.noreply.github.com"}
+    commit = api("git/commits", "POST", {
+        "message": f"Merge checked Weblate translations (#{number})",
+        "tree": merge["tree"]["sha"], "parents": [base, sha],
+        "author": identity, "committer": identity,
     })
-    if not result.get("merged"):
-        raise ValueError(f"PR #{number} was not merged: {result}")
-    print(f"PR #{number}: merged checked translations at {result['sha']}")
+    # A normal fast-forward ref update rejects a concurrent main change.
+    # Retaining the PR head as a parent lets GitHub mark the PR as merged.
+    api("git/refs/heads/main", "PATCH", {"sha": commit["sha"], "force": False})
+    print(f"PR #{number}: merged checked translations at {commit['sha']}")
 
 
 def main():
