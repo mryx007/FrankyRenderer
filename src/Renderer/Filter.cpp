@@ -1811,7 +1811,8 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
     if (sample->IsDiscontinuity() == S_OK)
         backend.ResetPresentationMeasurement();
-    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
+    backend.SetPresentationTiming(
+        dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
