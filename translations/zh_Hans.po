@@ -926,6 +926,19 @@ msgid "4 Refreshes"
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#, fuzzy
+#| msgid "Average Threshold (THR_AVG)"
+msgid "Oversample Threshold"
+msgstr "平均阈值 (THR_AVG)"
+
+#. Setting description (Scaling > Filters > Oversample Threshold)
+msgid ""
+"Smooth Motion shows a whole picture instead of a blend when the other "
+"picture would cover less than this share of a refresh. Fewer double edges on "
+"motion; 0 always blends. Used with the oversample frame mixer."
+msgstr ""
+
+#. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
 msgstr "跳过降采样抗锯齿"
 
@@ -2785,7 +2798,11 @@ msgid "For 2D animation. Neural 2x upscaling with denoising."
 msgstr "用于 2D 动画。带降噪的神经 2 倍放大。"
 
 #. Section description (Shaders > SSimDownscaler)
-msgid "Refine image downscaling. Requires a smaller output size."
+#, fuzzy
+#| msgid "Refine image downscaling. Requires a smaller output size."
+msgid ""
+"Refine image downscaling. Requires a smaller output size; works best with "
+"Mitchell as downscaler."
 msgstr "细化图像缩小。需要较小的输出尺寸。"
 
 #. Section description (Shaders > DPID)
