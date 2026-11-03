@@ -167,6 +167,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(scaling),
         FIELD(maximumFramesInFlight),
         FIELD(presentAhead),
+        FIELD(motionThreshold),
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
         FIELD(imageAnalysis),
@@ -319,6 +320,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     String(key, L"DisplayModes", settings.displayModes);
     Float(key, L"DisplayModeDelay", settings.displayModeDelay);
     Float(key, L"SharpenStrength", settings.sharpenStrength);
+    Float(key, L"MotionThreshold", settings.motionThreshold);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
     Bool(key, L"PeakDetect", settings.peakDetect);
     Float(key, L"PeakSmoothing", settings.peakSmoothing);
@@ -503,7 +505,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         !range(s.contrastRecovery, 0, 2) || !range(s.contrastSmoothness, 1, 32) || s.gamutMapping < 0 ||
         s.gamutMapping >= static_cast<int>(std::size(GamutChoices)))
         return E_INVALIDARG;
-    if (!range(s.sharpenStrength, 0, 2))
+    if (!range(s.sharpenStrength, 0, 2) || !range(s.motionThreshold, 0, .5f))
         return E_INVALIDARG;
     if (s.deinterlacing < 0 || s.deinterlacing > 2)
         return E_INVALIDARG;
@@ -565,6 +567,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     ValidScaling(s.scaling, &out.motionRadius);
     out.maximumFramesInFlight = s.maximumFramesInFlight;
     out.presentAhead = s.presentAhead;
+    out.motionThreshold = s.motionThreshold;
     out.kneeAdaptation = s.kneeAdaptation;
     out.splineContrast = s.splineContrast;
     out.kneeMinimum = s.kneeMinimum;
@@ -671,6 +674,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
     save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);
     save(L"SharpenStrength", REG_BINARY, &s.sharpenStrength, 4);
+    save(L"MotionThreshold", REG_BINARY, &s.motionThreshold, 4);
     save(L"PeakDetect", REG_DWORD, &s.peakDetect, 4);
     save(L"PeakSmoothing", REG_BINARY, &s.peakSmoothing, 4);
     save(L"SceneLow", REG_BINARY, &s.sceneLow, 4);

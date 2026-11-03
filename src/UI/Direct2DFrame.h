@@ -810,6 +810,20 @@ class Direct2DFrame
             EnableWindow(owner, TRUE);
         else
             owner = nullptr;
+        // The player also disables its other top-level windows, e.g. PotPlayer's
+        // fullscreen controls and playlist. Owned helpers such as shadows stay
+        // disabled as they are without the menu.
+        if (owner)
+            EnumThreadWindows(
+                GetCurrentThreadId(),
+                [](HWND window, LPARAM frame) -> BOOL
+                {
+                    if (window != reinterpret_cast<HWND>(frame) && !GetWindow(window, GW_OWNER) &&
+                        !IsWindowEnabled(window))
+                        EnableWindow(window, TRUE);
+                    return TRUE;
+                },
+                reinterpret_cast<LPARAM>(host));
         originalExStyle = GetWindowLongPtrW(host, GWL_EXSTYLE);
         originalStyle = GetWindowLongPtrW(host, GWL_STYLE);
         SetWindowLongPtrW(host, GWL_STYLE, (originalStyle & ~WS_CAPTION) | WS_THICKFRAME | WS_CLIPCHILDREN);

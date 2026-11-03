@@ -124,8 +124,9 @@
     {
       "path": "portable_config/shaders/SSim/SSimDownscaler_RT.glsl",
       "file": "SSimDownscaler_RT.glsl",
-      "sha256": "c3def3276aea8a5d3e3d889c89a4b975ccfe995033d8d474e59b00ac4d5ede86",
-      "size": 5725
+      "sha256": "4b594e5336c0b6488ad09d50f04ed983eb412c75648b257a1660e2c347ef05ee",
+      "size": 6302,
+      "upstream": "https://gist.github.com/igv/36508af3ffc84410fe39761d6969be10 (igv original with PlayKit THR/DEBUG parameters)"
     },
     {
       "path": "portable_config/shaders/eq/eq_clarity_RT.glsl",

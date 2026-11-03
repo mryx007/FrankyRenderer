@@ -76,6 +76,7 @@ struct RenderSettings
     bool showClipping = false;
     int maximumFramesInFlight = 0;
     int presentAhead = 0;
+    float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
     bool smoothMotion = false;

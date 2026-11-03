@@ -480,6 +480,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             L"Smooth Motion pictures handed to the display ahead of time. More absorbs "
             L"render peaks on slower PCs but adds latency. Automatic starts at one and "
             L"adds more only after late pictures."));
+        c.controls.push_back(D2DNumber(s,
+                                       L"Oversample Threshold",
+                                       &s.motionThreshold,
+                                       0,
+                                       .5f,
+                                       .01f,
+                                       L"Smooth Motion shows a whole picture instead of a blend when the other "
+                                       L"picture would cover less than this share of a refresh. Fewer double "
+                                       L"edges on motion; 0 always blends. Used with the oversample frame mixer."));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,

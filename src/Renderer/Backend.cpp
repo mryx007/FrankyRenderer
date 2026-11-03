@@ -86,6 +86,9 @@ struct PlaceboBackend::State
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
     bool mixing = false;
+    // Untimed presents (paused, repaints) show the current frame alone; a
+    // Smooth Motion blend of two frames would stay on screen as a ghost.
+    bool stillPicture = false;
     pl_deinterlace_params deinterlace = pl_deinterlace_default_params;
     TonalHook tonalHook;
     const pl_hook* userHooks[ShaderCount] = {};
@@ -1620,6 +1623,12 @@ struct PlaceboBackend::State
             {
                 hooks[count++] = userHooks[id];
                 hookIds[users++] = id;
+                // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
+                // in linear light it overshoots into ringing.
+                const float source = pl_rect_w(image.crop) * pl_rect_h(image.crop),
+                            output = pl_rect_w(target.crop) * pl_rect_h(target.crop);
+                if (!strcmp(ShaderCatalog[id].file, "SSimDownscaler_RT.glsl") && std::abs(output) < std::abs(source))
+                    params.disable_linear_scaling = true;
             }
             else
                 userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
@@ -1763,7 +1772,7 @@ struct PlaceboBackend::State
             }
         }
         probe.Next(RenderProbe::Draw);
-        if (mixing && settings.smoothMotion)
+        if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
             for (size_t i = 0; i < static_cast<size_t>(mixCount); i++)
@@ -1786,6 +1795,30 @@ struct PlaceboBackend::State
             mix.vsync_duration = mixDuration;
             if (!settings.scaling)
                 params.frame_mixer = &pl_filter_oversample;
+            // libplacebo reads the oversample threshold from its constant kernel,
+            // so leave out frames below the configured share here, weighting
+            // them exactly as libplacebo does: the visible part of the refresh.
+            double kept[16];
+            if (settings.motionThreshold > 0 && mix.num_frames > 1 && params.frame_mixer &&
+                params.frame_mixer->kernel == &pl_filter_function_oversample)
+            {
+                int count = 0;
+                for (int i = 0; i < mix.num_frames; i++)
+                {
+                    const double start = std::max(mixTimes[i], 0.),
+                                 end = std::min(i + 1 < mix.num_frames ? mixTimes[i + 1] : INFINITY, mixDuration);
+                    if (end > start && (end - start) / mixDuration < settings.motionThreshold)
+                        continue;
+                    frames[count] = frames[i];
+                    signatures[count] = signatures[i];
+                    kept[count++] = mixTimes[i];
+                }
+                if (count)
+                {
+                    mix.num_frames = count;
+                    mix.timestamps = kept;
+                }
+            }
             return renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); });
         }
         return renderWithRecovery([&]() { return pl_render_image(renderer, &image, &target, &params); });
@@ -2010,6 +2043,8 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     if (settings.maximumFramesInFlight < 0 || settings.maximumFramesInFlight > 16)
         return E_INVALIDARG;
     if (settings.presentAhead < 0 || settings.presentAhead > 4)
+        return E_INVALIDARG;
+    if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
     if (!ValidHdrTuning(settings))
         return E_INVALIDARG;
@@ -2370,6 +2405,7 @@ HRESULT PlaceboBackend::Present()
     const auto due = s.presentationDue;
     const bool timed = s.presentationTimed;
     const int lead = s.presentationLead;
+    s.stillPicture = !timed;
     s.presentationTimed = false;
     s.presentationLead = 0;
     if (s.resizeHold)

@@ -179,7 +179,7 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
     {"SSimDownscaler_RT.glsl",
      L"SSimDownscaler",
      L"Image Downscaling",
-     L"Refine image downscaling. Requires a smaller output size.",
+     L"Refine image downscaling. Requires a smaller output size; works best with Mitchell as downscaler.",
      2,
      {{"THR", 0.0f, 0.0f, 1.0f, false}, {"DEBUG", 0.0f, 0.0f, 1.0f, true}}},
     {"DPID_RT.glsl",
