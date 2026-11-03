@@ -390,6 +390,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Processing"
 msgstr ""
 
@@ -411,26 +412,32 @@ msgstr ""
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Tab (Profiles)
 msgid "Debanding"
 msgstr ""
 
 #. Setting description (Processing > Debanding > Debanding)
+#. Setting description (Profiles > Debanding > Debanding)
 msgid "Reduce visible steps in smooth gradients. Excessive settings can remove fine detail."
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Iterations"
 msgstr ""
 
 #. Setting description (Processing > Debanding > Iterations)
+#. Setting description (Profiles > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Threshold"
 msgstr ""
 
 #. Setting description (Processing > Debanding > Threshold)
+#. Setting description (Profiles > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
 msgstr ""
 
@@ -441,173 +448,219 @@ msgid "Radius"
 msgstr ""
 
 #. Setting description (Processing > Debanding > Radius)
+#. Setting description (Profiles > Debanding > Radius)
 msgid "Search radius in pixels."
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Grain"
 msgstr ""
 
 #. Setting description (Processing > Debanding > Grain)
+#. Setting description (Profiles > Debanding > Grain)
 msgid "Grain added after debanding."
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Adaptive Sharpen"
 msgstr ""
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Enhance Edges and Details"
 msgstr ""
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
+#. Setting description (Profiles > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr ""
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Strength"
 msgstr ""
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
+#. Setting description (Profiles > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Deinterlacing"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Algorithm"
 msgstr ""
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
+#. Setting description (Profiles > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Bwdif"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Yadif"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Field Order"
 msgstr ""
 
 #. Setting description (Processing > Deinterlacing > Field Order)
+#. Setting description (Profiles > Deinterlacing > Field Order)
 msgid "Auto follows source flags. Override only if interlaced motion has the wrong field order."
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Auto (Source Flags)"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Top Field First"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Bottom Field First"
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Ordered Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Random Dithering"
 msgstr ""
 
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Dithering)
 msgid "Change Dither for Every Frame"
 msgstr ""
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
+#. Setting description (Profiles > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Detection & Zoom"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detect Hardcoded Black Bars"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Crop Black Bars"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Crop Black Bars)
 msgid "Remove detected bars from the active image before fitting or zooming it."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
+#. Setting description (Profiles > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Keep a Stable Zoom"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
+#. Setting description (Profiles > Detection & Zoom > Keep a Stable Zoom)
 msgid "Prefer a common zoom that preserves content when the detected active area changes."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Zoom Mode"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
+#. Setting description (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit keeps all active content. Fill covers the output and can crop image content."
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit (Keep All Content)"
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fill (May Crop Content)"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Black Threshold"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
+#. Setting description (Profiles > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detection Stability (seconds)"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
+#. Setting description (Profiles > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
 msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Scaling"
 msgstr ""
 
@@ -1093,6 +1146,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Color"
 msgstr ""
 
@@ -1263,6 +1317,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "HDR"
 msgstr ""
 
@@ -2544,6 +2599,70 @@ msgstr ""
 msgid "Adjust LBD for this shader. The default preserves the shader author's setting."
 msgstr ""
 
+#. Category
+#. Category heading
+msgid "Profiles"
+msgstr ""
+
+#. Category description
+msgid "Different settings for videos from chosen folders."
+msgstr ""
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile"
+msgstr ""
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile Settings"
+msgstr ""
+
+#. Tab (Profiles)
+msgid "+ New"
+msgstr ""
+
+#. Setting name (Profiles > Profile)
+msgid "Name"
+msgstr ""
+
+#. Setting description (Profiles > Profile > Name)
+msgid "Shown on the tab. Up to 60 characters."
+msgstr ""
+
+#. Input error (Profiles > Profile > Name)
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr ""
+
+#. Setting name (Profiles > Profile)
+msgid "Add Folder"
+msgstr ""
+
+#. Setting description (Profiles > Profile > Add Folder)
+msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
+msgstr ""
+
+#. Button (Profiles > Profile > Add Folder)
+msgid "Choose…"
+msgstr ""
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > New Profile)
+msgid "New Profile"
+msgstr ""
+
+#. Section description (Profiles > New Profile)
+msgid "A profile gives videos from chosen folders their own settings, e.g. other scaling for anime. Only the settings you add to it differ from your normal settings."
+msgstr ""
+
+#. Setting description (Profiles > New Profile > New Profile)
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr ""
+
+#. Button (Profiles > New Profile > New Profile)
+msgid "Create"
+msgstr ""
+
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr ""
@@ -2554,6 +2673,10 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders

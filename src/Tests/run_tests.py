@@ -17,7 +17,7 @@ TESTS = {
     'statistics': 'test_statistics_bitmap', 'native-hdr': 'test_native_hdr',
     'display-profiles': 'test_display_profiles', 'direct2d-model': 'test_direct2d_model',
     'direct2d-page': 'test_direct2d_page', 'choice-popup': 'test_choice_popup',
-    'settings-ini': 'test_settings_ini', 'rtx-scaling': 'test_rtx_scaling',
+    'settings-ini': 'test_settings_ini', 'content-profiles': 'test_content_profiles','rtx-scaling': 'test_rtx_scaling',
     'registration': 'test_registration', 'display-modes': 'test_display_modes', 'fp16-present': 'test_fp16_present', 'hdr-rolloff': 'test_hdr_rolloff', 'hdr-display-peak': 'test_hdr_display_peak', 'translation': 'test_translation', 'quality-presets': 'test_quality_presets', 'user-shaders': 'test_user_shaders', 'quality-benchmark': 'test_quality_benchmark',
 }
 # These tests exercise the live-preview session (Cancel restores the opening

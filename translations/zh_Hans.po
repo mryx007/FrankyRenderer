@@ -3023,3 +3023,67 @@ msgstr "没有 23 或 24 Hz 模式，因此影片无法在此切换。"
 #, c-format
 msgid "Other resolutions: %s."
 msgstr "其他分辨率：%s。"
+
+#. Profiles page
+msgid "Profiles"
+msgstr "配置文件"
+
+#. Profiles page
+msgid "Different settings for videos from chosen folders."
+msgstr "为所选文件夹中的视频使用不同的设置。"
+
+#. Profiles page
+msgid "Profile"
+msgstr "配置文件"
+
+#. Profiles page
+msgid "Profile Settings"
+msgstr "配置文件设置"
+
+#. Profiles page
+msgid "+ New"
+msgstr "+ 新建"
+
+#. Profiles page
+msgid "Name"
+msgstr "名称"
+
+#. Profiles page
+msgid "Shown on the tab. Up to 60 characters."
+msgstr "显示在标签页上。最多 60 个字符。"
+
+#. Profiles page
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr "请输入一个未被使用的配置文件名称（1 到 60 个字符）。"
+
+#. Profiles page
+msgid "Add Folder"
+msgstr "添加文件夹"
+
+#. Profiles page
+msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
+msgstr "这些文件夹及其子文件夹中的视频使用此配置文件；文件夹嵌套时，以离视频最近的文件夹为准。"
+
+#. Profiles page
+msgid "Choose…"
+msgstr "选择…"
+
+#. Profiles page
+msgid "New Profile"
+msgstr "新建配置文件"
+
+#. Profiles page
+msgid "A profile gives videos from chosen folders their own settings, e.g. other scaling for anime. Only the settings you add to it differ from your normal settings."
+msgstr "配置文件可为所选文件夹中的视频提供单独的设置，例如为动画使用不同的缩放。只有您添加的设置会与常规设置不同。"
+
+#. Profiles page
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr "在单独的标签页中添加一个空配置文件。然后添加文件夹和设置。"
+
+#. Profiles page
+msgid "Create"
+msgstr "创建"
+
+#. Profiles page
+msgid "Delete?"
+msgstr "删除？"

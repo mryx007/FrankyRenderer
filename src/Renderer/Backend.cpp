@@ -95,6 +95,8 @@ struct PlaceboBackend::State
     ShaderConfig userCached[ShaderCount];
     bool userFailed[ShaderCount] = {};
     std::wstring userShaderMessage;
+    // Content profile in use, or why none applies; shown in the statistics.
+    std::wstring contentProfile;
 
     bool PrepareUserShader(int id)
     {
@@ -1144,6 +1146,7 @@ struct PlaceboBackend::State
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
         }
+        row(L"Profile") << (contentProfile.empty() ? L"none" : contentProfile);
         row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
 
         heading(L"Performance");
@@ -2825,6 +2828,13 @@ uint64_t PlaceboBackend::RtxFrames() const
 {
     std::lock_guard guard(state->lock);
     return state->rtx.Evaluations();
+}
+
+void PlaceboBackend::SetContentProfile(const std::wstring& label)
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    s.contentProfile = label;
 }
 
 void PlaceboBackend::SetSourceCodec(const std::string& codec)

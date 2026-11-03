@@ -61,7 +61,7 @@ static bool MayCarryHdr(const MediaFormat& format)
 
 // Follow only the connected video/stream path. During initial type negotiation
 // the pin is not connected yet, so accept an unambiguous file source in the graph.
-static std::wstring SourcePath(IFilterGraph* graph, IPin* upstream)
+std::wstring SourcePath(IFilterGraph* graph, IPin* upstream)
 {
     std::vector<ComPtr<IBaseFilter>> queue;
     std::vector<ComPtr<IUnknown>> visited;

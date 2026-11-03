@@ -793,10 +793,7 @@ static PlaceboSettings InitialSettings()
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
-    smoothEnabled = !!settings.smoothMotion;
-    presentAheadSetting = settings.presentAhead;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     Trace("Renderer created; public DirectShow/libplacebo implementation");
     *hr = backend.SetSettings(BackendSettings(settings));
     if (FAILED(*hr) && (settings.iccEnabled || settings.lutEnabled))
@@ -2087,6 +2084,7 @@ HRESULT Renderer::OnStartStreaming()
     if (input && SUCCEEDED(input->ConnectedTo(&peer)))
         backend.SetSourceCodec(SourceCodecFromOutput(peer.Get()));
     dv.RefreshSource(m_pGraph, peer.Get());
+    UpdateContentProfile(peer.Get());
     dv.Resume();
     int rawDrops = 0;
     get_FramesDroppedInRenderer(&rawDrops);
@@ -2411,21 +2409,19 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     if (wcscmp(next->displayProfile, settings.displayProfile))
         return SaveSettings(*next);
     Trace("Settings requested: HDR=%d AutoHDR=%d", next->hdrPassthrough, next->autoHdr);
-    hr = backend.SetSettings(BackendSettings(*next));
+    SelectContentProfile();
+    hr = backend.SetSettings(BackendSettings(Effective(*next)));
     if (FAILED(hr))
         return hr;
     hr = SaveSettings(*next);
     if (FAILED(hr))
     {
-        backend.SetSettings(BackendSettings(settings));
+        backend.SetSettings(BackendSettings(Effective(settings)));
         return hr;
     }
     settings = *next;
     PublishDisplayModes();
-    smoothEnabled = !!settings.smoothMotion;
-    presentAheadSetting = settings.presentAhead;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     // Never render or change the display mode synchronously from the page.
     if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
@@ -2622,11 +2618,11 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
         return S_OK;
     }
     auto selected = LoadSettings(found->id);
-    auto hr = backend.SetSettings(BackendSettings(selected));
+    auto hr = backend.SetSettings(BackendSettings(Effective(selected)));
     if (FAILED(hr) && (selected.iccEnabled || selected.lutEnabled))
     {
         selected.iccEnabled = selected.lutEnabled = FALSE;
-        hr = backend.SetSettings(BackendSettings(selected));
+        hr = backend.SetSettings(BackendSettings(Effective(selected)));
     }
     if (FAILED(hr))
         return hr;
@@ -2638,12 +2634,79 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
           settings.hdrMode,
           settings.brightness);
     profileMonitor = monitor;
-    smoothEnabled = !!settings.smoothMotion;
-    presentAheadSetting = settings.presentAhead;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     refreshDirty = true;
     return S_OK;
+}
+
+void Renderer::UpdateMotionSettings()
+{
+    const auto effective = Effective(settings);
+    smoothEnabled = !!effective.smoothMotion;
+    presentAheadSetting = effective.presentAhead;
+    motionRadius = BackendSettings(effective).motionRadius;
+    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+}
+
+// Reads the profiles from disk and picks the one for the playing file.
+// Returns whether it changed; the caller applies it.
+bool Renderer::SelectContentProfile()
+{
+    const auto profiles = ContentProfiles::Load();
+    const auto* match = ContentProfiles::Match(profiles, contentPath);
+    auto next = match ? *match : ContentProfiles::Profile{};
+    backend.SetContentProfile(match                 ? next.name
+                              : profiles.empty()    ? L"none"
+                              : contentPath.empty() ? L"none (file path unknown)"
+                                                    : L"none (no folder matches)");
+    if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
+        return false;
+    contentProfile = std::move(next);
+    return true;
+}
+
+// Profiles are read again when playback starts and with every settings change,
+// so edits in the Profiles page apply to the playing video right away.
+void Renderer::UpdateContentProfile(IPin* peer)
+{
+    // Some players' built-in splitters keep the path to themselves along the
+    // video chain; then accept the graph's only file source.
+    auto path = SourcePath(m_pGraph, peer);
+    if (path.empty())
+        path = SourcePath(m_pGraph, nullptr);
+    contentPath = path;
+    if (path.empty() && TraceEnabled() && m_pGraph)
+    {
+        ComPtr<IEnumFilters> filters;
+        ComPtr<IBaseFilter> filter;
+        if (SUCCEEDED(m_pGraph->EnumFilters(&filters)))
+            while (filters->Next(1, &filter, nullptr) == S_OK)
+            {
+                FILTER_INFO info = {};
+                if (SUCCEEDED(filter->QueryFilterInfo(&info)) && info.pGraph)
+                    info.pGraph->Release();
+                ComPtr<IFileSourceFilter> source;
+                Trace("Content profile: no file path; graph filter %ls file source=%d",
+                      info.achName,
+                      SUCCEEDED(filter.As(&source)));
+                filter.Reset();
+            }
+    }
+    if (!SelectContentProfile())
+        return;
+    if (FAILED(backend.SetSettings(BackendSettings(Effective(settings)))))
+    {
+        Trace("Content profile %ls rejected by the renderer", contentProfile.name.c_str());
+        contentProfile = {};
+        backend.SetSettings(BackendSettings(settings));
+    }
+    else
+        Trace("Content profile %ls (%zu settings) for %ls",
+              contentProfile.name.empty() ? L"none" : contentProfile.name.c_str(),
+              contentProfile.overrides.size(),
+              path.c_str());
+    UpdateMotionSettings();
+    refreshDirty = true;
 }
 
 STDMETHODIMP Renderer::GetStatus(PlaceboStatus* out)

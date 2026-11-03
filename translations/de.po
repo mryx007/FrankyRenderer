@@ -3452,3 +3452,67 @@ msgstr "Kein 23- oder 24-Hz-Modus, Filme können hier nicht umschalten."
 #, c-format
 msgid "Other resolutions: %s."
 msgstr "Weitere Auflösungen: %s."
+
+#. Profiles page
+msgid "Profiles"
+msgstr "Profile"
+
+#. Profiles page
+msgid "Different settings for videos from chosen folders."
+msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
+
+#. Profiles page
+msgid "Profile"
+msgstr "Profil"
+
+#. Profiles page
+msgid "Profile Settings"
+msgstr "Profil-Einstellungen"
+
+#. Profiles page
+msgid "+ New"
+msgstr "+ Neu"
+
+#. Profiles page
+msgid "Name"
+msgstr "Name"
+
+#. Profiles page
+msgid "Shown on the tab. Up to 60 characters."
+msgstr "Wird im Reiter angezeigt. Bis zu 60 Zeichen."
+
+#. Profiles page
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr "Gib einen noch nicht verwendeten Profilnamen ein (1 bis 60 Zeichen)."
+
+#. Profiles page
+msgid "Add Folder"
+msgstr "Ordner hinzufügen"
+
+#. Profiles page
+msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
+msgstr "Videos in diesen Ordnern und ihren Unterordnern nutzen dieses Profil; bei verschachtelten Ordnern gilt der nächstgelegene."
+
+#. Profiles page
+msgid "Choose…"
+msgstr "Auswählen…"
+
+#. Profiles page
+msgid "New Profile"
+msgstr "Neues Profil"
+
+#. Profiles page
+msgid "A profile gives videos from chosen folders their own settings, e.g. other scaling for anime. Only the settings you add to it differ from your normal settings."
+msgstr "Ein Profil gibt Videos aus ausgewählten Ordnern eigene Einstellungen, z. B. andere Skalierung für Anime. Nur die hinzugefügten Einstellungen weichen von deinen normalen Einstellungen ab."
+
+#. Profiles page
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr "Legt ein leeres Profil in einem eigenen Reiter an. Danach Ordner und Einstellungen hinzufügen."
+
+#. Profiles page
+msgid "Create"
+msgstr "Erstellen"
+
+#. Profiles page
+msgid "Delete?"
+msgstr "Löschen?"

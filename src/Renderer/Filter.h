@@ -13,6 +13,7 @@
 #include "Renderer/MediaFormat.h"
 #include "Renderer/MotionTiming.h"
 #include "Settings/Settings.h"
+#include "Settings/ContentProfiles.h"
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
@@ -197,6 +198,19 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT PrepareWindow();
     std::atomic<HMONITOR> profileMonitor = nullptr;
     HRESULT UpdateDisplayProfile(bool refresh = false);
+    // Content profile matching the playing file's folder; `settings` stays the
+    // normal settings, the backend and Smooth Motion use Effective(settings).
+    ContentProfiles::Profile contentProfile;
+
+    PlaceboSettings Effective(const PlaceboSettings& base) const
+    {
+        return ContentProfiles::Apply(base, contentProfile);
+    }
+
+    std::wstring contentPath;
+    void UpdateMotionSettings();
+    void UpdateContentProfile(IPin* peer);
+    bool SelectContentProfile();
 
     // Display mode switching in fullscreen. The window thread owns the switcher;
     // other threads publish the active profile's list and request a check.

@@ -169,6 +169,8 @@ class PlaceboBackend
     bool StatisticsVisible() const;
     uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
+    // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
+    void SetContentProfile(const std::wstring& label);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;
     // refreshLead: Smooth Motion scheduled this present on its own display
