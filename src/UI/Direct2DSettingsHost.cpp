@@ -118,7 +118,11 @@ struct D2DPage
 static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s Hz.",
                                                L"No 23 or 24 Hz mode, so films cannot switch here.",
                                                L"Other resolutions: %s.",
-                                               L"Delete?",
+                                               L"Delete profile?",
+                                               L"\"%s\" and its settings will be removed.",
+                                               L"Cancel",
+                                               L"Delete",
+                                               ProfilePage::DisplayModeNote,
                                                L"Display",
                                                L"Rename",
                                                L"Import",
@@ -379,10 +383,15 @@ class Direct2DHostWindow
     int m_paletteVersion = -1;
     int m_languageVersion = g_menuLanguageVersion;
     int m_profileVersion = ProfilePage::g_version;
+    // When a profile was added or the delete dialog closed: the second click
+    // of a double-click must not act on the tabs that moved meanwhile.
+    ULONGLONG m_profileCreated = 0;
     // Edited in place of a profile tab after a double-click.
     D2DControl m_tabRename;
-    // Profile tab whose close mark was clicked once; a second click deletes.
+    // Profile whose close mark was clicked: a dialog asks before deleting it.
     std::wstring m_deleteTab;
+    D2D1_RECT_F m_dialogBox = {}, m_dialogConfirm = {}, m_dialogCancel = {};
+    D2D1_POINT_2F m_dialogMouse = {-1, -1};
 
     struct ToggleTween
     {
@@ -577,6 +586,8 @@ class Direct2DHostWindow
 
     void ShowToast(const std::wstring& text);
     void DrawToast(D2D1_SIZE_F size);
+    void DrawDeleteDialog(D2D1_SIZE_F size);
+    void CloseDeleteDialog(bool confirm);
     void AdoptDisplayProfile(const std::wstring& id);
     void TransferIni(bool importing);
     HRESULT ApplyImported(const PlaceboSettings& candidate);
@@ -1117,6 +1128,9 @@ void Direct2DHostWindow::Render()
         m_languageVersion = g_menuLanguageVersion;
         m_profileVersion = ProfilePage::g_version;
         InitPages();
+        // Controls and tabs may have moved: drop highlights left at old places.
+        m_hoverRect = m_previousHoverRect = m_pressRect = {};
+        m_hoverTab = -1;
         // Profiles come and go: open a requested profile tab, keep the index valid.
         if (m_activePage >= 0 && m_activePage < int(m_pages.size()) && m_pages[m_activePage].name == L"Profiles")
         {
@@ -1514,11 +1528,8 @@ void Direct2DHostWindow::Render()
                     const auto suffix = label.find(L" (Chroma / Alpha)");
                     if (suffix != std::wstring::npos)
                         label.erase(suffix);
-                    // Profile tabs carry a close mark; its first click asks in the tab.
+                    // Profile tabs carry a close mark; it opens a dialog that asks first.
                     const bool closable = page.name == L"Profiles" && tabs[i] != ProfilePage::NewTab;
-                    const bool confirming = closable && tabs[i] == m_deleteTab;
-                    if (confirming)
-                        label = Tr(L"Delete?");
                     ComPtr<IDWriteTextLayout> measured;
                     DWRITE_TEXT_METRICS metrics = {};
                     float textWidth = float(label.size()) * 8.f;
@@ -1530,7 +1541,10 @@ void Direct2DHostWindow::Render()
                             textWidth = metrics.widthIncludingTrailingWhitespace;
                     }
                     const float closeWidth = closable ? 22.f : 0.f;
-                    const float width = std::min(contentW, std::max(100.f, std::ceil(textWidth) + 32.f + closeWidth));
+                    // The tab adding a profile is a small square with a drawn plus.
+                    const bool adds = page.name == L"Profiles" && tabs[i] == ProfilePage::NewTab;
+                    const float width =
+                        adds ? 40.f : std::min(contentW, std::max(100.f, std::ceil(textWidth) + 32.f + closeWidth));
                     // Tabs share the reset row, keeping its right-hand area free.
                     const float tabRight = contentX + contentW - (currentY == firstTabY ? 118.f : 0.f);
                     if (tabX + width > tabRight && (tabX > contentX || currentY == firstTabY))
@@ -1552,15 +1566,6 @@ void Direct2DHostWindow::Render()
                         m_brushActiveBg->SetOpacity(1);
                         m_brushAccent->SetOpacity(1);
                     }
-                    ComPtr<ID2D1SolidColorBrush> danger;
-                    if (confirming && SUCCEEDED(m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE5484D),
-                                                                                       danger.GetAddressOf())))
-                    {
-                        danger->SetOpacity(.18f);
-                        m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(tab, 8, 8), danger.Get());
-                        danger->SetOpacity(1.f);
-                        m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(tab, 8, 8), danger.Get(), 1);
-                    }
                     // Centre the label in the tab, which is at least 100 pixels wide.
                     const auto wrap = m_fmtNav->GetWordWrapping();
                     const auto paragraph = m_fmtNav->GetParagraphAlignment();
@@ -1569,15 +1574,26 @@ void Direct2DHostWindow::Render()
                     m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
                     auto labelRect = tab;
                     labelRect.right -= closeWidth;
-                    ID2D1Brush* textBrush = danger                   ? static_cast<ID2D1Brush*>(danger.Get())
-                                            : int(i) == m_activeCard ? m_brushAccentHover.Get()
-                                                                     : m_brushTextMuted.Get();
-                    m_pRenderTarget->DrawText(label.c_str(),
-                                              UINT32(label.size()),
-                                              m_fmtNav.Get(),
-                                              labelRect,
-                                              textBrush,
-                                              D2D1_DRAW_TEXT_OPTIONS_CLIP);
+                    ID2D1Brush* textBrush = int(i) == m_activeCard ? m_brushAccentHover.Get() : m_brushTextMuted.Get();
+                    if (adds)
+                    {
+                        const auto center = D2D1::Point2F((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2);
+                        m_pRenderTarget->DrawLine(D2D1::Point2F(center.x - 6.f, center.y),
+                                                  D2D1::Point2F(center.x + 6.f, center.y),
+                                                  textBrush,
+                                                  2.f);
+                        m_pRenderTarget->DrawLine(D2D1::Point2F(center.x, center.y - 6.f),
+                                                  D2D1::Point2F(center.x, center.y + 6.f),
+                                                  textBrush,
+                                                  2.f);
+                    }
+                    else
+                        m_pRenderTarget->DrawText(label.c_str(),
+                                                  UINT32(label.size()),
+                                                  m_fmtNav.Get(),
+                                                  labelRect,
+                                                  textBrush,
+                                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
                     if (closable)
                     {
                         const auto close =
@@ -2303,6 +2319,7 @@ void Direct2DHostWindow::Render()
         m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
     }
     DrawInteractionFeedback();
+    DrawDeleteDialog(size);
     DrawToast(size);
     HRESULT hr = m_pRenderTarget->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET)
@@ -2780,6 +2797,91 @@ void Direct2DHostWindow::DrawToast(D2D1_SIZE_F size)
     m_pRenderTarget->DrawTextLayout(D2D1::Point2F(box.left + 16, box.top + 10), layout.Get(), m_brushTextMain.Get());
 }
 
+// Asks before a profile is deleted: the menu dims and a card in the theme's
+// colours offers Delete and Cancel.
+void Direct2DHostWindow::DrawDeleteDialog(D2D1_SIZE_F size)
+{
+    if (m_deleteTab.empty())
+    {
+        m_dialogBox = m_dialogConfirm = m_dialogCancel = {};
+        return;
+    }
+    ComPtr<ID2D1SolidColorBrush> shade, danger;
+    if (FAILED(m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0, .55f), shade.GetAddressOf())) ||
+        FAILED(m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE5484D), danger.GetAddressOf())))
+        return;
+    m_pRenderTarget->FillRectangle(D2D1::RectF(0, 0, size.width, size.height), shade.Get());
+
+    const float w = std::min(380.f, size.width - 32.f), h = 158.f;
+    m_dialogBox = D2D1::RectF((size.width - w) / 2, (size.height - h) / 2, (size.width + w) / 2, (size.height + h) / 2);
+    m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(m_dialogBox, 10, 10), m_brushBgCardHeader.Get());
+    m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(m_dialogBox, 10, 10), m_brushBorderCard.Get(), 1);
+
+    const auto title = Tr(L"Delete profile?");
+    m_pRenderTarget->DrawText(
+        title.c_str(),
+        UINT32(title.size()),
+        m_fmtCardTitle.Get(),
+        D2D1::RectF(m_dialogBox.left + 22, m_dialogBox.top + 18, m_dialogBox.right - 22, m_dialogBox.top + 44),
+        m_brushTextMain.Get());
+    auto body = Tr(L"\"%s\" and its settings will be removed.");
+    if (const auto at = body.find(L"%s"); at != std::wstring::npos)
+        body.replace(at, 2, m_deleteTab);
+    m_pRenderTarget->DrawText(
+        body.c_str(),
+        UINT32(body.size()),
+        m_fmtDesc.Get(),
+        D2D1::RectF(m_dialogBox.left + 22, m_dialogBox.top + 52, m_dialogBox.right - 22, m_dialogBox.bottom - 56),
+        m_brushTextMuted.Get());
+
+    m_dialogConfirm =
+        D2D1::RectF(m_dialogBox.right - 122, m_dialogBox.bottom - 50, m_dialogBox.right - 22, m_dialogBox.bottom - 18);
+    m_dialogCancel =
+        D2D1::RectF(m_dialogConfirm.left - 110, m_dialogConfirm.top, m_dialogConfirm.left - 10, m_dialogConfirm.bottom);
+    const auto over = [&](const D2D1_RECT_F& r)
+    {
+        return m_dialogMouse.x >= r.left && m_dialogMouse.x <= r.right && m_dialogMouse.y >= r.top &&
+               m_dialogMouse.y <= r.bottom;
+    };
+    const auto button = [&](const D2D1_RECT_F& r, const std::wstring& text, bool destructive)
+    {
+        const auto rounded = D2D1::RoundedRect(r, 6, 6);
+        if (destructive)
+        {
+            danger->SetOpacity(over(r) ? 1.f : .85f);
+            m_pRenderTarget->FillRoundedRectangle(rounded, danger.Get());
+        }
+        else
+        {
+            m_pRenderTarget->FillRoundedRectangle(rounded, m_brushInputBg.Get());
+            if (over(r))
+                m_pRenderTarget->FillRoundedRectangle(rounded, m_brushHoverBg.Get());
+        }
+        const auto paragraph = m_fmtChoice->GetParagraphAlignment();
+        m_fmtChoice->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        m_fmtChoice->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        m_pRenderTarget->DrawText(text.c_str(), UINT32(text.size()), m_fmtChoice.Get(), r, m_brushTextMain.Get());
+        m_fmtChoice->SetParagraphAlignment(paragraph);
+        m_fmtChoice->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+    };
+    button(m_dialogCancel, Tr(L"Cancel"), false);
+    button(m_dialogConfirm, Tr(L"Delete"), true);
+}
+
+void Direct2DHostWindow::CloseDeleteDialog(bool confirm)
+{
+    const auto name = m_deleteTab;
+    m_deleteTab.clear();
+    if (confirm && !name.empty())
+        ProfilePage::Delete(name);
+    // The tabs may move; drop highlights and ignore a following double-click.
+    m_hoverRect = m_previousHoverRect = m_pressRect = {};
+    m_hoverTab = -1;
+    m_profileCreated = GetTickCount64();
+    m_dialogMouse = {-1, -1};
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
 void Direct2DHostWindow::AdoptDisplayProfile(const std::wstring& id)
 {
     if (!DisplayProfiles::ValidId(id))
@@ -3030,6 +3132,17 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
     const auto alive = m_alive;
     EndEdit();
     SetFocus(m_hwnd);
+    // The delete dialog takes every click; outside it counts as Cancel.
+    if (!m_deleteTab.empty())
+    {
+        const auto inside = [&](const D2D1_RECT_F& r)
+        { return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+        if (inside(m_dialogConfirm))
+            CloseDeleteDialog(true);
+        else if (inside(m_dialogCancel) || !inside(m_dialogBox))
+            CloseDeleteDialog(false);
+        return;
+    }
     if (m_navigationProgress > 0.f && m_navigationProgress < 1.f)
         return;
     if (!m_navigationOpen && x < 60)
@@ -3071,9 +3184,6 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         // The search field shows focus with its border instead of a highlight;
         // a tab's close mark has no highlight of its own.
         m_pressRect = h.type == HitRegion::SearchBox || h.type == HitRegion::TabClose ? D2D1_RECT_F{} : h.rect;
-        // Any click but the close mark itself cancels a pending "Delete?".
-        if (h.type != HitRegion::TabClose)
-            m_deleteTab.clear();
         m_pressSlider = h.type == HitRegion::Slider;
         if (m_pressSlider && h.pControl)
         {
@@ -3101,24 +3211,36 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         }
         else if (h.type == HitRegion::TabClose)
         {
-            // First click turns the tab into "Delete?", the second deletes.
+            // Opens the dialog that asks before deleting.
             const auto tabs = CardTabs(m_pages[size_t(m_activePage)]);
             if (size_t(h.pageIndex) < tabs.size())
             {
-                const auto& name = tabs[size_t(h.pageIndex)];
-                if (m_deleteTab == name)
-                {
-                    m_deleteTab.clear();
-                    ProfilePage::Delete(name);
-                }
-                else
-                    m_deleteTab = name;
+                m_deleteTab = tabs[size_t(h.pageIndex)];
+                m_hoverRect = m_previousHoverRect = m_pressRect = {};
+                m_hoverTab = -1;
+                POINT cursor = {};
+                GetCursorPos(&cursor);
+                ScreenToClient(m_hwnd, &cursor);
+                m_dialogMouse = D2D1::Point2F(float(cursor.x) / Scale(), float(cursor.y) / Scale());
             }
             InvalidateRect(m_hwnd, nullptr, FALSE);
             return;
         }
         else if (h.type == HitRegion::CardTab)
         {
+            // The "+" tab adds a profile at once and opens its tab.
+            if (m_pages[m_activePage].name == L"Profiles")
+                if (const auto tabs = CardTabs(m_pages[m_activePage]);
+                    size_t(h.pageIndex) < tabs.size() && tabs[size_t(h.pageIndex)] == ProfilePage::NewTab)
+                {
+                    ProfilePage::Create();
+                    m_profileCreated = GetTickCount64();
+                    // The tabs move; drop the highlight left on the old "+" place.
+                    m_hoverRect = m_previousHoverRect = m_pressRect = {};
+                    m_hoverTab = -1;
+                    InvalidateRect(m_hwnd, nullptr, FALSE);
+                    return;
+                }
             if (m_activeCard != h.pageIndex)
             {
                 m_previousCard = m_activeCard;
@@ -3308,6 +3430,12 @@ void Direct2DHostWindow::OnMouseMove(float x, float y, WPARAM flags)
 {
     TRACKMOUSEEVENT tracking = {sizeof(tracking), TME_LEAVE, m_hwnd, 0};
     TrackMouseEvent(&tracking);
+    if (!m_deleteTab.empty())
+    {
+        m_dialogMouse = D2D1::Point2F(x, y);
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
     int hovered = -1;
     if (m_navigationOpen && m_navigationProgress >= 1.f)
     {
@@ -3399,6 +3527,8 @@ void Direct2DHostWindow::OnLButtonUp(float x, float y)
 
 void Direct2DHostWindow::OnMouseWheel(short delta, float x, float y)
 {
+    if (!m_deleteTab.empty())
+        return;
     if (m_shaderList.right > m_shaderList.left && x >= m_shaderList.left && x <= m_shaderList.right &&
         y >= m_shaderList.top && y <= m_shaderList.bottom)
     {
@@ -3430,6 +3560,12 @@ void Direct2DHostWindow::OnChar(wchar_t ch)
 
 void Direct2DHostWindow::OnKeyDown(WPARAM key)
 {
+    if (!m_deleteTab.empty())
+    {
+        if (key == VK_ESCAPE || key == VK_RETURN)
+            CloseDeleteDialog(key == VK_RETURN);
+        return;
+    }
     if (key == VK_ESCAPE && m_navigationOpen)
     {
         EndEdit();
@@ -3590,6 +3726,9 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
     {
         if (pThis)
         {
+            // A double-click on "+" creates one profile, not two or a rename.
+            if (!pThis->m_deleteTab.empty() || GetTickCount64() - pThis->m_profileCreated <= GetDoubleClickTime())
+                return 0;
             float x = float(GET_X_LPARAM(lParam)) / pThis->Scale(), y = float(GET_Y_LPARAM(lParam)) / pThis->Scale();
             bool toggled = false;
             for (const auto& h : pThis->m_hitRegions)

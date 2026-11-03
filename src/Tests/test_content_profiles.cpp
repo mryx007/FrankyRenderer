@@ -48,6 +48,19 @@ int wmain()
         const auto broken = Parse(L"Broken", "[Profile]\r\nfolders=\"D:\\X\"\r\n[Renderer]\r\nsharpenStrength=9\r\n");
         Require(Apply(base, broken).sharpenStrength == .5f, "Out-of-range profile was applied");
 
+        // Display mode settings apply only to the display they were set for.
+        const std::wstring tvId(64, L'a'), monitorId(64, L'b');
+        const auto modes = Parse(L"Modes",
+                                 "[Renderer]\r\ndisplayModeSwitch=1\r\n[DisplayMode." + std::string(64, 'a') +
+                                     "]\r\ndisplayModeSwitch=1\r\ndisplayModes=\"2160p23\"\r\n");
+        PlaceboSettings tv = base, monitor = base;
+        wcscpy_s(tv.displayProfile, tvId.c_str());
+        wcscpy_s(monitor.displayProfile, monitorId.c_str());
+        Require(Apply(tv, modes).displayModeSwitch && !wcscmp(Apply(tv, modes).displayModes, L"2160p23"),
+                "Display mode settings were not applied to their display");
+        Require(!Apply(monitor, modes).displayModeSwitch && !Apply(monitor, modes).displayModes[0],
+                "Display mode settings were applied to another display");
+
         const auto empty = Parse(L"New", "[Renderer]\r\nsmoothMotion=1\r\n");
         Require(empty.folders.empty() && !Match({empty}, L"D:\\Anime\\x.mkv"), "Profile without folders matched");
 

@@ -2431,10 +2431,12 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
 
 void Renderer::PublishDisplayModes()
 {
+    // A content profile may set display modes for the active display.
+    const auto effective = Effective(settings);
     ModeConfig next;
-    next.enabled = !!settings.displayModeSwitch;
-    DisplayModes::Parse(settings.displayModes, next.modes);
-    next.delay = settings.displayModeDelay;
+    next.enabled = !!effective.displayModeSwitch;
+    DisplayModes::Parse(effective.displayModes, next.modes);
+    next.delay = effective.displayModeDelay;
     {
         std::lock_guard lock(modeLock);
         modeConfig = std::move(next);
@@ -2706,6 +2708,7 @@ void Renderer::UpdateContentProfile(IPin* peer)
               contentProfile.overrides.size(),
               path.c_str());
     UpdateMotionSettings();
+    PublishDisplayModes();
     refreshDirty = true;
 }
 

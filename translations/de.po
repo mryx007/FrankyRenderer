@@ -3470,10 +3470,6 @@ msgid "Profile Settings"
 msgstr "Profil-Einstellungen"
 
 #. Profiles page
-msgid "+ New"
-msgstr "+ Neu"
-
-#. Profiles page
 msgid "Name"
 msgstr "Name"
 
@@ -3514,5 +3510,21 @@ msgid "Create"
 msgstr "Erstellen"
 
 #. Profiles page
-msgid "Delete?"
-msgstr "Löschen?"
+msgid "Delete profile?"
+msgstr "Profil löschen?"
+
+#. Profiles page
+msgid "\"%s\" and its settings will be removed."
+msgstr "„%s“ und seine Einstellungen werden entfernt."
+
+#. Profiles page
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#. Profiles page
+msgid "Delete"
+msgstr "Löschen"
+
+#. Profiles page
+msgid "Applies only to the display selected at the top of the menu."
+msgstr "Gilt nur für den oben im Menü ausgewählten Bildschirm."

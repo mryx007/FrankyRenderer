@@ -2618,10 +2618,6 @@ msgstr ""
 msgid "Profile Settings"
 msgstr ""
 
-#. Tab (Profiles)
-msgid "+ New"
-msgstr ""
-
 #. Setting name (Profiles > Profile)
 msgid "Name"
 msgstr ""
@@ -2676,7 +2672,23 @@ msgid "Other resolutions: %s."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "Delete?"
+msgid "Delete profile?"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "\"%s\" and its settings will be removed."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Cancel"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Applies only to the display selected at the top of the menu."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders

@@ -16,6 +16,7 @@
 #include "Settings/SettingsIni.h"
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -190,8 +191,18 @@ inline const Profile* Match(const std::vector<Profile>& profiles, const std::wst
     return best;
 }
 
-// The normal settings with the profile's values on top. A profile that would
-// produce invalid settings is ignored.
+// Display mode switching belongs to a display, so a profile keeps it per
+// display in its own section: [DisplayMode.<display profile id>].
+inline constexpr const char* DisplayModeKeys[] = {"displayModeSwitch", "displayModes", "displayModeDelay"};
+
+inline std::string DisplayModeSection(const wchar_t* display)
+{
+    return std::string("DisplayMode.") + SettingsIni::Utf8(display);
+}
+
+// The normal settings with the profile's values on top, including its display
+// mode settings for base.displayProfile. A profile that would produce invalid
+// settings is ignored.
 inline PlaceboSettings Apply(const PlaceboSettings& base, const Profile& profile)
 {
     if (profile.overrides.empty())
@@ -199,10 +210,17 @@ inline PlaceboSettings Apply(const PlaceboSettings& base, const Profile& profile
     PlaceboSettings result = base;
     try
     {
+        const auto display = base.displayProfile[0] ? DisplayModeSection(base.displayProfile) : std::string();
         SettingsIni::Visit(result,
                            [&](const std::string& section, const std::string& key, auto& value)
                            {
-                               const auto found = profile.overrides.find({section, key});
+                               auto found = profile.overrides.find({section, key});
+                               if (!display.empty() && section == "Renderer" &&
+                                   std::find_if(std::begin(DisplayModeKeys),
+                                                std::end(DisplayModeKeys),
+                                                [&](const char* name)
+                                                { return key == name; }) != std::end(DisplayModeKeys))
+                                   found = profile.overrides.find({display, key});
                                if (found != profile.overrides.end())
                                    SettingsIni::Decode(found->second, value);
                            });

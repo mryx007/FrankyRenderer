@@ -15,7 +15,7 @@ namespace ProfilePage
 {
 using Key = std::pair<std::string, std::string>;
 
-inline constexpr const wchar_t* NewTab = L"+ New";
+inline constexpr const wchar_t* NewTab = L"+";
 
 // Bumped when profiles are added, removed, renamed or get other settings, so
 // the host rebuilds its pages.
@@ -126,8 +126,10 @@ inline void Capture(size_t index, const std::vector<Key>& keys)
     if (index >= s.profiles.size())
         return;
     const auto values = Snapshot(s.views[index]);
+    // Display mode keys are kept per display but read from the Renderer section.
     for (const auto& key : keys)
-        s.profiles[index].overrides[key] = values.at(key);
+        s.profiles[index].overrides[key] =
+            values.at(key.first.rfind("DisplayMode.", 0) == 0 ? Key{"Renderer", key.second} : key);
 }
 
 inline bool ValidName(const std::wstring& name)
@@ -247,9 +249,28 @@ inline int Category(const std::wstring& page)
     return -1; // General holds output, analysis and menu settings, not video ones
 }
 
-inline constexpr const wchar_t* Categories[] = {L"Processing", L"Scaling", L"Color", L"HDR"};
+inline constexpr const wchar_t* Categories[] = {L"Processing", L"Scaling", L"Color", L"HDR", L"Display Mode"};
+inline constexpr int DisplayModeCategory = 4;
+inline constexpr const wchar_t* DisplayModeNote = L"Applies only to the display selected at the top of the menu.";
 
-// Deletes a profile; the host asks first in the tab itself ("Delete?").
+// The Display Mode card of the General page and the settings key of each of
+// its controls.
+inline constexpr std::pair<const wchar_t*, const char*> DisplayModeControls[] = {
+    {L"Switch Display Mode in Fullscreen", "displayModeSwitch"},
+    {L"Allowed Modes", "displayModes"},
+    {L"Pause After Switching (seconds)", "displayModeDelay"}};
+
+// Adds an empty profile and selects its tab (the "+" tab or the Create button).
+inline void Create()
+{
+    ContentProfiles::Profile created;
+    created.name = UnusedName();
+    if (ContentProfiles::Save(created))
+        g_selectTab = created.name;
+    ++g_version;
+}
+
+// Deletes a profile; the host asks first in a dialog.
 inline void Delete(const std::wstring& name)
 {
     DeleteFileW((ContentProfiles::Directory() + L"\\" + name + L".ini").c_str());
@@ -325,6 +346,20 @@ inline void ProfileCards(D2DPage& page, size_t index)
             entries.push_back({candidate, category});
         }
     }
+    // Display mode switching belongs to the display selected in the menu, so
+    // the profile keeps it for that display only.
+    const bool display = s.views[index].displayProfile[0] != 0;
+    if (display)
+    {
+        const auto section = ContentProfiles::DisplayModeSection(s.views[index].displayProfile);
+        for (auto& viewPage : s.viewPages[index])
+            for (auto& card : viewPage.cards)
+                if (viewPage.name == L"General" && card.title == L"Display Mode")
+                    for (auto& control : card.controls)
+                        for (const auto& [name, key] : DisplayModeControls)
+                            if (control.name == name)
+                                entries.push_back({{control, card.title, {{section, key}}}, DisplayModeCategory});
+    }
     auto inProfile = [&](const Candidate& c)
     { return std::any_of(c.keys.begin(), c.keys.end(), [&](const Key& k) { return profile.overrides.count(k) > 0; }); };
 
@@ -332,7 +367,10 @@ inline void ProfileCards(D2DPage& page, size_t index)
     D2DControl category;
     category.kind = ControlKind::Tabs;
     for (int i = 0; i < int(std::size(Categories)); ++i)
-        category.choices.push_back({i, Categories[i]});
+        if (i != DisplayModeCategory || display)
+            category.choices.push_back({i, Categories[i]});
+    if (s.categories[tab] == DisplayModeCategory)
+        category.desc = display ? DisplayModeNote : L"";
     category.get = [tab] { return float(State().categories[tab]); };
     category.defaultValue = [] { return 0.f; };
     category.set = [tab](float v)
@@ -343,7 +381,7 @@ inline void ProfileCards(D2DPage& page, size_t index)
     settings.controls.push_back(std::move(category));
     page.cards.push_back(std::move(settings));
 
-    const int shown = s.categories[tab];
+    const int shown = s.categories[tab] == DisplayModeCategory && !display ? 0 : s.categories[tab];
     std::vector<D2DCard> sections;
     for (const auto& entry : entries)
     {
@@ -389,6 +427,15 @@ inline void ProfileCards(D2DPage& page, size_t index)
                 Capture(index, keys);
                 Save(index, false);
             };
+        if (auto setText = control.setText)
+            control.setText = [setText, keys, index](const std::wstring& text)
+            {
+                if (!setText(text))
+                    return false;
+                Capture(index, keys);
+                Save(index, false);
+                return true;
+            };
         if (auto reset = control.reset)
             control.reset = [reset, keys, index]
             {
@@ -430,14 +477,7 @@ inline D2DPage Build(const PlaceboSettings& base)
     create.controls.push_back(D2DAction(
         L"New Profile",
         L"Create",
-        [](HWND)
-        {
-            ContentProfiles::Profile created;
-            created.name = UnusedName();
-            if (ContentProfiles::Save(created))
-                g_selectTab = created.name;
-            ++g_version;
-        },
+        [](HWND) { Create(); },
         L"Adds an empty profile in its own tab. Then add folders and settings."));
     page.cards.push_back(std::move(create));
     return page;

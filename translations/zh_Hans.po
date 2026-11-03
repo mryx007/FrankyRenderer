@@ -3041,10 +3041,6 @@ msgid "Profile Settings"
 msgstr "配置文件设置"
 
 #. Profiles page
-msgid "+ New"
-msgstr "+ 新建"
-
-#. Profiles page
 msgid "Name"
 msgstr "名称"
 
@@ -3085,5 +3081,21 @@ msgid "Create"
 msgstr "创建"
 
 #. Profiles page
-msgid "Delete?"
-msgstr "删除？"
+msgid "Delete profile?"
+msgstr "删除配置文件？"
+
+#. Profiles page
+msgid "\"%s\" and its settings will be removed."
+msgstr "将删除“%s”及其设置。"
+
+#. Profiles page
+msgid "Cancel"
+msgstr "取消"
+
+#. Profiles page
+msgid "Delete"
+msgstr "删除"
+
+#. Profiles page
+msgid "Applies only to the display selected at the top of the menu."
+msgstr "仅适用于菜单顶部所选的显示器。"
