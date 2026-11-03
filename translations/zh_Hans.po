@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 14:49+0000\n"
+"PO-Revision-Date: 2026-11-03 15:02+0000\n"
 "Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -847,7 +847,7 @@ msgstr "帧混合器"
 msgid ""
 "Temporal filter used by Smooth Motion. It combines frames rather than adding "
 "image detail."
-msgstr "Smooth Motion 使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
+msgstr "平滑运动使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
@@ -894,7 +894,7 @@ msgstr "混合视频帧以减少因视频与显示刷新率差异导致的抖动
 
 #. Setting name (Scaling > Filters)
 msgid "Present in Advance"
-msgstr "显示高级选项"
+msgstr "预呈现帧数"
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
@@ -961,7 +961,7 @@ msgid ""
 "used with Smooth Motion."
 msgstr ""
 "调整大小或更改参数后复用混合帧。可让过渡更平滑，但会短暂复用较低质量或较早的"
-"处理结果。默认为关闭；用于 Smooth Motion。"
+"处理结果。默认为关闭；用于平滑运动。"
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -2933,7 +2933,7 @@ msgstr "输入支持范围内的数字。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Quality"
-msgstr "质量"
+msgstr "画质"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Custom"
