@@ -13,8 +13,8 @@ msgstr ""
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"PO-Revision-Date: 2026-11-02 12:54+0000\n"
-"X-Generator: Weblate 2026.11.dev0\n"
+"PO-Revision-Date: 2026-11-03 10:14+0000\n"
+"X-Generator: Weblate 2026.11.1.dev0\n"
 
 #. Category
 #. Category heading
@@ -306,7 +306,7 @@ msgstr ""
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Green"
-msgstr ""
+msgstr "暗块绿色通道"
 
 #. Setting description (General > Background & Transparency > Dark Tile Green)
 msgid "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
@@ -322,7 +322,7 @@ msgstr ""
 
 #. Setting name (General > Background & Transparency)
 msgid "Tile Size (pixels)"
-msgstr ""
+msgstr "瓦片大小（像素）"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to 256."
@@ -362,7 +362,7 @@ msgstr ""
 
 #. Setting name (General > Menu Appearance)
 msgid "Accent Color"
-msgstr ""
+msgstr "强调色"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Violet"
@@ -480,7 +480,7 @@ msgstr ""
 
 #. Setting name (Processing > Adaptive Sharpen)
 msgid "Enhance Edges and Details"
-msgstr ""
+msgstr "增强边缘与细节"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
@@ -635,7 +635,7 @@ msgstr ""
 
 #. Category description
 msgid "Built-in scaling filters, RTX Video Super Resolution and custom filters."
-msgstr ""
+msgstr "内置缩放滤镜、RTX 视频超分辨率以及自定义滤镜。"
 
 #. Tab (Scaling)
 #. Section heading (Scaling)
@@ -744,13 +744,13 @@ msgstr ""
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
-msgstr ""
+msgstr "使用与放大算法相同的滤镜"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Box averaging (very fast)"
-msgstr ""
+msgstr "盒式平均（极快）"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -854,11 +854,13 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 msgid "Preserve Frame Mixer Cache"
-msgstr ""
+msgstr "保留帧混合器缓存"
 
 #. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
 msgid "Reuse mixed frames after resizing or parameter changes. May make transitions smoother but briefly reuse lower-quality or older processing. Default: Off; used with Smooth Motion."
 msgstr ""
+"调整大小或更改参数后复用混合帧。可让过渡更平滑，但会短暂复用较低质量或较早的"
+"处理结果。默认：关闭；用于 Smooth Motion。"
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -915,7 +917,7 @@ msgstr ""
 #. Setting description (Scaling > Custom: Image Downscaler > Starting Filter)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Base preset for this custom filter. Its values are inherited until you change a parameter."
-msgstr ""
+msgstr "此自定义滤镜的基础预设。未更改参数前，将沿用其数值。"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1084,7 +1086,7 @@ msgstr ""
 
 #. Category description
 msgid "Picture controls and display calibration."
-msgstr ""
+msgstr "画面控制与显示校准。"
 
 #. Tab (Color)
 #. Section heading (Color)
@@ -1109,17 +1111,17 @@ msgstr ""
 
 #. Setting description (Color > Picture Controls > Brightness)
 msgid "Offset the picture's brightness. 0 preserves the original level."
-msgstr ""
+msgstr "调整画面亮度偏移。0 保留原始亮度。"
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (HDR > Shadows)
 #. Setting name (HDR > Midtones)
 msgid "Contrast"
-msgstr ""
+msgstr "对比度"
 
 #. Setting description (Color > Picture Controls > Contrast)
 msgid "Scale the spread between dark and bright values. 1 is unchanged."
-msgstr ""
+msgstr "调整明暗值范围。1 保持不变。"
 
 #. Setting name (Color > Picture Controls)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
@@ -1404,7 +1406,7 @@ msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 msgid "Desaturate"
-msgstr ""
+msgstr "降低饱和度"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 msgid "Darken"
@@ -1440,7 +1442,7 @@ msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
 msgid "Allow Delayed Peak Detection"
-msgstr ""
+msgstr "启用延迟峰值检测"
 
 #. Setting description (HDR > HDR Peak Detection > Allow Delayed Peak Detection)
 msgid "Use a delayed brightness measurement to reduce synchronization overhead."
@@ -1593,7 +1595,7 @@ msgstr ""
 
 #. Setting name (HDR > Contrast Recovery)
 msgid "Contrast Smoothness"
-msgstr ""
+msgstr "对比度平滑度"
 
 #. Setting description (HDR > Contrast Recovery > Contrast Smoothness)
 msgid "Spatial scale for contrast recovery. Used only when recovery is above 0."
@@ -1693,7 +1695,7 @@ msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
 msgid "Force Tone Mapping LUT"
-msgstr ""
+msgstr "强制色调映射 LUT"
 
 #. Setting description (HDR > Mapping Visualization > Force Tone Mapping LUT)
 msgid "Use a lookup table even for tone curves that could be evaluated directly."
@@ -1729,7 +1731,7 @@ msgstr ""
 
 #. Setting description (HDR > Mapping Visualization > Visualization Right)
 msgid "Right edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr ""
+msgstr "可视化右边缘（归一化输出坐标，0–1）。"
 
 #. Setting name (HDR > Mapping Visualization)
 msgid "Visualization Bottom"
@@ -1785,7 +1787,7 @@ msgstr ""
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid "None"
-msgstr ""
+msgstr "无"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid "HDR10"
@@ -1813,7 +1815,7 @@ msgstr ""
 #. Setting name (HDR > Midtones)
 #. Setting name (HDR > Highlights)
 msgid "Exposure"
-msgstr ""
+msgstr "曝光度"
 
 #. Setting description (HDR > Shadows > Exposure)
 #. Setting description (HDR > Midtones > Exposure)
@@ -1938,7 +1940,7 @@ msgstr ""
 #. Tab (Shaders)
 #. Section heading (Shaders)
 msgid "SSimDownscaler"
-msgstr ""
+msgstr "SSIM 缩小算法"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2032,7 +2034,7 @@ msgstr ""
 
 #. Setting description (Shaders > FineDehalo > Strong Edge High (THMA))
 msgid "Adjust Strong Edge High for this shader. The default preserves the shader author's setting."
-msgstr ""
+msgstr "调整此着色器的 Strong Edge High。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
 msgid "Light Edge Low (THLIMI)"
@@ -2110,7 +2112,7 @@ msgstr "调整此着色器的 Sample Taps。默认保留着色器作者的设定
 
 #. Section description (Shaders > PixelClipper)
 msgid "Limit overshoot during image and chroma scaling."
-msgstr ""
+msgstr "在图像与色度缩放时限制过冲。"
 
 #. Setting name (Shaders > PixelClipper)
 msgid "Image Sampling Mode (TAPS_scale)"
@@ -2154,7 +2156,7 @@ msgstr ""
 
 #. Section description (Shaders > KrigBilateral)
 msgid "Reconstruct chroma guided by luma. Requires subsampled YUV input."
-msgstr ""
+msgstr "由亮度引导重建色度。要求输入为子采样 YUV。"
 
 #. Section description (Shaders > CfL Prediction)
 msgid "Predict chroma from luma. Requires subsampled YUV input."
@@ -2485,7 +2487,7 @@ msgstr ""
 
 #. Section description (Shaders > Anime4K CNN 2x M)
 msgid "For 2D animation. Neural 2x upscaling."
-msgstr ""
+msgstr "用于 2D 动画。Neural 2× 放大。"
 
 #. Section description (Shaders > ArtCNN C4F16)
 msgid "For 2D animation. Initial shader compilation can take several seconds."
@@ -2545,7 +2547,7 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search settings  (Ctrl+F)"
-msgstr ""
+msgstr "搜索设置项 (Ctrl+F)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search Results"
