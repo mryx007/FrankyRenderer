@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 12:03+0000\n"
+"PO-Revision-Date: 2026-11-03 13:09+0000\n"
 "Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -894,7 +894,7 @@ msgstr "混合视频帧以减少因视频与显示刷新率差异导致的抖动
 
 #. Setting name (Scaling > Filters)
 msgid "Present in Advance"
-msgstr ""
+msgstr "显示高级选项"
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
@@ -902,34 +902,32 @@ msgid ""
 "render peaks on slower PCs but adds latency. Automatic starts at one and "
 "adds more only after late pictures."
 msgstr ""
+"预先提交给显示器显示的平滑运动帧数。数值越大越能吸收慢速 PC 上的渲染峰值，但"
+"会增加延迟。自动模式从 1 开始，仅在出现迟到的画面后才增加更多。"
 
 #. Choice (Scaling > Filters > Present in Advance)
-#, fuzzy
-#| msgid "Automatic (Windows)"
 msgid "Automatic"
-msgstr "自动（跟随 Windows）"
+msgstr "自动"
 
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "1 Refresh"
-msgstr ""
+msgstr "1 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "2 Refreshes"
-msgstr ""
+msgstr "2 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "3 Refreshes"
-msgstr ""
+msgstr "3 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "4 Refreshes"
-msgstr ""
+msgstr "4 次刷新"
 
 #. Setting name (Scaling > Filters)
-#, fuzzy
-#| msgid "Average Threshold (THR_AVG)"
 msgid "Oversample Threshold"
-msgstr "平均阈值 (THR_AVG)"
+msgstr "过采样阈值"
 
 #. Setting description (Scaling > Filters > Oversample Threshold)
 msgid ""
@@ -937,6 +935,8 @@ msgid ""
 "picture would cover less than this share of a refresh. Fewer double edges on "
 "motion; 0 always blends. Used with the oversample frame mixer."
 msgstr ""
+"当另一幅画面在一个刷新周期内的占比低于此值时，平滑运动将显示完整画面而非混合"
+"结果。可减少运动中的重影；设为 0 时始终混合。用于过采样帧混合器。"
 
 #. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
@@ -1576,13 +1576,15 @@ msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
 
 #. Setting name (HDR > HDR Output)
 msgid "RTX Video HDR"
-msgstr ""
+msgstr "RTX 视频 HDR"
 
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
 "AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
 "an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
 msgstr ""
+"通过 NVIDIA 驱动将 SDR 视频 AI 转换为 HDR。需启用 Windows HDR、使用 RTX GPU，"
+"并在 NVIDIA 应用中开启 RTX 视频 HDR；亮度设置也在其中。"
 
 #. Section heading (HDR)
 msgid "HDR Peak Detection"
@@ -2103,17 +2105,17 @@ msgstr "AiUpscale 照片 2x"
 #. Tab (Shaders)
 #. Section heading (Shaders)
 msgid "RAVU Zoom AR R2"
-msgstr ""
+msgstr "RAVU Zoom AR R2"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 msgid "RAVU Zoom R3"
-msgstr ""
+msgstr "RAVU Zoom R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 msgid "RAVU Zoom AR R3"
-msgstr ""
+msgstr "RAVU Zoom AR R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2775,15 +2777,15 @@ msgstr "调整此着色器的锐化。默认保留着色器作者的设定。"
 
 #. Section description (Shaders > RAVU Zoom AR R2)
 msgid "Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom."
-msgstr ""
+msgstr "带抗振铃的自适应放大。半径 2，RAVU Zoom 系列中速度最快。"
 
 #. Section description (Shaders > RAVU Zoom R3)
 msgid "Adaptive upscaling with radius 3. More detail than R2, slower."
-msgstr ""
+msgstr "半径 3 的自适应放大。比 R2 细节更丰富，但速度更慢。"
 
 #. Section description (Shaders > RAVU Zoom AR R3)
 msgid "Radius 3 with anti-ringing. Highest RAVU quality, slowest."
-msgstr ""
+msgstr "半径 3 并带抗振铃。RAVU 系列中画质最高，速度最慢。"
 
 #. Section description (Shaders > Anime4K CNN 2x M)
 msgid "For 2D animation. Neural 2x upscaling."
@@ -2798,12 +2800,10 @@ msgid "For 2D animation. Neural 2x upscaling with denoising."
 msgstr "用于 2D 动画。带降噪的神经 2 倍放大。"
 
 #. Section description (Shaders > SSimDownscaler)
-#, fuzzy
-#| msgid "Refine image downscaling. Requires a smaller output size."
 msgid ""
 "Refine image downscaling. Requires a smaller output size; works best with "
 "Mitchell as downscaler."
-msgstr "细化图像缩小。需要较小的输出尺寸。"
+msgstr "细化图像缩小。需要较小的输出尺寸；与 Mitchell 缩小器搭配使用效果最佳。"
 
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
@@ -2856,10 +2856,8 @@ msgid "Search settings  (Ctrl+F)"
 msgstr "搜索设置项 (Ctrl+F)"
 
 #. Menu text; keep %d and %s placeholders
-#, fuzzy
-#| msgid "Search settings  (Ctrl+F)"
 msgid "Search settings"
-msgstr "搜索设置项 (Ctrl+F)"
+msgstr "搜索设置项"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search Results"
@@ -2935,88 +2933,78 @@ msgstr "输入支持范围内的数字。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Quality"
-msgstr ""
+msgstr "质量"
 
 #. Menu text; keep %d and %s placeholders
-#, fuzzy
-#| msgid "Custom Filters"
 msgid "Custom"
-msgstr "自定义滤镜"
+msgstr "自定义"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured"
-msgstr ""
+msgstr "实测"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measuring…"
-msgstr ""
+msgstr "测量中…"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measure this PC"
-msgstr ""
+msgstr "测量本机"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Picks the best settings for this PC."
-msgstr ""
+msgstr "为本机选取最佳设置。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "实测：%s（%.1f/%.1f 毫秒）"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: same as %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "实测：与 %s 相同（%.1f/%.1f 毫秒）"
 
 #. Menu text; keep %d and %s placeholders
-#, fuzzy
-#| msgid "Could not read display profiles."
 msgid "Could not measure this display."
-msgstr "无法读取显示器配置文件。"
+msgstr "无法测量此显示器。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measurement failed."
-msgstr ""
+msgstr "测量失败。"
 
 #. Menu text; keep %d and %s placeholders
-#, fuzzy
-#| msgid "Reset Page"
 msgid "Reset All"
-msgstr "重置页面"
+msgstr "全部重置"
 
 #. Menu text; keep %d and %s placeholders
 msgid ""
 "Reset all settings for this display to their defaults? Theme and language "
 "stay."
-msgstr ""
+msgstr "将此显示器的所有设置重置为默认值？主题和语言保持不变。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings reset to defaults."
-msgstr ""
+msgstr "所有设置重置为默认值。"
 
 #. Quality preset (header)
 msgid "Fast"
-msgstr ""
+msgstr "快速"
 
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
-msgstr ""
+msgstr "适用于性能较弱的集成显卡。"
 
 #. Quality preset (header)
-#, fuzzy
-#| msgid "Knee Default"
 msgid "Default"
-msgstr "膝点默认值"
+msgstr "默认值"
 
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
-msgstr ""
+msgstr "均衡。适合大多数电脑。"
 
 #. Quality preset (header)
-#, fuzzy
-#| msgid "Mapping LUT Quality"
 msgid "High Quality"
-msgstr "映射 LUT 质量"
+msgstr "高质量"
 
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
-msgstr ""
+msgstr "画面最锐利。适用于独立显卡。"
