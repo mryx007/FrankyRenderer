@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 15:02+0000\n"
+"PO-Revision-Date: 2026-11-03 15:19+0000\n"
 "Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -1284,7 +1284,7 @@ msgstr "色温（开）"
 msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
-msgstr "调节白平衡（偏暖至中性）。6500 K 保留原始白平衡。"
+msgstr "调节白平衡（偏暖至中性）。6500 保留原始白平衡。"
 
 #. Section heading (Color)
 msgid "ICC Profile"
