@@ -90,8 +90,7 @@ msgid "Dither Target Bit Depth"
 msgstr "Zielbittiefe für Dithering"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
-msgid ""
-"Dither to the actual output precision; Auto follows the output texture."
+msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr ""
 "Dithering an die tatsächliche Ausgabepräzision anpassen. Automatisch folgt "
 "der Ausgabetextur."
@@ -144,8 +143,8 @@ msgstr "Bildanalyse"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
-"Waveform, histogram, RGB parade, false color and a gray ramp. Samples "
-"before/after color mapping; excludes subtitles. SDR nits are nominal."
+"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
+"after color mapping; excludes subtitles. SDR nits are nominal."
 msgstr ""
 "Wellenform, Histogramm, RGB-Parade, Falschfarben und Grauverlauf. Messung "
 "vor und nach der Farbumrechnung; Untertitel werden nicht einbezogen. Die "
@@ -168,8 +167,7 @@ msgstr ""
 msgid "Switch Display Mode in Fullscreen"
 msgstr "Anzeigemodus im Vollbild wechseln"
 
-#. Setting description (General > Display Mode > Switch Display Mode in
-#. Fullscreen)
+#. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
 "Uses the listed mode with the lowest refresh rate that is a whole multiple "
 "of the video frame rate. Applies to this display profile only."
@@ -184,8 +182,8 @@ msgstr "Zulässige Modi"
 
 #. Setting description (General > Display Mode > Allowed Modes)
 msgid ""
-"Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and"
-" 59 mean 23.976, 29.97 and 59.94 Hz."
+"Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and "
+"59 mean 23.976, 29.97 and 59.94 Hz."
 msgstr ""
 "Durch Kommas getrennt, z. B. 2160p23. Nur 23 behält die Auflösung bei. 23, "
 "29 und 59 stehen für 23,976, 29,97 und 59,94 Hz."
@@ -206,12 +204,11 @@ msgstr ""
 msgid "Pause After Switching (seconds)"
 msgstr "Pause nach dem Wechsel (Sekunden)"
 
-#. Setting description (General > Display Mode > Pause After Switching
-#. (seconds))
+#. Setting description (General > Display Mode > Pause After Switching (seconds))
 msgid "Pauses playback while the display resynchronises after a mode change."
 msgstr ""
-"Pausiert die Wiedergabe, während sich der Bildschirm nach einem Moduswechsel"
-" neu synchronisiert."
+"Pausiert die Wiedergabe, während sich der Bildschirm nach einem Moduswechsel "
+"neu synchronisiert."
 
 #. Section heading (General)
 msgid "Background & Transparency"
@@ -232,8 +229,7 @@ msgstr ""
 msgid "Background Green"
 msgstr "Hintergrund: Grün"
 
-#. Setting description (General > Background & Transparency > Background
-#. Green)
+#. Setting description (General > Background & Transparency > Background Green)
 msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
@@ -247,8 +243,7 @@ msgstr "Hintergrund: Blau"
 
 #. Setting description (General > Background & Transparency > Background Blue)
 msgid ""
-"Blue channel for uncovered borders and transparent pixels. RGB range: 0 to "
-"1."
+"Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
 "Blauanteil für unbedeckte Ränder und transparente Pixel. Wertebereich für "
 "RGB: 0 bis 1."
@@ -257,11 +252,10 @@ msgstr ""
 msgid "Background Transparency"
 msgstr "Hintergrundtransparenz"
 
-#. Setting description (General > Background & Transparency > Background
-#. Transparency)
+#. Setting description (General > Background & Transparency > Background Transparency)
 msgid ""
-"0 is opaque; 1 is transparent. Changes rendered alpha, not Windows "
-"desktop/window transparency."
+"0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
+"window transparency."
 msgstr ""
 "0 ist undurchsichtig, 1 ist transparent. Ändert den gerenderten Alphawert, "
 "nicht die Transparenz des Desktops oder Fensters in Windows."
@@ -282,8 +276,7 @@ msgstr ""
 msgid "Skip Target Clearing"
 msgstr "Löschen der Ausgabefläche überspringen"
 
-#. Setting description (General > Background & Transparency > Skip Target
-#. Clearing)
+#. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
 "Skip clearing uncovered output borders. May leave old or undefined pixels "
 "there; no benefit for full-frame video. Default is Off."
@@ -314,8 +307,7 @@ msgstr "Ein"
 msgid "Blend Against Tiles"
 msgstr "Schachbretthintergrund verwenden"
 
-#. Setting description (General > Background & Transparency > Blend Against
-#. Tiles)
+#. Setting description (General > Background & Transparency > Blend Against Tiles)
 msgid ""
 "Composite transparent image regions onto a checkerboard. Default is Off. "
 "Tile colors do not recolor opaque video."
@@ -338,14 +330,12 @@ msgstr ""
 msgid "Light Tile Green"
 msgstr "Helle Felder: Grün"
 
-#. Setting description (General > Background & Transparency > Light Tile
-#. Green)
+#. Setting description (General > Background & Transparency > Light Tile Green)
 msgid ""
-"Green channel of the light checkerboard tiles. Used with Blend Against "
-"Tiles."
+"Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"Grünanteil der hellen Schachbrettfelder. Wird mit dem Schachbretthintergrund"
-" verwendet."
+"Grünanteil der hellen Schachbrettfelder. Wird mit dem Schachbretthintergrund "
+"verwendet."
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Blue"
@@ -355,8 +345,8 @@ msgstr "Helle Felder: Blau"
 msgid ""
 "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"Blauanteil der hellen Schachbrettfelder. Wird mit dem Schachbretthintergrund"
-" verwendet."
+"Blauanteil der hellen Schachbrettfelder. Wird mit dem Schachbretthintergrund "
+"verwendet."
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Red"
@@ -366,8 +356,8 @@ msgstr "Dunkle Felder: Rot"
 msgid ""
 "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"Rotanteil der dunklen Schachbrettfelder. Wird mit dem Schachbretthintergrund"
-" verwendet."
+"Rotanteil der dunklen Schachbrettfelder. Wird mit dem Schachbretthintergrund "
+"verwendet."
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Green"
@@ -395,8 +385,7 @@ msgstr ""
 msgid "Tile Size (pixels)"
 msgstr "Mustergröße (Pixel)"
 
-#. Setting description (General > Background & Transparency > Tile Size
-#. (pixels))
+#. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid ""
 "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to "
 "256."
@@ -520,8 +509,8 @@ msgstr "Debanding"
 
 #. Setting description (Processing > Debanding > Debanding)
 msgid ""
-"Reduce visible steps in smooth gradients. Excessive settings can remove fine"
-" detail."
+"Reduce visible steps in smooth gradients. Excessive settings can remove fine "
+"detail."
 msgstr ""
 "Verringert sichtbare Abstufungen in weichen Farbverläufen. Zu starke "
 "Einstellungen können feine Details entfernen."
@@ -571,8 +560,7 @@ msgstr "Adaptives Nachschärfen"
 msgid "Enhance Edges and Details"
 msgstr "Kanten und Details verstärken"
 
-#. Setting description (Processing > Adaptive Sharpen > Enhance Edges and
-#. Details)
+#. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr ""
 "Adaptives Nachschärfen mit integrierter Unterdrückung von Artefakten durch "
@@ -655,8 +643,7 @@ msgstr "Zufälliges Dithering"
 msgid "Change Dither for Every Frame"
 msgstr "Dithermuster bei jedem Bild ändern"
 
-#. Setting description (Processing > Dithering > Change Dither for Every
-#. Frame)
+#. Setting description (Processing > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
 "Verändert das Dithermuster mit der Zeit, statt ein festes Muster "
@@ -670,8 +657,7 @@ msgstr "Erkennung und Zoom"
 msgid "Detect Hardcoded Black Bars"
 msgstr "Im Video enthaltene schwarze Balken erkennen"
 
-#. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black
-#. Bars)
+#. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
 "Analysiert decodierte Pixel, um Balken zu finden, die Teil des Videos sind."
@@ -691,12 +677,10 @@ msgstr ""
 msgid "Protect Burned-in Subtitles"
 msgstr "Eingebrannte Untertitel schützen"
 
-#. Setting description (Processing > Detection & Zoom > Protect Burned-in
-#. Subtitles)
+#. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
-"Stellt Balken vorübergehend wieder her, wenn sie sichtbaren Inhalt "
-"enthalten."
+"Stellt Balken vorübergehend wieder her, wenn sie sichtbaren Inhalt enthalten."
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Keep a Stable Zoom"
@@ -744,8 +728,7 @@ msgstr ""
 msgid "Detection Stability (seconds)"
 msgstr "Erkennungsstabilität (Sekunden)"
 
-#. Setting description (Processing > Detection & Zoom > Detection Stability
-#. (seconds))
+#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
 msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
 
@@ -873,8 +856,8 @@ msgstr "Verkleinerung des Bildes"
 
 #. Setting description (Scaling > Filters > Image Downscaler)
 msgid ""
-"Filter the image when reducing video size. Custom copies the selected filter"
-" for editing."
+"Filter the image when reducing video size. Custom copies the selected filter "
+"for editing."
 msgstr ""
 "Filtert das Bild beim Verkleinern des Videos. Benutzerdefiniert übernimmt "
 "den ausgewählten Filter zur Bearbeitung."
@@ -921,8 +904,7 @@ msgstr ""
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
-#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Starting Filter)
+#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
 msgstr "Den entsprechenden Bildskalierungsfilter verwenden."
 
@@ -943,8 +925,8 @@ msgstr "Bildmischer"
 
 #. Setting description (Scaling > Filters > Frame Mixer)
 msgid ""
-"Temporal filter used by Smooth Motion. It combines frames rather than adding"
-" image detail."
+"Temporal filter used by Smooth Motion. It combines frames rather than adding "
+"image detail."
 msgstr ""
 "Zeitlicher Filter für Smooth Motion. Kombiniert Bilder, statt Bilddetails "
 "hinzuzufügen."
@@ -1038,12 +1020,12 @@ msgstr "Schwellenwert für Oversampling"
 #. Setting description (Scaling > Filters > Oversample Threshold)
 msgid ""
 "Smooth Motion shows a whole picture instead of a blend when the other "
-"picture would cover less than this share of a refresh. Fewer double edges on"
-" motion; 0 always blends. Used with the oversample frame mixer."
+"picture would cover less than this share of a refresh. Fewer double edges on "
+"motion; 0 always blends. Used with the oversample frame mixer."
 msgstr ""
 "Smooth Motion zeigt ein vollständiges Bild statt einer Mischung, wenn das "
-"andere Bild weniger als diesen Anteil einer Bildwiederholung abdecken würde."
-" Verringert doppelte Kanten bei Bewegung. 0 mischt immer. Wird mit dem "
+"andere Bild weniger als diesen Anteil einer Bildwiederholung abdecken würde. "
+"Verringert doppelte Kanten bei Bewegung. 0 mischt immer. Wird mit dem "
 "Bildmischer im Modus Oversampling verwendet."
 
 #. Setting name (Scaling > Filters)
@@ -1052,12 +1034,12 @@ msgstr "Kantenglättung beim Herunterskalieren überspringen"
 
 #. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid ""
-"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged"
-" edges. Default: Off; leave Off for best quality."
+"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
+"edges. Default: Off; leave Off for best quality."
 msgstr ""
 "Beschleunigt das Herunterskalieren durch Auslassen der Kantenglättung. Kann "
-"Moiré und gezackte Kanten verursachen. Standard: Aus; für die beste Qualität"
-" ausgeschaltet lassen."
+"Moiré und gezackte Kanten verursachen. Standard: Aus; für die beste Qualität "
+"ausgeschaltet lassen."
 
 #. Setting name (Scaling > Filters)
 msgid "Preserve Frame Mixer Cache"
@@ -1065,9 +1047,9 @@ msgstr "Zwischenspeicher des Bildmischers beibehalten"
 
 #. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
 msgid ""
-"Reuse mixed frames after resizing or parameter changes. May make transitions"
-" smoother but briefly reuse lower-quality or older processing. Default: Off;"
-" used with Smooth Motion."
+"Reuse mixed frames after resizing or parameter changes. May make transitions "
+"smoother but briefly reuse lower-quality or older processing. Default: Off; "
+"used with Smooth Motion."
 msgstr ""
 "Verwendet gemischte Bilder nach Größen- oder Parameteränderungen erneut. "
 "Kann Übergänge glätten, aber kurzzeitig Bilder geringerer Qualität oder aus "
@@ -1082,11 +1064,10 @@ msgstr "RTX Video Super Resolution"
 #. Section description (Scaling > RTX Video Super Resolution)
 msgid "Enable Super Resolution in the NVIDIA app first. Quality is set there."
 msgstr ""
-"Super Resolution zuerst in der NVIDIA App aktivieren. Die Qualität wird dort"
-" eingestellt."
+"Super Resolution zuerst in der NVIDIA App aktivieren. Die Qualität wird dort "
+"eingestellt."
 
-#. Setting description (Scaling > RTX Video Super Resolution > RTX Video Super
-#. Resolution)
+#. Setting description (Scaling > RTX Video Super Resolution > RTX Video Super Resolution)
 msgid ""
 "Request AI upscaling through the NVIDIA driver. Requires Super Resolution "
 "enabled in the NVIDIA app."
@@ -1110,8 +1091,7 @@ msgstr "Anwendungsbereich"
 
 #. Setting description (Scaling > Custom Filter Role > Role)
 msgid "Scaler role whose custom filter is edited."
-msgstr ""
-"Skalierungsbereich, dessen benutzerdefinierter Filter bearbeitet wird."
+msgstr "Skalierungsbereich, dessen benutzerdefinierter Filter bearbeitet wird."
 
 #. Section heading (Scaling)
 msgid "Custom: Image Upscaler"
@@ -1123,12 +1103,9 @@ msgstr "Benutzerdefiniert: Hochskalierung des Bildes"
 msgid "Enable Custom Settings"
 msgstr "Benutzerdefinierte Einstellungen aktivieren"
 
-#. Setting description (Scaling > Custom: Image Upscaler > Enable Custom
-#. Settings)
-#. Setting description (Scaling > Custom: Image Downscaler > Enable Custom
-#. Settings)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Enable Custom Settings)
+#. Setting description (Scaling > Custom: Image Upscaler > Enable Custom Settings)
+#. Setting description (Scaling > Custom: Image Downscaler > Enable Custom Settings)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Enable Custom Settings)
 msgid "Use custom filter settings based on the starting filter."
 msgstr ""
 "Benutzerdefinierte Filtereinstellungen auf Grundlage des Ausgangsfilters "
@@ -1142,8 +1119,7 @@ msgstr "Ausgangsfilter"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Starting Filter)
 #. Setting description (Scaling > Custom: Image Downscaler > Starting Filter)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Starting Filter)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid ""
 "Base preset for this custom filter. Its values are inherited until you "
 "change a parameter."
@@ -1159,8 +1135,7 @@ msgstr "Filterkern"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Kernel)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel)
 msgid "Reconstruction function. Auto inherits the starting filter's kernel."
 msgstr ""
 "Rekonstruktionsfunktion. Automatisch übernimmt den Filterkern des "
@@ -1174,18 +1149,15 @@ msgstr "Fensterfunktion"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window)
 #. Setting description (Scaling > Custom: Image Downscaler > Window)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Window)
-msgid ""
-"Window applied to the kernel. Auto inherits it; None removes windowing."
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window)
+msgid "Window applied to the kernel. Auto inherits it; None removes windowing."
 msgstr ""
 "Auf den Filterkern angewendete Fensterfunktion. Automatisch übernimmt sie; "
 "Keine entfernt sie."
 
 #. Setting description (Scaling > Custom: Image Upscaler > Radius)
 #. Setting description (Scaling > Custom: Image Downscaler > Radius)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Radius)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Radius)
 msgid ""
 "Kernel support radius. Available only for resizable kernels; larger radii "
 "sample more pixels."
@@ -1201,11 +1173,10 @@ msgstr "Begrenzung"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Clamp)
 #. Setting description (Scaling > Custom: Image Downscaler > Clamp)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Clamp)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Clamp)
 msgid ""
-"Suppress negative filter weights to reduce ringing. Higher values soften the"
-" result."
+"Suppress negative filter weights to reduce ringing. Higher values soften the "
+"result."
 msgstr ""
 "Unterdrückt negative Filtergewichte, um Ringing zu verringern. Höhere Werte "
 "machen das Ergebnis weicher."
@@ -1218,8 +1189,7 @@ msgstr "Unschärfe"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Blur)
 #. Setting description (Scaling > Custom: Image Downscaler > Blur)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Blur)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Blur)
 msgid ""
 "Filter width multiplier. Below 1 sharpens, above 1 softens; 0 uses the "
 "filter default."
@@ -1235,8 +1205,7 @@ msgstr "Abflachung"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Taper)
 #. Setting description (Scaling > Custom: Image Downscaler > Taper)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Taper)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Taper)
 msgid "Flatten the center of the reconstruction kernel."
 msgstr "Flacht das Zentrum des Rekonstruktionskerns ab."
 
@@ -1248,8 +1217,7 @@ msgstr "Unterdrückung von Ringing"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Anti-Ringing)
 #. Setting description (Scaling > Custom: Image Downscaler > Anti-Ringing)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Anti-Ringing)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Anti-Ringing)
 msgid ""
 "Suppress overshoot for this filter. Zero inherits the global anti-ringing "
 "strength."
@@ -1264,10 +1232,8 @@ msgid "Kernel Parameter 1"
 msgstr "Filterkernparameter 1"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 1)
-#. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter
-#. 1)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Kernel Parameter 1)
+#. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 1)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel Parameter 1)
 msgid ""
 "First kernel-specific parameter. Available only when the selected kernel "
 "supports it."
@@ -1282,10 +1248,8 @@ msgid "Kernel Parameter 2"
 msgstr "Filterkernparameter 2"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 2)
-#. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter
-#. 2)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Kernel Parameter 2)
+#. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 2)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel Parameter 2)
 msgid ""
 "Second kernel-specific parameter. Available only when the selected kernel "
 "supports it."
@@ -1300,10 +1264,8 @@ msgid "Window Parameter 1"
 msgstr "Fensterparameter 1"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window Parameter 1)
-#. Setting description (Scaling > Custom: Image Downscaler > Window Parameter
-#. 1)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Window Parameter 1)
+#. Setting description (Scaling > Custom: Image Downscaler > Window Parameter 1)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window Parameter 1)
 msgid ""
 "First window-specific parameter. Available only when the selected window "
 "supports it."
@@ -1318,10 +1280,8 @@ msgid "Window Parameter 2"
 msgstr "Fensterparameter 2"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window Parameter 2)
-#. Setting description (Scaling > Custom: Image Downscaler > Window Parameter
-#. 2)
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Window Parameter 2)
+#. Setting description (Scaling > Custom: Image Downscaler > Window Parameter 2)
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window Parameter 2)
 msgid ""
 "Second window-specific parameter. Available only when the selected window "
 "supports it."
@@ -1337,11 +1297,9 @@ msgstr "Polar (EWA)"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Polar (EWA))
 #. Setting description (Scaling > Custom: Image Downscaler > Polar (EWA))
-#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) >
-#. Polar (EWA))
+#. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Polar (EWA))
 msgid ""
-"Use a two-dimensional EWA filter. Frame mixers always remain one-"
-"dimensional."
+"Use a two-dimensional EWA filter. Frame mixers always remain one-dimensional."
 msgstr ""
 "Einen zweidimensionalen EWA-Filter verwenden. Bildmischer bleiben immer "
 "eindimensional."
@@ -1395,8 +1353,8 @@ msgid ""
 "Enable the picture controls in this section. Neutral values preserve the "
 "original image."
 msgstr ""
-"Aktiviert die Bildeinstellungen in diesem Abschnitt. Neutrale Werte erhalten"
-" das Originalbild."
+"Aktiviert die Bildeinstellungen in diesem Abschnitt. Neutrale Werte erhalten "
+"das Originalbild."
 
 #. Setting name (Color > Picture Controls)
 msgid "Brightness"
@@ -1472,8 +1430,7 @@ msgstr "ICC-Profildatei"
 
 #. Setting description (Color > ICC Profile > ICC Profile File)
 msgid ""
-"Select the display's ICC or ICM color profile before enabling ICC "
-"correction."
+"Select the display's ICC or ICM color profile before enabling ICC correction."
 msgstr ""
 "Vor dem Aktivieren der ICC-Korrektur das ICC- oder ICM-Farbprofil des "
 "Bildschirms auswählen."
@@ -1672,8 +1629,8 @@ msgstr "Funktion für Tone Mapping"
 
 #. Setting description (HDR > HDR Output > Tone Mapping Function)
 msgid ""
-"Compress source luminance into the output range. Algorithm-specific controls"
-" appear below."
+"Compress source luminance into the output range. Algorithm-specific controls "
+"appear below."
 msgstr ""
 "Komprimiert die Quellhelligkeit auf den Ausgabebereich. Darunter erscheinen "
 "die Einstellungen des jeweiligen Algorithmus."
@@ -1783,8 +1740,8 @@ msgid ""
 "AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
 "an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
 msgstr ""
-"Umrechnung von SDR in HDR durch die KI im Grafiktreiber von NVIDIA. Benötigt"
-" aktiviertes HDR in Windows, eine RTX-GPU und aktiviertes RTX Video HDR in "
+"Umrechnung von SDR in HDR durch die KI im Grafiktreiber von NVIDIA. Benötigt "
+"aktiviertes HDR in Windows, eine RTX-GPU und aktiviertes RTX Video HDR in "
 "der NVIDIA App. Die Helligkeit wird dort eingestellt."
 
 #. Section heading (HDR)
@@ -1805,8 +1762,7 @@ msgstr ""
 msgid "Allow Delayed Peak Detection"
 msgstr "Verzögerte Spitzenhelligkeitserkennung zulassen"
 
-#. Setting description (HDR > HDR Peak Detection > Allow Delayed Peak
-#. Detection)
+#. Setting description (HDR > HDR Peak Detection > Allow Delayed Peak Detection)
 msgid ""
 "Use a delayed brightness measurement to reduce synchronization overhead."
 msgstr ""
@@ -1879,8 +1835,8 @@ msgstr "Knickpunktanpassung"
 #. Setting description (HDR > Tone Mapping Knee > Knee Adaptation)
 msgid "Adapt the knee to scene brightness. Used by ST 2094 and Spline."
 msgstr ""
-"Passt den Knickpunkt an die Szenenhelligkeit an. Wird von ST 2094 und Spline"
-" verwendet."
+"Passt den Knickpunkt an die Szenenhelligkeit an. Wird von ST 2094 und Spline "
+"verwendet."
 
 #. Setting name (HDR > Tone Mapping Knee)
 msgid "Knee Minimum"
@@ -1906,8 +1862,8 @@ msgstr "Standardknickpunkt"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Default)
 msgid ""
-"Knee used when average scene brightness is unavailable. Keep within Minimum "
-"/ Maximum."
+"Knee used when average scene brightness is unavailable. Keep within "
+"Minimum / Maximum."
 msgstr ""
 "Verwendeter Knickpunkt, wenn die mittlere Szenenhelligkeit nicht verfügbar "
 "ist. Innerhalb von Minimum und Maximum halten."
@@ -1974,8 +1930,7 @@ msgstr "Lineare Belichtung"
 
 #. Setting description (HDR > Tone Mapping Constants > Linear Exposure)
 msgid ""
-"Exposure multiplier for Linear and Linear Light tone mapping. 1 is "
-"unchanged."
+"Exposure multiplier for Linear and Linear Light tone mapping. 1 is unchanged."
 msgstr ""
 "Belichtungsmultiplikator für Tone Mapping mit Linear und Lineares Licht. 1 "
 "lässt die Belichtung unverändert."
@@ -2066,16 +2021,15 @@ msgstr "LUT für den Farbumfang: Auflösung der Intensitätsachse"
 msgid ""
 "Internal gamut LUT resolution along intensity. 0 selects the library size."
 msgstr ""
-"Interne Auflösung der LUT für den Farbumfang entlang der Intensitätsachse. 0"
-" verwendet die Vorgabe der Bibliothek."
+"Interne Auflösung der LUT für den Farbumfang entlang der Intensitätsachse. 0 "
+"verwendet die Vorgabe der Bibliothek."
 
 #. Setting name (HDR > Mapping LUT Quality)
 msgid "Gamut LUT Chroma Size"
 msgstr "LUT für den Farbumfang: Auflösung der Chromaachse"
 
 #. Setting description (HDR > Mapping LUT Quality > Gamut LUT Chroma Size)
-msgid ""
-"Internal gamut LUT resolution along chroma. 0 selects the library size."
+msgid "Internal gamut LUT resolution along chroma. 0 selects the library size."
 msgstr ""
 "Interne Auflösung der LUT für den Farbumfang entlang der Chromaachse. 0 "
 "verwendet die Vorgabe der Bibliothek."
@@ -2094,8 +2048,7 @@ msgstr ""
 msgid "Tricubic Gamut Interpolation"
 msgstr "Trikubische Interpolation des Farbumfangs"
 
-#. Setting description (HDR > Mapping LUT Quality > Tricubic Gamut
-#. Interpolation)
+#. Setting description (HDR > Mapping LUT Quality > Tricubic Gamut Interpolation)
 msgid ""
 "Use tricubic interpolation for the internal gamut LUT; costs additional GPU "
 "work."
@@ -2125,8 +2078,7 @@ msgstr "LUT für Tone Mapping erzwingen"
 msgid ""
 "Use a lookup table even for tone curves that could be evaluated directly."
 msgstr ""
-"Verwendet auch für direkt berechenbare Tonwertkurven eine "
-"Nachschlagetabelle."
+"Verwendet auch für direkt berechenbare Tonwertkurven eine Nachschlagetabelle."
 
 #. Setting name (HDR > Mapping Visualization)
 msgid "Visualize Mapping LUT"
@@ -2184,8 +2136,7 @@ msgstr ""
 msgid "Visualization Hue (radians)"
 msgstr "Visualisierung: Farbton (Radiant)"
 
-#. Setting description (HDR > Mapping Visualization > Visualization Hue
-#. (radians))
+#. Setting description (HDR > Mapping Visualization > Visualization Hue (radians))
 msgid "Gamut visualization hue slice, from -pi to pi."
 msgstr "Farbtonschnitt der Farbumfangsvisualisierung von -pi bis pi."
 
@@ -2193,8 +2144,7 @@ msgstr "Farbtonschnitt der Farbumfangsvisualisierung von -pi bis pi."
 msgid "Visualization Rotation (radians)"
 msgstr "Visualisierung: Drehung (Radiant)"
 
-#. Setting description (HDR > Mapping Visualization > Visualization Rotation
-#. (radians))
+#. Setting description (HDR > Mapping Visualization > Visualization Rotation (radians))
 msgid "Gamut visualization angle, from 0 to pi/2."
 msgstr "Winkel der Farbumfangsvisualisierung von 0 bis pi/2."
 
@@ -2208,8 +2158,7 @@ msgstr "Inverses Tone Mapping"
 
 #. Setting description (HDR > Expansion & Metadata > Inverse Tone Mapping)
 msgid ""
-"Allow expansion of SDR brightness into HDR. Requires a supporting tone "
-"curve."
+"Allow expansion of SDR brightness into HDR. Requires a supporting tone curve."
 msgstr ""
 "Erlaubt die Erweiterung der Helligkeit von SDR auf HDR. Benötigt eine "
 "unterstützte Tonwertkurve."
@@ -2228,8 +2177,8 @@ msgstr "Metadaten für Tone Mapping"
 
 #. Setting description (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid ""
-"Default retains automatic Dolby Vision / HDR10+ metadata selection. A manual"
-" choice overrides it."
+"Default retains automatic Dolby Vision / HDR10+ metadata selection. A manual "
+"choice overrides it."
 msgstr ""
 "Standard behält die automatische Auswahl der Metadaten für Dolby Vision und "
 "HDR10+ bei. Eine manuelle Auswahl überschreibt sie."
@@ -2554,8 +2503,8 @@ msgid ""
 "Adjust Light Edge High for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"Obere Schwelle für helle Kanten für diesen Shader anpassen. Der Standardwert"
-" entspricht der Vorgabe des Shaderautors."
+"Obere Schwelle für helle Kanten für diesen Shader anpassen. Der Standardwert "
+"entspricht der Vorgabe des Shaderautors."
 
 #. Setting name (Shaders > FineDehalo)
 msgid "Dark Halo Strength (STR_D)"
@@ -2566,8 +2515,8 @@ msgid ""
 "Adjust Dark Halo Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"Stärke dunkler Säume für diesen Shader anpassen. Der Standardwert entspricht"
-" der Vorgabe des Shaderautors."
+"Stärke dunkler Säume für diesen Shader anpassen. Der Standardwert entspricht "
+"der Vorgabe des Shaderautors."
 
 #. Setting name (Shaders > FineDehalo)
 msgid "Bright Halo Strength (STR_B)"
@@ -2615,8 +2564,8 @@ msgstr "Diagnoseansicht (DEBUG)"
 #. Setting description (Shaders > Clarity > Debug View (DEBUG))
 #. Setting description (Shaders > SSimDownscaler > Debug View (DEBUG))
 msgid ""
-"Adjust Debug View for this shader. The default preserves the shader author's"
-" setting."
+"Adjust Debug View for this shader. The default preserves the shader author's "
+"setting."
 msgstr ""
 "Diagnoseansicht für diesen Shader anpassen. Der Standardwert entspricht der "
 "Vorgabe des Shaderautors."
@@ -2649,11 +2598,10 @@ msgstr "Begrenzt Überschwinger bei der Skalierung von Bild und Chroma."
 msgid "Image Sampling Mode (TAPS_scale)"
 msgstr "Abtastmodus für das Bild (TAPS_scale)"
 
-#. Setting description (Shaders > PixelClipper > Image Sampling Mode
-#. (TAPS_scale))
+#. Setting description (Shaders > PixelClipper > Image Sampling Mode (TAPS_scale))
 msgid ""
-"Adjust Image Sampling Mode for this shader. The default preserves the shader"
-" author's setting."
+"Adjust Image Sampling Mode for this shader. The default preserves the shader "
+"author's setting."
 msgstr ""
 "Abtastmodus für das Bild für diesen Shader anpassen. Der Standardwert "
 "entspricht der Vorgabe des Shaderautors."
@@ -2662,8 +2610,7 @@ msgstr ""
 msgid "Chroma Sampling Mode (TAPS_cscale)"
 msgstr "Abtastmodus für Chroma (TAPS_cscale)"
 
-#. Setting description (Shaders > PixelClipper > Chroma Sampling Mode
-#. (TAPS_cscale))
+#. Setting description (Shaders > PixelClipper > Chroma Sampling Mode (TAPS_cscale))
 msgid ""
 "Adjust Chroma Sampling Mode for this shader. The default preserves the "
 "shader author's setting."
@@ -2692,15 +2639,14 @@ msgid ""
 "Adjust Chroma Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"Chromabegrenzung für diesen Shader anpassen. Der Standardwert entspricht der"
-" Vorgabe des Shaderautors."
+"Chromabegrenzung für diesen Shader anpassen. Der Standardwert entspricht der "
+"Vorgabe des Shaderautors."
 
 #. Setting name (Shaders > PixelClipper)
 msgid "Downscaling Limit (CLIP_dscale)"
 msgstr "Begrenzung beim Herunterskalieren (CLIP_dscale)"
 
-#. Setting description (Shaders > PixelClipper > Downscaling Limit
-#. (CLIP_dscale))
+#. Setting description (Shaders > PixelClipper > Downscaling Limit (CLIP_dscale))
 msgid ""
 "Adjust Downscaling Limit for this shader. The default preserves the shader "
 "author's setting."
@@ -2724,8 +2670,7 @@ msgstr ""
 msgid "chroma offset x (chroma_offset_x)"
 msgstr "Chromaversatz X (chroma_offset_x)"
 
-#. Setting description (Shaders > CfL Prediction > chroma offset x
-#. (chroma_offset_x))
+#. Setting description (Shaders > CfL Prediction > chroma offset x (chroma_offset_x))
 msgid ""
 "Adjust chroma offset x for this shader. The default preserves the shader "
 "author's setting."
@@ -2737,8 +2682,7 @@ msgstr ""
 msgid "chroma offset y (chroma_offset_y)"
 msgstr "Chromaversatz Y (chroma_offset_y)"
 
-#. Setting description (Shaders > CfL Prediction > chroma offset y
-#. (chroma_offset_y))
+#. Setting description (Shaders > CfL Prediction > chroma offset y (chroma_offset_y))
 msgid ""
 "Adjust chroma offset y for this shader. The default preserves the shader "
 "author's setting."
@@ -2750,8 +2694,7 @@ msgstr ""
 msgid "distance coeff (distance_coeff)"
 msgstr "Abstandskoeffizient (distance_coeff)"
 
-#. Setting description (Shaders > CfL Prediction > distance coeff
-#. (distance_coeff))
+#. Setting description (Shaders > CfL Prediction > distance coeff (distance_coeff))
 msgid ""
 "Adjust distance coeff for this shader. The default preserves the shader "
 "author's setting."
@@ -2763,8 +2706,7 @@ msgstr ""
 msgid "intensity coeff (intensity_coeff)"
 msgstr "Intensitätskoeffizient (intensity_coeff)"
 
-#. Setting description (Shaders > CfL Prediction > intensity coeff
-#. (intensity_coeff))
+#. Setting description (Shaders > CfL Prediction > intensity coeff (intensity_coeff))
 msgid ""
 "Adjust intensity coeff for this shader. The default preserves the shader "
 "author's setting."
@@ -2798,8 +2740,7 @@ msgstr "SS (SS)"
 
 #. Setting description (Shaders > Bilateral Denoise > SS (SS))
 msgid ""
-"Adjust SS for this shader. The default preserves the shader author's "
-"setting."
+"Adjust SS for this shader. The default preserves the shader author's setting."
 msgstr ""
 "SS für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -2812,8 +2753,7 @@ msgstr "SR (SR)"
 #. Setting description (Shaders > Bilateral Denoise > SR (SR))
 #. Setting description (Shaders > hdeband > SR (SR))
 msgid ""
-"Adjust SR for this shader. The default preserves the shader author's "
-"setting."
+"Adjust SR for this shader. The default preserves the shader author's setting."
 msgstr ""
 "SR für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -2857,8 +2797,7 @@ msgstr "SI (SI)"
 
 #. Setting description (Shaders > hdeband > SI (SI))
 msgid ""
-"Adjust SI for this shader. The default preserves the shader author's "
-"setting."
+"Adjust SI for this shader. The default preserves the shader author's setting."
 msgstr ""
 "SI für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -2869,8 +2808,7 @@ msgstr "SW (SW)"
 
 #. Setting description (Shaders > hdeband > SW (SW))
 msgid ""
-"Adjust SW for this shader. The default preserves the shader author's "
-"setting."
+"Adjust SW for this shader. The default preserves the shader author's setting."
 msgstr ""
 "SW für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -2907,8 +2845,8 @@ msgstr "Richtungen (DIRECTIONS)"
 
 #. Setting description (Shaders > hdeband > DIRECTIONS (DIRECTIONS))
 msgid ""
-"Adjust DIRECTIONS for this shader. The default preserves the shader author's"
-" setting."
+"Adjust DIRECTIONS for this shader. The default preserves the shader author's "
+"setting."
 msgstr ""
 "Richtungen für diesen Shader anpassen. Der Standardwert entspricht der "
 "Vorgabe des Shaderautors."
@@ -2934,8 +2872,8 @@ msgid ""
 "Adjust TOLERANCE for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
-"Toleranz für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe"
-" des Shaderautors."
+"Toleranz für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe "
+"des Shaderautors."
 
 #. Section description (Shaders > neo-f3kdb)
 msgid "Reduce gradient banding with adjustable thresholds and grain."
@@ -2976,8 +2914,8 @@ msgid ""
 "Adjust GRAD for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
-"GRAD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des"
-" Shaderautors."
+"GRAD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
+"Shaderautors."
 
 #. Setting name (Shaders > neo-f3kdb)
 msgid "Average Threshold (THR_AVG)"
@@ -3033,8 +2971,7 @@ msgstr "AB (AB)"
 
 #. Setting description (Shaders > neo-f3kdb > AB (AB))
 msgid ""
-"Adjust AB for this shader. The default preserves the shader author's "
-"setting."
+"Adjust AB for this shader. The default preserves the shader author's setting."
 msgstr ""
 "AB für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -3045,8 +2982,7 @@ msgstr "AM (AM)"
 
 #. Setting description (Shaders > neo-f3kdb > AM (AM))
 msgid ""
-"Adjust AM for this shader. The default preserves the shader author's "
-"setting."
+"Adjust AM for this shader. The default preserves the shader author's setting."
 msgstr ""
 "AM für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -3064,8 +3000,7 @@ msgstr "Radius (RAD)"
 msgid "Regularization (EPS)"
 msgstr "Regularisierung (EPS)"
 
-#. Setting description (Shaders > Guided Detail Enhance > Regularization
-#. (EPS))
+#. Setting description (Shaders > Guided Detail Enhance > Regularization (EPS))
 msgid ""
 "Adjust Regularization for this shader. The default preserves the shader "
 "author's setting."
@@ -3077,8 +3012,7 @@ msgstr ""
 msgid "Subsampling (SUBSAM)"
 msgstr "Unterabtastung (SUBSAM)"
 
-#. Setting description (Shaders > Guided Detail Enhance > Subsampling
-#. (SUBSAM))
+#. Setting description (Shaders > Guided Detail Enhance > Subsampling (SUBSAM))
 msgid ""
 "Adjust Subsampling for this shader. The default preserves the shader "
 "author's setting."
@@ -3111,8 +3045,8 @@ msgid ""
 "Adjust Shadow Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"Stärke in den Tiefen für diesen Shader anpassen. Der Standardwert entspricht"
-" der Vorgabe des Shaderautors."
+"Stärke in den Tiefen für diesen Shader anpassen. Der Standardwert entspricht "
+"der Vorgabe des Shaderautors."
 
 #. Setting name (Shaders > Clarity)
 msgid "Highlight Strength (STRL)"
@@ -3132,8 +3066,7 @@ msgstr "BM (BM)"
 
 #. Setting description (Shaders > Clarity > BM (BM))
 msgid ""
-"Adjust BM for this shader. The default preserves the shader author's "
-"setting."
+"Adjust BM for this shader. The default preserves the shader author's setting."
 msgstr ""
 "BM für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -3144,8 +3077,7 @@ msgstr "CD (CD)"
 
 #. Setting description (Shaders > Clarity > CD (CD))
 msgid ""
-"Adjust CD for this shader. The default preserves the shader author's "
-"setting."
+"Adjust CD for this shader. The default preserves the shader author's setting."
 msgstr ""
 "CD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -3156,8 +3088,7 @@ msgstr "CL (CL)"
 
 #. Setting description (Shaders > Clarity > CL (CL))
 msgid ""
-"Adjust CL for this shader. The default preserves the shader author's "
-"setting."
+"Adjust CL for this shader. The default preserves the shader author's setting."
 msgstr ""
 "CL für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
@@ -3228,8 +3159,7 @@ msgstr ""
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
 msgstr ""
-"Detailerhaltendes Herunterskalieren. Benötigt eine kleinere "
-"Ausgabeauflösung."
+"Detailerhaltendes Herunterskalieren. Benötigt eine kleinere Ausgabeauflösung."
 
 #. Setting name (Shaders > DPID)
 msgid "LBD (LBD)"
@@ -3242,6 +3172,18 @@ msgid ""
 msgstr ""
 "LBD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
+
+#. Menu text; keep %d and %s placeholders
+msgid "At %sp this display offers %s Hz."
+msgstr "Bei %sp bietet dieser Bildschirm %s Hz."
+
+#. Menu text; keep %d and %s placeholders
+msgid "No 23 or 24 Hz mode, so films cannot switch here."
+msgstr "Kein 23- oder 24-Hz-Modus, Filme können hier nicht umschalten."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Other resolutions: %s."
+msgstr "Weitere Auflösungen: %s."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Display"
@@ -3407,8 +3349,8 @@ msgid ""
 "Reset all settings for this display to their defaults? Theme and language "
 "stay."
 msgstr ""
-"Alle Einstellungen für diesen Bildschirm auf die Standardwerte zurücksetzen?"
-" Design und Sprache bleiben erhalten."
+"Alle Einstellungen für diesen Bildschirm auf die Standardwerte zurücksetzen? "
+"Design und Sprache bleiben erhalten."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings reset to defaults."
