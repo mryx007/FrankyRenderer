@@ -911,6 +911,17 @@ msgid "4 Refreshes"
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+msgid "Oversample Threshold"
+msgstr ""
+
+#. Setting description (Scaling > Filters > Oversample Threshold)
+msgid ""
+"Smooth Motion shows a whole picture instead of a blend when the other "
+"picture would cover less than this share of a refresh. Fewer double edges on "
+"motion; 0 always blends. Used with the oversample frame mixer."
+msgstr ""
+
+#. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
 msgstr ""
 
@@ -2758,7 +2769,9 @@ msgid "For 2D animation. Neural 2x upscaling with denoising."
 msgstr ""
 
 #. Section description (Shaders > SSimDownscaler)
-msgid "Refine image downscaling. Requires a smaller output size."
+msgid ""
+"Refine image downscaling. Requires a smaller output size; works best with "
+"Mitchell as downscaler."
 msgstr ""
 
 #. Section description (Shaders > DPID)
