@@ -691,7 +691,8 @@ static std::vector<D2DPage> PreviewPages(PlaceboSettings& settings)
 {
     auto source = BuildD2DPages(settings);
     const wchar_t* names[] = {L"General", L"Processing", L"Scaling", L"Color", L"HDR", L"Shaders"};
-    const wchar_t* icons[] = {L"", L"", L"", L"", L"", L""};
+    // Glyphs every Segoe MDL2 version has; Windows 10 lacks newer ones.
+    const wchar_t* icons[] = {L"\xE713", L"\xE9E9", L"\xE9A6", L"\xE790", L"\xE793", L"\xE81E"};
     const wchar_t* help[] = {L"Output precision, display mode switching, background and image analysis.",
                              L"Image cleanup, field processing, dithering and black bar handling.",
                              L"Built-in scaling filters, RTX Video Super Resolution and custom filters.",
@@ -1644,7 +1645,8 @@ void Direct2DHostWindow::Render()
                 m_brushSliderThumb.Get());
             HitRegion toggle;
             toggle.type = HitRegion::ShaderToggle;
-            toggle.rect = D2D1::RectF(track.left - 4, r.top, track.right + 4, r.bottom);
+            // Hug the track so hover and press feedback draw a capsule.
+            toggle.rect = D2D1::RectF(track.left - 3, track.top - 3, track.right + 3, track.bottom + 3);
             toggle.pageIndex = id;
             m_hitRegions.push_back(toggle);
             HitRegion h;
@@ -1660,11 +1662,13 @@ void Direct2DHostWindow::Render()
                       -2);
         auto button = D2D1::RectF(contentX + contentW - 110, currentY + 238, contentX + contentW - 16, currentY + 268);
         m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(button, 4, 4), m_brushInputBg.Get());
-        auto text = button;
-        text.left += 18;
-        text.top += 7;
         const auto allOff = Tr(L"All Off");
-        m_pRenderTarget->DrawText(allOff.c_str(), UINT32(allOff.size()), m_fmtNav.Get(), text, m_brushTextMain.Get());
+        const auto paragraph = m_fmtNav->GetParagraphAlignment();
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        m_pRenderTarget->DrawText(allOff.c_str(), UINT32(allOff.size()), m_fmtNav.Get(), button, m_brushTextMain.Get());
+        m_fmtNav->SetParagraphAlignment(paragraph);
+        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         auto& controls = m_pages[m_activePage].cards.front().controls;
         if (!controls.empty())
         {
