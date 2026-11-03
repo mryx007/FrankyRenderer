@@ -1236,14 +1236,17 @@ struct PlaceboBackend::State
         }
         if (statisticsDropped >= 0 || presentation.haveCounters)
         {
+            // Only the counts that are not zero are coloured.
             const auto drops = statisticsDropped >= 0 ? DropTotal() : 0;
-            const bool late = presentation.haveCounters && (presentation.repeatedRefreshes || presentation.glitches);
-            auto& value = colored(L"Drops", drops ? L'r' : late ? L'y' : L'g');
+            const auto mark = [](bool problem, const wchar_t* code) { return problem ? code : L"\x02w"; };
+            auto& value = row(L"Drops");
             if (statisticsDropped >= 0)
-                value << drops << L" dropped";
+                value << mark(drops > 0, L"\x02r") << drops << L" dropped" << L"\x02w";
             if (presentation.haveCounters)
-                value << (statisticsDropped >= 0 ? dot : L"") << presentation.repeatedRefreshes
-                      << L" repeated (extra refresh)" << dot << presentation.glitches << L" late (>1 vsync)";
+                value << (statisticsDropped >= 0 ? dot : L"") << mark(presentation.repeatedRefreshes > 0, L"\x02y")
+                      << presentation.repeatedRefreshes << L" repeated (extra refresh)" << L"\x02w" << dot
+                      << mark(presentation.glitches > 0, L"\x02y") << presentation.glitches << L" late (>1 vsync)"
+                      << L"\x02w";
         }
         row(L"DXGI timing") << presentation.confirmed << L" confirmed" << dot << presentation.resets << L" resets ("
                             << (presentation.timing ? L"active" : L"collecting") << L")";

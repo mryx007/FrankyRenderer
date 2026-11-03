@@ -46,7 +46,28 @@ class StatisticsRasterizer
 
     // Statistics text markup: a line "\x01Title" is a section heading, a line
     // "label\tvalue" is a row with aligned columns, and "\x02g", "\x02y" or
-    // "\x02r" at the start of a value colours it green, yellow or red.
+    // "\x02r" at the start of a value colours it green, yellow or red. Inside a
+    // value the same codes, and "\x02w" for white, colour the text after them.
+    static COLORREF CodeColor(wchar_t code, COLORREF fallback)
+    {
+        return code == L'g'   ? RGB(110, 220, 120)
+               : code == L'y' ? RGB(245, 200, 80)
+               : code == L'r' ? RGB(245, 95, 85)
+               : code == L'w' ? RGB(255, 255, 255)
+                              : fallback;
+    }
+
+    static std::wstring Plain(const std::wstring& value)
+    {
+        std::wstring out;
+        for (size_t i = 0; i < value.size(); ++i)
+            if (value[i] == L'\x02')
+                ++i;
+            else
+                out += value[i];
+        return out;
+    }
+
     struct Line
     {
         enum class Kind
@@ -86,11 +107,7 @@ class StatisticsRasterizer
                 line.value = raw;
             if (line.value.size() >= 2 && line.value[0] == L'\x02')
             {
-                const wchar_t code = line.value[1];
-                line.color = code == L'g'   ? RGB(110, 220, 120)
-                             : code == L'y' ? RGB(245, 200, 80)
-                             : code == L'r' ? RGB(245, 95, 85)
-                                            : line.color;
+                line.color = CodeColor(line.value[1], line.color);
                 line.value.erase(0, 2);
             }
             lines.push_back(std::move(line));
@@ -168,7 +185,7 @@ class StatisticsRasterizer
         {
             if (line.kind == Line::Kind::Heading)
                 SelectObject(dc, bold);
-            textWidth = std::max(textWidth, (line.kind == Line::Kind::Row ? valueX : 0) + extent(line.value));
+            textWidth = std::max(textWidth, (line.kind == Line::Kind::Row ? valueX : 0) + extent(Plain(line.value)));
             SelectObject(dc, font);
         }
         const int w = std::min(viewWidth - 16, std::max(minWidth, textWidth + 24));
@@ -226,8 +243,20 @@ class StatisticsRasterizer
                     TextOutW(dc, x, y, line.label.data(), int(line.label.size()));
                     valueAt = x + valueX;
                 }
-                SetTextColor(dc, line.color);
-                TextOutW(dc, valueAt, y, line.value.data(), int(line.value.size()));
+                // Draw the value in segments between colour codes.
+                COLORREF color = line.color;
+                for (size_t from = 0;;)
+                {
+                    const auto code = line.value.find(L'\x02', from);
+                    const auto part = line.value.substr(from, code == std::wstring::npos ? code : code - from);
+                    SetTextColor(dc, color);
+                    TextOutW(dc, valueAt, y, part.data(), int(part.size()));
+                    valueAt += extent(part);
+                    if (code == std::wstring::npos || code + 1 >= line.value.size())
+                        break;
+                    color = CodeColor(line.value[code + 1], color);
+                    from = code + 2;
+                }
             }
             y += lineHeight;
         }

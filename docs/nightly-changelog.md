@@ -49,5 +49,5 @@
 - Fixed the "Allowed Modes" description and the list of display modes under it staying in English in translated menus.
 - New "Profiles" page: give videos from chosen folders their own settings, e.g. other scaling for anime. One tab per profile with its name and folders; switch on the settings that should differ (by category: Processing, Scaling, Color, HDR), everything else follows your normal settings. The folder closest to the video wins, changes apply immediately, and Ctrl+J shows the active profile.
 - Fixed the Ctrl+J statistics dropping frames: updating the overlay stalled rendering for about 14 ms four times a second.
-- "Render peak 5s" in Ctrl+J is now coloured only when pictures were actually lost; a slow picture the display queue absorbed shows as "absorbed by queue".
+- "Render peak 5s" in Ctrl+J is now coloured only when pictures were actually lost; a slow picture the display queue absorbed shows as "absorbed by queue". In the Drops row only counts above zero are coloured.
 - Settings menu buttons and text fields use the same font size as the choice boxes.
