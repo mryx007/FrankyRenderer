@@ -441,6 +441,7 @@ msgstr "英语"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Processing"
 msgstr "处理"
 
@@ -462,28 +463,34 @@ msgstr "黑边与缩放"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Tab (Profiles)
 msgid "Debanding"
 msgstr "去色带"
 
 #. Setting description (Processing > Debanding > Debanding)
+#. Setting description (Profiles > Debanding > Debanding)
 msgid ""
 "Reduce visible steps in smooth gradients. Excessive settings can remove fine "
 "detail."
 msgstr "减少平滑渐变中的可见色阶。设置过度可能丢失细节。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Iterations"
 msgstr "迭代次数"
 
 #. Setting description (Processing > Debanding > Iterations)
+#. Setting description (Profiles > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr "更多迭代次数可去除更严重的色带；但可能丢失细节。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Threshold"
 msgstr "阈值"
 
 #. Setting description (Processing > Debanding > Threshold)
+#. Setting description (Profiles > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
 msgstr "检测色带所用的差值阈值。"
 
@@ -494,149 +501,188 @@ msgid "Radius"
 msgstr "半径"
 
 #. Setting description (Processing > Debanding > Radius)
+#. Setting description (Profiles > Debanding > Radius)
 msgid "Search radius in pixels."
 msgstr "搜索半径（像素）。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Grain"
 msgstr "颗粒"
 
 #. Setting description (Processing > Debanding > Grain)
+#. Setting description (Profiles > Debanding > Grain)
 msgid "Grain added after debanding."
 msgstr "在去色带处理后添加颗粒。"
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Adaptive Sharpen"
 msgstr "自适应锐化"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Enhance Edges and Details"
 msgstr "增强边缘与细节"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
+#. Setting description (Profiles > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr "应用带内置抗振铃的自适应锐化。"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Strength"
 msgstr "强度"
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
+#. Setting description (Profiles > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr "自适应锐化的强度。设为 0 时禁用锐化效果。"
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Deinterlacing"
 msgstr "去隔行扫描"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Algorithm"
 msgstr "算法"
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
+#. Setting description (Profiles > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr "选择处理方法。设为\"关闭\"时跳过此处理阶段。"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Bwdif"
 msgstr "Bwdif (自适应补偿)"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Yadif"
 msgstr "Yadif (基础补偿)"
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Field Order"
 msgstr "场序"
 
 #. Setting description (Processing > Deinterlacing > Field Order)
+#. Setting description (Profiles > Deinterlacing > Field Order)
 msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr "自动模式跟随源文件标记。仅当隔行运动的场序错误时，才进行覆盖。"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Auto (Source Flags)"
 msgstr "自动 (源标记)"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Top Field First"
 msgstr "顶场优先"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Bottom Field First"
 msgstr "底场优先"
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Dithering"
 msgstr "抖动"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
 msgstr "蓝噪声 (推荐)"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Ordered Dithering"
 msgstr "有序抖动"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Random Dithering"
 msgstr "随机抖动"
 
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Dithering)
 msgid "Change Dither for Every Frame"
 msgstr "逐帧变换抖动"
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
+#. Setting description (Profiles > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr "使抖动图案随时间变化，而非保持固定图案。"
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Detection & Zoom"
 msgstr "检测与缩放"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detect Hardcoded Black Bars"
 msgstr "检测硬编码黑边"
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr "分析解码像素，以识别视频中已编码的黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Crop Black Bars"
 msgstr "裁剪黑边"
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
 msgstr "在适配或缩放前，从当前画面中移除已检测到的黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
 msgstr "保护内嵌字幕"
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
+#. Setting description (Profiles > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr "若黑边内存在可见内容，则暂时恢复黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Keep a Stable Zoom"
 msgstr "保持稳定缩放"
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
+#. Setting description (Profiles > Detection & Zoom > Keep a Stable Zoom)
 msgid ""
 "Prefer a common zoom that preserves content when the detected active area "
 "changes."
 msgstr "当检测到有效区域变化时，优先采用能保留内容的通用缩放比例。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Zoom Mode"
 msgstr "缩放模式"
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
+#. Setting description (Profiles > Detection & Zoom > Zoom Mode)
 msgid ""
 "Fit keeps all active content. Fill covers the output and can crop image "
 "content."
@@ -644,31 +690,38 @@ msgstr ""
 "适应模式保留所有有效内容。填充模式覆盖整个输出画面，但可能裁剪图像内容。"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit (Keep All Content)"
 msgstr "适应 (保留全部内容)"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fill (May Crop Content)"
 msgstr "填充 (可能裁剪内容)"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Black Threshold"
 msgstr "黑色阈值"
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
+#. Setting description (Profiles > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr "检测到的最大黑边亮度，以解码后 SDR 白色的百分比表示。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detection Stability (seconds)"
 msgstr "检测稳定性（秒）"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
+#. Setting description (Profiles > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
 msgstr "新检测到的黑边布局达到稳定所需的时间。"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Scaling"
 msgstr "图像缩放"
 
@@ -1204,6 +1257,7 @@ msgstr "自定义：帧混合器"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Color"
 msgstr "色彩"
 
@@ -1387,6 +1441,7 @@ msgstr "转换"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "HDR"
 msgstr "HDR"
 
@@ -2819,6 +2874,75 @@ msgid ""
 "setting."
 msgstr "调整此着色器的 LBD。默认保留着色器作者的设定。"
 
+#. Category
+#. Category heading
+msgid "Profiles"
+msgstr "配置文件"
+
+#. Category description
+msgid "Different settings for videos from chosen folders."
+msgstr "为所选文件夹中的视频使用不同的设置。"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile"
+msgstr "配置文件"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile Settings"
+msgstr "配置文件设置"
+
+#. Setting name (Profiles > Profile)
+msgid "Name"
+msgstr "名称"
+
+#. Setting description (Profiles > Profile > Name)
+msgid "Shown on the tab. Up to 60 characters."
+msgstr "显示在标签页上。最多 60 个字符。"
+
+#. Input error (Profiles > Profile > Name)
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr "请输入一个未被使用的配置文件名称（1 到 60 个字符）。"
+
+#. Setting name (Profiles > Profile)
+msgid "Add Folder"
+msgstr "添加文件夹"
+
+#. Setting description (Profiles > Profile > Add Folder)
+msgid ""
+"Videos in these folders and their subfolders use this profile; when folders "
+"are nested, the closest one wins."
+msgstr ""
+"这些文件夹及其子文件夹中的视频使用此配置文件；文件夹嵌套时，以离视频最近的文"
+"件夹为准。"
+
+#. Button (Profiles > Profile > Add Folder)
+msgid "Choose…"
+msgstr "选择…"
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > New Profile)
+msgid "New Profile"
+msgstr "新建配置文件"
+
+#. Section description (Profiles > New Profile)
+msgid ""
+"A profile gives videos from chosen folders their own settings, e.g. other "
+"scaling for anime. Only the settings you add to it differ from your normal "
+"settings."
+msgstr ""
+"配置文件可为所选文件夹中的视频提供单独的设置，例如为动画使用不同的缩放。只有"
+"您添加的设置会与常规设置不同。"
+
+#. Setting description (Profiles > New Profile > New Profile)
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr "在单独的标签页中添加一个空配置文件。然后添加文件夹和设置。"
+
+#. Button (Profiles > New Profile > New Profile)
+msgid "Create"
+msgstr "创建"
+
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr "在 %sp 下，此显示器提供 %s Hz。"
@@ -2830,6 +2954,26 @@ msgstr "没有 23 或 24 Hz 模式，因此影片无法在此切换。"
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
 msgstr "其他分辨率：%s。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete profile?"
+msgstr "删除配置文件？"
+
+#. Menu text; keep %d and %s placeholders
+msgid "\"%s\" and its settings will be removed."
+msgstr "将删除“%s”及其设置。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Cancel"
+msgstr "取消"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete"
+msgstr "删除"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Applies only to the display selected at the top of the menu."
+msgstr "仅适用于菜单顶部所选的显示器。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Display"
@@ -3020,79 +3164,3 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
-
-#. Profiles page
-msgid "Profiles"
-msgstr "配置文件"
-
-#. Profiles page
-msgid "Different settings for videos from chosen folders."
-msgstr "为所选文件夹中的视频使用不同的设置。"
-
-#. Profiles page
-msgid "Profile"
-msgstr "配置文件"
-
-#. Profiles page
-msgid "Profile Settings"
-msgstr "配置文件设置"
-
-#. Profiles page
-msgid "Name"
-msgstr "名称"
-
-#. Profiles page
-msgid "Shown on the tab. Up to 60 characters."
-msgstr "显示在标签页上。最多 60 个字符。"
-
-#. Profiles page
-msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr "请输入一个未被使用的配置文件名称（1 到 60 个字符）。"
-
-#. Profiles page
-msgid "Add Folder"
-msgstr "添加文件夹"
-
-#. Profiles page
-msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
-msgstr "这些文件夹及其子文件夹中的视频使用此配置文件；文件夹嵌套时，以离视频最近的文件夹为准。"
-
-#. Profiles page
-msgid "Choose…"
-msgstr "选择…"
-
-#. Profiles page
-msgid "New Profile"
-msgstr "新建配置文件"
-
-#. Profiles page
-msgid "A profile gives videos from chosen folders their own settings, e.g. other scaling for anime. Only the settings you add to it differ from your normal settings."
-msgstr "配置文件可为所选文件夹中的视频提供单独的设置，例如为动画使用不同的缩放。只有您添加的设置会与常规设置不同。"
-
-#. Profiles page
-msgid "Adds an empty profile in its own tab. Then add folders and settings."
-msgstr "在单独的标签页中添加一个空配置文件。然后添加文件夹和设置。"
-
-#. Profiles page
-msgid "Create"
-msgstr "创建"
-
-#. Profiles page
-msgid "Delete profile?"
-msgstr "删除配置文件？"
-
-#. Profiles page
-msgid "\"%s\" and its settings will be removed."
-msgstr "将删除“%s”及其设置。"
-
-#. Profiles page
-msgid "Cancel"
-msgstr "取消"
-
-#. Profiles page
-msgid "Delete"
-msgstr "删除"
-
-#. Profiles page
-msgid "Applies only to the display selected at the top of the menu."
-msgstr "仅适用于菜单顶部所选的显示器。"

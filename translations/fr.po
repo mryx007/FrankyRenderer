@@ -5,657 +5,773 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-11-03 20:08+0000\n"
+"Last-Translator: Kallan Crémel <kallan-cr@users.noreply.hosted.weblate.org>\n"
+"Language-Team: French <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/fr/>\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Weblate 2026.11.1.dev0\n"
 
 #. Category
 #. Category heading
 msgid "General"
-msgstr ""
+msgstr "Général"
 
 #. Category description
 msgid ""
 "Output precision, display mode switching, background and image analysis."
 msgstr ""
+"Précision de sortie, changement de mode d'affichage, arrière-plan et analyse "
+"d'image."
 
 #. Tab (General)
 #. Section heading (General)
 msgid "Output"
-msgstr ""
+msgstr "Sortie"
 
 #. Tab (General)
 msgid "Background"
-msgstr ""
+msgstr "Arrière-plan"
 
 #. Tab (General)
 msgid "Themes"
-msgstr ""
+msgstr "Thèmes"
 
 #. Setting name (General > Output)
 msgid "Output Texture Format"
-msgstr ""
+msgstr "Format de texture de sortie"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
 "Precision of the final output texture. Auto follows the renderer's output "
 "selection."
 msgstr ""
+"Précision de la texture de sortie finale. Auto suit la sélection de sortie "
+"du moteur de rendu."
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Auto (libplacebo)"
-msgstr ""
+msgstr "Automatique (libplacebo)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "8-bit Integer (SDR)"
-msgstr ""
+msgstr "Entier 8 bits (SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 10-bit Integer"
-msgstr ""
+msgstr "Préférer entier 10 bits"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 16-bit Float"
-msgstr ""
+msgstr "Préférer flottant 16 bits"
 
 #. Setting name (General > Output)
 msgid "RGB Output Levels"
-msgstr ""
+msgstr "Niveaux de sortie RVB"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr ""
+msgstr "Aligner la plage RVB utilisée par l'écran et le pilote GPU."
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "Auto (Output)"
-msgstr ""
+msgstr "Automatique (Sortie)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "PC Levels (0–255)"
-msgstr ""
+msgstr "Niveaux PC (0–255)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "TV Levels (16–235)"
-msgstr ""
+msgstr "Niveaux TV (16–235)"
 
 #. Setting name (General > Output)
 msgid "Dither Target Bit Depth"
-msgstr ""
+msgstr "Profondeur de bits cible du dithering"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr ""
+"Appliquer le dithering selon la précision réelle de sortie ; Auto suit la "
+"texture de sortie."
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "Auto (Output Texture)"
-msgstr ""
+msgstr "Automatique (Texture de sortie)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "4 Bit"
-msgstr ""
+msgstr "4 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "5 Bit"
-msgstr ""
+msgstr "5 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "6 Bit"
-msgstr ""
+msgstr "6 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "8 Bit"
-msgstr ""
+msgstr "8 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "10 Bit"
-msgstr ""
+msgstr "10 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "12 Bit"
-msgstr ""
+msgstr "12 bits"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "16 Bit"
-msgstr ""
+msgstr "16 bits"
 
 #. Setting name (General > Output)
 msgid "Max Frames in Flight"
-msgstr ""
+msgstr "Trames maximales en file d'attente"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
 msgstr ""
+"0 conserve la valeur par défaut du périphérique. Une mise en mémoire tampon "
+"plus importante augmente la latence."
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
 msgid "Image Analysis"
-msgstr ""
+msgstr "Analyse d'image"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
 "Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
 "after color mapping; excludes subtitles. SDR nits are nominal."
 msgstr ""
+"Oscilloscope, histogramme, parade RGB, fausses couleurs et mire de gris. "
+"Échantillonne avant/après le mapping des couleurs ; exclut les sous-titres. "
+"Les nits en SDR sont nominaux."
 
 #. Section heading (General)
 msgid "Display Mode"
-msgstr ""
+msgstr "Mode d'affichage"
 
 #. Section description (General > Display Mode)
 msgid ""
 "Switches the display to a listed mode matching the video frame rate in "
 "fullscreen and restores it when leaving fullscreen or stopping."
 msgstr ""
+"Bascule l'écran vers un mode listé correspondant à la fréquence d'images "
+"vidéo en plein écran, et le restaure lors de la sortie du plein écran ou de "
+"l'arrêt."
 
 #. Setting name (General > Display Mode)
 msgid "Switch Display Mode in Fullscreen"
-msgstr ""
+msgstr "Changer de mode d'affichage en plein écran"
 
 #. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
 "Uses the listed mode with the lowest refresh rate that is a whole multiple "
 "of the video frame rate. Applies to this display profile only."
 msgstr ""
+"Utilise le mode listé ayant le taux de rafraîchissement le plus bas qui soit "
+"un multiple entier de la fréquence d'images vidéo. S'applique uniquement à "
+"ce profil d'affichage."
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
-msgstr ""
+msgstr "Modes autorisés"
 
 #. Setting description (General > Display Mode > Allowed Modes)
 msgid ""
 "Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and "
 "59 mean 23.976, 29.97 and 59.94 Hz."
 msgstr ""
+"Séparés par des virgules, ex. 2160p23, ou simplement 23 pour conserver la "
+"résolution. 23, 29 et 59 correspondent à 23,976, 29,97 et 59,94 Hz."
 
 #. Input hint (General > Display Mode > Allowed Modes)
 msgid "e.g. 2160p23, 2160p24, 2160p60"
-msgstr ""
+msgstr "ex. 2160p23, 2160p24, 2160p60"
 
 #. Input error (General > Display Mode > Allowed Modes)
 msgid ""
 "Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, "
 "60."
 msgstr ""
+"Entrez des modes d'affichage comme 2160p23, 2160p24, 2160p50, 2160p60 ou "
+"simplement 23, 24, 60."
 
 #. Setting name (General > Display Mode)
 msgid "Pause After Switching (seconds)"
-msgstr ""
+msgstr "Pause après changement (secondes)"
 
 #. Setting description (General > Display Mode > Pause After Switching (seconds))
 msgid "Pauses playback while the display resynchronises after a mode change."
 msgstr ""
+"Met la lecture en pause pendant que l'écran se resynchronise après un "
+"changement de mode."
 
 #. Section heading (General)
 msgid "Background & Transparency"
-msgstr ""
+msgstr "Arrière-plan et transparence"
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Red"
-msgstr ""
+msgstr "Rouge d'arrière-plan"
 
 #. Setting description (General > Background & Transparency > Background Red)
 msgid ""
 "Red channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
+"Canal rouge pour les bordures non couvertes et les pixels transparents. "
+"Plage RGB : 0 à 1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Green"
-msgstr ""
+msgstr "Vert d'arrière-plan"
 
 #. Setting description (General > Background & Transparency > Background Green)
 msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
 msgstr ""
+"Canal vert pour les bordures non couvertes et les pixels transparents. Plage "
+"RGB : 0 à 1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Blue"
-msgstr ""
+msgstr "Bleu d'arrière-plan"
 
 #. Setting description (General > Background & Transparency > Background Blue)
 msgid ""
 "Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
+"Canal bleu pour les bordures non couvertes et les pixels transparents. Plage "
+"RGB : 0 à 1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Transparency"
-msgstr ""
+msgstr "Transparence d'arrière-plan"
 
 #. Setting description (General > Background & Transparency > Background Transparency)
 msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
+"0 est opaque ; 1 est transparent. Modifie le canal alpha rendu, pas la "
+"transparence de la fenêtre ou du bureau Windows."
 
 #. Setting name (General > Background & Transparency)
 msgid "Corner Rounding"
-msgstr ""
+msgstr "Arrondi des coins"
 
 #. Setting description (General > Background & Transparency > Corner Rounding)
 msgid ""
 "Relative amount of rounded video corners. 0 keeps square corners; 1 applies "
 "the maximum rounding."
 msgstr ""
+"Degré relatif d'arrondi des coins vidéo. 0 conserve les coins carrés ; 1 "
+"applique l'arrondi maximal."
 
 #. Setting name (General > Background & Transparency)
 msgid "Skip Target Clearing"
-msgstr ""
+msgstr "Ignorer l'effacement de la cible"
 
 #. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
 "Skip clearing uncovered output borders. May leave old or undefined pixels "
 "there; no benefit for full-frame video. Default is Off."
 msgstr ""
+"Ignore l'effacement des bordures de sortie non couvertes. Peut laisser "
+"d'anciens pixels ou des pixels indéfinis ; aucun avantage pour la vidéo "
+"plein format. Désactivé par défaut."
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "Default (Off)"
-msgstr ""
+msgstr "Par défaut (Désactivé)"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Processing > Deinterlacing > Algorithm)
 msgid "Off"
-msgstr ""
+msgstr "Désactivé"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "On"
-msgstr ""
+msgstr "Activé"
 
 #. Setting name (General > Background & Transparency)
 msgid "Blend Against Tiles"
-msgstr ""
+msgstr "Fusionner sur damier"
 
 #. Setting description (General > Background & Transparency > Blend Against Tiles)
 msgid ""
 "Composite transparent image regions onto a checkerboard. Default is Off. "
 "Tile colors do not recolor opaque video."
 msgstr ""
+"Compose les zones transparentes de l'image sur un damier. Désactivé par "
+"défaut. Les couleurs des carreaux ne recolorent pas la vidéo opaque."
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Red"
-msgstr ""
+msgstr "Rouge du carreau clair"
 
 #. Setting description (General > Background & Transparency > Light Tile Red)
 msgid ""
 "Red channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal rouge des carreaux clairs du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Green"
-msgstr ""
+msgstr "Vert du carreau clair"
 
 #. Setting description (General > Background & Transparency > Light Tile Green)
 msgid ""
 "Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal vert des carreaux clairs du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Blue"
-msgstr ""
+msgstr "Bleu du carreau clair"
 
 #. Setting description (General > Background & Transparency > Light Tile Blue)
 msgid ""
 "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal bleu des carreaux clairs du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Red"
-msgstr ""
+msgstr "Rouge du carreau sombre"
 
 #. Setting description (General > Background & Transparency > Dark Tile Red)
 msgid ""
 "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal rouge des carreaux sombres du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Green"
-msgstr ""
+msgstr "Vert du carreau sombre"
 
 #. Setting description (General > Background & Transparency > Dark Tile Green)
 msgid ""
 "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal vert des carreaux sombres du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Blue"
-msgstr ""
+msgstr "Bleu du carreau sombre"
 
 #. Setting description (General > Background & Transparency > Dark Tile Blue)
 msgid ""
 "Blue channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"Canal bleu des carreaux sombres du damier. Utilisé avec « Fusionner sur "
+"damier »."
 
 #. Setting name (General > Background & Transparency)
 msgid "Tile Size (pixels)"
-msgstr ""
+msgstr "Taille des carreaux (pixels)"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid ""
 "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to "
 "256."
 msgstr ""
+"Taille de répétition du damier en pixels de sortie. Par défaut : 32 ; plage "
+"manuelle : 2 à 256."
 
 #. Section heading (General)
 msgid "Menu Appearance"
-msgstr ""
+msgstr "Apparence des menus"
 
 #. Section description (General > Menu Appearance)
 msgid "Colours of this settings window. Applies immediately."
-msgstr ""
+msgstr "Couleurs de cette fenêtre de paramètres. S'applique immédiatement."
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
-msgstr ""
+msgstr "Thème"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Indigo"
-msgstr ""
+msgstr "Indigo"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Graphite"
-msgstr ""
+msgstr "Graphite"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Midnight"
-msgstr ""
+msgstr "Minuit"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Ocean"
-msgstr ""
+msgstr "Océan"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Light"
-msgstr ""
+msgstr "Clair"
 
 #. Setting name (General > Menu Appearance)
 msgid "Accent Color"
-msgstr ""
+msgstr "Couleur d'accentuation"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Violet"
-msgstr ""
+msgstr "Violet"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Blue"
-msgstr ""
+msgstr "Bleu"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Teal"
-msgstr ""
+msgstr "Sarcelle"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Green"
-msgstr ""
+msgstr "Vert"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Orange"
-msgstr ""
+msgstr "Orange"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Pink"
-msgstr ""
+msgstr "Rose"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
-msgstr ""
+msgstr "Windows"
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"
-msgstr ""
+msgstr "Langue"
 
 #. Setting description (General > Menu Appearance > Language)
 msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
 msgstr ""
+"Langue de cette fenêtre de paramètres. Automatique suit Windows ; les "
+"traductions manquantes s'affichent en anglais."
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "Automatic (Windows)"
-msgstr ""
+msgstr "Automatique (Windows)"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "English"
-msgstr ""
+msgstr "Anglais"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Processing"
-msgstr ""
+msgstr "Traitement"
 
 #. Category description
 msgid "Image cleanup, field processing, dithering and black bar handling."
 msgstr ""
+"Nettoyage de l'image, traitement des trames, dithering et gestion des bandes "
+"noires."
 
 #. Tab (Processing)
 msgid "Image Cleanup"
-msgstr ""
+msgstr "Nettoyage de l'image"
 
 #. Tab (Processing)
 msgid "Deinterlacing & Dithering"
-msgstr ""
+msgstr "Désentrelacement et dithering"
 
 #. Tab (Processing)
 msgid "Black Bars / Zoom"
-msgstr ""
+msgstr "Bandes noires / Zoom"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Tab (Profiles)
 msgid "Debanding"
-msgstr ""
+msgstr "Debanding"
 
 #. Setting description (Processing > Debanding > Debanding)
+#. Setting description (Profiles > Debanding > Debanding)
 msgid ""
 "Reduce visible steps in smooth gradients. Excessive settings can remove fine "
 "detail."
 msgstr ""
+"Réduit les marches d'escalier visibles dans les dégradés réguliers. Des "
+"réglages excessifs peuvent faire disparaître les détails fins."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Iterations"
-msgstr ""
+msgstr "Itérations"
 
 #. Setting description (Processing > Debanding > Iterations)
+#. Setting description (Profiles > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
+"Plus d'itérations éliminent un banding plus prononcé ; risque de perte de "
+"détails."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Threshold"
-msgstr ""
+msgstr "Seuil"
 
 #. Setting description (Processing > Debanding > Threshold)
+#. Setting description (Profiles > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
-msgstr ""
+msgstr "Seuil de différence pour détecter le banding."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 msgid "Radius"
-msgstr ""
+msgstr "Rayon"
 
 #. Setting description (Processing > Debanding > Radius)
+#. Setting description (Profiles > Debanding > Radius)
 msgid "Search radius in pixels."
-msgstr ""
+msgstr "Rayon de recherche en pixels."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Grain"
-msgstr ""
+msgstr "Grain"
 
 #. Setting description (Processing > Debanding > Grain)
+#. Setting description (Profiles > Debanding > Grain)
 msgid "Grain added after debanding."
-msgstr ""
+msgstr "Grain ajouté après le debanding."
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Adaptive Sharpen"
-msgstr ""
+msgstr "Netteté adaptative"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Enhance Edges and Details"
-msgstr ""
+msgstr "Améliorer les contours et les détails"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
+#. Setting description (Profiles > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
-msgstr ""
+msgstr "Applique une netteté adaptative avec anti-ringing intégré."
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Strength"
-msgstr ""
+msgstr "Intensité"
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
+#. Setting description (Profiles > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
-msgstr ""
+msgstr "Intensité de la netteté adaptative. 0 désactive l'effet de netteté."
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Deinterlacing"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Algorithm"
 msgstr ""
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
+#. Setting description (Profiles > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Bwdif"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Yadif"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Field Order"
 msgstr ""
 
 #. Setting description (Processing > Deinterlacing > Field Order)
+#. Setting description (Profiles > Deinterlacing > Field Order)
 msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Auto (Source Flags)"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Top Field First"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Bottom Field First"
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Ordered Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Random Dithering"
 msgstr ""
 
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Dithering)
 msgid "Change Dither for Every Frame"
 msgstr ""
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
+#. Setting description (Profiles > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Detection & Zoom"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detect Hardcoded Black Bars"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Crop Black Bars"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
+#. Setting description (Profiles > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Keep a Stable Zoom"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
+#. Setting description (Profiles > Detection & Zoom > Keep a Stable Zoom)
 msgid ""
 "Prefer a common zoom that preserves content when the detected active area "
 "changes."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Zoom Mode"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
+#. Setting description (Profiles > Detection & Zoom > Zoom Mode)
 msgid ""
 "Fit keeps all active content. Fill covers the output and can crop image "
 "content."
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit (Keep All Content)"
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fill (May Crop Content)"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Black Threshold"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
+#. Setting description (Profiles > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detection Stability (seconds)"
 msgstr ""
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
+#. Setting description (Profiles > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
 msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Scaling"
 msgstr ""
 
@@ -1182,6 +1298,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Color"
 msgstr ""
 
@@ -1362,6 +1479,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "HDR"
 msgstr ""
 
@@ -2788,6 +2906,71 @@ msgid ""
 "setting."
 msgstr ""
 
+#. Category
+#. Category heading
+msgid "Profiles"
+msgstr ""
+
+#. Category description
+msgid "Different settings for videos from chosen folders."
+msgstr ""
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile"
+msgstr ""
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile Settings"
+msgstr ""
+
+#. Setting name (Profiles > Profile)
+msgid "Name"
+msgstr ""
+
+#. Setting description (Profiles > Profile > Name)
+msgid "Shown on the tab. Up to 60 characters."
+msgstr ""
+
+#. Input error (Profiles > Profile > Name)
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr ""
+
+#. Setting name (Profiles > Profile)
+msgid "Add Folder"
+msgstr ""
+
+#. Setting description (Profiles > Profile > Add Folder)
+msgid ""
+"Videos in these folders and their subfolders use this profile; when folders "
+"are nested, the closest one wins."
+msgstr ""
+
+#. Button (Profiles > Profile > Add Folder)
+msgid "Choose…"
+msgstr ""
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > New Profile)
+msgid "New Profile"
+msgstr ""
+
+#. Section description (Profiles > New Profile)
+msgid ""
+"A profile gives videos from chosen folders their own settings, e.g. other "
+"scaling for anime. Only the settings you add to it differ from your normal "
+"settings."
+msgstr ""
+
+#. Setting description (Profiles > New Profile > New Profile)
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr ""
+
+#. Button (Profiles > New Profile > New Profile)
+msgid "Create"
+msgstr ""
+
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr ""
@@ -2798,6 +2981,26 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete profile?"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "\"%s\" and its settings will be removed."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Cancel"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Applies only to the display selected at the top of the menu."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
