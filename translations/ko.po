@@ -2789,6 +2789,18 @@ msgid ""
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
+msgid "At %sp this display offers %s Hz."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "No 23 or 24 Hz mode, so films cannot switch here."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Other resolutions: %s."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
 msgid "Display"
 msgstr ""
 
