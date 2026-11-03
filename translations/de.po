@@ -3380,21 +3380,6 @@ msgstr "Hohe Qualität"
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
 
-#. Menu text; keep %d and %s placeholders
-#, c-format
-msgid "At %sp this display offers %s Hz."
-msgstr "Bei %sp bietet dieser Bildschirm %s Hz."
-
-#. Menu text; keep %d and %s placeholders
-#, c-format
-msgid "No 23 or 24 Hz mode, so films cannot switch here."
-msgstr "Kein 23- oder 24-Hz-Modus, Filme können hier nicht umschalten."
-
-#. Menu text; keep %d and %s placeholders
-#, c-format
-msgid "Other resolutions: %s."
-msgstr "Weitere Auflösungen: %s."
-
 #. Profiles page
 msgid "Profiles"
 msgstr "Profile"
