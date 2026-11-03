@@ -60,12 +60,14 @@ HRESULT Direct2DSettingsPage::OnActivate()
     {
         frame.BeginOpening(m_Dlg);
         PostMessageW(m_Dlg, WM_APP + 304, 0, 0);
+        SetTimer(m_Dlg, GraphTimer, 500, nullptr);
     }
     return view ? S_OK : E_FAIL;
 }
 
 HRESULT Direct2DSettingsPage::OnDeactivate()
 {
+    KillTimer(m_Dlg, GraphTimer);
     frame.Detach();
     Direct2DSettingsHost::Destroy(view);
     view = nullptr;
@@ -111,6 +113,21 @@ INT_PTR Direct2DSettingsPage::OnReceiveMessage(HWND h, UINT msg, WPARAM w, LPARA
     {
         frame.Attach(m_Dlg, preferredSize);
         frame.FinishOpening();
+        return TRUE;
+    }
+    // The player stays usable while the menu is open. Once it opens another
+    // file or closes, this renderer leaves its graph; close its menu too.
+    if (msg == WM_TIMER && w == GraphTimer)
+    {
+        IBaseFilter* filter = nullptr;
+        FILTER_INFO info = {};
+        if (config && SUCCEEDED(config->QueryInterface(IID_PPV_ARGS(&filter))) &&
+            SUCCEEDED(filter->QueryFilterInfo(&info)) && !info.pGraph)
+            frame.Close();
+        if (info.pGraph)
+            info.pGraph->Release();
+        if (filter)
+            filter->Release();
         return TRUE;
     }
     if (msg == WM_WINDOWPOSCHANGED || msg == WM_SHOWWINDOW)

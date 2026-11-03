@@ -62,6 +62,42 @@ class Direct2DFrame
     std::vector<Button> buttons;
     bool layout = false, attaching = false;
 
+    // The player disables its window while this modal frame is open. It is
+    // enabled again so playback stays controllable; OwnerProc keeps closing
+    // the player from running inside the frame's modal loop.
+    HWND owner = nullptr;
+    bool ownerClosing = false;
+    static inline Direct2DFrame* open = nullptr;
+
+    static LRESULT CALLBACK OwnerProc(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR data)
+    {
+        auto self = reinterpret_cast<Direct2DFrame*>(data);
+        // Close the frame first; the player's own close arrives again once its
+        // dialog call returned. Dropped if the frame refused to close.
+        const bool close = msg == WM_CLOSE || (msg == WM_SYSCOMMAND && (w & 0xfff0) == SC_CLOSE);
+        if (close && self->host && IsWindow(self->host))
+        {
+            self->ownerClosing = !self->ownerClosing;
+            if (self->ownerClosing)
+            {
+                PostMessageW(self->host, WM_CLOSE, 0, 0);
+                PostMessageW(h, msg, w, l);
+            }
+            return 0;
+        }
+        return DefSubclassProc(h, msg, w, l);
+    }
+
+    void ReleaseOwner()
+    {
+        if (owner && IsWindow(owner))
+            RemoveWindowSubclass(owner, OwnerProc, 310);
+        owner = nullptr;
+        ownerClosing = false;
+        if (open == this)
+            open = nullptr;
+    }
+
     static LRESULT CALLBACK TabProc(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR data)
     {
         auto self = reinterpret_cast<Direct2DFrame*>(data);
@@ -670,6 +706,7 @@ class Direct2DFrame
         if (msg == WM_NCDESTROY)
         {
             RemoveWindowSubclass(h, Proc, 303);
+            self->ReleaseOwner();
             self->host = nullptr;
         }
         return result;
@@ -738,6 +775,15 @@ class Direct2DFrame
         }
         if (!candidate)
             return;
+        // The player stays usable, so it can open a second renderer menu:
+        // close that one unseen and bring the open one forward.
+        if (open && open != this && open->host && IsWindow(open->host))
+        {
+            opening = nullptr;
+            PostMessageW(candidate, WM_CLOSE, 0, 0);
+            SetForegroundWindow(open->host);
+            return;
+        }
         attaching = true;
         host = candidate;
         preferredDpi = GetDpiForWindow(host);
@@ -757,6 +803,13 @@ class Direct2DFrame
             attaching = false;
             return;
         }
+        open = this;
+        owner = GetWindow(host, GW_OWNER);
+        if (owner && !IsWindowEnabled(owner) &&
+            SetWindowSubclass(owner, OwnerProc, 310, reinterpret_cast<DWORD_PTR>(this)))
+            EnableWindow(owner, TRUE);
+        else
+            owner = nullptr;
         originalExStyle = GetWindowLongPtrW(host, GWL_EXSTYLE);
         originalStyle = GetWindowLongPtrW(host, GWL_STYLE);
         SetWindowLongPtrW(host, GWL_STYLE, (originalStyle & ~WS_CAPTION) | WS_THICKFRAME | WS_CLIPCHILDREN);
@@ -855,9 +908,17 @@ class Direct2DFrame
         attaching = false;
     }
 
+    // Closes the frame like its close button, e.g. once the renderer left its graph.
+    void Close()
+    {
+        if (host && IsWindow(host))
+            PostMessageW(host, WM_CLOSE, 0, 0);
+    }
+
     void Detach()
     {
         FinishOpening();
+        ReleaseOwner();
         for (HWND handle : resizeEdges)
             if (IsWindow(handle))
                 DestroyWindow(handle);
