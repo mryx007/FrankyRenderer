@@ -133,6 +133,9 @@ struct PlaceboBackend::State
     std::wstring statisticsText;
     bool statisticsShown = false;
     ULONGLONG statisticsUpdated = 0;
+    // Lost-picture totals over the render peak's window (as its measurements).
+    static constexpr ULONGLONG RenderPeakWindow = 5000;
+    std::deque<std::pair<ULONGLONG, uint64_t>> lostHistory;
     PresentationMeasurement presentation;
     DropMeasurement drops;
     std::mutex dropsLock;
@@ -1149,6 +1152,17 @@ struct PlaceboBackend::State
         const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
                               : statisticsFps > 0 ? 1000 / statisticsFps / (image.field != PL_FIELD_NONE ? 2 : 1)
                                                   : period / 1e4;
+        // Pictures lost in the peak's window (dropped, repeated or late). A
+        // slow picture the display queue absorbed is no visible problem, so
+        // the peak is coloured only when pictures were actually lost.
+        const uint64_t lost = uint64_t(statisticsDropped >= 0 ? DropTotal() : 0) +
+                              (presentation.haveCounters ? presentation.repeatedRefreshes + presentation.glitches : 0);
+        if (!lostHistory.empty() && lost < lostHistory.back().second)
+            lostHistory.clear(); // counters were reset
+        lostHistory.emplace_back(now, lost);
+        while (lostHistory.size() > 1 && now - lostHistory[1].first >= RenderPeakWindow)
+            lostHistory.pop_front();
+        const bool lostRecently = lost > lostHistory.front().second;
         const auto render = [&](const wchar_t* label, bool maximum)
         {
             if (!renderCpu.count && !renderGpu.duration.count)
@@ -1173,11 +1187,14 @@ struct PlaceboBackend::State
             if (budget > 0)
             {
                 const double load = 100 * slowest / budget;
-                color = load > 100 ? L'r' : load >= 80 ? L'y' : L'g';
+                const bool absorbed = maximum && !lostRecently;
+                color = absorbed ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : L'g';
                 value << dot << std::setprecision(0) << load << L"% of " << std::setprecision(2) << budget << L" ms"
-                      << (load > 100   ? L", over budget"
-                          : load >= 80 ? L", near limit"
-                                       : L"");
+                      << (absorbed && load > 100 ? L", absorbed by queue"
+                          : absorbed             ? L""
+                          : load > 100           ? L", over budget"
+                          : load >= 80           ? L", near limit"
+                                                 : L"");
             }
             (color ? colored(label, color) : row(label)) << value.str();
         };

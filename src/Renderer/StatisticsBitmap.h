@@ -4,11 +4,15 @@
 #include "Renderer/StatisticsRasterizer.h"
 
 // Independent sRGB overlay. Only texture uploads run on the video thread.
+// Uploads rotate through three textures: the shown one is still read by the
+// frames queued for display, and writing it would wait for them.
 class StatisticsBitmap
 {
     StatisticsRasterizer rasterizer;
     pl_gpu gpu = nullptr;
-    pl_tex texture = nullptr;
+    pl_tex textures[3] = {};
+    pl_tex texture = nullptr; // the one shown
+    int next = 0;
     std::wstring requested;
     int width = 0, height = 0, lastViewWidth = 0, lastViewHeight = 0, requestedWidth = 0, requestedHeight = 0;
 
@@ -22,8 +26,11 @@ class StatisticsBitmap
     void Reset()
     {
         rasterizer.Reset();
-        if (texture)
-            pl_tex_destroy(gpu, &texture);
+        for (auto& slot : textures)
+            if (slot)
+                pl_tex_destroy(gpu, &slot);
+        texture = nullptr;
+        next = 0;
         gpu = nullptr;
         requested.clear();
         width = height = lastViewWidth = lastViewHeight = requestedWidth = requestedHeight = 0;
@@ -44,16 +51,19 @@ class StatisticsBitmap
             params.format = pl_find_named_fmt(gpu, "rgba8");
             params.sampleable = true;
             params.host_writable = true;
-            bool ok = params.format && pl_tex_recreate(gpu, &texture, &params);
+            auto& slot = textures[next];
+            bool ok = params.format && pl_tex_recreate(gpu, &slot, &params);
             if (ok)
             {
                 pl_tex_transfer_params upload = {};
-                upload.tex = texture;
+                upload.tex = slot;
                 upload.ptr = image->pixels.data();
                 ok = pl_tex_upload(gpu, &upload);
             }
             if (ok)
             {
+                texture = slot;
+                next = (next + 1) % 3;
                 width = image->width;
                 height = image->height;
                 lastViewWidth = viewWidth;
