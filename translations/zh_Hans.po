@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 13:09+0000\n"
+"PO-Revision-Date: 2026-11-03 15:02+0000\n"
 "Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -51,19 +51,19 @@ msgstr "最终输出纹理的精度。自动模式下跟随渲染器的输出选
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Auto (libplacebo)"
-msgstr "自动 (libplacebo)"
+msgstr "自动（libplacebo）"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "8-bit Integer (SDR)"
-msgstr "8-bit 整数 (SDR)"
+msgstr "8 位整数（SDR）"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 10-bit Integer"
-msgstr "10-bit 整数优先"
+msgstr "10 位整数优先"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 16-bit Float"
-msgstr "16-bit 浮点数优先"
+msgstr "16 位浮点优先"
 
 #. Setting name (General > Output)
 msgid "RGB Output Levels"
@@ -99,31 +99,31 @@ msgstr "自动 (输出纹理)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "4 Bit"
-msgstr "4 Bit"
+msgstr "4 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "5 Bit"
-msgstr "5 Bit"
+msgstr "5 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "6 Bit"
-msgstr "6 Bit"
+msgstr "6 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "8 Bit"
-msgstr "8 Bit"
+msgstr "8 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "10 Bit"
-msgstr "10 Bit"
+msgstr "10 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "12 Bit"
-msgstr "12 Bit"
+msgstr "12 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "16 Bit"
-msgstr "16 Bit"
+msgstr "16 位"
 
 #. Setting name (General > Output)
 msgid "Max Frames in Flight"
@@ -261,7 +261,7 @@ msgid ""
 "there; no benefit for full-frame video. Default is Off."
 msgstr ""
 "跳过清除未覆盖的输出边框。可能会导致该区域出现残留或无效像素；对全屏视频无益"
-"处。默认：关。"
+"处。默认为关闭。"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
@@ -417,7 +417,7 @@ msgstr "粉色"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
-msgstr "窗体"
+msgstr "系统"
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"
@@ -661,7 +661,7 @@ msgstr "检测到的最大黑边亮度，以解码后 SDR 白色的百分比表�
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Detection Stability (seconds)"
-msgstr "检测稳定性 (秒)"
+msgstr "检测稳定性（秒）"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
@@ -689,7 +689,7 @@ msgstr "自定义滤镜"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Upscaler"
-msgstr "图像升频器"
+msgstr "图像放大器"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid ""
@@ -777,7 +777,7 @@ msgstr "极锐利版 EWA Lanczos，含抗振铃 (极慢)"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Downscaler"
-msgstr "图像降频器"
+msgstr "图像缩小器"
 
 #. Setting description (Scaling > Filters > Image Downscaler)
 msgid ""
@@ -847,7 +847,7 @@ msgstr "帧混合器"
 msgid ""
 "Temporal filter used by Smooth Motion. It combines frames rather than adding "
 "image detail."
-msgstr "Smooth Motion 使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
+msgstr "平滑运动使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
@@ -894,7 +894,7 @@ msgstr "混合视频帧以减少因视频与显示刷新率差异导致的抖动
 
 #. Setting name (Scaling > Filters)
 msgid "Present in Advance"
-msgstr "显示高级选项"
+msgstr "预呈现帧数"
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
@@ -947,8 +947,8 @@ msgid ""
 "Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
 "edges. Default: Off; leave Off for best quality."
 msgstr ""
-"通过跳过抗锯齿来加速降采样。可能会引入莫尔纹和锯齿边缘。默认：关；为获得最佳"
-"画质请保持关闭。"
+"通过跳过抗锯齿来加速降采样。可能会引入莫尔纹和锯齿边缘。默认为关闭；为获得最"
+"佳画质请保持关闭。"
 
 #. Setting name (Scaling > Filters)
 msgid "Preserve Frame Mixer Cache"
@@ -961,7 +961,7 @@ msgid ""
 "used with Smooth Motion."
 msgstr ""
 "调整大小或更改参数后复用混合帧。可让过渡更平滑，但会短暂复用较低质量或较早的"
-"处理结果。默认：关闭；用于 Smooth Motion。"
+"处理结果。默认为关闭；用于平滑运动。"
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -996,7 +996,7 @@ msgstr "正在编辑其自定义滤镜的缩放器角色。"
 
 #. Section heading (Scaling)
 msgid "Custom: Image Upscaler"
-msgstr "自定义：图像升频器"
+msgstr "自定义：图像放大器"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1188,7 +1188,7 @@ msgstr "继承起始滤镜"
 
 #. Section heading (Scaling)
 msgid "Custom: Image Downscaler"
-msgstr "自定义：图像降频器"
+msgstr "自定义：图像缩小器"
 
 #. Section heading (Scaling)
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
@@ -1278,7 +1278,7 @@ msgstr "旋转色度色相。0 保留原始颜色。"
 
 #. Setting name (Color > Picture Controls)
 msgid "Temperature (K)"
-msgstr "色温 (K)"
+msgstr "色温（开）"
 
 #. Setting description (Color > Picture Controls > Temperature (K))
 msgid ""
@@ -1464,7 +1464,7 @@ msgstr ""
 
 #. Setting name (HDR > HDR Output)
 msgid "SDR Target Brightness (nits)"
-msgstr "SDR 目标亮度 (nits)"
+msgstr "SDR 目标亮度（尼特）"
 
 #. Setting description (HDR > HDR Output > SDR Target Brightness (nits))
 msgid ""
@@ -1543,7 +1543,7 @@ msgstr "将源颜色映射到输出显示器支持的色域。"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 msgid "Default (libplacebo)"
-msgstr "默认 (libplacebo)"
+msgstr "默认（libplacebo）"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 msgid "Softclip"
@@ -2933,7 +2933,7 @@ msgstr "输入支持范围内的数字。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Quality"
-msgstr "质量"
+msgstr "画质"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Custom"
