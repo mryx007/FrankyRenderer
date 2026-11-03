@@ -1,6 +1,21 @@
 #include "UI/Direct2DSettingsPage.h"
 #include "Settings/LiveSettings.h"
 
+// Whether the renderer behind the page is part of a filter graph. A player
+// opening the settings without a video creates a renderer outside any graph.
+static bool InGraph(IPlaceboSettings* config)
+{
+    IBaseFilter* filter = nullptr;
+    FILTER_INFO info = {};
+    const bool joined = config && SUCCEEDED(config->QueryInterface(IID_PPV_ARGS(&filter))) &&
+                        SUCCEEDED(filter->QueryFilterInfo(&info)) && info.pGraph;
+    if (info.pGraph)
+        info.pGraph->Release();
+    if (filter)
+        filter->Release();
+    return joined;
+}
+
 Direct2DSettingsPage::Direct2DSettingsPage(IUnknown* outer, HRESULT* hr)
     : CBasePropertyPage(NAME("FrankyRenderer Settings"), outer, 116, 216)
 {
@@ -60,7 +75,8 @@ HRESULT Direct2DSettingsPage::OnActivate()
     {
         frame.BeginOpening(m_Dlg);
         PostMessageW(m_Dlg, WM_APP + 304, 0, 0);
-        SetTimer(m_Dlg, GraphTimer, 500, nullptr);
+        if (InGraph(config))
+            SetTimer(m_Dlg, GraphTimer, 500, nullptr);
     }
     return view ? S_OK : E_FAIL;
 }
@@ -119,15 +135,8 @@ INT_PTR Direct2DSettingsPage::OnReceiveMessage(HWND h, UINT msg, WPARAM w, LPARA
     // file or closes, this renderer leaves its graph; close its menu too.
     if (msg == WM_TIMER && w == GraphTimer)
     {
-        IBaseFilter* filter = nullptr;
-        FILTER_INFO info = {};
-        if (config && SUCCEEDED(config->QueryInterface(IID_PPV_ARGS(&filter))) &&
-            SUCCEEDED(filter->QueryFilterInfo(&info)) && !info.pGraph)
+        if (!InGraph(config))
             frame.Close();
-        if (info.pGraph)
-            info.pGraph->Release();
-        if (filter)
-            filter->Release();
         return TRUE;
     }
     if (msg == WM_WINDOWPOSCHANGED || msg == WM_SHOWWINDOW)

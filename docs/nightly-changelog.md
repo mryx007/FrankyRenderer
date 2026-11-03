@@ -42,3 +42,4 @@
 - Fixed SSimDownscaler oversharpening with visible ringing, especially at strong downscaling: it now uses igv's original shader instead of the PlayKit variant and downscales in gamma light as recommended for mpv. Mitchell works best as the base downscaler.
 - Fixed double edges on moving objects in a paused picture with Smooth Motion: paused and redrawn pictures now show the current frame instead of the last blend of two frames.
 - New Smooth Motion setting "Oversample Threshold" (Scaling > Filters): shows a whole picture instead of a blend when the other picture would cover only a small share of a refresh, for fewer double edges on motion. 0 keeps the previous behaviour.
+- Fixed the settings menu closing right after opening when MPC-BE shows it without a video (since Nightly 20261103-0737).
