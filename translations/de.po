@@ -481,6 +481,7 @@ msgstr "Englisch"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Processing"
 msgstr "Verarbeitung"
 
@@ -504,10 +505,12 @@ msgstr "Schwarze Balken / Zoom"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Tab (Profiles)
 msgid "Debanding"
 msgstr "Debanding"
 
 #. Setting description (Processing > Debanding > Debanding)
+#. Setting description (Profiles > Debanding > Debanding)
 msgid ""
 "Reduce visible steps in smooth gradients. Excessive settings can remove fine "
 "detail."
@@ -516,20 +519,24 @@ msgstr ""
 "Einstellungen können feine Details entfernen."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Iterations"
 msgstr "Durchläufe"
 
 #. Setting description (Processing > Debanding > Iterations)
+#. Setting description (Profiles > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
 "Mehr Durchläufe entfernen stärkere Farbabstufungen, können aber Details "
 "verlieren lassen."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Threshold"
 msgstr "Schwellenwert"
 
 #. Setting description (Processing > Debanding > Threshold)
+#. Setting description (Profiles > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
 msgstr ""
 "Schwellenwert für Farbunterschiede bei der Erkennung von Farbabstufungen."
@@ -541,68 +548,85 @@ msgid "Radius"
 msgstr "Radius"
 
 #. Setting description (Processing > Debanding > Radius)
+#. Setting description (Profiles > Debanding > Radius)
 msgid "Search radius in pixels."
 msgstr "Suchradius in Pixeln."
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Profiles > Debanding)
 msgid "Grain"
 msgstr "Körnung"
 
 #. Setting description (Processing > Debanding > Grain)
+#. Setting description (Profiles > Debanding > Grain)
 msgid "Grain added after debanding."
 msgstr "Nach dem Debanding hinzugefügte Körnung."
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Adaptive Sharpen"
 msgstr "Adaptives Nachschärfen"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Enhance Edges and Details"
 msgstr "Kanten und Details verstärken"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
+#. Setting description (Profiles > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr ""
 "Adaptives Nachschärfen mit integrierter Unterdrückung von Artefakten durch "
 "Ringing anwenden."
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Profiles > Adaptive Sharpen)
 msgid "Strength"
 msgstr "Stärke"
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
+#. Setting description (Profiles > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr ""
 "Stärke des adaptiven Nachschärfens. 0 deaktiviert den Schärfungseffekt."
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Deinterlacing"
 msgstr "Deinterlacing"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Algorithm"
 msgstr "Algorithmus"
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
+#. Setting description (Profiles > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
 "Verarbeitungsmethode auswählen. Aus überspringt diesen Verarbeitungsschritt."
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Bwdif"
 msgstr "Bwdif"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Yadif"
 msgstr "Yadif"
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Profiles > Deinterlacing)
 msgid "Field Order"
 msgstr "Halbbildreihenfolge"
 
 #. Setting description (Processing > Deinterlacing > Field Order)
+#. Setting description (Profiles > Deinterlacing > Field Order)
 msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
@@ -612,61 +636,77 @@ msgstr ""
 "haben."
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Auto (Source Flags)"
 msgstr "Automatisch (Quellkennzeichnungen)"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Top Field First"
 msgstr "Oberes Halbbild zuerst"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Bottom Field First"
 msgstr "Unteres Halbbild zuerst"
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Dithering"
 msgstr "Dithering"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
 msgstr "Blaues Rauschen (empfohlen)"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Ordered Dithering"
 msgstr "Geordnetes Dithering"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Choice (Profiles > Dithering > Algorithm)
 msgid "Random Dithering"
 msgstr "Zufälliges Dithering"
 
 #. Setting name (Processing > Dithering)
+#. Setting name (Profiles > Dithering)
 msgid "Change Dither for Every Frame"
 msgstr "Dithermuster bei jedem Bild ändern"
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
+#. Setting description (Profiles > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
 "Verändert das Dithermuster mit der Zeit, statt ein festes Muster "
 "beizubehalten."
 
 #. Section heading (Processing)
+#. Tab (Profiles)
+#. Section heading (Profiles)
 msgid "Detection & Zoom"
 msgstr "Erkennung und Zoom"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detect Hardcoded Black Bars"
 msgstr "Im Video enthaltene schwarze Balken erkennen"
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
 "Analysiert decodierte Pixel, um Balken zu finden, die Teil des Videos sind."
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Crop Black Bars"
 msgstr "Schwarze Balken abschneiden"
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
+#. Setting description (Profiles > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
 msgstr ""
@@ -674,19 +714,23 @@ msgstr ""
 "vergrößert wird."
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
 msgstr "Eingebrannte Untertitel schützen"
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
+#. Setting description (Profiles > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
 "Stellt Balken vorübergehend wieder her, wenn sie sichtbaren Inhalt enthalten."
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Keep a Stable Zoom"
 msgstr "Zoom stabil halten"
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
+#. Setting description (Profiles > Detection & Zoom > Keep a Stable Zoom)
 msgid ""
 "Prefer a common zoom that preserves content when the detected active area "
 "changes."
@@ -695,10 +739,12 @@ msgstr ""
 "erkannte aktive Bildbereich ändert."
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Zoom Mode"
 msgstr "Zoommodus"
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
+#. Setting description (Profiles > Detection & Zoom > Zoom Mode)
 msgid ""
 "Fit keeps all active content. Fill covers the output and can crop image "
 "content."
@@ -707,33 +753,40 @@ msgstr ""
 "Ausgabefläche und kann Bildinhalte abschneiden."
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit (Keep All Content)"
 msgstr "Einpassen (gesamten Inhalt erhalten)"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fill (May Crop Content)"
 msgstr "Ausfüllen (kann Inhalt abschneiden)"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Black Threshold"
 msgstr "Schwarzschwelle"
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
+#. Setting description (Profiles > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 "Maximale Helligkeit erkannter Balken als Prozentsatz des decodierten "
 "Weißwerts in SDR."
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Profiles > Detection & Zoom)
 msgid "Detection Stability (seconds)"
 msgstr "Erkennungsstabilität (Sekunden)"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
+#. Setting description (Profiles > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
 msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Scaling"
 msgstr "Skalierung"
 
@@ -1328,6 +1381,7 @@ msgstr "Benutzerdefiniert: Bildmischer"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "Color"
 msgstr "Farbe"
 
@@ -1531,6 +1585,7 @@ msgstr "Konvertierung"
 
 #. Category
 #. Category heading
+#. Choice (Profiles > Profile Settings > )
 msgid "HDR"
 msgstr "HDR"
 
@@ -3173,6 +3228,78 @@ msgstr ""
 "LBD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
 
+#. Category
+#. Category heading
+msgid "Profiles"
+msgstr "Profile"
+
+#. Category description
+msgid "Different settings for videos from chosen folders."
+msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile"
+msgstr "Profil"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Profile Settings"
+msgstr "Profil-Einstellungen"
+
+#. Setting name (Profiles > Profile)
+msgid "Name"
+msgstr "Name"
+
+#. Setting description (Profiles > Profile > Name)
+msgid "Shown on the tab. Up to 60 characters."
+msgstr "Wird im Reiter angezeigt. Bis zu 60 Zeichen."
+
+#. Input error (Profiles > Profile > Name)
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr "Gib einen noch nicht verwendeten Profilnamen ein (1 bis 60 Zeichen)."
+
+#. Setting name (Profiles > Profile)
+msgid "Add Folder"
+msgstr "Ordner hinzufügen"
+
+#. Setting description (Profiles > Profile > Add Folder)
+msgid ""
+"Videos in these folders and their subfolders use this profile; when folders "
+"are nested, the closest one wins."
+msgstr ""
+"Videos in diesen Ordnern und ihren Unterordnern nutzen dieses Profil; bei "
+"verschachtelten Ordnern gilt der nächstgelegene."
+
+#. Button (Profiles > Profile > Add Folder)
+msgid "Choose…"
+msgstr "Auswählen…"
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > New Profile)
+msgid "New Profile"
+msgstr "Neues Profil"
+
+#. Section description (Profiles > New Profile)
+msgid ""
+"A profile gives videos from chosen folders their own settings, e.g. other "
+"scaling for anime. Only the settings you add to it differ from your normal "
+"settings."
+msgstr ""
+"Ein Profil gibt Videos aus ausgewählten Ordnern eigene Einstellungen, z. B. "
+"andere Skalierung für Anime. Nur die hinzugefügten Einstellungen weichen von "
+"deinen normalen Einstellungen ab."
+
+#. Setting description (Profiles > New Profile > New Profile)
+msgid "Adds an empty profile in its own tab. Then add folders and settings."
+msgstr ""
+"Legt ein leeres Profil in einem eigenen Reiter an. Danach Ordner und "
+"Einstellungen hinzufügen."
+
+#. Button (Profiles > New Profile > New Profile)
+msgid "Create"
+msgstr "Erstellen"
+
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr "Bei %sp bietet dieser Bildschirm %s Hz."
@@ -3184,6 +3311,26 @@ msgstr "Kein 23- oder 24-Hz-Modus, Filme können hier nicht umschalten."
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
 msgstr "Weitere Auflösungen: %s."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete profile?"
+msgstr "Profil löschen?"
+
+#. Menu text; keep %d and %s placeholders
+msgid "\"%s\" and its settings will be removed."
+msgstr "„%s“ und seine Einstellungen werden entfernt."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete"
+msgstr "Löschen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Applies only to the display selected at the top of the menu."
+msgstr "Gilt nur für den oben im Menü ausgewählten Bildschirm."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Display"
@@ -3379,79 +3526,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Profiles page
-msgid "Profiles"
-msgstr "Profile"
-
-#. Profiles page
-msgid "Different settings for videos from chosen folders."
-msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
-
-#. Profiles page
-msgid "Profile"
-msgstr "Profil"
-
-#. Profiles page
-msgid "Profile Settings"
-msgstr "Profil-Einstellungen"
-
-#. Profiles page
-msgid "Name"
-msgstr "Name"
-
-#. Profiles page
-msgid "Shown on the tab. Up to 60 characters."
-msgstr "Wird im Reiter angezeigt. Bis zu 60 Zeichen."
-
-#. Profiles page
-msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr "Gib einen noch nicht verwendeten Profilnamen ein (1 bis 60 Zeichen)."
-
-#. Profiles page
-msgid "Add Folder"
-msgstr "Ordner hinzufügen"
-
-#. Profiles page
-msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
-msgstr "Videos in diesen Ordnern und ihren Unterordnern nutzen dieses Profil; bei verschachtelten Ordnern gilt der nächstgelegene."
-
-#. Profiles page
-msgid "Choose…"
-msgstr "Auswählen…"
-
-#. Profiles page
-msgid "New Profile"
-msgstr "Neues Profil"
-
-#. Profiles page
-msgid "A profile gives videos from chosen folders their own settings, e.g. other scaling for anime. Only the settings you add to it differ from your normal settings."
-msgstr "Ein Profil gibt Videos aus ausgewählten Ordnern eigene Einstellungen, z. B. andere Skalierung für Anime. Nur die hinzugefügten Einstellungen weichen von deinen normalen Einstellungen ab."
-
-#. Profiles page
-msgid "Adds an empty profile in its own tab. Then add folders and settings."
-msgstr "Legt ein leeres Profil in einem eigenen Reiter an. Danach Ordner und Einstellungen hinzufügen."
-
-#. Profiles page
-msgid "Create"
-msgstr "Erstellen"
-
-#. Profiles page
-msgid "Delete profile?"
-msgstr "Profil löschen?"
-
-#. Profiles page
-msgid "\"%s\" and its settings will be removed."
-msgstr "„%s“ und seine Einstellungen werden entfernt."
-
-#. Profiles page
-msgid "Cancel"
-msgstr "Abbrechen"
-
-#. Profiles page
-msgid "Delete"
-msgstr "Löschen"
-
-#. Profiles page
-msgid "Applies only to the display selected at the top of the menu."
-msgstr "Gilt nur für den oben im Menü ausgewählten Bildschirm."
