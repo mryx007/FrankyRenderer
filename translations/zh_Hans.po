@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"PO-Revision-Date: 2026-11-03 10:14+0000\n"
+"PO-Revision-Date: 2026-11-03 12:03+0000\n"
 "X-Generator: Weblate 2026.11.1.dev0\n"
 
 #. Category
@@ -68,7 +68,7 @@ msgstr "RGB 输出级别"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr "匹配显示器和 GPU 驱动使用的 RGB 色域。"
+msgstr "匹配显示器和 GPU 驱动使用的 RGB 范围。"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "Auto (Output)"
@@ -88,7 +88,7 @@ msgstr "抖动目标位深"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
-msgstr "按实际输出精度进行抖动；选择‘自动’时会跟随输出纹理。"
+msgstr "按实际输出精度进行抖动；选择\"自动\"时会跟随输出纹理。"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "Auto (Output Texture)"
@@ -169,7 +169,7 @@ msgstr ""
 
 #. Input hint (General > Display Mode > Allowed Modes)
 msgid "e.g. 2160p23, 2160p24, 2160p60"
-msgstr "例如:2160p23, 2160p24, 2160p60"
+msgstr "例如：2160p23, 2160p24, 2160p60"
 
 #. Input error (General > Display Mode > Allowed Modes)
 msgid "Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, 60."
@@ -259,11 +259,11 @@ msgstr "开启"
 
 #. Setting name (General > Background & Transparency)
 msgid "Blend Against Tiles"
-msgstr "按平铺混合"
+msgstr "棋盘格混合"
 
 #. Setting description (General > Background & Transparency > Blend Against Tiles)
 msgid "Composite transparent image regions onto a checkerboard. Default is Off. Tile colors do not recolor opaque video."
-msgstr "在棋盘格上合成透明图像区域。默认关闭。平铺颜色不会重新着色不透明视频。"
+msgstr "在棋盘格上合成透明图像区域。默认关闭。方格颜色不会重新着色不透明视频。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Red"
@@ -271,7 +271,7 @@ msgstr "浅色方格：红色"
 
 #. Setting description (General > Background & Transparency > Light Tile Red)
 msgid "Red channel of the light checkerboard tiles. Used with Blend Against Tiles."
-msgstr "浅色棋盘格的红色通道值。需配合“按平铺混合”使用。"
+msgstr "浅色棋盘格的红色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Green"
@@ -279,7 +279,7 @@ msgstr "浅色方格：绿色"
 
 #. Setting description (General > Background & Transparency > Light Tile Green)
 msgid "Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
-msgstr "浅色方格的绿色通道值。需配合“按平铺混合”使用。"
+msgstr "浅色棋盘格的绿色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Light Tile Blue"
@@ -287,7 +287,7 @@ msgstr "浅色方格：蓝色"
 
 #. Setting description (General > Background & Transparency > Light Tile Blue)
 msgid "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
-msgstr "浅色方格的蓝色通道值。需配合“按平铺混合”使用。"
+msgstr "浅色棋盘格的蓝色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Red"
@@ -295,15 +295,15 @@ msgstr "深色方格：红色"
 
 #. Setting description (General > Background & Transparency > Dark Tile Red)
 msgid "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr "深色方格的红色通道值。需配合“按平铺混合”使用。"
+msgstr "深色棋盘格的红色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Green"
-msgstr "暗块绿色通道"
+msgstr "深色方格：绿色"
 
 #. Setting description (General > Background & Transparency > Dark Tile Green)
 msgid "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr "深色方格的绿色通道值。需配合“按平铺混合”使用。"
+msgstr "深色棋盘格的绿色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Dark Tile Blue"
@@ -311,11 +311,11 @@ msgstr "深色方格：蓝色"
 
 #. Setting description (General > Background & Transparency > Dark Tile Blue)
 msgid "Blue channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr "深色方格的蓝色通道值。需配合“按平铺混合”使用。"
+msgstr "深色棋盘格的蓝色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
 msgid "Tile Size (pixels)"
-msgstr "瓦片大小（像素）"
+msgstr "方格大小（像素）"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to 256."
@@ -499,7 +499,7 @@ msgstr "算法"
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
-msgstr "选择处理方法。设为“关闭”时跳过此处理阶段。"
+msgstr "选择处理方法。设为\"关闭\"时跳过此处理阶段。"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
 msgid "Bwdif"
@@ -535,7 +535,7 @@ msgstr "抖动"
 
 #. Choice (Processing > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
-msgstr "蓝噪 (推荐)"
+msgstr "蓝噪声 (推荐)"
 
 #. Choice (Processing > Dithering > Algorithm)
 msgid "Ordered Dithering"
@@ -575,7 +575,7 @@ msgstr "在适配或缩放前，从当前画面中移除已检测到的黑边。
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
-msgstr "避开内嵌字幕"
+msgstr "保护内嵌字幕"
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
@@ -583,7 +583,7 @@ msgstr "若黑边内存在可见内容，则暂时恢复黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Keep a Stable Zoom"
-msgstr "锁定缩放比例"
+msgstr "保持稳定缩放"
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
 msgid "Prefer a common zoom that preserves content when the detected active area changes."
@@ -642,11 +642,11 @@ msgstr "自定义滤镜"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Upscaler"
-msgstr "图像放大器"
+msgstr "图像升频器"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid "Reconstruct image detail when enlarging video. Custom copies the selected filter for editing."
-msgstr "放大视频时重建图像细节。“自定义”将复制所选滤镜以供编辑。"
+msgstr "放大视频时重建图像细节。\"自定义\"将复制所选滤镜以供编辑。"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
@@ -728,16 +728,16 @@ msgstr "极锐利版 EWA Lanczos，含抗振铃 (极慢)"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Downscaler"
-msgstr "图像缩小器"
+msgstr "图像降频器"
 
 #. Setting description (Scaling > Filters > Image Downscaler)
 msgid "Filter the image when reducing video size. Custom copies the selected filter for editing."
-msgstr "缩小视频时对图像进行滤波。“自定义”将复制所选滤镜以供编辑。"
+msgstr "缩小视频时对图像进行滤波。\"自定义\"将复制所选滤镜以供编辑。"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
-msgstr "使用与放大算法相同的滤镜"
+msgstr "使用与升频器相同的滤镜"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -790,7 +790,7 @@ msgstr "在降低色度或透明平面的分辨率时对其进行滤波。"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Frame Mixer"
-msgstr "帧混合"
+msgstr "帧混合器"
 
 #. Setting description (Scaling > Filters > Frame Mixer)
 msgid "Temporal filter used by Smooth Motion. It combines frames rather than adding image detail."
@@ -888,7 +888,7 @@ msgstr "正在编辑其自定义滤镜的缩放器角色。"
 
 #. Section heading (Scaling)
 msgid "Custom: Image Upscaler"
-msgstr "自定义：图像放大器"
+msgstr "自定义：图像升频器"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -918,7 +918,7 @@ msgstr "此自定义滤镜的基础预设。未更改参数前，将沿用其数
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel"
-msgstr "内核"
+msgstr "核函数"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel)
@@ -936,13 +936,13 @@ msgstr "窗函数"
 #. Setting description (Scaling > Custom: Image Downscaler > Window)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window)
 msgid "Window applied to the kernel. Auto inherits it; None removes windowing."
-msgstr "应用于内核的窗函数。自动模式下继承起始滤镜的设置；设为“无”则移除窗函数。"
+msgstr "应用于核函数的窗函数。自动模式下继承起始滤镜的设置；设为\"无\"则移除窗函数。"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Radius)
 #. Setting description (Scaling > Custom: Image Downscaler > Radius)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Radius)
 msgid "Kernel support radius. Available only for resizable kernels; larger radii sample more pixels."
-msgstr "内核支持半径。仅适用于可调大小的内核；较大的半径会采样更多像素。"
+msgstr "核函数支持半径。仅适用于可调大小的核函数；较大的半径会采样更多像素。"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -978,7 +978,7 @@ msgstr "锥形衰减"
 #. Setting description (Scaling > Custom: Image Downscaler > Taper)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Taper)
 msgid "Flatten the center of the reconstruction kernel."
-msgstr "平坦化重建内核的中心。"
+msgstr "平坦化重建核函数的中心。"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -996,25 +996,25 @@ msgstr "为此滤镜抑制过冲。设为 0 时继承全局抗振铃强度。"
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel Parameter 1"
-msgstr "内核参数 1"
+msgstr "核函数参数 1"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 1)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 1)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel Parameter 1)
 msgid "First kernel-specific parameter. Available only when the selected kernel supports it."
-msgstr "第一个特定于内核的参数。仅当选定的内核支持时才可用。"
+msgstr "第一个特定于核函数的参数。仅当选定的核函数支持时才可用。"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel Parameter 2"
-msgstr "内核参数 2"
+msgstr "核函数参数 2"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 2)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 2)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel Parameter 2)
 msgid "Second kernel-specific parameter. Available only when the selected kernel supports it."
-msgstr "第二个特定于内核的参数。仅当选定的内核支持时才可用。"
+msgstr "第二个特定于核函数的参数。仅当选定的核函数支持时才可用。"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1060,7 +1060,7 @@ msgstr "继承起始滤镜"
 
 #. Section heading (Scaling)
 msgid "Custom: Image Downscaler"
-msgstr "自定义：图像缩小器"
+msgstr "自定义：图像降频器"
 
 #. Section heading (Scaling)
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
@@ -1313,7 +1313,7 @@ msgstr "HDR 目标峰值（0 = 自动）"
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid "Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak Windows reports for the display, which on some laptops follows the brightness setting."
 msgstr ""
-"HDR 色调映射至显示器峰值’所用的显示器峰值，单位：尼特。0 表示使用 Windows 报"
+"'HDR 色调映射至显示器峰值'所用的显示器峰值，单位：尼特。0 表示使用 Windows 报"
 "告的显示器峰值；部分笔记本上该值随亮度设置变化。"
 
 #. Setting name (HDR > HDR Output)
