@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cwctype>
+#include <initializer_list>
 #include <string>
 #include <vector>
 #include "Settings/DisplayProfiles.h"
@@ -137,9 +138,25 @@ inline std::vector<Mode> Available(const wchar_t* device)
     return modes;
 }
 
+// Replaces each %s in order; the menu translates the sentences first.
+inline std::wstring FillText(std::wstring text, std::initializer_list<std::wstring> values)
+{
+    size_t at = 0;
+    for (const auto& value : values)
+    {
+        at = text.find(L"%s", at);
+        if (at == std::wstring::npos)
+            break;
+        text.replace(at, 2, value);
+        at += value.size();
+    }
+    return text;
+}
+
 // A short summary of Available() for the menu: the rates at the current
-// resolution, then the other resolutions from 720p up.
-inline std::wstring Describe(const wchar_t* device)
+// resolution, then the other resolutions from 720p up. `translate` maps the
+// English sentences (listed in the menu's translatable texts).
+template <class Translate> inline std::wstring Describe(const wchar_t* device, Translate translate)
 {
     DEVMODEW current = {};
     current.dmSize = sizeof(current);
@@ -160,12 +177,17 @@ inline std::wstring Describe(const wchar_t* device)
     }
     if (rates.empty())
         return {};
-    std::wstring text = L"At " + std::to_wstring(height) + L"p this display offers " + rates + L" Hz.";
+    std::wstring text = FillText(translate(L"At %sp this display offers %s Hz."), {std::to_wstring(height), rates});
     if (!film)
-        text += L" No 23 or 24 Hz mode, so films cannot switch here.";
+        text += L" " + std::wstring(translate(L"No 23 or 24 Hz mode, so films cannot switch here."));
     if (!others.empty())
-        text += L"\nOther resolutions: " + others + L".";
+        text += L"\n" + FillText(translate(L"Other resolutions: %s."), {others});
     return text;
+}
+
+inline std::wstring Describe(const wchar_t* device)
+{
+    return Describe(device, [](const wchar_t* text) { return std::wstring(text); });
 }
 
 // Crash safety: a temporary mode survives a crashed player. Record each switch

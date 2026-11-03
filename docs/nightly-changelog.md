@@ -44,3 +44,6 @@
 - New Smooth Motion setting "Oversample Threshold" (Scaling > Filters): shows a whole picture instead of a blend when the other picture would cover only a small share of a refresh, for fewer double edges on motion. 0 keeps the previous behaviour.
 - Fixed the settings menu closing right after opening when MPC-BE shows it without a video (since Nightly 20261103-0737).
 - Menu languages are now included only when fully translated (previously from 95%).
+- New menu languages: German and Chinese (Simplified).
+- The menu now follows a Chinese Windows display language automatically (zh-CN and similar now find the Simplified Chinese translation).
+- Fixed the "Allowed Modes" description and the list of display modes under it staying in English in translated menus.

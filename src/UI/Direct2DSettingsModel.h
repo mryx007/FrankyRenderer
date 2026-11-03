@@ -5,6 +5,7 @@
 #include "UI/Direct2DSettingsHelp.h"
 #include "Settings/ShaderParameterLabels.h"
 #include "Renderer/DisplayModes.h"
+#include "UI/Translation.h"
 
 // The view edits a private draft. Every mutation is validated before preview.
 inline std::wstring D2DWide(const char* s)
@@ -362,7 +363,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             monitor.cbSize = sizeof(monitor);
             if (device.id != s.displayProfile || !GetMonitorInfoW(device.monitor, &monitor))
                 continue;
-            offered = DisplayModes::Describe(monitor.szDevice);
+            offered = DisplayModes::Describe(monitor.szDevice, [](const wchar_t* text) { return Tr(text); });
         }
         list.desc = L"Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and 59 mean "
                     L"23.976, 29.97 and 59.94 Hz.";

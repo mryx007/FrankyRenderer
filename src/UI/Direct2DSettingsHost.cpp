@@ -110,7 +110,10 @@ struct D2DPage
 #include "UI/Direct2DSettingsModel.h"
 
 // Menu texts outside the settings model, for the translation template.
-static constexpr const wchar_t* MenuTexts[] = {L"Display",
+static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s Hz.",
+                                               L"No 23 or 24 Hz mode, so films cannot switch here.",
+                                               L"Other resolutions: %s.",
+                                               L"Display",
                                                L"Rename",
                                                L"Import",
                                                L"Export",
@@ -171,7 +174,13 @@ static void TranslatePages(std::vector<D2DPage>& pages)
             {
                 c.id = c.name;
                 c.name = Tr(c.name);
-                c.desc = Tr(c.desc);
+                // Some descriptions append live details on a new line, e.g. the
+                // display modes a monitor offers; translate the text before them.
+                const auto lineBreak = c.desc.find(L'\n');
+                const auto whole = Tr(c.desc);
+                c.desc = whole != c.desc || lineBreak == std::wstring::npos
+                             ? whole
+                             : Tr(c.desc.substr(0, lineBreak)) + c.desc.substr(lineBreak);
                 c.placeholder = Tr(c.placeholder);
                 c.invalidText = Tr(c.invalidText);
                 c.actionLabel = Tr(c.actionLabel);

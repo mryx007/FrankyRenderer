@@ -165,12 +165,25 @@ inline std::vector<std::wstring> Embedded()
     return names;
 }
 
-// Resource for a Windows locale ("de-DE"): exact match, then the base language.
+// Resource for a Windows locale ("de-DE"): exact match, then language and
+// script ("zh-CN" lists "Hani;Hans;" -> zh_Hans, as Weblate names Chinese),
+// then the base language.
 inline std::wstring Match(std::wstring locale)
 {
+    wchar_t scripts[64] = {};
+    const bool scripted = GetLocaleInfoEx(locale.c_str(), LOCALE_SSCRIPTS, scripts, 64) > 1;
     std::replace(locale.begin(), locale.end(), L'-', L'_');
+    const auto base = locale.substr(0, locale.find(L'_'));
+    std::vector<std::wstring> candidates{Upper(locale)};
+    for (std::wstring rest = scripted ? scripts : L""; !rest.empty();)
+    {
+        const auto end = rest.find(L';');
+        candidates.push_back(Upper(base + L"_" + rest.substr(0, end)));
+        rest = end == std::wstring::npos ? L"" : rest.substr(end + 1);
+    }
+    candidates.push_back(Upper(base));
     const auto names = Embedded();
-    for (const auto& candidate : {Upper(locale), Upper(locale.substr(0, locale.find(L'_')))})
+    for (const auto& candidate : candidates)
         if (std::find(names.begin(), names.end(), candidate) != names.end())
             return candidate;
     return {};

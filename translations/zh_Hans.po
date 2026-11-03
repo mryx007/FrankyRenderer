@@ -3008,3 +3008,18 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Menu text; keep %d and %s placeholders
+#, c-format
+msgid "At %sp this display offers %s Hz."
+msgstr "在 %sp 下，此显示器提供 %s Hz。"
+
+#. Menu text; keep %d and %s placeholders
+#, c-format
+msgid "No 23 or 24 Hz mode, so films cannot switch here."
+msgstr "没有 23 或 24 Hz 模式，因此影片无法在此切换。"
+
+#. Menu text; keep %d and %s placeholders
+#, c-format
+msgid "Other resolutions: %s."
+msgstr "其他分辨率：%s。"
