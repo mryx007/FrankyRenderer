@@ -26,9 +26,9 @@ python src/Tools/translations.py template
 
 Weblate picks up the new template and marks changed texts for review.
 
-The renderer build (`src/Tools/build.cmd`) embeds every `translations/*.po` file that is at
-least 95% translated into `FrankyRenderer.ax`; no extra files are shipped. Weblate pull requests
-can therefore be merged at any time: a language appears in the menu once it reaches 95%. The
+The renderer build (`src/Tools/build.cmd`) embeds every `translations/*.po` file that is
+fully translated into `FrankyRenderer.ax`; no extra files are shipped. Weblate pull requests
+can therefore be merged at any time: a language appears in the menu once it reaches 100%. The
 build log lists the share of every language.
 
 Weblate PRs containing only added or modified `translations/<language>.po` files
@@ -37,7 +37,7 @@ are validated automatically, then approved for the normal Code checks workflow
 its original commits intact, so Weblate can synchronize without rebase conflicts.
 The automation checks Weblate's account and fork, the exact PR revision, UTF-8 PO
 syntax and printf placeholders. Other files, deletions, conflicts and failed
-checks require manual review. Incomplete languages can be merged; the 95% build
+checks require manual review. Incomplete languages can be merged; the 100% build
 threshold is unchanged. Merging updates source only, without publishing a Nightly
 or installing the renderer. Approval is checked every 15 minutes (GitHub may delay
 scheduled runs); check completion also triggers the automation immediately.

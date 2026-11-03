@@ -1,7 +1,7 @@
 """Settings menu translations (gettext, maintained on Weblate).
 
   translations.py rc OUT        resource script embedding translations/*.po that
-                                are at least 95% translated (called by build.cmd)
+                                are fully translated (called by build.cmd)
   translations.py template      rebuild translations/FrankyRenderer.pot from the
                                 menu (builds and runs Tools/menu_texts.cpp)
 
@@ -18,9 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRANSLATIONS = ROOT.parent / "translations"
 TEMPLATE = TRANSLATIONS / "FrankyRenderer.pot"
-# A language ships once this share of the template is translated, so Weblate
-# pull requests can be merged at any time without half-translated menus.
-MINIMUM = 0.95
+# A language ships only when every text of the template is translated, so
+# Weblate pull requests can be merged at any time without partial menus.
+MINIMUM = 1.0
 
 
 def read_po(path):
