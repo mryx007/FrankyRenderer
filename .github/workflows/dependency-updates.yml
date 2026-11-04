@@ -1,0 +1,39 @@
+name: Dependency updates
+on:
+  schedule:
+    - cron: '40 8 1 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only report, open no pull request'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  offer:
+    if: github.repository == 'mryx007/FrankyRenderer-Nightly'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Offer newer LAV FFmpeg and libplacebo as pull requests
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python .github/scripts/dependency_updates.py $DRY_RUN
