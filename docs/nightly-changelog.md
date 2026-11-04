@@ -56,3 +56,4 @@
 - Choice lists in the settings menu are only as wide as their text.
 - Text fields keep their font while typing.
 - Ctrl+J shows "Default" instead of "none" when a video uses no profile.
+- Shader settings that only know 0 or 1 (e.g. SHARP in AiUpscale) are now on/off switches instead of number fields.

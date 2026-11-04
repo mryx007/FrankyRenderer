@@ -848,7 +848,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 n.name = ShaderParameterLabel(param.name) + L" (" + D2DWide(param.name) + L")";
                 n.desc = std::wstring(L"Adjust ") + ShaderParameterLabel(param.name) +
                          L" for this shader. The default preserves the shader author's setting.";
-                n.kind = param.integer ? ControlKind::SliderInt : ControlKind::SliderFloat;
+                // A whole number that is only 0 or 1 switches a shader variant on or off.
+                const bool onOff = param.integer && param.minimum == 0 && param.maximum == 1;
+                n.kind = onOff           ? ControlKind::Toggle
+                         : param.integer ? ControlKind::SliderInt
+                                         : ControlKind::SliderFloat;
                 n.minVal = param.minimum;
                 n.maxVal = param.maximum;
                 n.stepVal = param.integer ? 1 : .001f;
