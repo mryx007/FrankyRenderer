@@ -1421,6 +1421,38 @@ msgstr ""
 "ursprünglichen Weißabgleich."
 
 #. Section heading (Color)
+msgid "Display Gamma"
+msgstr "Display-Gamma"
+
+#. Setting name (Color > Display Gamma)
+msgid "SDR Display Gamma"
+msgstr "SDR-Display-Gamma"
+
+#. Setting description (Color > Display Gamma > SDR Display Gamma)
+msgid ""
+"For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. Not used "
+"with an ICC profile or HDR output."
+msgstr ""
+"Für einen auf Gamma 2.4 oder BT.1886 kalibrierten Bildschirm, z. B. einen "
+"Beamer. Nicht mit ICC-Profil oder HDR-Ausgabe."
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Auto"
+msgstr "Auto"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Gamma 2.2"
+msgstr "Gamma 2.2"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Gamma 2.4"
+msgstr "Gamma 2.4"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "BT.1886"
+msgstr "BT.1886"
+
+#. Section heading (Color)
 msgid "ICC Profile"
 msgstr "ICC-Profil"
 
@@ -3499,31 +3531,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Section heading (Color)
-msgid "Display Gamma"
-msgstr "Display-Gamma"
-
-#. Setting name (Color > Display Gamma)
-msgid "SDR Display Gamma"
-msgstr "SDR-Display-Gamma"
-
-#. Setting description (Color > Display Gamma > SDR Display Gamma)
-msgid "For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. Not used with an ICC profile or HDR output."
-msgstr "Für einen auf Gamma 2.4 oder BT.1886 kalibrierten Bildschirm, z. B. einen Beamer. Nicht mit ICC-Profil oder HDR-Ausgabe."
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.2"
-msgstr "Gamma 2.2"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.4"
-msgstr "Gamma 2.4"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "BT.1886"
-msgstr "BT.1886"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Auto"
-msgstr "Auto"
