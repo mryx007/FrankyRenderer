@@ -1,22 +1,26 @@
 #pragma once
 // Content profiles: settings that differ for videos from chosen folders, e.g.
-// other scalers for anime. Each profile is one INI file (written by the Profiles
-// menu page) in
-// %APPDATA%\FrankyRenderer\Profiles (file name = profile name):
+// other scalers for anime. Each profile is one INI file (written by the menu)
+// in %APPDATA%\FrankyRenderer\Profiles (file name = profile name):
 //
 //   [Profile]
 //   folders="D:\Anime;E:\Serien\Anime"
+//   monitors="<display profile id>;<display profile id>"
 //   [Renderer]
 //   smoothMotion=0
 //
-// Folder entries include their subfolders; the folder closest to the file
-// wins. Only keys present in the file override the normal settings, in the
-// same format as the settings backup. Display-dependent settings stay with the
-// display profile and are ignored here.
+// A profile only stores what differs from the display's normal settings
+// ("Default"), in the same format as the settings backup. The folder decides:
+// a folder belongs to one profile, includes its subfolders, and the folder
+// closest to the file wins. Without monitors the profile applies on every
+// display, otherwise only on the listed ones. While the menu shows another
+// profile, the playing video previews it.
 #include "Settings/SettingsIni.h"
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -25,38 +29,12 @@ namespace ContentProfiles
 struct Profile
 {
     std::wstring name;
-    std::vector<std::wstring> folders;
+    std::vector<std::wstring> folders, monitors;
     SettingsIni::Entries overrides;
 };
 
-// Describe the output or the display rather than the video.
-inline bool DisplayDependent(const std::string& section, const std::string& key)
-{
-    if (section != "Renderer")
-        return false;
-    for (const char* name : {"outputFormat",
-                             "outputLevels",
-                             "displayDepth",
-                             "hdrMode",
-                             "hdrPassthrough",
-                             "autoHdr",
-                             "sdrNits",
-                             "hdrNits",
-                             "iccEnabled",
-                             "lutEnabled",
-                             "iccIntent",
-                             "iccPath",
-                             "lutPath",
-                             "displayModeSwitch",
-                             "displayModes",
-                             "displayModeDelay",
-                             "maximumFramesInFlight",
-                             "measuredQuality",
-                             "qualityStamp"})
-        if (key == name)
-            return true;
-    return false;
-}
+// Shown for the normal settings in the menu and in a forced choice.
+inline constexpr const wchar_t* DefaultName = L"Default";
 
 // Lower case, backslashes and a trailing separator, so "D:\Anime" does not
 // also match "D:\Anime2".
@@ -82,16 +60,16 @@ inline std::wstring Directory()
     return std::wstring(appData) + L"\\FrankyRenderer\\Profiles";
 }
 
-// Throws on malformed files; Load() skips those. A profile without folders is
-// valid (just created in the menu) and matches nothing.
-inline Profile Parse(const std::wstring& name, const std::string& text)
+// A quoted, ';'-separated list taken literally (no escapes), so Windows paths
+// need no doubled backslashes.
+inline std::vector<std::wstring> ReadList(SettingsIni::Entries& entries, const char* key)
 {
-    auto entries = SettingsIni::ReadEntries(text, 256 * 1024);
-    Profile profile;
-    profile.name = name;
-    const auto folders = entries.find({"Profile", "folders"});
-    // Taken literally (no escapes), so Windows paths need no doubled backslashes.
-    auto raw = folders == entries.end() ? std::string() : folders->second;
+    std::vector<std::wstring> result;
+    const auto found = entries.find({"Profile", key});
+    if (found == entries.end())
+        return result;
+    auto raw = found->second;
+    entries.erase(found);
     if (raw.size() >= 2 && raw.front() == '"' && raw.back() == '"')
         raw = raw.substr(1, raw.size() - 2);
     std::wstring list(raw.size(), L'\0');
@@ -99,20 +77,38 @@ inline Profile Parse(const std::wstring& name, const std::string& text)
         std::max(0,
                  MultiByteToWideChar(
                      CP_UTF8, MB_ERR_INVALID_CHARS, raw.data(), int(raw.size()), list.data(), int(list.size())))));
-    if (folders != entries.end())
-        entries.erase(folders);
     for (std::wstring rest = list; !rest.empty();)
     {
         const auto end = rest.find(L';');
-        auto folder = rest.substr(0, end);
+        auto item = rest.substr(0, end);
         rest = end == std::wstring::npos ? L"" : rest.substr(end + 1);
-        folder.erase(0, folder.find_first_not_of(L" \t"));
-        folder.erase(folder.find_last_not_of(L" \t") + 1);
-        if (!folder.empty())
-            profile.folders.push_back(folder);
+        item.erase(0, item.find_first_not_of(L" \t"));
+        item.erase(item.find_last_not_of(L" \t") + 1);
+        if (!item.empty())
+            result.push_back(item);
     }
+    return result;
+}
+
+inline std::string WriteList(const std::vector<std::wstring>& items)
+{
+    std::wstring list;
+    for (const auto& item : items)
+        list += (list.empty() ? L"" : L";") + item;
+    return "\"" + (list.empty() ? std::string() : SettingsIni::Utf8(list.c_str())) + "\"";
+}
+
+// Throws on malformed files; Load() skips those. A profile without folders is
+// valid (just created in the menu) and matches nothing.
+inline Profile Parse(const std::wstring& name, const std::string& text)
+{
+    auto entries = SettingsIni::ReadEntries(text, 256 * 1024);
+    Profile profile;
+    profile.name = name;
+    profile.folders = ReadList(entries, "folders");
+    profile.monitors = ReadList(entries, "monitors");
     for (auto& [key, value] : entries)
-        if (key.first != "Profile" && !DisplayDependent(key.first, key.second))
+        if (key.first != "Profile")
             profile.overrides.emplace(key, value);
     return profile;
 }
@@ -137,21 +133,30 @@ inline std::vector<Profile> Load(const std::wstring& directory = Directory())
         {
         }
     }
+    std::sort(profiles.begin(),
+              profiles.end(),
+              [](const auto& a, const auto& b) { return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0; });
     return profiles;
 }
 
-// Writes the profile as <directory>\<name>.ini; folders are stored literally.
+inline const Profile* Find(const std::vector<Profile>& profiles, const std::wstring& name)
+{
+    for (const auto& profile : profiles)
+        if (!_wcsicmp(profile.name.c_str(), name.c_str()))
+            return &profile;
+    return nullptr;
+}
+
+// Writes the profile as <directory>\<name>.ini.
 inline bool Save(const Profile& profile, const std::wstring& directory = Directory())
 {
     try
     {
         std::error_code error;
         std::filesystem::create_directories(directory, error);
-        std::wstring folders;
-        for (const auto& folder : profile.folders)
-            folders += (folders.empty() ? L"" : L";") + folder;
-        std::string text = "; FrankyRenderer content profile (UTF-8)\r\n[Profile]\r\nfolders=\"" +
-                           (folders.empty() ? std::string() : SettingsIni::Utf8(folders.c_str())) + "\"\r\n";
+        std::string text =
+            "; FrankyRenderer content profile (UTF-8)\r\n[Profile]\r\nfolders=" + WriteList(profile.folders) +
+            "\r\nmonitors=" + WriteList(profile.monitors) + "\r\n";
         std::string section;
         for (const auto& [key, value] : profile.overrides)
         {
@@ -171,8 +176,20 @@ inline bool Save(const Profile& profile, const std::wstring& directory = Directo
     }
 }
 
-// The profile whose folder is closest to the file, or nullptr.
-inline const Profile* Match(const std::vector<Profile>& profiles, const std::wstring& file)
+inline bool AllowsDisplay(const Profile& profile, const std::wstring& display)
+{
+    if (profile.monitors.empty())
+        return true;
+    for (const auto& id : profile.monitors)
+        if (id == display)
+            return true;
+    return false;
+}
+
+// The profile whose folder is closest to the file, or nullptr. On a display
+// the profile does not allow, the normal settings apply.
+inline const Profile*
+Match(const std::vector<Profile>& profiles, const std::wstring& file, const std::wstring& display = {})
 {
     if (file.empty())
         return nullptr;
@@ -188,21 +205,129 @@ inline const Profile* Match(const std::vector<Profile>& profiles, const std::wst
                 best = &profile;
                 bestLength = folder.size();
             }
-    return best;
+    return best && AllowsDisplay(*best, display) ? best : nullptr;
 }
 
-// Display mode switching belongs to a display, so a profile keeps it per
-// display in its own section: [DisplayMode.<display profile id>].
-inline constexpr const char* DisplayModeKeys[] = {"displayModeSwitch", "displayModes", "displayModeDelay"};
-
-inline std::string DisplayModeSection(const wchar_t* display)
+// The profile that already holds this folder, if any (a folder belongs to one).
+inline const Profile* FolderOwner(const std::vector<Profile>& profiles, const std::wstring& folder)
 {
-    return std::string("DisplayMode.") + SettingsIni::Utf8(display);
+    const auto key = FolderKey(folder);
+    for (const auto& profile : profiles)
+        for (const auto& entry : profile.folders)
+            if (FolderKey(entry) == key)
+                return &profile;
+    return nullptr;
 }
 
-// The normal settings with the profile's values on top, including its display
-// mode settings for base.displayProfile. A profile that would produce invalid
-// settings is ignored.
+// Every file of the profile folder by name,
+// so a cancelled menu can put the folder back as it was.
+using Files = std::map<std::wstring, std::string>;
+
+inline Files ReadFiles(const std::wstring& directory = Directory())
+{
+    Files files;
+    std::error_code error;
+    if (directory.empty() || !std::filesystem::is_directory(directory, error))
+        return files;
+    for (const auto& entry : std::filesystem::directory_iterator(directory, error))
+    {
+        const auto extension = entry.path().extension().wstring();
+        if (!entry.is_regular_file() || (_wcsicmp(extension.c_str(), L".ini") && _wcsicmp(extension.c_str(), L".txt")))
+            continue;
+        std::ifstream file(entry.path(), std::ios::binary);
+        files[entry.path().filename().wstring()] =
+            std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    }
+    return files;
+}
+
+inline void WriteFiles(const Files& files, const std::wstring& directory = Directory())
+{
+    if (directory.empty())
+        return;
+    std::error_code error;
+    for (const auto& [name, text] : ReadFiles(directory))
+        if (!files.count(name))
+            std::filesystem::remove(std::filesystem::path(directory) / name, error);
+    if (!files.empty())
+        std::filesystem::create_directories(directory, error);
+    for (const auto& [name, text] : files)
+    {
+        std::ofstream file(std::filesystem::path(directory) / name, std::ios::binary | std::ios::trunc);
+        file << text;
+    }
+}
+
+// The profile for a file on a display: the one the menu previews (a profile
+// name or DefaultName), else by folder.
+inline const Profile* Resolve(const std::vector<Profile>& profiles,
+                              const std::wstring& preview,
+                              const std::wstring& file,
+                              const std::wstring& display)
+{
+    if (preview.empty())
+        return Match(profiles, file, display);
+    return _wcsicmp(preview.c_str(), DefaultName) ? Find(profiles, preview) : nullptr;
+}
+
+// Shared by the renderer and its menu in the player's process: the playing
+// file and the profile its folder gives it, and the profile the open menu
+// shows instead. Only the renderer playing that file previews it.
+struct SharedState
+{
+    std::mutex lock;
+    std::wstring file, automatic, preview, previewFile;
+    bool previewing = false;
+};
+
+inline SharedState& Shared()
+{
+    static SharedState state;
+    return state;
+}
+
+inline void PublishPlaying(const std::wstring& file, const std::wstring& automatic)
+{
+    auto& state = Shared();
+    std::lock_guard guard(state.lock);
+    state.file = file;
+    state.automatic = automatic;
+}
+
+// The profile the playing video gets by its folder; empty for Default.
+inline std::wstring PlayingProfile()
+{
+    auto& state = Shared();
+    std::lock_guard guard(state.lock);
+    return state.automatic;
+}
+
+inline void StartPreview(const std::wstring& name)
+{
+    auto& state = Shared();
+    std::lock_guard guard(state.lock);
+    state.preview = name;
+    state.previewFile = state.file;
+    state.previewing = true;
+}
+
+inline void StopPreview()
+{
+    auto& state = Shared();
+    std::lock_guard guard(state.lock);
+    state.previewing = false;
+}
+
+// The profile the menu previews for this file, empty when it previews none.
+inline std::wstring Preview(const std::wstring& file)
+{
+    auto& state = Shared();
+    std::lock_guard guard(state.lock);
+    return state.previewing && !_wcsicmp(state.previewFile.c_str(), file.c_str()) ? state.preview : std::wstring();
+}
+
+// The normal settings with the profile's values on top. A profile that would
+// produce invalid settings is ignored.
 inline PlaceboSettings Apply(const PlaceboSettings& base, const Profile& profile)
 {
     if (profile.overrides.empty())
@@ -210,17 +335,10 @@ inline PlaceboSettings Apply(const PlaceboSettings& base, const Profile& profile
     PlaceboSettings result = base;
     try
     {
-        const auto display = base.displayProfile[0] ? DisplayModeSection(base.displayProfile) : std::string();
         SettingsIni::Visit(result,
                            [&](const std::string& section, const std::string& key, auto& value)
                            {
-                               auto found = profile.overrides.find({section, key});
-                               if (!display.empty() && section == "Renderer" &&
-                                   std::find_if(std::begin(DisplayModeKeys),
-                                                std::end(DisplayModeKeys),
-                                                [&](const char* name)
-                                                { return key == name; }) != std::end(DisplayModeKeys))
-                                   found = profile.overrides.find({display, key});
+                               const auto found = profile.overrides.find({section, key});
                                if (found != profile.overrides.end())
                                    SettingsIni::Decode(found->second, value);
                            });
@@ -230,5 +348,45 @@ inline PlaceboSettings Apply(const PlaceboSettings& base, const Profile& profile
         return base;
     }
     return SUCCEEDED(ValidateSettings(result)) ? result : base;
+}
+
+inline SettingsIni::Entries Snapshot(PlaceboSettings settings)
+{
+    SettingsIni::Entries out;
+    SettingsIni::Visit(settings,
+                       [&](const std::string& section, const std::string& key, auto& value)
+                       { out[{section, key}] = SettingsIni::Encode(value); });
+    return out;
+}
+
+// What a profile stores: every setting that differs from the normal ones.
+inline SettingsIni::Entries Differences(const PlaceboSettings& base, const PlaceboSettings& edited)
+{
+    const auto before = Snapshot(base);
+    SettingsIni::Entries out;
+    for (const auto& [key, value] : Snapshot(edited))
+        if (const auto found = before.find(key); found == before.end() || found->second != value)
+            out.emplace(key, value);
+    return out;
+}
+
+// After a reset in a profile: settings the reset changed take the normal
+// value instead of the built-in default, so the profile no longer differs.
+inline void RestoreChanged(PlaceboSettings& edited, const PlaceboSettings& before, const PlaceboSettings& base)
+{
+    const auto previous = Snapshot(before), normal = Snapshot(base);
+    try
+    {
+        SettingsIni::Visit(edited,
+                           [&](const std::string& section, const std::string& key, auto& value)
+                           {
+                               const auto id = std::make_pair(section, key);
+                               if (SettingsIni::Encode(value) != previous.at(id))
+                                   SettingsIni::Decode(normal.at(id), value);
+                           });
+    }
+    catch (const std::exception&)
+    {
+    }
 }
 } // namespace ContentProfiles

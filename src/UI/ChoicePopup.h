@@ -306,8 +306,9 @@ class ChoicePopup
                                       0,
                                       L"Segoe UI");
         // As wide as the longest entry, at least the field; grow leftwards and
-        // stay inside the settings window (and the monitor).
-        int longest = 0;
+        // stay inside the settings window (and the monitor). Descriptions wider
+        // than 480 pixels wrap to a second line instead.
+        int longest = 0, longestDescription = 0;
         if (HDC dc = GetDC(owner))
         {
             const auto old = SelectObject(dc, font);
@@ -317,6 +318,13 @@ class ChoicePopup
                 GetTextExtentPoint32W(dc, label.c_str(), int(label.size()), &extent);
                 longest = std::max(longest, int(extent.cx));
             }
+            SelectObject(dc, descriptionFont);
+            for (const auto& description : descriptions)
+            {
+                SIZE extent = {};
+                GetTextExtentPoint32W(dc, description.c_str(), int(description.size()), &extent);
+                longestDescription = std::max(longestDescription, int(extent.cx));
+            }
             SelectObject(dc, old);
             ReleaseDC(owner, dc);
         }
@@ -324,9 +332,10 @@ class ChoicePopup
         RECT host = {};
         if (GetWindowRect(GetAncestor(owner, GA_ROOT), &host))
             IntersectRect(&area, &area, &host);
-        const int needed = longest + rowHeight + int(28 * scale);
-        width = std::min(std::max({int(anchor.right - anchor.left), needed, described ? int(480 * scale) : 0}),
-                         int(area.right - area.left));
+        const int room = rowHeight + int(28 * scale);
+        const int needed =
+            std::max(longest, described ? std::min(longestDescription, int(480 * scale) - room) : 0) + room;
+        width = std::min(std::max(int(anchor.right - anchor.left), needed), int(area.right - area.left));
         const int height = rows * rowHeight + 2;
         const int x = std::clamp(int(anchor.right) - width, int(area.left), int(area.right) - width);
         int y = anchor.bottom + int(4 * scale);

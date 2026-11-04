@@ -3,6 +3,9 @@
 #include <wrl/client.h>
 #include <atomic>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include "UI/Direct2DFrame.h"
 using Microsoft::WRL::ComPtr;
@@ -563,8 +566,24 @@ int wmain(int argc, wchar_t** argv)
     for (int i = 1; i + 1 < argc; ++i)
         if (!wcscmp(argv[i], L"--dll"))
             path = argv[++i];
+    // Profiles live under APPDATA: use an empty folder instead of the user's.
+    wchar_t temp[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, temp);
+    const auto appData = std::wstring(temp) + L"FrankyPageTest" + std::to_wstring(GetCurrentProcessId());
+    SetEnvironmentVariableW(L"APPDATA", appData.c_str());
+    const auto profiles = std::filesystem::path(appData) / L"FrankyRenderer" / L"Profiles";
+    static constexpr const char* AnimeProfile = "[Profile]\r\nfolders=\"D:\\Anime\"\r\n";
+    const auto writeFile = [](const std::filesystem::path& file, const char* text)
+    { std::ofstream(file, std::ios::binary | std::ios::trunc) << text; };
+    const auto readFile = [](const std::filesystem::path& file)
+    {
+        std::ifstream in(file, std::ios::binary);
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    };
     for (int repeat = 0; repeat < 3; repeat++)
     {
+        std::filesystem::create_directories(profiles);
+        writeFile(profiles / L"Anime.ini", AnimeProfile);
         HMODULE dll =
             LoadLibraryExW(path.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!dll)
@@ -620,16 +639,26 @@ int wmain(int argc, wchar_t** argv)
             return 24;
         }
         puts("PASS pre-playback settings page applies a display profile");
-        // Closing an uncommitted host must restore the captured opening state.
+        // Closing an uncommitted host must restore the captured opening state,
+        // the content profiles included.
         auto changed = mock->settings;
         changed.brightness = .125f;
         Check(mock->SetSettings(&changed), "simulate settings preview through interface");
+        writeFile(profiles / L"Anime.ini", "[Profile]\r\nfolders=\"\"\r\n[Renderer]\r\nsaturation=1.5\r\n");
+        writeFile(profiles / L"New.ini", "[Profile]\r\n");
+        writeFile(profiles / L"Selected.txt", "Anime");
         Check(page->Deactivate(), "deactivate");
         DestroyWindow(parent);
         if (mock->settings.brightness != 0 || mock->writes < 2)
         {
             puts("FAIL cancel restoration");
             return 5;
+        }
+        if (readFile(profiles / L"Anime.ini") != AnimeProfile || std::filesystem::exists(profiles / L"New.ini") ||
+            std::filesystem::exists(profiles / L"Selected.txt"))
+        {
+            puts("FAIL cancel restores content profiles");
+            return 25;
         }
         Check(page->SetObjects(0, nullptr), "disconnect");
         Check(page->SetPageSite(nullptr), "detach site");
@@ -638,6 +667,9 @@ int wmain(int argc, wchar_t** argv)
         FreeLibrary(dll);
     }
     CoUninitialize();
-    puts("PASS Direct2D page factory, resources, hidden activation, cancel restoration and repeated DLL unload/reload");
+    std::error_code error;
+    std::filesystem::remove_all(appData, error);
+    puts("PASS Direct2D page factory, resources, hidden activation, cancel restoration (profiles too) and repeated "
+         "DLL unload/reload");
     return 0;
 }

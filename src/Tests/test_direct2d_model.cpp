@@ -9,6 +9,12 @@ static void Require(bool ok, const char* text)
 
 int wmain()
 {
+    // Profiles live under APPDATA; the user's own profiles and choice must not
+    // reach the test.
+    wchar_t temp[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, temp);
+    SetEnvironmentVariableW(L"APPDATA",
+                            (std::wstring(temp) + L"FrankyModelTest" + std::to_wstring(GetCurrentProcessId())).c_str());
     try
     {
         PlaceboSettings s;
@@ -675,23 +681,56 @@ int wmain()
             };
             Require(SUCCEEDED(host->ApplyImported(portable)) && importedId == bId && s.displayProfile == bId,
                     "import targets selected device and cannot change profile identity");
-            host->m_activePage = 0;
-            host->m_navigationOpen = true;
-            host->m_navigationProgress = 1;
-            host->Render();
-            int displayHits = 0, renameHits = 0;
-            for (const auto& hit : host->m_hitRegions)
+            // The display is chosen and renamed in the Default tab of the Profiles page.
+            int displayChoices = 0, renameFields = 0;
+            for (const auto& page : host->m_pages)
+                for (const auto& card : page.cards)
+                    if (page.name == L"Profiles" && card.tab == ProfilePage::DefaultTab)
+                        for (const auto& c : card.controls)
+                        {
+                            displayChoices += c.id == L"Display" && c.kind == ControlKind::Choice;
+                            renameFields += c.id == L"Display Name" && c.kind == ControlKind::Text;
+                        }
+            Require(displayChoices == 1 && renameFields == 1, "display choice and rename are on the Profiles page");
+            // A profile chosen at the top: the menu edits it and the profile keeps
+            // only its change, while the renderer and the page keep Default.
             {
-                if (hit.type == HitRegion::DisplayProfile)
+                wchar_t temp[MAX_PATH] = {}, appData[MAX_PATH] = {};
+                GetTempPathW(MAX_PATH, temp);
+                GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
+                const auto folder =
+                    std::wstring(temp) + L"FrankyModelProfiles" + std::to_wstring(GetCurrentProcessId());
+                SetEnvironmentVariableW(L"APPDATA", folder.c_str());
+                ContentProfiles::Profile anime;
+                anime.name = L"Anime";
+                Require(ContentProfiles::Save(anime), "test profile saved");
+                PlaceboSettings sent = s;
+                host->m_preview = [&](const PlaceboSettings& next)
                 {
-                    ++displayHits;
-                    Require(hit.rect.top > 430 && hit.rect.right <= SettingsLayout::SidebarWidth - 16,
-                            "device selector fits below navigation");
-                }
-                if (hit.type == HitRegion::RenameDisplay)
-                    ++renameHits;
+                    sent = next;
+                    return S_OK;
+                };
+                const float normal = s.saturation;
+                host->SelectProfile(L"Anime");
+                Require(host->m_editing == L"Anime", "chosen profile is edited");
+                s.saturation = normal + .25f;
+                host->Changed();
+                host->Preview();
+                const auto stored = ContentProfiles::Load();
+                Require(stored.size() == 1 && stored[0].overrides.size() == 1 &&
+                            stored[0].overrides.count({"Renderer", "saturation"}),
+                        "profile keeps only its change");
+                Require(sent.saturation == normal && host->m_base.saturation == normal,
+                        "renderer keeps the normal settings");
+                PlaceboSettings out;
+                Direct2DSettingsHost::Save(view, &out);
+                Require(out.saturation == normal, "page applies the normal settings");
+                host->SelectProfile(ContentProfiles::DefaultName);
+                Require(host->m_editing.empty() && s.saturation == normal, "Default shows the normal settings");
+                Require(ContentProfiles::Preview(L"") == ContentProfiles::DefaultName, "video previews the choice");
+                SetEnvironmentVariableW(L"APPDATA", appData);
+                std::filesystem::remove_all(folder);
             }
-            Require(displayHits == 1 && renameHits == 1, "device selector and rename are visible");
             auto rect = host->m_displayRect;
             rect.left += 10;
             rect.right -= 10;

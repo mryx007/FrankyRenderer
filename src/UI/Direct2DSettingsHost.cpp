@@ -122,7 +122,14 @@ static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s H
                                                L"\"%s\" and its settings will be removed.",
                                                L"Cancel",
                                                L"Delete",
-                                               ProfilePage::DisplayModeNote,
+                                               L"Profile",
+                                               L"Normal settings of this display.",
+                                               L"Used by the playing video.",
+                                               L"The menu now shows \"%s\". Changes on all pages go into the profile.",
+                                               L"Remove all settings of the profile \"%s\"? It then matches Default.",
+                                               L"The profile matches Default again.",
+                                               L"This folder already belongs to the profile \"%s\".",
+                                               L"Could not save the profile.",
                                                L"Display",
                                                L"Rename",
                                                L"Import",
@@ -311,6 +318,7 @@ struct HitRegion
         ExportBtn,
         DisplayProfile,
         QualityPresetBtn,
+        ProfileSelectBtn,
         RenameDisplay,
         Number,
         Decrement,
@@ -369,6 +377,8 @@ class Direct2DHostWindow
 {
   public:
     HWND m_hwnd = nullptr;
+    // The settings the controls edit: with a profile shown, the normal settings
+    // with it on top. Direct2DSettingsHost::Save gives the normal settings.
     PlaceboSettings* m_pSettings = nullptr;
     bool m_standalone = false;
     bool m_navigationOpen = false;
@@ -527,6 +537,21 @@ class Direct2DHostWindow
     std::vector<DisplayProfiles::Device> m_devices;
     std::function<HRESULT(const PlaceboSettings&)> m_preview;
     PlaceboSettings m_accepted, m_applied;
+    // The choice at the top of the menu: ContentProfiles::DefaultName or a
+    // profile, at first the one of the playing video. The menu edits m_editing
+    // (empty: Default); m_base holds the display's normal settings and
+    // *m_pSettings them with that profile on top. Another choice is previewed
+    // on the playing video until the menu closes.
+    std::wstring m_selection, m_editing;
+    bool m_previewing = false;
+    PlaceboSettings m_base;
+    std::wstring EditTarget() const;
+    void LoadEditTarget();
+    void SelectProfile(const std::wstring& selection);
+    void SelectProfileMenu(const D2D1_RECT_F& rect);
+    void SyncProfiles();
+    void ResetControl(D2DControl& c);
+    bool HandleProfileRequests();
     HWND m_edit = nullptr;
     bool m_renamingDisplay = false;
     D2D1_RECT_F m_displayRect = {};
@@ -683,7 +708,12 @@ class Direct2DHostWindow
     Direct2DHostWindow(HWND hwnd, PlaceboSettings* settings, bool standalone)
         : m_hwnd(hwnd), m_pSettings(settings), m_standalone(standalone)
     {
-        m_accepted = m_applied = m_saved = *settings;
+        m_accepted = m_applied = m_saved = m_base = *settings;
+        const auto playing = ContentProfiles::PlayingProfile();
+        m_selection = playing.empty() ? ContentProfiles::DefaultName : playing;
+        m_editing = EditTarget();
+        if (!m_editing.empty())
+            LoadEditTarget();
         InitPages();
         InitD2D();
     }
@@ -691,6 +721,13 @@ class Direct2DHostWindow
     ~Direct2DHostWindow()
     {
         *m_alive = false;
+        // The playing video returns to the profile its folder gives it.
+        if (m_previewing)
+        {
+            ContentProfiles::StopPreview();
+            if (m_preview)
+                m_preview(m_base);
+        }
         if (m_measureThread.joinable())
         {
             m_measurement->cancel = true;
@@ -1128,6 +1165,7 @@ void Direct2DHostWindow::Render()
         m_languageVersion = g_menuLanguageVersion;
         m_profileVersion = ProfilePage::g_version;
         InitPages();
+        SyncProfiles();
         // Controls and tabs may have moved: drop highlights left at old places.
         m_hoverRect = m_previousHoverRect = m_pressRect = {};
         m_hoverTab = -1;
@@ -1260,69 +1298,6 @@ void Direct2DHostWindow::Render()
         // 4. Sidebar Bottom Action Buttons
         float btnY = size.height - 48.0f;
         const float transferY = btnY;
-        if (m_displayProfiles)
-        {
-            const auto deviceRect = D2D1::RectF(16, transferY - 48, sidebarW - 16, transferY - 14);
-            m_displayRect = deviceRect;
-            auto caption = D2D1::RectF(16, transferY - 70, 140, transferY - 48);
-            const auto displayCaption = Tr(L"Display");
-            m_pRenderTarget->DrawText(
-                displayCaption.c_str(), UINT32(displayCaption.size()), m_fmtNav.Get(), caption, m_brushTextMuted.Get());
-            const auto renameRect = D2D1::RectF(sidebarW - 83, transferY - 72, sidebarW - 16, transferY - 49);
-            const auto renameAlignment = m_fmtNav->GetTextAlignment();
-            const auto renameParagraph = m_fmtNav->GetParagraphAlignment();
-            m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-            const auto renameLabel = Tr(L"Rename");
-            m_pRenderTarget->DrawText(
-                renameLabel.c_str(), UINT32(renameLabel.size()), m_fmtNav.Get(), renameRect, m_brushTextMain.Get());
-            m_fmtNav->SetTextAlignment(renameAlignment);
-            m_fmtNav->SetParagraphAlignment(renameParagraph);
-            HitRegion renameHit;
-            renameHit.type = HitRegion::RenameDisplay;
-            renameHit.rect = renameRect;
-            m_hitRegions.push_back(renameHit);
-            m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushInputBg.Get());
-            m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(deviceRect, 6, 6), m_brushBorderCard.Get(), 1.f);
-            auto name = Tr(L"Display");
-            bool named = false;
-            for (const auto& device : m_devices)
-                if (device.id == m_pSettings->displayProfile)
-                {
-                    name = device.name + (device.connected ? L"" : L" (Disconnected)");
-                    named = true;
-                }
-            // No profile chosen yet: name the display this window is on.
-            const HMONITOR here = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
-            for (const auto& device : m_devices)
-                if (!named && device.connected && device.monitor == here)
-                {
-                    name = device.name;
-                    named = true;
-                }
-            auto text = deviceRect;
-            text.left += 12;
-            text.top += 8;
-            text.right -= 28;
-            const auto oldWrap = m_fmtNav->GetWordWrapping();
-            m_fmtNav->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-            m_pRenderTarget->DrawText(name.c_str(),
-                                      UINT32(name.size()),
-                                      m_fmtNav.Get(),
-                                      text,
-                                      m_brushTextMain.Get(),
-                                      D2D1_DRAW_TEXT_OPTIONS_CLIP);
-            m_fmtNav->SetWordWrapping(oldWrap);
-            const float x = deviceRect.right - 16, y = deviceRect.top + 16;
-            m_pRenderTarget->DrawLine(
-                D2D1::Point2F(x - 5, y - 2), D2D1::Point2F(x, y + 3), m_brushTextMuted.Get(), 1.8f);
-            m_pRenderTarget->DrawLine(
-                D2D1::Point2F(x, y + 3), D2D1::Point2F(x + 5, y - 2), m_brushTextMuted.Get(), 1.8f);
-            HitRegion deviceHit;
-            deviceHit.type = HitRegion::DisplayProfile;
-            deviceHit.rect = deviceRect;
-            m_hitRegions.push_back(deviceHit);
-        }
         for (int i = 0; i < 2; ++i)
         {
             const float buttonWidth = (sidebarW - 40.f) / 2.f;
@@ -1344,7 +1319,7 @@ void Direct2DHostWindow::Render()
         }
         if (!m_error.empty())
         {
-            const float statusBottom = transferY - (m_displayProfiles ? 80.f : 8.f);
+            const float statusBottom = transferY - 8.f;
             const auto r = D2D1::RectF(16, statusBottom - 57.f, sidebarW - 16, statusBottom);
             const auto status = Tr(m_error);
             m_pRenderTarget->DrawText(status.c_str(),
@@ -1397,15 +1372,22 @@ void Direct2DHostWindow::Render()
     if (m_measurement)
         presetName = Tr(L"Measuring…") + L" " + std::to_wstring(int(m_measurement->progress * 100)) + L"%";
     auto presetLabel = Tr(L"Quality") + L": " + presetName;
+    // The profile the menu shows: at first the one of the playing video.
+    const auto profileName =
+        !_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName) ? Tr(L"Default") : m_selection;
+    auto profileLabel = Tr(L"Profile") + L": " + profileName;
     const float saveWidth = m_standalone ? 114.f : 0.f, titleRoom = 200.f;
     float searchWidth = std::min(260.f, contentW);
-    float presetWidth = measure(presetLabel) + 50;
-    if (contentW - searchWidth - saveWidth - presetWidth - 10 < titleRoom)
+    float presetWidth = measure(presetLabel) + 50, profileWidth = measure(profileLabel) + 50;
+    if (contentW - searchWidth - saveWidth - presetWidth - profileWidth - 20 < titleRoom)
     {
         presetLabel = presetName;
         presetWidth = measure(presetLabel) + 50;
+        profileLabel = profileName;
+        profileWidth = measure(profileLabel) + 50;
     }
-    searchWidth = std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - 10 - titleRoom));
+    searchWidth =
+        std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - profileWidth - 20 - titleRoom));
     float headerActionsLeft = searchRight - searchWidth;
     if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))
     {
@@ -1500,6 +1482,31 @@ void Direct2DHostWindow::Render()
         m_hitRegions.push_back(presetHit);
         headerActionsLeft = box.left - 10;
     }
+    {
+        // Outlined in the accent colour while the menu edits a profile.
+        const auto box = D2D1::RectF(headerActionsLeft - profileWidth, currentY, headerActionsLeft - 10, currentY + 32);
+        m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(box, 5, 5), m_brushInputBg.Get());
+        m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(box, 5, 5),
+                                              m_editing.empty() ? m_brushBorderCard.Get() : m_brushAccent.Get(),
+                                              m_editing.empty() ? 1.f : 1.5f);
+        const auto paragraph = m_fmtNav->GetParagraphAlignment();
+        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        m_pRenderTarget->DrawText(profileLabel.c_str(),
+                                  UINT32(profileLabel.size()),
+                                  m_fmtNav.Get(),
+                                  D2D1::RectF(box.left + 12, box.top, box.right - 26, box.bottom),
+                                  m_brushTextMain.Get(),
+                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        m_fmtNav->SetParagraphAlignment(paragraph);
+        const float x = box.right - 16, y = box.top + 15;
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x - 4, y - 2), D2D1::Point2F(x, y + 2), m_brushTextMuted.Get(), 1.6f);
+        m_pRenderTarget->DrawLine(D2D1::Point2F(x, y + 2), D2D1::Point2F(x + 4, y - 2), m_brushTextMuted.Get(), 1.6f);
+        HitRegion profileHit;
+        profileHit.type = HitRegion::ProfileSelectBtn;
+        profileHit.rect = box;
+        m_hitRegions.push_back(profileHit);
+        headerActionsLeft = box.left - 10;
+    }
     DrawSearchBox(D2D1::RectF(searchRight - searchWidth, currentY, searchRight, currentY + 32));
 
     if (!isSearching)
@@ -1529,7 +1536,8 @@ void Direct2DHostWindow::Render()
                     if (suffix != std::wstring::npos)
                         label.erase(suffix);
                     // Profile tabs carry a close mark; it opens a dialog that asks first.
-                    const bool closable = page.name == L"Profiles" && tabs[i] != ProfilePage::NewTab;
+                    const bool closable = page.name == L"Profiles" && tabs[i] != ProfilePage::NewTab &&
+                                          tabs[i] != ProfilePage::DefaultTab;
                     ComPtr<IDWriteTextLayout> measured;
                     DWRITE_TEXT_METRICS metrics = {};
                     float textWidth = float(label.size()) * 8.f;
@@ -1803,10 +1811,45 @@ void Direct2DHostWindow::Render()
             m_hitRegions.push_back(hit);
         }
     };
-    // A setting is changed when it differs from its default; only then its
-    // reset button is shown, and its name gets a dot.
-    const auto modifiedFor = [](const D2DControl& ctrl)
+    // In a profile, a setting is changed when it differs from Default: read
+    // every control once with the profile and once with the normal settings.
+    std::unordered_map<const D2DControl*, bool> profileChanged;
+    if (!m_editing.empty())
     {
+        const auto read = [&]
+        {
+            std::vector<std::wstring> values;
+            for (const auto& page : m_pages)
+                for (const auto& card : page.cards)
+                    for (const auto& c : card.controls)
+                        values.push_back(c.kind == ControlKind::Text ? (c.getText ? c.getText() : std::wstring())
+                                         : c.get                     ? std::to_wstring(c.Value())
+                                                                     : std::wstring());
+            return values;
+        };
+        const auto now = read();
+        const auto current = *m_pSettings;
+        *m_pSettings = m_base;
+        const auto normal = read();
+        *m_pSettings = current;
+        size_t i = 0;
+        for (const auto& page : m_pages)
+            for (const auto& card : page.cards)
+                for (const auto& c : card.controls)
+                {
+                    profileChanged[&c] = page.name != L"Profiles" && now[i] != normal[i];
+                    ++i;
+                }
+    }
+    // A setting is changed when it differs from its default (in a profile:
+    // from Default); only then its reset button is shown, and its name gets a dot.
+    const auto modifiedFor = [&](const D2DControl& ctrl)
+    {
+        if (!m_editing.empty())
+        {
+            const auto found = profileChanged.find(&ctrl);
+            return found != profileChanged.end() && found->second;
+        }
         if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
             return std::abs(ctrl.Value() - ctrl.Default()) > std::max(1e-6f, ctrl.stepVal * .5f);
         if (ctrl.kind == ControlKind::Toggle || ctrl.kind == ControlKind::Choice)
@@ -2331,6 +2374,8 @@ void Direct2DHostWindow::Render()
 
 void Direct2DHostWindow::Changed()
 {
+    if (HandleProfileRequests())
+        return;
     if (FAILED(ValidateSettings(*m_pSettings)))
     {
         m_error = m_pSettings->iccEnabled && !m_pSettings->iccPath[0] ? L"Select an ICC profile file first."
@@ -2345,6 +2390,8 @@ void Direct2DHostWindow::Changed()
         memcmp(m_accepted.userShaders.order, m_pSettings->userShaders.order, sizeof(m_pSettings->userShaders.order)) !=
         0;
     m_accepted = *m_pSettings;
+    if (m_editing.empty())
+        m_base = *m_pSettings;
     m_error.clear();
     CountUnsaved();
     if (reordered)
@@ -2454,6 +2501,12 @@ void Direct2DHostWindow::CountUnsaved()
             }
         return values;
     };
+    // A profile is saved at once; Save keeps the normal settings.
+    if (!m_editing.empty())
+    {
+        m_unsaved = 0;
+        return;
+    }
     const auto now = collect();
     const auto current = *m_pSettings;
     *m_pSettings = m_saved;
@@ -2490,9 +2543,22 @@ void Direct2DHostWindow::DrawScrollbar(D2D1_RECT_F track, float offset, float ex
 void Direct2DHostWindow::Preview()
 {
     m_pending = false;
+    // A profile keeps what differs from Default; the renderer gets the normal
+    // settings and reads the profile from disk.
+    if (!m_editing.empty())
+    {
+        const auto profiles = ContentProfiles::Load();
+        if (const auto* found = ContentProfiles::Find(profiles, m_editing))
+        {
+            auto profile = *found;
+            profile.overrides = ContentProfiles::Differences(m_base, *m_pSettings);
+            if (profile.overrides != found->overrides && !ContentProfiles::Save(profile))
+                m_error = L"Could not save the profile.";
+        }
+    }
     if (m_preview)
     {
-        auto hr = m_preview(*m_pSettings);
+        auto hr = m_preview(m_base);
         if (FAILED(hr))
         {
             *m_pSettings = m_accepted = m_applied;
@@ -2538,11 +2604,11 @@ void Direct2DHostWindow::TransferIni(bool importing)
         {
             if (m_displayProfiles)
             {
-                const auto text = SettingsBackup::Serialize(SettingsBackup::Capture(*m_pSettings));
+                const auto text = SettingsBackup::Serialize(SettingsBackup::Capture(m_base));
                 if (SUCCEEDED(SettingsIni::ExportText(path, text, m_error)))
                     m_error = L"All display profiles exported.";
             }
-            else if (SUCCEEDED(SettingsIni::Export(path, *m_pSettings, m_error)))
+            else if (SUCCEEDED(SettingsIni::Export(path, m_base, m_error)))
                 m_error = L"INI backup exported.";
         }
         else
@@ -2594,18 +2660,13 @@ HRESULT Direct2DHostWindow::ApplyImported(const PlaceboSettings& candidate)
     if (FAILED(hr))
         return hr;
     EndEdit();
-    *m_pSettings = m_accepted = selected;
-    if (m_preview)
-        m_applied = selected;
+    // An import replaces the normal settings; a profile shown stays on top.
+    m_base = selected;
     m_pending = false;
-    m_pDraggingSlider = nullptr;
-    m_keyboardIndex = -1;
     m_scrollY = 0;
     m_searchQuery.clear();
     m_searchFocused = false;
-    m_hitRegions.clear();
-    InitPages();
-    InvalidateRect(m_hwnd, nullptr, FALSE);
+    LoadEditTarget();
     return S_OK;
 }
 
@@ -2754,6 +2815,25 @@ void Direct2DHostWindow::ResetAll()
 {
     EndEdit();
     const auto alive = m_alive;
+    if (!m_editing.empty())
+    {
+        const int answer = MessageBoxW(
+            m_hwnd,
+            ProfilePage::Fill(Tr(L"Remove all settings of the profile \"%s\"? It then matches Default."), m_editing)
+                .c_str(),
+            Tr(L"Reset All").c_str(),
+            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+        if (!*alive || answer != IDYES)
+            return;
+        *m_pSettings = m_base;
+        m_pDraggingSlider = nullptr;
+        m_keyboardIndex = -1;
+        m_hitRegions.clear();
+        InitPages();
+        Changed();
+        ShowToast(Tr(L"The profile matches Default again."));
+        return;
+    }
     const int answer =
         MessageBoxW(m_hwnd,
                     Tr(L"Reset all settings for this display to their defaults? Theme and language stay.").c_str(),
@@ -2762,7 +2842,7 @@ void Direct2DHostWindow::ResetAll()
     if (!*alive || answer != IDYES)
         return;
     PlaceboSettings defaults;
-    wcscpy_s(defaults.displayProfile, m_pSettings->displayProfile);
+    wcscpy_s(defaults.displayProfile, m_base.displayProfile);
     *m_pSettings = defaults;
     m_pDraggingSlider = nullptr;
     m_keyboardIndex = -1;
@@ -2882,18 +2962,175 @@ void Direct2DHostWindow::CloseDeleteDialog(bool confirm)
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
+// The profile the menu edits; empty for Default or a profile that is gone.
+std::wstring Direct2DHostWindow::EditTarget() const
+{
+    if (m_selection.empty() || !_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName))
+        return {};
+    const auto profiles = ContentProfiles::Load();
+    const auto* found = ContentProfiles::Find(profiles, m_selection);
+    return found ? found->name : std::wstring();
+}
+
+// Shows the edited profile on top of the normal settings.
+void Direct2DHostWindow::LoadEditTarget()
+{
+    m_editing = EditTarget();
+    auto view = m_base;
+    if (!m_editing.empty())
+    {
+        const auto profiles = ContentProfiles::Load();
+        if (const auto* found = ContentProfiles::Find(profiles, m_editing))
+            view = ContentProfiles::Apply(m_base, *found);
+    }
+    *m_pSettings = m_accepted = m_applied = view;
+    m_pDraggingSlider = nullptr;
+    m_keyboardIndex = -1;
+    m_hitRegions.clear();
+    InitPages();
+    if (m_hwnd)
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+// Chooses Default or a profile for the menu; the playing video previews it
+// while the menu is open.
+void Direct2DHostWindow::SelectProfile(const std::wstring& selection)
+{
+    EndEdit();
+    if (m_pending)
+        Preview();
+    m_selection = selection;
+    ContentProfiles::StartPreview(selection);
+    m_previewing = true;
+    LoadEditTarget();
+    if (m_preview)
+        m_preview(m_base);
+}
+
+void Direct2DHostWindow::SelectProfileMenu(const D2D1_RECT_F& rect)
+{
+    EndEdit();
+    const auto profiles = ContentProfiles::Load();
+    const auto playing = ContentProfiles::PlayingProfile();
+    std::vector<std::wstring> choices = {ContentProfiles::DefaultName};
+    ChoicePopup popup;
+    popup.labels = {Tr(L"Default")};
+    popup.descriptions = {Tr(L"Normal settings of this display.")};
+    for (const auto& profile : profiles)
+    {
+        choices.push_back(profile.name);
+        popup.labels.push_back(profile.name);
+        popup.descriptions.push_back(
+            !_wcsicmp(profile.name.c_str(), playing.c_str()) ? Tr(L"Used by the playing video.") : L"");
+    }
+    popup.selected = 0;
+    for (size_t i = 1; i < choices.size(); ++i)
+        if (!_wcsicmp(choices[i].c_str(), m_selection.c_str()))
+            popup.selected = int(i);
+    RECT anchor = {
+        int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
+    MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+    const auto alive = m_alive;
+    const int selected = popup.Show(m_hwnd, anchor, Scale());
+    if (!*alive || selected < 0)
+        return;
+    SelectProfile(choices[size_t(selected)]);
+}
+
+// After the Profiles page changed profiles: follow a renamed profile, fall
+// back to Default for a deleted one, and let the renderer read them again.
+void Direct2DHostWindow::SyncProfiles()
+{
+    if (m_pending)
+        Preview();
+    if (!ProfilePage::g_renamedFrom.empty() && !_wcsicmp(m_selection.c_str(), ProfilePage::g_renamedFrom.c_str()))
+    {
+        m_selection = ProfilePage::g_renamedTo;
+        if (m_previewing)
+            ContentProfiles::StartPreview(m_selection);
+    }
+    ProfilePage::g_renamedFrom.clear();
+    if (_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName) && EditTarget().empty())
+    {
+        m_selection = ContentProfiles::DefaultName;
+        if (m_previewing)
+            ContentProfiles::StartPreview(m_selection);
+    }
+    if (EditTarget() != m_editing)
+        LoadEditTarget();
+    if (m_preview)
+        m_preview(m_base);
+}
+
+// In a profile a reset returns to the value in Default, not the built-in one.
+void Direct2DHostWindow::ResetControl(D2DControl& c)
+{
+    if (m_editing.empty() || (!c.get && !c.getText) || (c.kind != ControlKind::Text && !c.set))
+    {
+        if (c.reset)
+            c.reset();
+        return;
+    }
+    const auto current = *m_pSettings;
+    *m_pSettings = m_base;
+    const float value = c.Value();
+    const auto text = c.getText ? c.getText() : std::wstring();
+    *m_pSettings = current;
+    if (c.kind == ControlKind::Text)
+    {
+        if (c.setText)
+            c.setText(text);
+    }
+    else
+        c.set(value);
+}
+
+// Carries out what a Profiles page control asked for; true when the settings
+// shown were replaced and the change needs no further handling.
+bool Direct2DHostWindow::HandleProfileRequests()
+{
+    if (!ProfilePage::g_notice.empty())
+    {
+        ShowToast(ProfilePage::g_notice);
+        ProfilePage::g_notice.clear();
+    }
+    if (!ProfilePage::g_requestDisplay.empty())
+    {
+        const auto id = ProfilePage::g_requestDisplay;
+        ProfilePage::g_requestDisplay.clear();
+        if (id != m_base.displayProfile)
+        {
+            if (m_pending)
+                Preview();
+            if (SUCCEEDED(EnsureDisplayProfiles(DisplayProfiles::Connected(), LoadSettings())))
+            {
+                m_devices = DisplayProfiles::All();
+                AdoptDisplayProfile(id);
+            }
+            else
+                m_error = L"Could not read display profiles.";
+        }
+        return true;
+    }
+    if (ProfilePage::g_selectionRequested)
+    {
+        ProfilePage::g_selectionRequested = false;
+        const auto name = ProfilePage::g_requestSelection;
+        SelectProfile(name);
+        ShowToast(ProfilePage::Fill(Tr(L"The menu now shows \"%s\". Changes on all pages go into the profile."), name));
+        return true;
+    }
+    return false;
+}
+
 void Direct2DHostWindow::AdoptDisplayProfile(const std::wstring& id)
 {
     if (!DisplayProfiles::ValidId(id))
         return;
     EndEdit();
-    *m_pSettings = m_accepted = m_applied = m_saved = LoadSettings(id);
+    m_base = m_saved = LoadSettings(id);
     m_pending = false;
-    m_pDraggingSlider = nullptr;
-    m_keyboardIndex = -1;
-    m_hitRegions.clear();
-    InitPages();
-    InvalidateRect(m_hwnd, nullptr, FALSE);
+    LoadEditTarget();
 }
 
 // Parses an edited number; rejects partial input and values outside the control.
@@ -3023,12 +3260,13 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
     if (m_editFont)
         DeleteObject(m_editFont);
     const bool textControl = control && control->kind == ControlKind::Text;
-    // Text controls match the 14 DIP medium font they are drawn with.
+    // Text controls match the 14 DIP medium font they are drawn with. GDI
+    // renders Segoe UI medium as regular, so semibold matches it instead.
     m_editFont = CreateFontW(-int((textControl ? 14 : 13) * scale + .5f),
                              0,
                              0,
                              0,
-                             textControl ? FW_MEDIUM : FW_NORMAL,
+                             textControl ? FW_SEMIBOLD : FW_NORMAL,
                              FALSE,
                              FALSE,
                              FALSE,
@@ -3234,6 +3472,7 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                     size_t(h.pageIndex) < tabs.size() && tabs[size_t(h.pageIndex)] == ProfilePage::NewTab)
                 {
                     ProfilePage::Create();
+                    HandleProfileRequests();
                     m_profileCreated = GetTickCount64();
                     // The tabs move; drop the highlight left on the old "+" place.
                     m_hoverRect = m_previousHoverRect = m_pressRect = {};
@@ -3284,7 +3523,7 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                 for (auto& c : card.controls)
                     // The chain order belongs to all shaders, not the selected one.
                     if (c.reset && !(shaders && c.id == L"Chain Position"))
-                        c.reset();
+                        ResetControl(c);
             }
             Changed();
         }
@@ -3315,6 +3554,12 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
             SelectQualityPreset(rect);
             return;
         }
+        else if (h.type == HitRegion::ProfileSelectBtn)
+        {
+            const auto rect = h.rect;
+            SelectProfileMenu(rect);
+            return;
+        }
         else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
         {
             TransferIni(h.type == HitRegion::ImportBtn);
@@ -3323,11 +3568,11 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         }
         else if (h.type == HitRegion::ApplyBtn)
         {
-            const auto hr = SaveSettings(*m_pSettings);
+            const auto hr = SaveSettings(m_base);
             m_error = SUCCEEDED(hr) ? L"Settings saved." : L"Could not save settings.";
             if (SUCCEEDED(hr))
             {
-                m_saved = *m_pSettings;
+                m_saved = m_base;
                 CountUnsaved();
             }
         }
@@ -3342,7 +3587,7 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
             }
             else if (h.type == HitRegion::ResetValue)
             {
-                c->reset();
+                ResetControl(*c);
                 Changed();
             }
             else if (h.type == HitRegion::Increment || h.type == HitRegion::Decrement)
@@ -3753,7 +3998,8 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
                 if (!toggled && !onClose && h.type == HitRegion::CardTab && active.name == L"Profiles" && inside(h))
                 {
                     const auto tabs = CardTabs(active);
-                    if (size_t(h.pageIndex) < tabs.size() && tabs[size_t(h.pageIndex)] != ProfilePage::NewTab)
+                    if (size_t(h.pageIndex) < tabs.size() && tabs[size_t(h.pageIndex)] != ProfilePage::NewTab &&
+                        tabs[size_t(h.pageIndex)] != ProfilePage::DefaultTab)
                     {
                         // The field takes the label's place inside the tab.
                         pThis->m_tabRename = ProfilePage::RenameControl(tabs[size_t(h.pageIndex)]);
@@ -3964,10 +4210,8 @@ void Direct2DSettingsHost::Save(HWND hwnd, PlaceboSettings* outSettings)
     if (!hwnd || !outSettings)
         return;
     Direct2DHostWindow* pThis = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
-    if (pThis && pThis->m_pSettings)
-    {
-        *outSettings = *pThis->m_pSettings;
-    }
+    if (pThis)
+        *outSettings = pThis->m_base;
 }
 
 std::vector<std::pair<std::wstring, std::wstring>> Direct2DSettingsHost::TranslatableTexts()

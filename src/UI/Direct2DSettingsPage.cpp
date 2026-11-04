@@ -94,11 +94,15 @@ HRESULT Direct2DSettingsPage::OnApplyChanges()
 {
     if (!config)
         return E_UNEXPECTED;
-    auto hr = ValidateSettings(draft);
+    // The menu may show a profile on top; the renderer keeps the normal settings.
+    PlaceboSettings normal = draft;
+    if (view)
+        Direct2DSettingsHost::Save(view, &normal);
+    auto hr = ValidateSettings(normal);
     if (FAILED(hr))
         return hr;
-    LiveSettings::RememberDisplay(m_Dlg, draft);
-    hr = config->SetSettings(&draft);
+    LiveSettings::RememberDisplay(m_Dlg, normal);
+    hr = config->SetSettings(&normal);
     if (SUCCEEDED(hr))
         m_bDirty = FALSE;
     return hr;
