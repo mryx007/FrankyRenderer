@@ -92,7 +92,6 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
         {L"LUT File", L"Select a .cube 3D LUT before enabling LUT processing."},
         {L"Enable 3D LUT", L"Apply the selected 3D LUT at the stage selected by LUT Type."},
         {L"Disable All Shaders", L"Turn off the shader chain while retaining its parameter values and order."},
-        {L"Enabled", L"Include this shader in the processing chain. Its parameters remain stored when disabled."},
         {L"Chain Position",
          L"Processing order within the shader chain. Moving a shader shifts the intervening entries."},
     };

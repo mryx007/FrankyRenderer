@@ -2383,22 +2383,6 @@ msgid "Contrast-adaptive sharpening after scaling."
 msgstr "Kontrastadaptives Nachschärfen nach der Skalierung."
 
 #. Setting name (Shaders > AMD CAS)
-#. Setting name (Shaders > FineDehalo)
-#. Setting name (Shaders > Anti-Ringing)
-msgid "Enabled"
-msgstr "Aktiviert"
-
-#. Setting description (Shaders > AMD CAS > Enabled)
-#. Setting description (Shaders > FineDehalo > Enabled)
-#. Setting description (Shaders > Anti-Ringing > Enabled)
-msgid ""
-"Include this shader in the processing chain. Its parameters remain stored "
-"when disabled."
-msgstr ""
-"Diesen Shader in die Verarbeitungskette aufnehmen. Seine Parameter bleiben "
-"bei Deaktivierung gespeichert."
-
-#. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Guided Detail Enhance)
 msgid "Strength (STR)"

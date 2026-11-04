@@ -646,11 +646,11 @@ int wmain()
         for (const auto& hit : host->m_hitRegions)
         {
             shaderRows += hit.type == HitRegion::ShaderItem;
-            enabledSwitches += hit.type == HitRegion::Toggle;
+            enabledSwitches += hit.type == HitRegion::Toggle && hit.pControl && hit.pControl->id == L"Enabled";
             shaderScrollbar |= hit.type == HitRegion::Scrollbar && hit.pageIndex == -2;
         }
-        Require(shaderRows == 7 && enabledSwitches == 1 && shaderScrollbar,
-                "compact shader list and only selected shader editor");
+        Require(shaderRows == 7 && enabledSwitches == 0 && shaderScrollbar,
+                "compact shader list switches shaders; the editor holds only parameters");
         host->m_shaderOffset = ShaderCount - 7;
         host->m_selectedShader = 20;
         host->Render();

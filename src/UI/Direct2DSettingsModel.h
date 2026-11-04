@@ -834,17 +834,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             const auto& info = ShaderCatalog[id];
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
-            D2DControl n;
-            n.name = L"Enabled";
-            n.kind = ControlKind::Toggle;
-            n.get = [&f] { return float(f.enabled); };
-            n.set = [&f](float v) { f.enabled = uint32_t(v); };
-            n.reset = [&f] { f = {}; };
-            c.controls.push_back(std::move(n));
+            // Shaders are switched on in the list above; the card holds their parameters.
             for (int i = 0; i < info.count; i++)
             {
                 const auto& param = info.parameters[i];
-                n = {};
+                D2DControl n;
                 n.name = ShaderParameterLabel(param.name) + L" (" + D2DWide(param.name) + L")";
                 n.desc = std::wstring(L"Adjust ") + ShaderParameterLabel(param.name) +
                          L" for this shader. The default preserves the shader author's setting.";

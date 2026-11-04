@@ -2161,20 +2161,6 @@ msgid "Contrast-adaptive sharpening after scaling."
 msgstr "缩放后的对比度自适应锐化。"
 
 #. Setting name (Shaders > AMD CAS)
-#. Setting name (Shaders > FineDehalo)
-#. Setting name (Shaders > Anti-Ringing)
-msgid "Enabled"
-msgstr "启用"
-
-#. Setting description (Shaders > AMD CAS > Enabled)
-#. Setting description (Shaders > FineDehalo > Enabled)
-#. Setting description (Shaders > Anti-Ringing > Enabled)
-msgid ""
-"Include this shader in the processing chain. Its parameters remain stored "
-"when disabled."
-msgstr "将此着色器包含在处理链中。禁用时其参数仍被保存。"
-
-#. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Guided Detail Enhance)
 msgid "Strength (STR)"
