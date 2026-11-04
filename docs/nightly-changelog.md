@@ -59,3 +59,4 @@
 - Shader settings that only know 0 or 1 (e.g. SHARP in AiUpscale) are now on/off switches instead of number fields.
 - Shaders are switched on only in the shader list; the extra "Enabled" switch in each shader's settings is gone. Reset Shader now resets only its settings.
 - Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including fixes for Dolby Vision metadata.
+- Updated libplacebo with fixes made after version 7.387.0: more accurate colour conversion for PQ, HLG and the black level, ICC profiles without a brightness value, and a Smooth Motion queue fix.
