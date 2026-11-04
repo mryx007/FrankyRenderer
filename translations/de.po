@@ -3173,6 +3173,112 @@ msgstr ""
 "LBD für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe des "
 "Shaderautors."
 
+#. Category
+#. Category heading
+msgid "Profiles"
+msgstr "Profile"
+
+#. Category description
+msgid "Different settings for videos from chosen folders."
+msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
+
+#. Tab (Profiles)
+#. Quality preset (header)
+msgid "Default"
+msgstr "Standard"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+#. Menu text; keep %d and %s placeholders
+msgid "Profile"
+msgstr "Profil"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Folders"
+msgstr "Ordner"
+
+#. Tab (Profiles)
+#. Section heading (Profiles)
+msgid "Displays"
+msgstr "Bildschirme"
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > Display)
+#. Menu text; keep %d and %s placeholders
+msgid "Display"
+msgstr "Bildschirm"
+
+#. Setting description (Profiles > Display > Display)
+msgid "Normal settings for videos without a profile. Each display has its own."
+msgstr ""
+"Normale Einstellungen für Videos ohne Profil. Jeder Bildschirm hat eigene."
+
+#. Setting name (Profiles > Display)
+msgid "Display Name"
+msgstr "Bildschirmname"
+
+#. Input error (Profiles > Display > Display Name)
+#. Menu text; keep %d and %s placeholders
+msgid "Enter a display name (1 to 80 characters)."
+msgstr "Einen Bildschirmnamen eingeben (1 bis 80 Zeichen)."
+
+#. Setting name (Profiles > Profile)
+msgid "Name"
+msgstr "Name"
+
+#. Setting description (Profiles > Profile > Name)
+msgid "Up to 60 characters."
+msgstr "Bis zu 60 Zeichen."
+
+#. Input error (Profiles > Profile > Name)
+msgid "Enter a profile name that is not in use (1 to 60 characters)."
+msgstr "Gib einen noch nicht verwendeten Profilnamen ein (1 bis 60 Zeichen)."
+
+#. Setting name (Profiles > Folders)
+msgid "Add Folder"
+msgstr "Ordner hinzufügen"
+
+#. Setting description (Profiles > Folders > Add Folder)
+msgid ""
+"Videos in these folders and their subfolders use this profile; when folders "
+"are nested, the closest one wins."
+msgstr ""
+"Videos in diesen Ordnern und ihren Unterordnern nutzen dieses Profil; bei "
+"verschachtelten Ordnern gilt der nächstgelegene."
+
+#. Button (Profiles > Folders > Add Folder)
+msgid "Choose…"
+msgstr "Auswählen…"
+
+#. Setting name (Profiles > Displays)
+msgid "All Displays"
+msgstr "Alle Bildschirme"
+
+#. Setting description (Profiles > Displays > All Displays)
+msgid "Off: only on the displays switched on below."
+msgstr "Aus: nur auf den unten eingeschalteten Bildschirmen."
+
+#. Section heading (Profiles)
+#. Setting name (Profiles > New Profile)
+msgid "New Profile"
+msgstr "Neues Profil"
+
+#. Section description (Profiles > New Profile)
+msgid ""
+"Own settings for videos from chosen folders, e.g. other scaling for anime."
+msgstr ""
+"Eigene Einstellungen für Videos aus ausgewählten Ordnern, z. B. andere "
+"Skalierung für Anime."
+
+#. Setting description (Profiles > New Profile > New Profile)
+msgid "Adds an empty profile in its own tab."
+msgstr "Legt ein leeres Profil in einem eigenen Reiter an."
+
+#. Button (Profiles > New Profile > New Profile)
+msgid "Create"
+msgstr "Erstellen"
+
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr "Bei %sp bietet dieser Bildschirm %s Hz."
@@ -3186,8 +3292,50 @@ msgid "Other resolutions: %s."
 msgstr "Weitere Auflösungen: %s."
 
 #. Menu text; keep %d and %s placeholders
-msgid "Display"
-msgstr "Bildschirm"
+msgid "Delete profile?"
+msgstr "Profil löschen?"
+
+#. Menu text; keep %d and %s placeholders
+msgid "\"%s\" and its settings will be removed."
+msgstr "„%s“ und seine Einstellungen werden entfernt."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Delete"
+msgstr "Löschen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Normal settings of this display."
+msgstr "Normale Einstellungen dieses Bildschirms."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Used by the playing video."
+msgstr "Vom laufenden Video genutzt."
+
+#. Menu text; keep %d and %s placeholders
+msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
+msgstr ""
+"Das Menü zeigt jetzt „%s“. Änderungen auf allen Seiten gehen ins Profil."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Remove all settings of the profile \"%s\"? It then matches Default."
+msgstr ""
+"Alle Einstellungen des Profils „%s“ entfernen? Es entspricht dann Standard."
+
+#. Menu text; keep %d and %s placeholders
+msgid "The profile matches Default again."
+msgstr "Das Profil entspricht wieder Standard."
+
+#. Menu text; keep %d and %s placeholders
+msgid "This folder already belongs to the profile \"%s\"."
+msgstr "Dieser Ordner gehört schon zum Profil „%s“."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Could not save the profile."
+msgstr "Das Profil konnte nicht gespeichert werden."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Rename"
@@ -3293,10 +3441,6 @@ msgid "Could not read display profiles."
 msgstr "Anzeigeprofile konnten nicht gelesen werden."
 
 #. Menu text; keep %d and %s placeholders
-msgid "Enter a display name (1 to 80 characters)."
-msgstr "Einen Bildschirmnamen eingeben (1 bis 80 Zeichen)."
-
-#. Menu text; keep %d and %s placeholders
 msgid "Enter a number within the supported range."
 msgstr "Eine Zahl innerhalb des unterstützten Bereichs eingeben."
 
@@ -3364,10 +3508,6 @@ msgstr "Schnell"
 msgid "For weak integrated GPUs."
 msgstr "Für leistungsschwache integrierte GPUs."
 
-#. Quality preset (header)
-msgid "Default"
-msgstr "Standard"
-
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
 msgstr "Ausgewogen. Für die meisten PCs geeignet."
@@ -3379,125 +3519,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Profiles page
-msgid "Profiles"
-msgstr "Profile"
-
-#. Profiles page
-msgid "Profile"
-msgstr "Profil"
-
-#. Profiles page
-msgid "Name"
-msgstr "Name"
-
-#. Profiles page
-msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr "Gib einen noch nicht verwendeten Profilnamen ein (1 bis 60 Zeichen)."
-
-#. Profiles page
-msgid "Add Folder"
-msgstr "Ordner hinzufügen"
-
-#. Profiles page
-msgid "Videos in these folders and their subfolders use this profile; when folders are nested, the closest one wins."
-msgstr "Videos in diesen Ordnern und ihren Unterordnern nutzen dieses Profil; bei verschachtelten Ordnern gilt der nächstgelegene."
-
-#. Profiles page
-msgid "Choose…"
-msgstr "Auswählen…"
-
-#. Profiles page
-msgid "New Profile"
-msgstr "Neues Profil"
-
-#. Profiles page
-msgid "Create"
-msgstr "Erstellen"
-
-#. Profiles page
-msgid "Delete profile?"
-msgstr "Profil löschen?"
-
-#. Profiles page
-msgid "\"%s\" and its settings will be removed."
-msgstr "„%s“ und seine Einstellungen werden entfernt."
-
-#. Profiles page
-msgid "Cancel"
-msgstr "Abbrechen"
-
-#. Profiles page
-msgid "Delete"
-msgstr "Löschen"
-
-#. Category description
-msgid "Different settings for videos from chosen folders."
-msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
-
-#. Tab (Profiles)
-#. Section heading (Profiles)
-msgid "Folders"
-msgstr "Ordner"
-
-#. Tab (Profiles)
-#. Section heading (Profiles)
-msgid "Displays"
-msgstr "Bildschirme"
-
-#. Setting description (Profiles > Display > Display)
-msgid "Normal settings for videos without a profile. Each display has its own."
-msgstr "Normale Einstellungen für Videos ohne Profil. Jeder Bildschirm hat eigene."
-
-#. Setting name (Profiles > Display)
-msgid "Display Name"
-msgstr "Bildschirmname"
-
-#. Setting description (Profiles > Profile > Name)
-msgid "Up to 60 characters."
-msgstr "Bis zu 60 Zeichen."
-
-#. Setting name (Profiles > Displays)
-msgid "All Displays"
-msgstr "Alle Bildschirme"
-
-#. Setting description (Profiles > Displays > All Displays)
-msgid "Off: only on the displays switched on below."
-msgstr "Aus: nur auf den unten eingeschalteten Bildschirmen."
-
-#. Section description (Profiles > New Profile)
-msgid "Own settings for videos from chosen folders, e.g. other scaling for anime."
-msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern, z. B. andere Skalierung für Anime."
-
-#. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr "Legt ein leeres Profil in einem eigenen Reiter an."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Normal settings of this display."
-msgstr "Normale Einstellungen dieses Bildschirms."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr "Alle Einstellungen des Profils „%s“ entfernen? Es entspricht dann Standard."
-
-#. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr "Das Profil entspricht wieder Standard."
-
-#. Menu text; keep %d and %s placeholders
-msgid "This folder already belongs to the profile \"%s\"."
-msgstr "Dieser Ordner gehört schon zum Profil „%s“."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Could not save the profile."
-msgstr "Das Profil konnte nicht gespeichert werden."
-
-#. Menu text; keep %d and %s placeholders
-msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
-msgstr "Das Menü zeigt jetzt „%s“. Änderungen auf allen Seiten gehen ins Profil."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Used by the playing video."
-msgstr "Vom laufenden Video genutzt."
