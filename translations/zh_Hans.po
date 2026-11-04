@@ -1287,6 +1287,38 @@ msgid ""
 msgstr "调节白平衡（偏暖至中性）。6500 保留原始白平衡。"
 
 #. Section heading (Color)
+msgid "Display Gamma"
+msgstr "显示器伽马"
+
+#. Setting name (Color > Display Gamma)
+msgid "SDR Display Gamma"
+msgstr "SDR 显示器伽马"
+
+#. Setting description (Color > Display Gamma > SDR Display Gamma)
+msgid ""
+"For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. Not used "
+"with an ICC profile or HDR output."
+msgstr ""
+"用于校准为伽马 2.4 或 BT.1886 的显示器，例如投影仪。使用 ICC 配置文件或 HDR "
+"输出时不生效。"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Auto"
+msgstr "自动"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Gamma 2.2"
+msgstr "伽马 2.2"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "Gamma 2.4"
+msgstr "伽马 2.4"
+
+#. Choice (Color > Display Gamma > SDR Display Gamma)
+msgid "BT.1886"
+msgstr "BT.1886"
+
+#. Section heading (Color)
 msgid "ICC Profile"
 msgstr "ICC 色彩配置"
 
@@ -3137,31 +3169,3 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
-
-#. Section heading (Color)
-msgid "Display Gamma"
-msgstr "显示器伽马"
-
-#. Setting name (Color > Display Gamma)
-msgid "SDR Display Gamma"
-msgstr "SDR 显示器伽马"
-
-#. Setting description (Color > Display Gamma > SDR Display Gamma)
-msgid "For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. Not used with an ICC profile or HDR output."
-msgstr "用于校准为伽马 2.4 或 BT.1886 的显示器，例如投影仪。使用 ICC 配置文件或 HDR 输出时不生效。"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.2"
-msgstr "伽马 2.2"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.4"
-msgstr "伽马 2.4"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "BT.1886"
-msgstr "BT.1886"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Auto"
-msgstr "自动"
