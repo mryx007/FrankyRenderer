@@ -55,3 +55,4 @@
 - Cancel in the settings menu now also restores profiles: their settings, folders, displays and names, and profiles added or deleted.
 - Choice lists in the settings menu are only as wide as their text.
 - Text fields keep their font while typing.
+- Ctrl+J shows "Default" instead of "none" when a video uses no profile.

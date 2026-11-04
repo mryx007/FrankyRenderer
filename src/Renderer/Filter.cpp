@@ -2670,11 +2670,10 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
     }
     const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
     auto next = match ? *match : ContentProfiles::Profile{};
-    backend.SetContentProfile(!preview.empty()   ? (match ? next.name : std::wstring(L"Default")) + L" (menu preview)"
-                              : match            ? next.name
-                              : profiles.empty() ? L"none"
-                              : contentPath.empty() ? L"none (file path unknown)"
-                                                    : L"none (no folder matches)");
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) + L" (menu preview)"
+                              : match          ? next.name
+                              : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
+                                                                         : L"Default");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
         return false;
     contentProfile = std::move(next);

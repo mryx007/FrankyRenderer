@@ -1146,7 +1146,7 @@ struct PlaceboBackend::State
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
         }
-        row(L"Profile") << (contentProfile.empty() ? L"none" : contentProfile);
+        row(L"Profile") << (contentProfile.empty() ? L"Default" : contentProfile);
         row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
 
         heading(L"Performance");
