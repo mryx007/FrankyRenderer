@@ -60,3 +60,17 @@ jobs:
           else
             gh release create "$tag" packages/*.zip --target "$GITHUB_SHA" --title "Nightly $BUILD_ID" --notes-file nightly-notes.md --latest
           fi
+      # docs/nightly-changelog.md keeps every entry for the next stable release,
+      # so older Nightly releases and their tags can go.
+      - name: Keep only the newest five Nightlies
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("nightly-"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' |
+          while read -r tag; do
+            echo "Deleting $tag"
+            gh release delete "$tag" --cleanup-tag --yes
+          done

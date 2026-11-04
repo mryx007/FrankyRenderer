@@ -1,0 +1,35 @@
+name: Check LAV FFmpeg updates
+on:
+  schedule:
+    - cron: '40 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.repository == 'mryx007/FrankyRenderer-Nightly'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compare newest LAV FFmpeg commit with pinned commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch=$(gh api repos/clsid2/FFmpeg --jq .default_branch)
+          gh api "repos/clsid2/FFmpeg/commits/$branch" > latest-ffmpeg.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          current = json.loads(Path('src/deps/dv-ffmpeg.lock.json').read_text())['commit']
+          latest = json.loads(Path('latest-ffmpeg.json').read_text())
+          sha, date = latest['sha'], latest['commit']['committer']['date'][:10]
+          message = f"Pinned: {current[:12]}. Latest LAV FFmpeg: [{sha[:12]}]({latest['html_url']}) from {date}."
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(message + '\n')
+          if sha != current:
+              print('::error::New LAV FFmpeg commit available. ' + message)
+              raise SystemExit(1)
+          print(message)
+          PY
