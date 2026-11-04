@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 20:08+0000\n"
+"PO-Revision-Date: 2026-11-04 11:34+0000\n"
 "Last-Translator: Kallan Crémel <kallan-cr@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/fr/>\n"
@@ -596,34 +596,36 @@ msgstr "Intensité de la netteté adaptative. 0 désactive l'effet de netteté."
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Deinterlacing"
-msgstr ""
+msgstr "Désentrelacement"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
 #. Setting name (Profiles > Deinterlacing)
 msgid "Algorithm"
-msgstr ""
+msgstr "Algorithme"
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 #. Setting description (Processing > Dithering > Algorithm)
 #. Setting description (Profiles > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
+"Choisissez la méthode de traitement. Désactivé ignore cette étape de "
+"traitement."
 
 #. Choice (Processing > Deinterlacing > Algorithm)
 #. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Bwdif"
-msgstr ""
+msgstr "Bwdif"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
 #. Choice (Profiles > Deinterlacing > Algorithm)
 msgid "Yadif"
-msgstr ""
+msgstr "Yadif"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Profiles > Deinterlacing)
 msgid "Field Order"
-msgstr ""
+msgstr "Ordre des trames"
 
 #. Setting description (Processing > Deinterlacing > Field Order)
 #. Setting description (Profiles > Deinterlacing > Field Order)
@@ -631,94 +633,102 @@ msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
+"Auto suit les indicateurs de la source. À modifier uniquement si le "
+"mouvement entrelacé présente un ordre de trames incorrect."
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Auto (Source Flags)"
-msgstr ""
+msgstr "Automatique (Indicateurs source)"
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Top Field First"
-msgstr ""
+msgstr "Trame supérieure en premier"
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Choice (Profiles > Deinterlacing > Field Order)
 msgid "Bottom Field First"
-msgstr ""
+msgstr "Trame inférieure en premier"
 
 #. Section heading (Processing)
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Dithering"
-msgstr ""
+msgstr "Dithering"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Choice (Profiles > Dithering > Algorithm)
 msgid "Blue Noise (recommended)"
-msgstr ""
+msgstr "Bruit bleu (recommandé)"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Choice (Profiles > Dithering > Algorithm)
 msgid "Ordered Dithering"
-msgstr ""
+msgstr "Dithering ordonné"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Choice (Profiles > Dithering > Algorithm)
 msgid "Random Dithering"
-msgstr ""
+msgstr "Dithering aléatoire"
 
 #. Setting name (Processing > Dithering)
 #. Setting name (Profiles > Dithering)
 msgid "Change Dither for Every Frame"
-msgstr ""
+msgstr "Changer le dithering à chaque image"
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
 #. Setting description (Profiles > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
+"Fait varier le motif de dithering au fil du temps plutôt que de garder un "
+"motif statique."
 
 #. Section heading (Processing)
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Detection & Zoom"
-msgstr ""
+msgstr "Détection et zoom"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Detect Hardcoded Black Bars"
-msgstr ""
+msgstr "Détecter les bandes noires incrustées"
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
 #. Setting description (Profiles > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
+"Analyse les pixels décodés pour détecter les bandes encodées dans la vidéo."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Crop Black Bars"
-msgstr ""
+msgstr "Rogner les bandes noires"
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
 #. Setting description (Profiles > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
 msgstr ""
+"Supprime les bandes détectées de l'image active avant d'adapter l'image ou "
+"de zoomer."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Protect Burned-in Subtitles"
-msgstr ""
+msgstr "Protéger les sous-titres incrustés"
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
 #. Setting description (Profiles > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
+"Restaure temporairement les bandes si elles contiennent du contenu visible."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Keep a Stable Zoom"
-msgstr ""
+msgstr "Conserver un zoom stable"
 
 #. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
 #. Setting description (Profiles > Detection & Zoom > Keep a Stable Zoom)
@@ -726,11 +736,13 @@ msgid ""
 "Prefer a common zoom that preserves content when the detected active area "
 "changes."
 msgstr ""
+"Préfère un zoom stable qui préserve le contenu lorsque la zone active "
+"détectée change."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Zoom Mode"
-msgstr ""
+msgstr "Mode de zoom"
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
 #. Setting description (Profiles > Detection & Zoom > Zoom Mode)
@@ -738,31 +750,34 @@ msgid ""
 "Fit keeps all active content. Fill covers the output and can crop image "
 "content."
 msgstr ""
+"« Ajuster » conserve tout le contenu actif. « Remplir » couvre la sortie et "
+"peut rogner l'image."
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
 #. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fit (Keep All Content)"
-msgstr ""
+msgstr "Ajuster (conserver tout le contenu)"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
 #. Choice (Profiles > Detection & Zoom > Zoom Mode)
 msgid "Fill (May Crop Content)"
-msgstr ""
+msgstr "Remplir (peut rogner le contenu)"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Black Threshold"
-msgstr ""
+msgstr "Seuil de noir"
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
 #. Setting description (Profiles > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
+"Luminosité maximale des bandes détectées, en pourcentage du blanc SDR décodé."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Profiles > Detection & Zoom)
 msgid "Detection Stability (seconds)"
-msgstr ""
+msgstr "Stabilité de détection (secondes)"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 #. Setting description (Profiles > Detection & Zoom > Detection Stability (seconds))
