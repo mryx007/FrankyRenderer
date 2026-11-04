@@ -56,6 +56,8 @@ struct PlaceboSettings
     int maximumFramesInFlight = 0; // 0=retain the device's original DXGI latency
     // Smooth Motion refreshes presented in advance; 0=automatic, 1-4 fixed.
     int presentAhead = 0;
+    // SDR output encoding for the display: 0=sRGB, 1=gamma 2.2, 2=gamma 2.4, 3=BT.1886.
+    int displayGamma = 0;
     // Smooth Motion oversample mixing: a frame showing for less than this share
     // of a refresh is left out instead of blended (0 = always blend, max .5).
     float motionThreshold = 0;

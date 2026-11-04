@@ -138,7 +138,6 @@ static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s H
                                                L"Reset Shader",
                                                L"Saved",
                                                L"Save (%d)",
-                                               L"Search settings  (Ctrl+F)",
                                                L"Search settings",
                                                L"Search Results",
                                                L"Matching settings for: \"%s\"",
@@ -1389,6 +1388,8 @@ void Direct2DHostWindow::Render()
     searchWidth =
         std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - profileWidth - 20 - titleRoom));
     float headerActionsLeft = searchRight - searchWidth;
+    // Left edge of Reset All / Reset Page; the first row of tabs ends before it.
+    float resetLeft = searchRight;
     if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))
     {
         // The shader page shows one shader at a time; reset only that one.
@@ -1402,7 +1403,8 @@ void Direct2DHostWindow::Render()
                 resetLabel, UINT32(wcslen(resetLabel)), m_fmtNav.Get(), 400, 40, measured.GetAddressOf())) &&
             SUCCEEDED(measured->GetMetrics(&metrics)))
             labelWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
-        const auto reset = D2D1::RectF(searchRight - labelWidth - 24, currentY + 40, searchRight, currentY + 68);
+        // One row below the header controls, with room between the two rows.
+        const auto reset = D2D1::RectF(searchRight - labelWidth - 24, currentY + 48, searchRight, currentY + 76);
         const auto paragraph = m_fmtNav->GetParagraphAlignment();
         m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
         m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
@@ -1423,6 +1425,7 @@ void Direct2DHostWindow::Render()
             SUCCEEDED(allLayout->GetMetrics(&metrics)))
             allWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
         const auto all = D2D1::RectF(reset.left - allWidth - 28, reset.top, reset.left - 4, reset.bottom);
+        resetLeft = all.left;
         m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
         m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
         m_pRenderTarget->DrawText(allText.c_str(), UINT32(allText.size()), m_fmtNav.Get(), all, m_brushTextMuted.Get());
@@ -1521,8 +1524,16 @@ void Direct2DHostWindow::Render()
             const auto pageTitle = Tr(page.title);
             m_pRenderTarget->DrawText(
                 pageTitle.c_str(), (UINT32)pageTitle.length(), m_fmtTitle.Get(), titleRect, m_brushTextMain.Get());
+            // A subtle line between the header controls and the tabs / reset row.
+            const auto lineOpacity = m_brushBorderCard->GetOpacity();
+            m_brushBorderCard->SetOpacity(.7f);
+            m_pRenderTarget->DrawLine(D2D1::Point2F(contentX, currentY + 41.5f),
+                                      D2D1::Point2F(contentX + contentW, currentY + 41.5f),
+                                      m_brushBorderCard.Get(),
+                                      1.f);
+            m_brushBorderCard->SetOpacity(lineOpacity);
 
-            currentY += 44.f;
+            currentY += 52.f;
             if (page.name != L"Shaders" && tabs.size() > 1)
             {
                 const float firstTabY = currentY;
@@ -1553,8 +1564,9 @@ void Direct2DHostWindow::Render()
                     const bool adds = page.name == L"Profiles" && tabs[i] == ProfilePage::NewTab;
                     const float width =
                         adds ? 40.f : std::min(contentW, std::max(100.f, std::ceil(textWidth) + 32.f + closeWidth));
-                    // Tabs share the reset row, keeping its right-hand area free.
-                    const float tabRight = contentX + contentW - (currentY == firstTabY ? 118.f : 0.f);
+                    // Tabs share the reset row, keeping the reset buttons free; their
+                    // width depends on the menu language.
+                    const float tabRight = currentY == firstTabY ? resetLeft - 8.f : contentX + contentW;
                     if (tabX + width > tabRight && (tabX > contentX || currentY == firstTabY))
                     {
                         currentY += 38.f;
@@ -2443,8 +2455,7 @@ void Direct2DHostWindow::DrawSearchBox(D2D1_RECT_F box)
     if (!typing)
     {
         const bool empty = m_searchQuery.empty();
-        // A narrowed box drops the shortcut hint instead of clipping it.
-        const auto hint = Tr(box.right - box.left < 240 ? L"Search settings" : L"Search settings  (Ctrl+F)");
+        const auto hint = Tr(L"Search settings");
         const auto& shown = empty ? hint : m_searchQuery;
         const auto wrap = m_fmtNav->GetWordWrapping();
         m_fmtNav->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);

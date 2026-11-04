@@ -786,6 +786,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
     }
     {
         auto& p = page(L"Color Management", L"Color Management", L"ICC display profiles and 3D LUT calibration.");
+        auto& g = card(p, L"Display Gamma");
+        auto gamma = D2DChoice(s,
+                               L"SDR Display Gamma",
+                               &s.displayGamma,
+                               D2DChoices(DisplayGammaChoices),
+                               L"For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. "
+                               L"Not used with an ICC profile or HDR output.");
+        gamma.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(gamma));
         auto& c = card(p, L"ICC Profile");
         auto browse = [&s](bool icc, HWND owner)
         {

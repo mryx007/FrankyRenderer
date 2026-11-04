@@ -47,6 +47,7 @@ int wmain()
         original.autoHdr = FALSE;
         original.maximumFramesInFlight = 6;
         original.presentAhead = 3;
+        original.displayGamma = 2;
         original.motionThreshold = .25f;
         original.tonal.exposure[2] = .375f;
         original.tonal.contrast[1] = -.125f;
@@ -69,6 +70,7 @@ int wmain()
         auto restored = SettingsIni::Parse(text);
         Require(restored.imageAnalysis, "Image analysis flag was lost");
         Require(restored.presentAhead == 3, "Present in advance was lost");
+        Require(restored.displayGamma == 2, "Display gamma was lost");
         Require(restored.motionThreshold == .25f, "Oversample threshold was lost");
         Require(SettingsIni::Serialize(restored) == text, "Backup round-trip changed values");
         Require(restored.saturation == original.saturation, "Float precision was lost");

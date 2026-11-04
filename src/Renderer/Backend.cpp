@@ -2067,6 +2067,8 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (settings.presentAhead < 0 || settings.presentAhead > 4)
         return E_INVALIDARG;
+    if (settings.displayGamma < 0 || settings.displayGamma > 3)
+        return E_INVALIDARG;
     if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
     if (!ValidHdrTuning(settings))
@@ -2541,6 +2543,13 @@ HRESULT PlaceboBackend::Present()
         target.color.transfer = PL_COLOR_TRC_LINEAR;
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
+    // SDR for a display decoding another gamma than sRGB, e.g. a projector
+    // calibrated to 2.4. Only a plain sRGB target is re-encoded: linear 16-bit
+    // float and Windows HDR outputs have no display gamma to match.
+    static constexpr pl_color_transfer DisplayGammas[] = {
+        PL_COLOR_TRC_SRGB, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_BT_1886};
+    if (!hdr && s.settings.displayGamma > 0 && target.color.transfer == PL_COLOR_TRC_SRGB)
+        target.color.transfer = DisplayGammas[s.settings.displayGamma];
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);

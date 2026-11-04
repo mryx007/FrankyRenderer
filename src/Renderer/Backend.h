@@ -76,6 +76,7 @@ struct RenderSettings
     bool showClipping = false;
     int maximumFramesInFlight = 0;
     int presentAhead = 0;
+    int displayGamma = 0; // 0=sRGB, 1=gamma 2.2, 2=gamma 2.4, 3=BT.1886
     float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;

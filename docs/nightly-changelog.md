@@ -60,3 +60,5 @@
 - Shaders are switched on only in the shader list; the extra "Enabled" switch in each shader's settings is gone. Reset Shader now resets only its settings.
 - Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including fixes for Dolby Vision metadata.
 - Updated libplacebo with fixes made after version 7.387.0: more accurate colour conversion for PQ, HLG and the black level, ICC profiles without a brightness value, and a Smooth Motion queue fix.
+- New setting "SDR Display Gamma" (Color > Calibration) for TVs and projectors set to gamma 2.2, 2.4 or BT.1886. Auto keeps the previous behaviour.
+- Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, and the search box no longer shows the Ctrl+F hint.

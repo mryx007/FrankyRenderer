@@ -60,6 +60,8 @@ inline constexpr const wchar_t* DitherChoices[] = {
     L"Blue Noise (recommended)", L"Ordered Dithering", L"Random Dithering", L"Off"};
 inline constexpr const wchar_t* OutputChoices[] = {
     L"Auto (libplacebo)", L"8-bit Integer (SDR)", L"Prefer 10-bit Integer", L"Prefer 16-bit Float"};
+// How the display decodes SDR pictures; the renderer encodes its output to match.
+inline constexpr const wchar_t* DisplayGammaChoices[] = {L"Auto", L"Gamma 2.2", L"Gamma 2.4", L"BT.1886"};
 inline constexpr const wchar_t* LevelChoices[] = {L"Auto (Output)", L"PC Levels (0–255)", L"TV Levels (16–235)"};
 inline constexpr int DisplayDepths[] = {0, 4, 5, 6, 8, 10, 12, 16};
 inline constexpr const wchar_t* DepthChoices[] = {

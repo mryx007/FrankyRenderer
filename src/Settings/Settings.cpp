@@ -167,6 +167,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(scaling),
         FIELD(maximumFramesInFlight),
         FIELD(presentAhead),
+        FIELD(displayGamma),
         FIELD(motionThreshold),
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
@@ -411,6 +412,12 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.presentAhead = static_cast<int>(value);
     size = 4;
     value = 0;
+    if (RegQueryValueExW(key, L"DisplayGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 3)
+        settings.displayGamma = static_cast<int>(value);
+    size = 4;
+    value = 0;
     if (RegQueryValueExW(key, L"OutputFormat", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
             ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(OutputChoices))
@@ -486,6 +493,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (s.maximumFramesInFlight < 0 || s.maximumFramesInFlight > 16)
         return E_INVALIDARG;
     if (s.presentAhead < 0 || s.presentAhead > 4)
+        return E_INVALIDARG;
+    if (s.displayGamma < 0 || s.displayGamma > 3)
         return E_INVALIDARG;
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
@@ -567,6 +576,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     ValidScaling(s.scaling, &out.motionRadius);
     out.maximumFramesInFlight = s.maximumFramesInFlight;
     out.presentAhead = s.presentAhead;
+    out.displayGamma = s.displayGamma;
     out.motionThreshold = s.motionThreshold;
     out.kneeAdaptation = s.kneeAdaptation;
     out.splineContrast = s.splineContrast;
@@ -707,6 +717,7 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"QualityStamp", REG_DWORD, &s.qualityStamp, 4);
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
     save(L"PresentAhead", REG_DWORD, &s.presentAhead, 4);
+    save(L"DisplayGamma", REG_DWORD, &s.displayGamma, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);
     save(L"ICCEnabled", REG_DWORD, &s.iccEnabled, 4);
