@@ -1,5 +1,6 @@
 """Offline tests for dependency_updates.py: what an update changes."""
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -25,6 +26,8 @@ class FFmpegUpdate(unittest.TestCase):
         patches = {"ROOT": self.root, "FFMPEG_LOCK": self.root / "src/deps/dv-ffmpeg.lock.json",
                    "CHANGELOG": self.root / "docs/nightly-changelog.md"}
         self.patches = [mock.patch.object(updates, name, value) for name, value in patches.items()]
+        # Test messages stay out of the summary of the GitHub run.
+        self.patches.append(mock.patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}))
         for patch in self.patches:
             patch.start()
 
