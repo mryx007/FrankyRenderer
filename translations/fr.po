@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-04 20:46+0000\n"
+"PO-Revision-Date: 2026-11-05 07:25+0000\n"
 "Last-Translator: Kallan Crémel <kallan-cr@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/fr/>\n"
@@ -50,8 +50,8 @@ msgid ""
 "Precision of the final output texture. Auto follows the renderer's output "
 "selection."
 msgstr ""
-"Précision de la texture de sortie finale. Auto suit la sélection de sortie "
-"du moteur de rendu."
+"Précision de la texture de sortie finale. Automatique suit la sélection de "
+"sortie du moteur de rendu."
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Auto (libplacebo)"
@@ -757,154 +757,164 @@ msgstr "Filtres personnalisés"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Upscaler"
-msgstr "Mise à l'échelle de l'image"
+msgstr "Mise à l'échelle de l'image (agrandissement)"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid ""
 "Reconstruct image detail when enlarging video. Custom copies the selected "
 "filter for editing."
 msgstr ""
+"Reconstruit les détails de l'image lors de l'agrandissement vidéo. « "
+"Personnalisé » copie le filtre sélectionné pour le modifier."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Use the renderer's default filter."
-msgstr ""
+msgstr "Utiliser le filtre par défaut du moteur de rendu."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "No filter, only use basic GPU texture sampling"
 msgstr ""
+"Aucun filtre, utilise uniquement l'échantillonnage de texture GPU de base"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Configure a custom filter using the controls below."
-msgstr ""
+msgstr "Configurer un filtre personnalisé à l'aide des commandes ci-dessous."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Nearest-neighbour (box) sampling (very fast)"
-msgstr ""
+msgstr "Échantillonnage au plus proche voisin (boîte) (très rapide)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Bilinear sampling (very fast)"
-msgstr ""
+msgstr "Échantillonnage bilinéaire (très rapide)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Aspect-ratio preserving nearest neighbour sampling (very fast)"
 msgstr ""
+"Échantillonnage au plus proche voisin conservant le format d'image (très "
+"rapide)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Bicubic interpolation (fast)"
-msgstr ""
+msgstr "Interpolation bicubique (rapide)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Gaussian smoothing (fast)"
-msgstr ""
+msgstr "Lissage gaussien (rapide)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Catmull-Rom cubic spline"
-msgstr ""
+msgstr "Spline cubique Catmull-Rom"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Lanczos reconstruction"
-msgstr ""
+msgstr "Reconstruction Lanczos"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "EWA Lanczos (Jinc) reconstruction (slow)"
-msgstr ""
+msgstr "Reconstruction EWA Lanczos (Jinc) (lent)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Sharpened version of ewa_lanczos (slow)"
-msgstr ""
+msgstr "Version plus nette d'ewa_lanczos (lent)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Very sharp version of ewa_lanczos, with anti-ringing (very slow)"
-msgstr ""
+msgstr "Version très nette d'ewa_lanczos, avec anti-ringing (très lent)"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Downscaler"
-msgstr ""
+msgstr "Mise à l'échelle de l'image (réduction)"
 
 #. Setting description (Scaling > Filters > Image Downscaler)
 msgid ""
 "Filter the image when reducing video size. Custom copies the selected filter "
 "for editing."
 msgstr ""
+"Filtre l'image lors de la réduction de la taille vidéo. « Personnalisé » "
+"copie le filtre sélectionné pour le modifier."
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
-msgstr ""
+msgstr "Utiliser le même filtre que pour l'agrandissement"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Box averaging (very fast)"
-msgstr ""
+msgstr "Moyenne par boîte (très rapide)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Hermite-weighted averaging (fast)"
-msgstr ""
+msgstr "Moyenne pondérée par Hermite (rapide)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Bilinear (triangle) averaging (fast)"
-msgstr ""
+msgstr "Moyenne bilinéaire (triangle) (rapide)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Mitchell-Netravalia cubic spline"
-msgstr ""
+msgstr "Spline cubique de Mitchell-Netravali"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "Mise à l'échelle de plan (Chroma / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
 msgstr ""
+"Reconstruit les plans chroma ou alpha sous-échantillonnés avant la mise à "
+"l'échelle de l'image."
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
-msgstr ""
+msgstr "Utiliser le filtre de mise à l'échelle d'image correspondant."
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "Réduction d'échelle de plan (Chroma / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
 msgstr ""
+"Filtre les plans chroma ou alpha lors de la réduction de leur résolution."
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
