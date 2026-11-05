@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-05 10:27+0000\n"
+"PO-Revision-Date: 2026-11-05 14:56+0000\n"
 "Last-Translator: Klaus Luppert <klaus1189@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/de/>\n"
@@ -224,8 +224,7 @@ msgstr "Hintergrund: Rot"
 msgid ""
 "Red channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
-"Rotanteil für unbedeckte Ränder und transparente Pixel. Wertebereich für "
-"RGB: 0 bis 1."
+"Rotanteil für unbedeckte Ränder und transparente Pixel. RGB-Bereich: 0 bis 1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Green"
@@ -236,8 +235,8 @@ msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
 msgstr ""
-"Grünanteil für unbedeckte Ränder und transparente Pixel. Wertebereich für "
-"RGB: 0 bis 1."
+"Grünanteil für unbedeckte Ränder und transparente Pixel. RGB-Bereich: 0 bis "
+"1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Blue"
@@ -247,8 +246,8 @@ msgstr "Hintergrund: Blau"
 msgid ""
 "Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
-"Blauanteil für unbedeckte Ränder und transparente Pixel. Wertebereich für "
-"RGB: 0 bis 1."
+"Blauanteil für unbedeckte Ränder und transparente Pixel. RGB-Bereich: 0 bis "
+"1."
 
 #. Setting name (General > Background & Transparency)
 msgid "Background Transparency"
@@ -1441,6 +1440,10 @@ msgstr ""
 "Verhindert übersättigte Farben."
 
 #. Choice (Color > Display > Display Gamut)
+msgid "BT.709"
+msgstr "BT.709"
+
+#. Choice (Color > Display > Display Gamut)
 msgid "SMPTE C"
 msgstr "SMPTE C"
 
@@ -1451,6 +1454,14 @@ msgstr "EBU / PAL"
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.2020"
 msgstr "BT.2020"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "DCI-P3 (DCI white)"
+msgstr "DCI-P3 (DCI-Weiß)"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "P3-D65 (Display P3)"
+msgstr "P3-D65 (Display P3)"
 
 #. Setting name (Color > Display)
 msgid "Display Gamma"
@@ -1475,6 +1486,14 @@ msgstr "BT.1886"
 #. Setting name (Color > Display)
 msgid "Display Contrast"
 msgstr "Display-Kontrast"
+
+#. Setting description (Color > Display > Display Contrast)
+msgid ""
+"For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
+"infinite (OLED), where BT.1886 equals 2.40."
+msgstr ""
+"Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. "
+"0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40."
 
 #. Setting name (Color > Display)
 msgid "SDR Gamma Processing"
@@ -3560,19 +3579,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Choice (Color > Display > Display Gamut)
-msgid "BT.709"
-msgstr "BT.709"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "DCI-P3 (DCI white)"
-msgstr "DCI-P3 (DCI-Weiß)"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "P3-D65 (Display P3)"
-msgstr "P3-D65 (Display P3)"
-
-#. Setting description (Color > Display > Display Contrast)
-msgid "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), where BT.1886 equals 2.40."
-msgstr "Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. 0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40."
