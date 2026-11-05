@@ -123,7 +123,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 
 Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not tested it because I do not have a Windows 10 system available.
 
-- **MPC-BE:** Use [MPC-BE 1.9.3](https://github.com/Aleksoid1978/MPC-BE/releases/tag/1.9.3) or newer and select **FrankyRenderer** in the video renderer settings.
+- **MPC-BE:** Use MPC-BE 1.9.3 or newer and select **FrankyRenderer** in the video renderer settings.
 - **PotPlayer:** Use PotPlayer 261030 Beta 64-bit or a newer build with native FrankyRenderer support. Select **FrankyRenderer** in the video renderer settings.
 
 **One package for both players.** FrankyRenderer now registers only its own native identity; separate MPC-BE and PotPlayer packages are no longer needed.
