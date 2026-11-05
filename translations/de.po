@@ -1440,6 +1440,10 @@ msgstr ""
 "Verhindert übersättigte Farben."
 
 #. Choice (Color > Display > Display Gamut)
+msgid "BT.709"
+msgstr "BT.709"
+
+#. Choice (Color > Display > Display Gamut)
 msgid "SMPTE C"
 msgstr "SMPTE C"
 
@@ -1450,6 +1454,14 @@ msgstr "EBU / PAL"
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.2020"
 msgstr "BT.2020"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "DCI-P3 (DCI white)"
+msgstr "DCI-P3 (DCI-Weiß)"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "P3-D65 (Display P3)"
+msgstr "P3-D65 (Display P3)"
 
 #. Setting name (Color > Display)
 msgid "Display Gamma"
@@ -1474,6 +1486,14 @@ msgstr "BT.1886"
 #. Setting name (Color > Display)
 msgid "Display Contrast"
 msgstr "Display-Kontrast"
+
+#. Setting description (Color > Display > Display Contrast)
+msgid ""
+"For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
+"infinite (OLED), where BT.1886 equals 2.40."
+msgstr ""
+"Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. "
+"0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40."
 
 #. Setting name (Color > Display)
 msgid "SDR Gamma Processing"
@@ -3559,19 +3579,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Choice (Color > Display > Display Gamut)
-msgid "BT.709"
-msgstr "BT.709"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "DCI-P3 (DCI white)"
-msgstr "DCI-P3 (DCI-Weiß)"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "P3-D65 (Display P3)"
-msgstr "P3-D65 (Display P3)"
-
-#. Setting description (Color > Display > Display Contrast)
-msgid "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), where BT.1886 equals 2.40."
-msgstr "Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. 0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40."
