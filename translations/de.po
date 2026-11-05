@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-05 14:56+0000\n"
+"PO-Revision-Date: 2026-11-06 10:03+0000\n"
 "Last-Translator: Klaus Luppert <klaus1189@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/de/>\n"
@@ -608,7 +608,7 @@ msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
-"Automatisch folgt den Kennzeichnungen der Quelle. Nur überschreiben, wenn "
+"Automatisch folgt den Quellkennzeichnungen. Nur überschreiben, wenn "
 "Bewegungen in Material mit Zeilensprung die falsche Halbbildreihenfolge "
 "haben."
 
@@ -727,7 +727,7 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Detection Stability (seconds)"
-msgstr "Erkennungsstabilität (Sekunden)"
+msgstr "Erkennungsstabilisierung (Sekunden)"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
@@ -757,14 +757,14 @@ msgstr "Benutzerdefinierte Filter"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Upscaler"
-msgstr "Hochskalierung des Bildes"
+msgstr "Bild-Hochskalierer"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid ""
 "Reconstruct image detail when enlarging video. Custom copies the selected "
 "filter for editing."
 msgstr ""
-"Rekonstruiert Bilddetails beim Vergrößern des Videos. Benutzerdefiniert "
+"Rekonstruiert Bilddetails beim Vergrößern des Videos. 'Benutzerdefiniert' "
 "übernimmt den ausgewählten Filter zur Bearbeitung."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
