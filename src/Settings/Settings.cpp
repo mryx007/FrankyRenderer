@@ -451,7 +451,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     else
     {
         // Earlier nightlies stored an index: off, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8.
-        static constexpr int Legacy[] = {0, 180, 200, 220, 240, 260, 260};
+        static constexpr int Legacy[] = {0, 180, 200, 220, 240, 260, 280};
         size = 4;
         value = 0;
         if (RegQueryValueExW(key, L"SdrGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==

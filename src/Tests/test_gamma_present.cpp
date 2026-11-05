@@ -101,7 +101,9 @@ int main()
         int display, sdr;
         double expected;
     } cases[] = {
-        {240, 240, v},                           // libplacebo curves on both sides: pass-through
+        {240, 240, v},
+        {280, 280, v},
+        {275, 275, v},                           // libplacebo curves on both sides: pass-through
         {235, 235, v},                           // exact powers on both sides: pass-through
         {250, 200, std::pow(v, 2.0 / 2.5)},      // look like 2.0 on a 2.5 display
         {185, 255, std::pow(v, 2.55 / 1.85)},    // look like 2.55 on a 1.85 display
@@ -121,6 +123,10 @@ int main()
     printf("HDR to SDR: 2.40 %.5f 2.35 %.5f 2.60 %.5f 2.55 %.5f\n", hdr24, hdr235, hdr26, hdr255);
     Check(std::abs(hdr235 - std::pow(hdr24, 2.4 / 2.35)) < 1.5 / 1023, "HDR encoded for a 2.35 display");
     Check(std::abs(hdr255 - std::pow(hdr26, 2.6 / 2.55)) < 1.5 / 1023, "HDR encoded for a 2.55 display");
+    const double hdr28 = measure(280, 0), hdr275 = measure(275, 0);
+    printf("HDR to SDR: 2.80 %.5f 2.75 %.5f\n", hdr28, hdr275);
+    Check(hdr28 > hdr26, "2.80 display gets a brighter signal than 2.60");
+    Check(std::abs(hdr275 - std::pow(hdr28, 2.8 / 2.75)) < 1.5 / 1023, "HDR encoded for a 2.75 display");
     Check(measure(235, 235) == hdr235, "SDR gamma processing leaves HDR alone");
 
     s.outputLevels = 2;

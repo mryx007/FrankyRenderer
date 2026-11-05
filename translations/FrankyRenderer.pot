@@ -1185,7 +1185,7 @@ msgid "For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours f
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
-msgid "Auto (BT.709)"
+msgid "BT.709"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
@@ -1201,11 +1201,11 @@ msgid "BT.2020"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
-msgid "DCI-P3"
+msgid "DCI-P3 (DCI white)"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
-msgid "Display P3"
+msgid "P3-D65 (Display P3)"
 msgstr ""
 
 #. Setting name (Color > Display)
@@ -1229,7 +1229,7 @@ msgid "Display Contrast"
 msgstr ""
 
 #. Setting description (Color > Display > Display Contrast)
-msgid "For BT.1886: the measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), the same as 2.4."
+msgid "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), where BT.1886 equals 2.40."
 msgstr ""
 
 #. Setting name (Color > Display)

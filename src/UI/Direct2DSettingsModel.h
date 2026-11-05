@@ -795,10 +795,10 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                    L"looking oversaturated.");
         primaries.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(primaries));
-        // Pure powers 1.80 to 2.60 in steps of 0.05, stored x100.
+        // Pure powers 1.80 to 2.80 in steps of 0.05, stored x100.
         auto curves = [](std::vector<ChoiceItem> items)
         {
-            for (int v = 180; v <= 260; v += 5)
+            for (int v = 180; v <= 280; v += 5)
             {
                 wchar_t label[8];
                 swprintf_s(label, std::size(label), L"%d.%02d", v / 100, v % 100);
@@ -822,8 +822,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                   0,
                                   1000000,
                                   100,
-                                  L"For BT.1886: the measured contrast, e.g. 1000 for 1000:1. 0 means infinite "
-                                  L"(OLED), the same as 2.4.");
+                                  L"For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
+                                  L"infinite (OLED), where BT.1886 equals 2.40.");
         contrast.enabled = [&s] { return !s.iccEnabled && s.displayGammaCurve == 1; };
         g.controls.push_back(std::move(contrast));
         auto sdr = D2DChoice(s,

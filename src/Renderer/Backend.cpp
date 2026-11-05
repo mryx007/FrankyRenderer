@@ -2595,9 +2595,13 @@ HRESULT PlaceboBackend::Present()
     if (sdrTarget && s.settings.displayPrimaries > 0)
         target.color.primaries = DisplayPrimaries[s.settings.displayPrimaries];
     // A pure-power display gamma is encoded with the nearest of libplacebo's
-    // curves (1.8 to 2.6 in steps of 0.2), then raised to the exact gamma.
-    static constexpr pl_color_transfer PowerCurves[] = {
-        PL_COLOR_TRC_GAMMA18, PL_COLOR_TRC_GAMMA20, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_GAMMA26};
+    // curves (1.8 to 2.8 in steps of 0.2), then raised to the exact gamma.
+    static constexpr pl_color_transfer PowerCurves[] = {PL_COLOR_TRC_GAMMA18,
+                                                        PL_COLOR_TRC_GAMMA20,
+                                                        PL_COLOR_TRC_GAMMA22,
+                                                        PL_COLOR_TRC_GAMMA24,
+                                                        PL_COLOR_TRC_GAMMA26,
+                                                        PL_COLOR_TRC_GAMMA28};
     const int display = s.settings.displayGammaCurve;
     if (sdrTarget && (hdrSource || s.settings.sdrGammaCurve > 0))
     {
@@ -2605,7 +2609,7 @@ HRESULT PlaceboBackend::Present()
             target.color.transfer = PL_COLOR_TRC_BT_1886;
         else if (display >= 180)
         {
-            const int nearest = std::clamp((display - 170) / 20, 0, 4);
+            const int nearest = std::clamp((display - 170) / 20, 0, 5);
             target.color.transfer = PowerCurves[nearest];
             s.outputGamma = float(180 + 20 * nearest) / float(display);
         }

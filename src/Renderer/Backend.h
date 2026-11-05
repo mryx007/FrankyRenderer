@@ -22,10 +22,10 @@
 #include <optional>
 
 // Pure-power gammas x100 offered for the display and SDR gamma processing:
-// 1.80 to 2.60 in steps of 0.05.
+// 1.80 to 2.80 in steps of 0.05.
 inline bool ValidGammaCurve(int value)
 {
-    return value >= 180 && value <= 260 && value % 5 == 0;
+    return value >= 180 && value <= 280 && value % 5 == 0;
 }
 
 struct VideoFrame
@@ -83,10 +83,10 @@ struct RenderSettings
     bool showClipping = false;
     int maximumFramesInFlight = 0;
     int presentAhead = 0;
-    int displayGammaCurve = 0; // 0=auto (sRGB), 1=BT.1886, 180-260=pure power x100
+    int displayGammaCurve = 0; // 0=auto (sRGB), 1=BT.1886, 180-280=pure power x100
     int displayContrast = 0;   // BT.1886 display contrast, 0 = infinite
     int displayPrimaries = 0;  // 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3
-    int sdrGammaCurve = 0;     // 0=off, 180-260=pure power x100
+    int sdrGammaCurve = 0;     // 0=off, 180-280=pure power x100
     float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
