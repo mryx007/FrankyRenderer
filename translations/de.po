@@ -3,14 +3,16 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 00:00+0100\n"
-"Last-Translator: mryx007\n"
-"Language-Team: German\n"
+"PO-Revision-Date: 2026-11-05 10:27+0000\n"
+"Last-Translator: Klaus Luppert <klaus1189@users.noreply.hosted.weblate.org>\n"
+"Language-Team: German <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/de/>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 2026.11.2.dev0\n"
 
 #. Category
 #. Category heading
@@ -38,31 +40,31 @@ msgstr "Designs"
 
 #. Setting name (General > Output)
 msgid "Output Texture Format"
-msgstr "Format der Ausgabetextur"
+msgstr "Ausgabe-Texturformat"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
 "Precision of the final output texture. Auto follows the renderer's output "
 "selection."
 msgstr ""
-"Präzision der endgültigen Ausgabetextur. Automatisch folgt der "
-"Ausgabeauswahl des Renderers."
+"Präzision der endgültigen Ausgabe-Textur. 'Auto' folgt der Ausgabeauswahl "
+"des Renderers."
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Auto (libplacebo)"
-msgstr "Automatisch (libplacebo)"
+msgstr "Auto (libplacebo)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "8-bit Integer (SDR)"
-msgstr "Ganzzahl mit 8 Bit (SDR)"
+msgstr "8-bit Integer (SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 10-bit Integer"
-msgstr "Ganzzahl mit 10 Bit bevorzugen"
+msgstr "10-bit Integer bevorzugen"
 
 #. Choice (General > Output > Output Texture Format)
 msgid "Prefer 16-bit Float"
-msgstr "Gleitkomma mit 16 Bit bevorzugen"
+msgstr "16-bit Float bevorzugen"
 
 #. Setting name (General > Output)
 msgid "RGB Output Levels"
@@ -70,34 +72,33 @@ msgstr "Ausgabebereich für RGB"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr ""
-"An den Wertebereich für RGB des Bildschirms und des Grafiktreibers anpassen."
+msgstr "RGB-Bereich an Einstellung des Displays und GPU-Treiber anpassen."
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "Auto (Output)"
-msgstr "Automatisch (Ausgabe)"
+msgstr "Auto (Ausgabe)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "PC Levels (0–255)"
-msgstr "Voller Bereich (PC, 0–255)"
+msgstr "Voll (PC, 0-255)"
 
 #. Choice (General > Output > RGB Output Levels)
 msgid "TV Levels (16–235)"
-msgstr "Begrenzter Bereich (TV, 16–235)"
+msgstr "Begrenzt (TV, 16-235)"
 
 #. Setting name (General > Output)
 msgid "Dither Target Bit Depth"
-msgstr "Zielbittiefe für Dithering"
+msgstr "Ziel-Bittiefe für Dithering"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr ""
-"Dithering an die tatsächliche Ausgabepräzision anpassen. Automatisch folgt "
-"der Ausgabetextur."
+"Dithering an die tatsächliche Ausgabepräzision anpassen; 'Auto' folgt der "
+"Ausgabetextur."
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "Auto (Output Texture)"
-msgstr "Automatisch (Ausgabetextur)"
+msgstr "Auto (Ausgabe-Textur)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 msgid "4 Bit"
@@ -134,7 +135,8 @@ msgstr "Maximal gleichzeitig verarbeitete Bilder"
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
 msgstr ""
-"0 verwendet den Standardwert des Geräts. Mehr Pufferung erhöht die Latenz."
+"0 verwendet den Standardwert des Geräts. Ein größerer Puffer erhöht die "
+"Latenz."
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
