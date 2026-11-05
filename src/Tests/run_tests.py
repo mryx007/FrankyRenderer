@@ -11,7 +11,7 @@ import winreg
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS = {
-    'sdr-present': 'test_sdr_present', 'gamma-present': 'test_gamma_present', 'sdr-target': 'test_sdr_target',
+    'sdr-present': 'test_sdr_present', 'gamma-present': 'test_gamma_present', 'media-format': 'test_media_format', 'sdr-target': 'test_sdr_target',
     'tonal': 'test_tonal', 'color-mapping': 'test_color_mapping',
     'motion-timing': 'test_motion_timing', 'monitor-change': 'test_monitor_change',
     'statistics': 'test_statistics_bitmap', 'native-hdr': 'test_native_hdr',

@@ -63,3 +63,4 @@
 - New display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (e.g. DCI-P3) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.60 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.60 in steps of 0.05) on that display; when it is off, SDR stays as before.
 - Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, and the search box no longer shows the Ctrl+F hint.
 - Quality selector: "Custom" is always the last entry and brings back your own settings after you tried a preset.
+- Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
