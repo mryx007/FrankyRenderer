@@ -47,9 +47,8 @@ int wmain()
         original.autoHdr = FALSE;
         original.maximumFramesInFlight = 6;
         original.presentAhead = 3;
-        original.displayGamma = 2;
-        original.sdrGamma = 4;
-        original.displayGamma = 4;
+        original.sdrGammaCurve = 235;
+        original.displayGammaCurve = 1;
         original.displayContrast = 3000;
         original.displayPrimaries = 4;
         original.motionThreshold = .25f;
@@ -74,7 +73,7 @@ int wmain()
         auto restored = SettingsIni::Parse(text);
         Require(restored.imageAnalysis, "Image analysis flag was lost");
         Require(restored.presentAhead == 3, "Present in advance was lost");
-        Require(restored.displayGamma == 4 && restored.sdrGamma == 4 && restored.displayContrast == 3000 &&
+        Require(restored.displayGammaCurve == 1 && restored.sdrGammaCurve == 235 && restored.displayContrast == 3000 &&
                     restored.displayPrimaries == 4,
                 "Display gamma was lost");
         Require(restored.motionThreshold == .25f, "Oversample threshold was lost");

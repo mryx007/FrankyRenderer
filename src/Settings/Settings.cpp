@@ -167,8 +167,8 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(scaling),
         FIELD(maximumFramesInFlight),
         FIELD(presentAhead),
-        FIELD(displayGamma),
-        FIELD(sdrGamma),
+        FIELD(displayGammaCurve),
+        FIELD(sdrGammaCurve),
         FIELD(displayContrast),
         FIELD(displayPrimaries),
         FIELD(motionThreshold),
@@ -415,10 +415,21 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.presentAhead = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DisplayGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+    if (RegQueryValueExW(key, L"DisplayGammaCurve", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
             ERROR_SUCCESS &&
-        type == REG_DWORD && size == 4 && value <= 4)
-        settings.displayGamma = static_cast<int>(value);
+        type == REG_DWORD && size == 4 && (value <= 1 || ValidGammaCurve(static_cast<int>(value))))
+        settings.displayGammaCurve = static_cast<int>(value);
+    else
+    {
+        // Earlier nightlies stored an index: auto, 2.2, 2.4, 2.6, BT.1886.
+        static constexpr int Legacy[] = {0, 220, 240, 260, 1};
+        size = 4;
+        value = 0;
+        if (RegQueryValueExW(key, L"DisplayGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+                ERROR_SUCCESS &&
+            type == REG_DWORD && size == 4 && value < std::size(Legacy))
+            settings.displayGammaCurve = Legacy[value];
+    }
     size = 4;
     value = 0;
     if (RegQueryValueExW(key, L"DisplayContrast", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
@@ -433,9 +444,21 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.displayPrimaries = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"SdrGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
-        type == REG_DWORD && size == 4 && value <= 6)
-        settings.sdrGamma = static_cast<int>(value);
+    if (RegQueryValueExW(key, L"SdrGammaCurve", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && (value == 0 || ValidGammaCurve(static_cast<int>(value))))
+        settings.sdrGammaCurve = static_cast<int>(value);
+    else
+    {
+        // Earlier nightlies stored an index: off, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8.
+        static constexpr int Legacy[] = {0, 180, 200, 220, 240, 260, 260};
+        size = 4;
+        value = 0;
+        if (RegQueryValueExW(key, L"SdrGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+                ERROR_SUCCESS &&
+            type == REG_DWORD && size == 4 && value < std::size(Legacy))
+            settings.sdrGammaCurve = Legacy[value];
+    }
     size = 4;
     value = 0;
     if (RegQueryValueExW(key, L"OutputFormat", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
@@ -514,7 +537,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (s.presentAhead < 0 || s.presentAhead > 4)
         return E_INVALIDARG;
-    if (s.displayGamma < 0 || s.displayGamma > 4 || s.sdrGamma < 0 || s.sdrGamma > 6 || s.displayContrast < 0 ||
+    if ((s.displayGammaCurve != 0 && s.displayGammaCurve != 1 && !ValidGammaCurve(s.displayGammaCurve)) ||
+        (s.sdrGammaCurve != 0 && !ValidGammaCurve(s.sdrGammaCurve)) || s.displayContrast < 0 ||
         s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
         return E_INVALIDARG;
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
@@ -597,8 +621,8 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     ValidScaling(s.scaling, &out.motionRadius);
     out.maximumFramesInFlight = s.maximumFramesInFlight;
     out.presentAhead = s.presentAhead;
-    out.displayGamma = s.displayGamma;
-    out.sdrGamma = s.sdrGamma;
+    out.displayGammaCurve = s.displayGammaCurve;
+    out.sdrGammaCurve = s.sdrGammaCurve;
     out.displayContrast = s.displayContrast;
     out.displayPrimaries = s.displayPrimaries;
     out.motionThreshold = s.motionThreshold;
@@ -741,8 +765,8 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"QualityStamp", REG_DWORD, &s.qualityStamp, 4);
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
     save(L"PresentAhead", REG_DWORD, &s.presentAhead, 4);
-    save(L"DisplayGamma", REG_DWORD, &s.displayGamma, 4);
-    save(L"SdrGamma", REG_DWORD, &s.sdrGamma, 4);
+    save(L"DisplayGammaCurve", REG_DWORD, &s.displayGammaCurve, 4);
+    save(L"SdrGammaCurve", REG_DWORD, &s.sdrGammaCurve, 4);
     save(L"DisplayContrast", REG_DWORD, &s.displayContrast, 4);
     save(L"DisplayPrimaries", REG_DWORD, &s.displayPrimaries, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);

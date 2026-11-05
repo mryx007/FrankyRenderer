@@ -56,14 +56,14 @@ struct PlaceboSettings
     int maximumFramesInFlight = 0; // 0=retain the device's original DXGI latency
     // Smooth Motion refreshes presented in advance; 0=automatic, 1-4 fixed.
     int presentAhead = 0;
-    // How the display decodes the signal: 0=auto (sRGB), 1=2.2, 2=2.4, 3=2.6,
-    // 4=BT.1886 with the display's contrast (0 = infinite, e.g. OLED).
-    int displayGamma = 0;
+    // How the display decodes the signal: 0=auto (sRGB), 1=BT.1886 with the
+    // display's contrast (0 = infinite, e.g. OLED), 180-260 = pure power x100.
+    int displayGammaCurve = 0;
     int displayContrast = 0;
     // The display's gamut: 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3.
     int displayPrimaries = 0;
-    // SDR gamma processing: 0=off, 1-6=look like gamma 1.8, 2.0, 2.2, 2.4, 2.6, 2.8.
-    int sdrGamma = 0;
+    // SDR gamma processing: 0=off, 180-260 = look like this pure power x100.
+    int sdrGammaCurve = 0;
     // Smooth Motion oversample mixing: a frame showing for less than this share
     // of a refresh is left out instead of blended (0 = always blend, max .5).
     float motionThreshold = 0;

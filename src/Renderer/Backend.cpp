@@ -24,6 +24,7 @@
 #include "Renderer/RtxScaling.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
+#include "Renderer/OutputGammaHook.h"
 #include <libplacebo/shaders/custom.h>
 #include <charconv>
 #include "Renderer/Trace.h"
@@ -82,9 +83,13 @@ struct PlaceboBackend::State
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
     pl_frame mixFrames[16] = {};
-    // SDR gamma processing for the frame being presented: the picture is
-    // taken as encoded for this gamma (unknown: as described).
-    pl_color_transfer sdrGamma = PL_COLOR_TRC_UNKNOWN;
+    // Gamma for the frame being presented. SDR gamma processing: the gamma
+    // x100 the SDR picture should have on the display (0 = off). Output
+    // gamma: power raising the encoded output to a pure-power display gamma
+    // between libplacebo's fixed curves (1 = none).
+    int sdrGammaCurve = 0;
+    float outputGamma = 1;
+    OutputGammaHook outputGammaHook;
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
@@ -1569,14 +1574,21 @@ struct PlaceboBackend::State
         for (int i = 0; i < mixCount; ++i)
             transform(mixFrames[i]);
         pl_color_adjustment adjustment = pl_color_adjustment_neutral;
-        adjustment.saturation = settings.saturation;
-        adjustment.contrast = settings.contrast;
-        adjustment.brightness = settings.brightness;
-        adjustment.gamma = settings.gamma;
-        adjustment.hue = settings.hue;
-        adjustment.temperature = settings.temperature;
+        if (settings.colorAdjustment)
+        {
+            adjustment.saturation = settings.saturation;
+            adjustment.contrast = settings.contrast;
+            adjustment.brightness = settings.brightness;
+            adjustment.gamma = settings.gamma;
+            adjustment.hue = settings.hue;
+            adjustment.temperature = settings.temperature;
+        }
+        // SDR gamma processing: the picture is decoded as gamma 2.2 after
+        // this power on its signal, so its light follows the chosen gamma.
+        if (sdrGammaCurve)
+            adjustment.gamma *= 220.f / float(sdrGammaCurve);
         pl_render_params params = options->params;
-        params.color_adjustment = settings.colorAdjustment ? &adjustment : nullptr;
+        params.color_adjustment = settings.colorAdjustment || sdrGammaCurve ? &adjustment : nullptr;
         // Default preserves the established output-calibration stage. Manual
         // LUT types use libplacebo's actual color-mapping LUT semantics.
         if (!hdrOutput && colors && colors->lut && settings.extras.values[14] >= 0)
@@ -1605,7 +1617,7 @@ struct PlaceboBackend::State
                 sharpenState = 2;
         }
 
-        const pl_hook* hooks[ShaderCount + 4] = {};
+        const pl_hook* hooks[ShaderCount + 5] = {};
         int hookIds[ShaderCount] = {};
         int users = 0, count = 0;
         if (params.num_hooks)
@@ -1613,6 +1625,10 @@ struct PlaceboBackend::State
         tonalHook.settings = settings.tonal;
         if (ActiveTonal(settings.tonal) && pl_color_space_is_hdr(&image.color))
             hooks[count++] = &tonalHook.hook;
+        // A target LUT is applied before output hooks and already describes
+        // the display.
+        if (outputGamma != 1 && !target.lut)
+            hooks[count++] = outputGammaHook.Prepare(outputGamma, target.repr);
         const pl_hook* analysisHooks[2] = {};
         int analysisCount = 0;
         if (settings.imageAnalysis)
@@ -1800,16 +1816,16 @@ struct PlaceboBackend::State
         probe.Next(RenderProbe::Draw);
         pl_frame shown = image;
         pl_frame gammaFrames[16];
-        if (sdrGamma != PL_COLOR_TRC_UNKNOWN)
-            shown.color.transfer = sdrGamma;
+        if (sdrGammaCurve)
+            shown.color.transfer = PL_COLOR_TRC_GAMMA22;
         if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
             for (size_t i = 0; i < static_cast<size_t>(mixCount); i++)
             {
                 gammaFrames[i] = mixFrames[i];
-                if (sdrGamma != PL_COLOR_TRC_UNKNOWN)
-                    gammaFrames[i].color.transfer = sdrGamma;
+                if (sdrGammaCurve)
+                    gammaFrames[i].color.transfer = PL_COLOR_TRC_GAMMA22;
                 frames[i] = &gammaFrames[i];
             }
             pl_frame_mix mix = {};
@@ -1822,7 +1838,8 @@ struct PlaceboBackend::State
                 signatures[i] =
                     mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
-                    (uint64_t(sdrGamma) * 0xbf58476d1ce4e5b9ULL) ^
+                    (uint64_t(sdrGammaCurve) * 0xbf58476d1ce4e5b9ULL) ^
+                    (uint64_t(outputGamma * 1e6f) * 0x2545f4914f6cdd1dULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -2080,9 +2097,10 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (settings.presentAhead < 0 || settings.presentAhead > 4)
         return E_INVALIDARG;
-    if (settings.displayGamma < 0 || settings.displayGamma > 4 || settings.sdrGamma < 0 || settings.sdrGamma > 6 ||
-        settings.displayContrast < 0 || settings.displayContrast > 1000000 || settings.displayPrimaries < 0 ||
-        settings.displayPrimaries > 5)
+    if ((settings.displayGammaCurve != 0 && settings.displayGammaCurve != 1 &&
+         !ValidGammaCurve(settings.displayGammaCurve)) ||
+        (settings.sdrGammaCurve != 0 && !ValidGammaCurve(settings.sdrGammaCurve)) || settings.displayContrast < 0 ||
+        settings.displayContrast > 1000000 || settings.displayPrimaries < 0 || settings.displayPrimaries > 5)
         return E_INVALIDARG;
     if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
@@ -2563,15 +2581,6 @@ HRESULT PlaceboBackend::Present()
     // the desired gamma to the display gamma; otherwise it stays as before.
     // Only a plain sRGB target qualifies: linear 16-bit float and Windows HDR
     // outputs have no display gamma to match.
-    static constexpr pl_color_transfer DisplayGammas[] = {
-        PL_COLOR_TRC_SRGB, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_GAMMA26, PL_COLOR_TRC_BT_1886};
-    static constexpr pl_color_transfer SdrGammas[] = {PL_COLOR_TRC_UNKNOWN,
-                                                      PL_COLOR_TRC_GAMMA18,
-                                                      PL_COLOR_TRC_GAMMA20,
-                                                      PL_COLOR_TRC_GAMMA22,
-                                                      PL_COLOR_TRC_GAMMA24,
-                                                      PL_COLOR_TRC_GAMMA26,
-                                                      PL_COLOR_TRC_GAMMA28};
     // An ICC profile describes the display itself.
     const bool sdrTarget = !hdr && target.color.transfer == PL_COLOR_TRC_SRGB && !s.settings.iccEnabled;
     const bool hdrSource = pl_color_space_is_hdr(&s.image.color);
@@ -2585,15 +2594,29 @@ HRESULT PlaceboBackend::Present()
                                                               PL_COLOR_PRIM_DISPLAY_P3};
     if (sdrTarget && s.settings.displayPrimaries > 0)
         target.color.primaries = DisplayPrimaries[s.settings.displayPrimaries];
-    if (sdrTarget && (hdrSource || s.settings.sdrGamma > 0))
-        target.color.transfer = DisplayGammas[s.settings.displayGamma];
+    // A pure-power display gamma is encoded with the nearest of libplacebo's
+    // curves (1.8 to 2.6 in steps of 0.2), then raised to the exact gamma.
+    static constexpr pl_color_transfer PowerCurves[] = {
+        PL_COLOR_TRC_GAMMA18, PL_COLOR_TRC_GAMMA20, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_GAMMA26};
+    const int display = s.settings.displayGammaCurve;
+    if (sdrTarget && (hdrSource || s.settings.sdrGammaCurve > 0))
+    {
+        if (display == 1)
+            target.color.transfer = PL_COLOR_TRC_BT_1886;
+        else if (display >= 180)
+        {
+            const int nearest = std::clamp((display - 170) / 20, 0, 4);
+            target.color.transfer = PowerCurves[nearest];
+            s.outputGamma = float(180 + 20 * nearest) / float(display);
+        }
+    }
     // BT.1886 follows the display's black point. Without a contrast it is an
     // infinite-contrast display (identical to 2.4), not libplacebo's 1000:1.
     if (target.color.transfer == PL_COLOR_TRC_BT_1886)
         target.color.hdr.min_luma = s.settings.displayContrast > 0
                                         ? target.color.hdr.max_luma / float(s.settings.displayContrast)
                                         : PL_COLOR_HDR_BLACK;
-    s.sdrGamma = sdrTarget && !hdrSource ? SdrGammas[s.settings.sdrGamma] : PL_COLOR_TRC_UNKNOWN;
+    s.sdrGammaCurve = sdrTarget && !hdrSource ? s.settings.sdrGammaCurve : 0;
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -2605,7 +2628,8 @@ HRESULT PlaceboBackend::Present()
     s.renderGpu.Begin(s.d3d->device, s.context.Get());
     QueryPerformanceCounter(&begin);
     const bool rendered = s.Render(target, hdr);
-    s.sdrGamma = PL_COLOR_TRC_UNKNOWN;
+    s.sdrGammaCurve = 0;
+    s.outputGamma = 1;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)

@@ -795,10 +795,23 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                    L"looking oversaturated.");
         primaries.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(primaries));
+        // Pure powers 1.80 to 2.60 in steps of 0.05, stored x100.
+        auto curves = [](std::vector<ChoiceItem> items)
+        {
+            for (int v = 180; v <= 260; v += 5)
+            {
+                wchar_t label[8];
+                swprintf_s(label, std::size(label), L"%d.%02d", v / 100, v % 100);
+                items.push_back({v, label});
+            }
+            return items;
+        };
+        auto displayCurves = curves({{0, L"Auto"}});
+        displayCurves.push_back({1, L"BT.1886"});
         auto gamma = D2DChoice(s,
                                L"Display Gamma",
-                               &s.displayGamma,
-                               D2DChoices(DisplayGammaChoices),
+                               &s.displayGammaCurve,
+                               std::move(displayCurves),
                                L"How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
                                L"tone mapped to SDR.");
         gamma.enabled = [&s] { return !s.iccEnabled; };
@@ -811,12 +824,12 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                   100,
                                   L"For BT.1886: the measured contrast, e.g. 1000 for 1000:1. 0 means infinite "
                                   L"(OLED), the same as 2.4.");
-        contrast.enabled = [&s] { return !s.iccEnabled && s.displayGamma == 4; };
+        contrast.enabled = [&s] { return !s.iccEnabled && s.displayGammaCurve == 1; };
         g.controls.push_back(std::move(contrast));
         auto sdr = D2DChoice(s,
                              L"SDR Gamma Processing",
-                             &s.sdrGamma,
-                             D2DChoices(SdrGammaChoices),
+                             &s.sdrGammaCurve,
+                             curves({{0, L"Off"}}),
                              L"Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display.");
         sdr.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(sdr));

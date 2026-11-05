@@ -84,8 +84,8 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(hdrMode);
     INI_FIELD(maximumFramesInFlight);
     INI_FIELD(presentAhead);
-    INI_FIELD(displayGamma);
-    INI_FIELD(sdrGamma);
+    INI_FIELD(displayGammaCurve);
+    INI_FIELD(sdrGammaCurve);
     INI_FIELD(displayContrast);
     INI_FIELD(displayPrimaries);
     INI_FIELD(motionThreshold);
