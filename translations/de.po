@@ -3292,14 +3292,6 @@ msgid "Delete"
 msgstr "Löschen"
 
 #. Menu text; keep %d and %s placeholders
-msgid "Normal settings of this display."
-msgstr "Normale Einstellungen dieses Bildschirms."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Used by the playing video."
-msgstr "Vom laufenden Video genutzt."
-
-#. Menu text; keep %d and %s placeholders
 msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr ""
 "Das Menü zeigt jetzt „%s“. Änderungen auf allen Seiten gehen ins Profil."
@@ -3504,26 +3496,70 @@ msgstr "Schärfstes Bild. Für dedizierte GPUs."
 msgid "Display Gamma"
 msgstr "Display-Gamma"
 
-#. Setting name (Color > Display Gamma)
-msgid "SDR Display Gamma"
-msgstr "SDR-Display-Gamma"
-
-#. Setting description (Color > Display Gamma > SDR Display Gamma)
-msgid "For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. Not used with an ICC profile or HDR output."
-msgstr "Für einen auf Gamma 2.4 oder BT.1886 kalibrierten Bildschirm, z. B. einen Beamer. Nicht mit ICC-Profil oder HDR-Ausgabe."
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.2"
-msgstr "Gamma 2.2"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "Gamma 2.4"
-msgstr "Gamma 2.4"
-
-#. Choice (Color > Display Gamma > SDR Display Gamma)
-msgid "BT.1886"
-msgstr "BT.1886"
-
 #. Choice (Color > Display Gamma > SDR Display Gamma)
 msgid "Auto"
 msgstr "Auto"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Your own settings."
+msgstr "Deine eigenen Einstellungen."
+
+#. Menu text; keep %d and %s placeholders
+msgid "None saved yet."
+msgstr "Noch keine gespeichert."
+
+#. Setting description (Color > Gamma > Display Gamma)
+msgid "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is tone mapped to SDR."
+msgstr "Wie der Bildschirm das Signal dekodiert, z. B. 2.4 bei vielen TVs. Wird genutzt, wenn HDR auf SDR umgerechnet wird."
+
+#. Setting name (Color > Gamma)
+msgid "SDR Gamma Processing"
+msgstr "SDR-Gamma-Verarbeitung"
+
+#. Setting description (Color > Gamma > SDR Gamma Processing)
+msgid "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
+msgstr "Aus lässt SDR unverändert. Sonst sieht SDR auf dem Bildschirm wie diese Gamma aus."
+
+#. Choice (Color > Gamma > Display Gamma)
+msgid "BT.1886"
+msgstr "BT.1886"
+
+#. Setting name (Color > Gamma)
+msgid "Display Contrast"
+msgstr "Display-Kontrast"
+
+#. Setting description (Color > Gamma > Display Contrast)
+msgid "For BT.1886: the measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), the same as 2.4."
+msgstr "Für BT.1886: der gemessene Kontrast, z. B. 1000 für 1000:1. 0 bedeutet unendlich (OLED), gleich wie 2.4."
+
+#. Setting name (Color > Display)
+msgid "Display Gamut"
+msgstr "Display-Farbraum"
+
+#. Setting description (Color > Display > Display Gamut)
+msgid "For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours from looking oversaturated."
+msgstr "Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. DCI-P3. Verhindert übersättigte Farben."
+
+#. Choice (Color > Display > Display Gamut)
+msgid "Auto (BT.709)"
+msgstr "Auto (BT.709)"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "SMPTE C"
+msgstr "SMPTE C"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "EBU / PAL"
+msgstr "EBU / PAL"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "BT.2020"
+msgstr "BT.2020"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "DCI-P3"
+msgstr "DCI-P3"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "Display P3"
+msgstr "Display P3"

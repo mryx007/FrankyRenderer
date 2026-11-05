@@ -76,7 +76,10 @@ struct RenderSettings
     bool showClipping = false;
     int maximumFramesInFlight = 0;
     int presentAhead = 0;
-    int displayGamma = 0; // 0=sRGB, 1=gamma 2.2, 2=gamma 2.4, 3=BT.1886
+    int displayGamma = 0;     // 0=auto (sRGB), 1=2.2, 2=2.4, 3=2.6, 4=BT.1886
+    int displayContrast = 0;  // BT.1886 display contrast, 0 = infinite
+    int displayPrimaries = 0; // 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3
+    int sdrGamma = 0;         // 0=off, 1-6=gamma 1.8, 2.0, 2.2, 2.4, 2.6, 2.8
     float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;

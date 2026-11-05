@@ -123,13 +123,13 @@ static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s H
                                                L"Cancel",
                                                L"Delete",
                                                L"Profile",
-                                               L"Normal settings of this display.",
-                                               L"Used by the playing video.",
                                                L"The menu now shows \"%s\". Changes on all pages go into the profile.",
                                                L"Remove all settings of the profile \"%s\"? It then matches Default.",
                                                L"The profile matches Default again.",
                                                L"This folder already belongs to the profile \"%s\".",
                                                L"Could not save the profile.",
+                                               L"Your own settings.",
+                                               L"None saved yet.",
                                                L"Display",
                                                L"Rename",
                                                L"Import",
@@ -2728,8 +2728,17 @@ void Direct2DHostWindow::SelectQualityPreset(const D2D1_RECT_F& rect)
     const int measure = int(popup.labels.size());
     popup.labels.push_back(Tr(L"Measure this PC"));
     popup.descriptions.push_back(Tr(L"Picks the best settings for this PC."));
+    // Custom stays last: the own values from before the last preset, kept per
+    // display or profile, so they can always be brought back.
+    const auto key = m_editing.empty() ? std::wstring(m_base.displayProfile) : L"profile-" + m_editing;
+    PlaceboSettings saved;
+    const bool haveCustom = LoadCustomQuality(key, saved);
+    const int custom = int(popup.labels.size());
+    popup.labels.push_back(Tr(L"Custom"));
+    popup.descriptions.push_back(Tr(haveCustom ? L"Your own settings." : L"None saved yet."));
     const auto origin = Quality();
-    popup.selected = origin.measured ? measure : origin.preset;
+    const bool isCustom = origin.preset < 0 && !origin.measured;
+    popup.selected = origin.measured ? measure : isCustom ? custom : origin.preset;
     RECT anchor = {
         int(rect.left * Scale()), int(rect.top * Scale()), int(rect.right * Scale()), int(rect.bottom * Scale())};
     MapWindowPoints(m_hwnd, nullptr, reinterpret_cast<POINT*>(&anchor), 2);
@@ -2737,12 +2746,25 @@ void Direct2DHostWindow::SelectQualityPreset(const D2D1_RECT_F& rect)
     const int selected = popup.Show(m_hwnd, anchor, Scale());
     if (!*alive || selected < 0)
         return;
-    if (selected == measure)
+    if (selected == custom)
     {
-        StartMeasurement();
-        return;
+        if (isCustom || !haveCustom)
+            return;
+        CopyQualitySettings(saved, *m_pSettings);
+        m_pSettings->measuredQuality = 0;
     }
-    ApplyQualityPreset(*m_pSettings, selected);
+    else
+    {
+        // Leaving own values keeps them for Custom.
+        if (isCustom)
+            SaveCustomQuality(key, *m_pSettings);
+        if (selected == measure)
+        {
+            StartMeasurement();
+            return;
+        }
+        ApplyQualityPreset(*m_pSettings, selected);
+    }
     // Controls hold their own copies of choice lists; rebuild them for the new values.
     m_pDraggingSlider = nullptr;
     m_keyboardIndex = -1;
@@ -3021,18 +3043,15 @@ void Direct2DHostWindow::SelectProfile(const std::wstring& selection)
 void Direct2DHostWindow::SelectProfileMenu(const D2D1_RECT_F& rect)
 {
     EndEdit();
+    // Names only, so the list is as narrow as the box.
     const auto profiles = ContentProfiles::Load();
-    const auto playing = ContentProfiles::PlayingProfile();
     std::vector<std::wstring> choices = {ContentProfiles::DefaultName};
     ChoicePopup popup;
     popup.labels = {Tr(L"Default")};
-    popup.descriptions = {Tr(L"Normal settings of this display.")};
     for (const auto& profile : profiles)
     {
         choices.push_back(profile.name);
         popup.labels.push_back(profile.name);
-        popup.descriptions.push_back(
-            !_wcsicmp(profile.name.c_str(), playing.c_str()) ? Tr(L"Used by the playing video.") : L"");
     }
     popup.selected = 0;
     for (size_t i = 1; i < choices.size(); ++i)

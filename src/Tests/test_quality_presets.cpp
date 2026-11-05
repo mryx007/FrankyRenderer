@@ -101,6 +101,32 @@ int main()
         const auto text = SettingsIni::Serialize(all);
         Require(CurrentQuality(SettingsIni::Parse(text)).measured, "the origin survives INI export and import");
     }
+    {
+        // Own values replaced by a preset come back with Custom, and only the
+        // settings the presets cover change.
+        wchar_t temp[MAX_PATH] = {};
+        GetTempPathW(MAX_PATH, temp);
+        const auto folder = std::wstring(temp) + L"FrankyCustomQuality" + std::to_wstring(GetCurrentProcessId());
+        SetEnvironmentVariableW(L"APPDATA", folder.c_str());
+        PlaceboSettings own;
+        strcpy_s(own.scaling.filters[0].filter, "ewa_lanczos");
+        own.deband = TRUE;
+        own.peakPercentile = 99.5f;
+        Require(SaveCustomQuality(L"display", own), "own values saved");
+        PlaceboSettings current;
+        ApplyQualityPreset(current, 0);
+        current.saturation = 1.2f;
+        PlaceboSettings saved;
+        Require(LoadCustomQuality(L"display", saved) && !LoadCustomQuality(L"other", saved) &&
+                    LoadCustomQuality(L"display", saved),
+                "own values are kept per display");
+        CopyQualitySettings(saved, current);
+        Require(!strcmp(current.scaling.filters[0].filter, "ewa_lanczos") && current.deband &&
+                    current.peakPercentile == 99.5f && current.saturation == 1.2f,
+                "Custom restores the quality settings and keeps the others");
+        std::filesystem::remove_all(folder);
+    }
     puts(
-        "PASS quality presets: libplacebo parity, recognition, origin shown until any change, Measured, INI round trip");
+        "PASS quality presets: libplacebo parity, recognition, origin shown until any change, Measured, INI round trip, "
+        "Custom restore");
 }

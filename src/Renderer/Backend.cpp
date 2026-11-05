@@ -82,6 +82,9 @@ struct PlaceboBackend::State
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
     pl_frame mixFrames[16] = {};
+    // SDR gamma processing for the frame being presented: the picture is
+    // taken as encoded for this gamma (unknown: as described).
+    pl_color_transfer sdrGamma = PL_COLOR_TRC_UNKNOWN;
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
@@ -1795,11 +1798,20 @@ struct PlaceboBackend::State
             }
         }
         probe.Next(RenderProbe::Draw);
+        pl_frame shown = image;
+        pl_frame gammaFrames[16];
+        if (sdrGamma != PL_COLOR_TRC_UNKNOWN)
+            shown.color.transfer = sdrGamma;
         if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
             for (size_t i = 0; i < static_cast<size_t>(mixCount); i++)
-                frames[i] = &mixFrames[i];
+            {
+                gammaFrames[i] = mixFrames[i];
+                if (sdrGamma != PL_COLOR_TRC_UNKNOWN)
+                    gammaFrames[i].color.transfer = sdrGamma;
+                frames[i] = &gammaFrames[i];
+            }
             pl_frame_mix mix = {};
             mix.num_frames = mixCount;
             if (mix.num_frames == 2 && mixSignatures[0] == mixSignatures[1])
@@ -1810,6 +1822,7 @@ struct PlaceboBackend::State
                 signatures[i] =
                     mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
+                    (uint64_t(sdrGamma) * 0xbf58476d1ce4e5b9ULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -1844,7 +1857,7 @@ struct PlaceboBackend::State
             }
             return renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); });
         }
-        return renderWithRecovery([&]() { return pl_render_image(renderer, &image, &target, &params); });
+        return renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); });
     }
 };
 
@@ -2067,7 +2080,9 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (settings.presentAhead < 0 || settings.presentAhead > 4)
         return E_INVALIDARG;
-    if (settings.displayGamma < 0 || settings.displayGamma > 3)
+    if (settings.displayGamma < 0 || settings.displayGamma > 4 || settings.sdrGamma < 0 || settings.sdrGamma > 6 ||
+        settings.displayContrast < 0 || settings.displayContrast > 1000000 || settings.displayPrimaries < 0 ||
+        settings.displayPrimaries > 5)
         return E_INVALIDARG;
     if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
@@ -2543,13 +2558,42 @@ HRESULT PlaceboBackend::Present()
         target.color.transfer = PL_COLOR_TRC_LINEAR;
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
-    // SDR for a display decoding another gamma than sRGB, e.g. a projector
-    // calibrated to 2.4. Only a plain sRGB target is re-encoded: linear 16-bit
-    // float and Windows HDR outputs have no display gamma to match.
+    // Display gamma: HDR tone mapped to SDR is encoded for how the display
+    // decodes. SDR only changes with gamma processing, which converts it from
+    // the desired gamma to the display gamma; otherwise it stays as before.
+    // Only a plain sRGB target qualifies: linear 16-bit float and Windows HDR
+    // outputs have no display gamma to match.
     static constexpr pl_color_transfer DisplayGammas[] = {
-        PL_COLOR_TRC_SRGB, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_BT_1886};
-    if (!hdr && s.settings.displayGamma > 0 && target.color.transfer == PL_COLOR_TRC_SRGB)
+        PL_COLOR_TRC_SRGB, PL_COLOR_TRC_GAMMA22, PL_COLOR_TRC_GAMMA24, PL_COLOR_TRC_GAMMA26, PL_COLOR_TRC_BT_1886};
+    static constexpr pl_color_transfer SdrGammas[] = {PL_COLOR_TRC_UNKNOWN,
+                                                      PL_COLOR_TRC_GAMMA18,
+                                                      PL_COLOR_TRC_GAMMA20,
+                                                      PL_COLOR_TRC_GAMMA22,
+                                                      PL_COLOR_TRC_GAMMA24,
+                                                      PL_COLOR_TRC_GAMMA26,
+                                                      PL_COLOR_TRC_GAMMA28};
+    // An ICC profile describes the display itself.
+    const bool sdrTarget = !hdr && target.color.transfer == PL_COLOR_TRC_SRGB && !s.settings.iccEnabled;
+    const bool hdrSource = pl_color_space_is_hdr(&s.image.color);
+    // A wide-gamut display shows the picture's colours correctly only when
+    // they are mapped into its gamut.
+    static constexpr pl_color_primaries DisplayPrimaries[] = {PL_COLOR_PRIM_UNKNOWN,
+                                                              PL_COLOR_PRIM_BT_601_525,
+                                                              PL_COLOR_PRIM_BT_601_625,
+                                                              PL_COLOR_PRIM_BT_2020,
+                                                              PL_COLOR_PRIM_DCI_P3,
+                                                              PL_COLOR_PRIM_DISPLAY_P3};
+    if (sdrTarget && s.settings.displayPrimaries > 0)
+        target.color.primaries = DisplayPrimaries[s.settings.displayPrimaries];
+    if (sdrTarget && (hdrSource || s.settings.sdrGamma > 0))
         target.color.transfer = DisplayGammas[s.settings.displayGamma];
+    // BT.1886 follows the display's black point. Without a contrast it is an
+    // infinite-contrast display (identical to 2.4), not libplacebo's 1000:1.
+    if (target.color.transfer == PL_COLOR_TRC_BT_1886)
+        target.color.hdr.min_luma = s.settings.displayContrast > 0
+                                        ? target.color.hdr.max_luma / float(s.settings.displayContrast)
+                                        : PL_COLOR_HDR_BLACK;
+    s.sdrGamma = sdrTarget && !hdrSource ? SdrGammas[s.settings.sdrGamma] : PL_COLOR_TRC_UNKNOWN;
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -2561,6 +2605,7 @@ HRESULT PlaceboBackend::Present()
     s.renderGpu.Begin(s.d3d->device, s.context.Get());
     QueryPerformanceCounter(&begin);
     const bool rendered = s.Render(target, hdr);
+    s.sdrGamma = PL_COLOR_TRC_UNKNOWN;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)

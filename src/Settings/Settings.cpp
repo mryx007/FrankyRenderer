@@ -168,6 +168,9 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(maximumFramesInFlight),
         FIELD(presentAhead),
         FIELD(displayGamma),
+        FIELD(sdrGamma),
+        FIELD(displayContrast),
+        FIELD(displayPrimaries),
         FIELD(motionThreshold),
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
@@ -414,8 +417,25 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     value = 0;
     if (RegQueryValueExW(key, L"DisplayGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
             ERROR_SUCCESS &&
-        type == REG_DWORD && size == 4 && value <= 3)
+        type == REG_DWORD && size == 4 && value <= 4)
         settings.displayGamma = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (RegQueryValueExW(key, L"DisplayContrast", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 1000000)
+        settings.displayContrast = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (RegQueryValueExW(key, L"DisplayPrimaries", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 5)
+        settings.displayPrimaries = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (RegQueryValueExW(key, L"SdrGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 6)
+        settings.sdrGamma = static_cast<int>(value);
     size = 4;
     value = 0;
     if (RegQueryValueExW(key, L"OutputFormat", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
@@ -494,7 +514,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (s.presentAhead < 0 || s.presentAhead > 4)
         return E_INVALIDARG;
-    if (s.displayGamma < 0 || s.displayGamma > 3)
+    if (s.displayGamma < 0 || s.displayGamma > 4 || s.sdrGamma < 0 || s.sdrGamma > 6 || s.displayContrast < 0 ||
+        s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
         return E_INVALIDARG;
     if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
         return E_INVALIDARG;
@@ -577,6 +598,9 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.maximumFramesInFlight = s.maximumFramesInFlight;
     out.presentAhead = s.presentAhead;
     out.displayGamma = s.displayGamma;
+    out.sdrGamma = s.sdrGamma;
+    out.displayContrast = s.displayContrast;
+    out.displayPrimaries = s.displayPrimaries;
     out.motionThreshold = s.motionThreshold;
     out.kneeAdaptation = s.kneeAdaptation;
     out.splineContrast = s.splineContrast;
@@ -718,6 +742,9 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     save(L"MaximumFramesInFlight", REG_DWORD, &s.maximumFramesInFlight, 4);
     save(L"PresentAhead", REG_DWORD, &s.presentAhead, 4);
     save(L"DisplayGamma", REG_DWORD, &s.displayGamma, 4);
+    save(L"SdrGamma", REG_DWORD, &s.sdrGamma, 4);
+    save(L"DisplayContrast", REG_DWORD, &s.displayContrast, 4);
+    save(L"DisplayPrimaries", REG_DWORD, &s.displayPrimaries, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);
     save(L"ICCEnabled", REG_DWORD, &s.iccEnabled, 4);

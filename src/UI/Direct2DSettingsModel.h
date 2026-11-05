@@ -786,15 +786,40 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
     }
     {
         auto& p = page(L"Color Management", L"Color Management", L"ICC display profiles and 3D LUT calibration.");
-        auto& g = card(p, L"Display Gamma");
+        auto& g = card(p, L"Display");
+        auto primaries = D2DChoice(s,
+                                   L"Display Gamut",
+                                   &s.displayPrimaries,
+                                   D2DChoices(DisplayPrimariesChoices),
+                                   L"For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours from "
+                                   L"looking oversaturated.");
+        primaries.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(primaries));
         auto gamma = D2DChoice(s,
-                               L"SDR Display Gamma",
+                               L"Display Gamma",
                                &s.displayGamma,
                                D2DChoices(DisplayGammaChoices),
-                               L"For a display calibrated to gamma 2.4 or BT.1886, e.g. a projector. "
-                               L"Not used with an ICC profile or HDR output.");
+                               L"How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
+                               L"tone mapped to SDR.");
         gamma.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(gamma));
+        auto contrast = D2DNumber(s,
+                                  L"Display Contrast",
+                                  &s.displayContrast,
+                                  0,
+                                  1000000,
+                                  100,
+                                  L"For BT.1886: the measured contrast, e.g. 1000 for 1000:1. 0 means infinite "
+                                  L"(OLED), the same as 2.4.");
+        contrast.enabled = [&s] { return !s.iccEnabled && s.displayGamma == 4; };
+        g.controls.push_back(std::move(contrast));
+        auto sdr = D2DChoice(s,
+                             L"SDR Gamma Processing",
+                             &s.sdrGamma,
+                             D2DChoices(SdrGammaChoices),
+                             L"Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display.");
+        sdr.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(sdr));
         auto& c = card(p, L"ICC Profile");
         auto browse = [&s](bool icc, HWND owner)
         {

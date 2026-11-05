@@ -3,6 +3,8 @@
 #include "Settings/SettingsIni.h"
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
 
 // libplacebo's render presets (pl_render_fast_params, pl_render_default_params,
@@ -46,6 +48,63 @@ inline void ApplyQualityPreset(PlaceboSettings& s, const QualityPreset& p)
     s.peakDetect = p.peakDetect;
     s.peakPercentile = p.peakPercentile;
     s.contrastRecovery = p.contrastRecovery;
+}
+
+// The settings the presets and the measurement change.
+inline void CopyQualitySettings(const PlaceboSettings& from, PlaceboSettings& to)
+{
+    for (int role = 0; role < 4; role++)
+        to.scaling.filters[role] = from.scaling.filters[role];
+    to.scaling.antiringing = from.scaling.antiringing;
+    to.deband = from.deband;
+    to.debandIterations = from.debandIterations;
+    to.debandThreshold = from.debandThreshold;
+    to.debandRadius = from.debandRadius;
+    to.debandGrain = from.debandGrain;
+    to.ditherMethod = from.ditherMethod;
+    to.ditherTemporal = from.ditherTemporal;
+    to.peakDetect = from.peakDetect;
+    to.peakPercentile = from.peakPercentile;
+    to.contrastRecovery = from.contrastRecovery;
+}
+
+// Own values a preset replaced, kept for the Custom entry: one INI file per
+// display or profile in %APPDATA%\FrankyRenderer\CustomQuality.
+inline std::filesystem::path CustomQualityPath(const std::wstring& key)
+{
+    wchar_t appData[MAX_PATH] = {};
+    const DWORD length = GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
+    if (key.empty() || !length || length >= MAX_PATH)
+        return {};
+    return std::filesystem::path(appData) / L"FrankyRenderer" / L"CustomQuality" / (key + L".ini");
+}
+
+inline bool SaveCustomQuality(const std::wstring& key, const PlaceboSettings& s)
+{
+    const auto path = CustomQualityPath(key);
+    if (path.empty())
+        return false;
+    std::error_code error;
+    std::filesystem::create_directories(path.parent_path(), error);
+    std::wstring message;
+    return SUCCEEDED(SettingsIni::ExportText(path.c_str(), SettingsIni::Serialize(s), message));
+}
+
+inline bool LoadCustomQuality(const std::wstring& key, PlaceboSettings& out)
+{
+    const auto path = CustomQualityPath(key);
+    std::ifstream file(path, std::ios::binary);
+    if (path.empty() || !file)
+        return false;
+    try
+    {
+        out = SettingsIni::Parse(std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()));
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
 }
 
 // PlaceboSettings::measuredQuality records where the values came from and
