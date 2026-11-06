@@ -1,5 +1,6 @@
 """Prepare a stable candidate from the published Nightly; never push it here."""
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -27,7 +28,16 @@ def stable_notes(current, previous=""):
     return "\n".join(entries)
 
 
-def prepare(previous, nightly_sha, output):
+def release_version(previous, requested=""):
+    """The requested version, or the next patch version when none is given."""
+    if not requested:
+        return next_version(previous)
+    if parts(requested) <= parts(previous):
+        raise ValueError(f"Version {requested} must be newer than {previous}")
+    return requested
+
+
+def prepare(previous, nightly_sha, output, version=None):
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     stable_sha = git("rev-parse", "HEAD").stdout.strip()
@@ -35,7 +45,7 @@ def prepare(previous, nightly_sha, output):
     promoted = json.loads(marker.read_text())["source_commit"] if marker.exists() else None
     if promoted == nightly_sha:
         raise ValueError("This Nightly has already been published as a stable release")
-    version = next_version(previous)
+    version = version or next_version(previous)
     current_notes = git("show", f"{nightly_sha}:docs/nightly-changelog.md").stdout
     previous_notes = git("show", f"{promoted}:docs/nightly-changelog.md").stdout if promoted else ""
     notes = stable_notes(current_notes, previous_notes)
@@ -107,13 +117,13 @@ def main():
     nightly_sha = git("rev-parse", "refs/remotes/nightly/published^{commit}").stdout.strip()
     if f"/commit/{nightly_sha}" not in release["body"]:
         raise ValueError("Nightly source and download metadata do not match; wait for its upload to finish")
-    version = next_version(previous)
+    version = release_version(previous, os.environ.get("REQUESTED_VERSION", "").strip())
     existing = subprocess.run(["gh", "api", f"repos/mryx007/FrankyRenderer/releases/tags/v{version}"], capture_output=True)
     if existing.returncode == 0:
         raise ValueError("The next stable release already exists")
     git("config", "user.name", "mryx007")
     git("config", "user.email", "149878151+mryx007@users.noreply.github.com")
-    print(json.dumps(prepare(previous, nightly_sha, ROOT / "promotion")))
+    print(json.dumps(prepare(previous, nightly_sha, ROOT / "promotion", version)))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,10 @@ on:
         description: 'Test without publishing (leave off for a release)'
         type: boolean
         default: false
+      version:
+        description: 'Version, e.g. 1.2 (leave empty for the next patch version)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -27,6 +31,8 @@ jobs:
       - name: Test promotion of divergent source branches
         run: python .github/scripts/test_prepare_stable.py
       - name: Prepare Nightly, next version and its changelog
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: python .github/scripts/prepare_stable.py
       - name: Verify generated versions
         run: |

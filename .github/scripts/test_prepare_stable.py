@@ -9,6 +9,16 @@ import prepare_stable
 
 
 class StablePromotionTest(unittest.TestCase):
+    def test_requested_version(self):
+        self.assertEqual(prepare_stable.release_version("1.1"), "1.1.1")
+        self.assertEqual(prepare_stable.release_version("1.1", "1.2"), "1.2")
+        self.assertEqual(prepare_stable.release_version("1.1", "2.0"), "2.0")
+        for older in ("1.1", "1.0.9"):
+            with self.assertRaisesRegex(ValueError, "newer"):
+                prepare_stable.release_version("1.1", older)
+        with self.assertRaises(ValueError):
+            prepare_stable.release_version("1.1", "v1.2")
+
     def test_exact_nightly_tree_with_stable_docs_and_release_notice(self):
         with tempfile.TemporaryDirectory(prefix="promotion-test-") as directory:
             root = Path(directory)
