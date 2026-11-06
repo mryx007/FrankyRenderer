@@ -74,7 +74,8 @@ jobs:
         run: |
           set -euo pipefail
           git fetch promotion/candidate.bundle HEAD
-          git checkout --detach FETCH_HEAD
+          # Line-ending attributes must not block switching to the tested commit.
+          git checkout --force --detach FETCH_HEAD
           version=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['version'])")
           expected=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['commit'])")
           base=$(python -c "import json; print(json.load(open('promotion/promotion.json'))['base_commit'])")
