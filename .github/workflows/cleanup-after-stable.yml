@@ -1,11 +1,10 @@
 name: Remove Nightlies after stable release
 
-# The stable repository's token cannot write here, so this repository checks
-# the public stable release itself: every Nightly published before the latest
-# stable release is superseded by it and is deleted together with its tag.
+# Start this by hand after a stable release: every Nightly published before
+# the latest stable release is superseded by it and is deleted together with
+# its tag. The stable repository's token cannot write here, so this repository
+# checks the public stable release itself.
 on:
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
