@@ -1,4 +1,4 @@
-name: Build and test packages
+name: Build and test FrankyRenderer
 
 on:
   workflow_call:
@@ -51,13 +51,14 @@ jobs:
           path: |
             src/deps/packages
             src/build/libplacebo-runtime
-          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/Tools/build_libplacebo.py', 'src/Tools/fetch_dependencies.py') }}
+            src/build/ffmpeg-runtime
+          key: windows-libplacebo-${{ hashFiles('src/deps/*lock.json', 'src/deps/patches/libplacebo/*.patch', 'src/Tools/build_libplacebo.py', 'src/Tools/build_ffmpeg.py', 'src/Tools/fetch_dependencies.py') }}
       - name: Restore verified dependencies
         run: |
           python src/Tools/fetch_dependencies.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python src/Tools/prepare_sdk.py
-      - name: Prepare pinned FFmpeg inputs
+      - name: Build pinned FFmpeg inputs
         shell: cmd
         run: |
           call src\Tools\vsenv.cmd
@@ -66,10 +67,6 @@ jobs:
       - name: Build shared native renderer
         shell: cmd
         run: build.cmd
-      - name: Build legacy PotPlayer package for older source candidates
-        if: hashFiles('src/Tools/package_release.py') == ''
-        shell: cmd
-        run: build.cmd potplayer
       - name: Run non-GPU regression checks
         shell: cmd
         run: |
@@ -92,8 +89,7 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           BUILD_ID: ${{ inputs.build_id }}
         run: |
-          $packager = if (Test-Path src/Tools/package_release.py) { 'src/Tools/package_release.py' } else { 'src/Tools/package_variants.py' }
-          $arguments = @($packager, '--output', 'releases/ci', '--channel', $env:CHANNEL)
+          $arguments = @('src/Tools/package_release.py', '--output', 'releases/ci', '--channel', $env:CHANNEL)
           if ($env:CHANNEL -eq 'nightly') { $arguments += @('--build-id', $env:BUILD_ID) }
           python @arguments
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
