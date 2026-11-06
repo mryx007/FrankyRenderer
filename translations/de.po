@@ -1431,6 +1431,14 @@ msgstr "Bildschirm"
 msgid "Display Gamut"
 msgstr "Display-Farbraum"
 
+#. Setting description (Color > Display > Display Gamut)
+msgid ""
+"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
+"looking oversaturated."
+msgstr ""
+"Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. P3-D65. "
+"Verhindert übersättigte Farben."
+
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.709"
 msgstr "BT.709"
@@ -3265,6 +3273,18 @@ msgstr "Ordner"
 msgid "Displays"
 msgstr "Bildschirme"
 
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr "Gleiche Einstellungen auf allen Displays"
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid ""
+"Changes apply to every display. Off: each keeps them and can be changed "
+"alone."
+msgstr ""
+"Änderungen gelten für jedes Display. Aus: Jedes behält sie und lässt sich "
+"einzeln ändern."
+
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
 msgstr ""
@@ -3571,15 +3591,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
-msgstr "Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. P3-D65. Verhindert übersättigte Farben."
-
-#. Setting name (Profiles > Display)
-msgid "Same Settings on All Displays"
-msgstr "Gleiche Einstellungen auf allen Displays"
-
-#. Setting description (Profiles > Display > Same Settings on All Displays)
-msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
-msgstr "Änderungen gelten für jedes Display. Aus: Jedes behält sie und lässt sich einzeln ändern."
