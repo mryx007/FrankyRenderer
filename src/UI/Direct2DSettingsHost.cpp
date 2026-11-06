@@ -741,6 +741,7 @@ class Direct2DHostWindow
 
     void InitPages();
     HRESULT InitD2D();
+    HRESULT CreateTextFormats();
     HRESULT CreateDeviceResources();
     void DiscardDeviceResources();
     void Render();
@@ -939,7 +940,14 @@ HRESULT Direct2DHostWindow::InitD2D()
     if (FAILED(hr))
         return hr;
 
+    return CreateTextFormats();
+}
+
+// Text formats for the menu language; rebuilt when the language changes.
+HRESULT Direct2DHostWindow::CreateTextFormats()
+{
     const wchar_t* fontName = L"Segoe UI";
+    const auto locale = MenuLocale();
 
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
@@ -947,56 +955,56 @@ HRESULT Direct2DHostWindow::InitD2D()
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        24.0f,
-                                       L"en-us",
-                                       m_fmtTitle.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtTitle.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        13.0f,
-                                       L"en-us",
-                                       m_fmtSubtitle.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtSubtitle.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_SEMI_BOLD,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        14.0f,
-                                       L"en-us",
-                                       m_fmtNav.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtNav.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_SEMI_BOLD,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        16.0f,
-                                       L"en-us",
-                                       m_fmtCardTitle.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtCardTitle.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        12.0f,
-                                       L"en-us",
-                                       m_fmtCardSubtitle.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtCardSubtitle.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        14.0f,
-                                       L"en-us",
-                                       m_fmtLabel.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtLabel.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        12.0f,
-                                       L"en-us",
-                                       m_fmtDesc.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtDesc.ReleaseAndGetAddressOf());
     // Text fields match the choice boxes beside them.
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
@@ -1004,32 +1012,32 @@ HRESULT Direct2DHostWindow::InitD2D()
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        14.0f,
-                                       L"en-us",
-                                       m_fmtTextField.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtTextField.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        13.0f,
-                                       L"en-us",
-                                       m_fmtValue.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtValue.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        14.f,
-                                       L"en-us",
-                                       m_fmtChoice.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtChoice.ReleaseAndGetAddressOf());
     m_pDWriteFactory->CreateTextFormat(fontName,
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_MEDIUM,
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        12.f,
-                                       L"en-us",
-                                       m_fmtRange.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtRange.ReleaseAndGetAddressOf());
     // Windows 11 icons where installed; Segoe MDL2 uses the same code points.
     const wchar_t* iconFont = L"Segoe MDL2 Assets";
     ComPtr<IDWriteFontCollection> fonts;
@@ -1044,8 +1052,8 @@ HRESULT Direct2DHostWindow::InitD2D()
                                        DWRITE_FONT_STYLE_NORMAL,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        20.0f,
-                                       L"en-us",
-                                       m_fmtIcon.GetAddressOf());
+                                       locale.c_str(),
+                                       m_fmtIcon.ReleaseAndGetAddressOf());
 
     if (!m_fmtTitle || !m_fmtSubtitle || !m_fmtNav || !m_fmtCardTitle || !m_fmtCardSubtitle || !m_fmtLabel ||
         !m_fmtDesc || !m_fmtTextField || !m_fmtValue || !m_fmtChoice || !m_fmtRange || !m_fmtIcon)
@@ -1161,6 +1169,8 @@ void Direct2DHostWindow::Render()
     // A new menu language rebuilds the translated settings model.
     if (m_languageVersion != g_menuLanguageVersion || m_profileVersion != ProfilePage::g_version)
     {
+        if (m_languageVersion != g_menuLanguageVersion)
+            CreateTextFormats();
         m_languageVersion = g_menuLanguageVersion;
         m_profileVersion = ProfilePage::g_version;
         InitPages();
@@ -3306,7 +3316,7 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
                              0,
                              CLEARTYPE_QUALITY,
                              0,
-                             L"Segoe UI");
+                             MenuGdiFont());
     SendMessageW(m_edit, WM_SETFONT, reinterpret_cast<WPARAM>(m_editFont), TRUE);
     if (textControl)
         SendMessageW(m_edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);

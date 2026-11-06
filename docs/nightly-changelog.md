@@ -41,6 +41,7 @@
 - Fixed the Ctrl+J statistics dropping frames: updating the overlay stalled rendering for about 14 ms four times a second.
 - Fixed text fields changing their font while typing.
 - Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
+- Fixed Chinese menu text mixing bold and thin characters: the menu now lays out text in the menu language, so all characters use Microsoft YaHei UI ([#17](https://github.com/mryx007/FrankyRenderer/issues/17)).
 - One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
 - Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
 - Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
