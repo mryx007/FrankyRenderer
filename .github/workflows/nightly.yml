@@ -2,9 +2,13 @@ name: Publish Nightly
 on:
   push:
     branches: [main]
+    # Only what changes the package. Helper scripts (notes, Weblate, cleanup)
+    # and their tests run in Code checks without publishing a build.
     paths:
       - 'src/**'
-      - '.github/**'
+      - '.github/workflows/build.yml'
+      - '.github/workflows/nightly.yml'
+      - '.github/scripts/prepare_dv.py'
       - 'requirements.txt'
       - '*.cmd'
   workflow_dispatch:
