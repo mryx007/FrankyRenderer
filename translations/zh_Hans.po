@@ -1297,6 +1297,10 @@ msgid "Display Gamut"
 msgstr "显示器色域"
 
 #. Choice (Color > Display > Display Gamut)
+msgid "BT.709"
+msgstr "BT.709"
+
+#. Choice (Color > Display > Display Gamut)
 msgid "SMPTE C"
 msgstr "SMPTE C"
 
@@ -1307,6 +1311,14 @@ msgstr "EBU / PAL"
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.2020"
 msgstr "BT.2020"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "DCI-P3 (DCI white)"
+msgstr "DCI-P3（DCI 白点）"
+
+#. Choice (Color > Display > Display Gamut)
+msgid "P3-D65 (Display P3)"
+msgstr "P3-D65（Display P3）"
 
 #. Setting name (Color > Display)
 msgid "Display Gamma"
@@ -1330,6 +1342,14 @@ msgstr "BT.1886"
 #. Setting name (Color > Display)
 msgid "Display Contrast"
 msgstr "显示器对比度"
+
+#. Setting description (Color > Display > Display Contrast)
+msgid ""
+"For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
+"infinite (OLED), where BT.1886 equals 2.40."
+msgstr ""
+"用于 BT.1886：显示器测得的对比度，例如 1000 表示 1000:1。0 表示无限（OLED），"
+"此时 BT.1886 等同于 2.40。"
 
 #. Setting name (Color > Display)
 msgid "SDR Gamma Processing"
@@ -3186,21 +3206,9 @@ msgstr "高质量"
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
 
-#. Choice (Color > Display > Display Gamut)
-msgid "BT.709"
-msgstr "BT.709"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "DCI-P3 (DCI white)"
-msgstr "DCI-P3（DCI 白点）"
-
-#. Choice (Color > Display > Display Gamut)
-msgid "P3-D65 (Display P3)"
-msgstr "P3-D65（Display P3）"
-
-#. Setting description (Color > Display > Display Contrast)
-msgid "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), where BT.1886 equals 2.40."
-msgstr "用于 BT.1886：显示器测得的对比度，例如 1000 表示 1000:1。0 表示无限（OLED），此时 BT.1886 等同于 2.40。"
+#. Setting description (Color > Display > Display Gamut)
+msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
+msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
 
 #. Setting name (Profiles > Display)
 msgid "Same Settings on All Displays"
@@ -3209,7 +3217,3 @@ msgstr "所有显示器使用相同设置"
 #. Setting description (Profiles > Display > Same Settings on All Displays)
 msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
 msgstr "更改应用于所有显示器。关闭：各显示器保留这些设置，并可单独更改。"
-
-#. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
-msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
