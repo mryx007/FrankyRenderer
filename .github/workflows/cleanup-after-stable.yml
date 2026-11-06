@@ -1,0 +1,36 @@
+name: Remove Nightlies after stable release
+
+# The stable repository's token cannot write here, so this repository checks
+# the public stable release itself: every Nightly published before the latest
+# stable release is superseded by it and is deleted together with its tag.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-publication
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.repository == 'mryx007/FrankyRenderer-Nightly'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete Nightlies older than the latest stable release
+        shell: bash
+        run: |
+          set -euo pipefail
+          stable=$(gh api repos/mryx007/FrankyRenderer/releases/latest --jq .published_at)
+          echo "Latest stable release published at $stable"
+          gh release list -R "$GITHUB_REPOSITORY" --limit 200 --json tagName,createdAt \
+            --jq ".[] | select(.tagName | startswith(\"nightly-\")) | select(.createdAt < \"$stable\") | .tagName" |
+          while read -r tag; do
+            echo "Deleting $tag"
+            gh release delete "$tag" -R "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          done
