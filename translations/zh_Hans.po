@@ -1296,6 +1296,12 @@ msgstr "显示"
 msgid "Display Gamut"
 msgstr "显示器色域"
 
+#. Setting description (Color > Display > Display Gamut)
+msgid ""
+"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
+"looking oversaturated."
+msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
+
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.709"
 msgstr "BT.709"
@@ -2909,6 +2915,16 @@ msgstr "文件夹"
 msgid "Displays"
 msgstr "显示器"
 
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr "所有显示器使用相同设置"
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid ""
+"Changes apply to every display. Off: each keeps them and can be changed "
+"alone."
+msgstr "更改应用于所有显示器。关闭：各显示器保留这些设置，并可单独更改。"
+
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
 msgstr "没有配置文件的视频的常规设置。每个显示器都有自己的设置。"
@@ -3205,15 +3221,3 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
-
-#. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
-msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
-
-#. Setting name (Profiles > Display)
-msgid "Same Settings on All Displays"
-msgstr "所有显示器使用相同设置"
-
-#. Setting description (Profiles > Display > Same Settings on All Displays)
-msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
-msgstr "更改应用于所有显示器。关闭：各显示器保留这些设置，并可单独更改。"
