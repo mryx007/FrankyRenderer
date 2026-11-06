@@ -1,67 +1,62 @@
+- Added: Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
+- Added: HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
+- Added display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).
+- Added HDR mode "Tone Map HDR to Display Peak": keeps HDR output but rolls off highlights above the display's peak, for monitors and laptops that do not tone map themselves. The target is "HDR Target Peak", or the peak Windows reports for the display when set to 0 ([#6](https://github.com/mryx007/FrankyRenderer/issues/6)).
+- Added a new settings UI with themes.
+- Added translations for the settings menu (Weblate). Language choice under General > Themes.
+- Added a quality preset (Fast / Default / High Quality) in the settings header, or "Measure this PC" to pick the best settings for the display's GPU, including active shaders, Adaptive Sharpen and Smooth Motion.
+- Added a Reset All button in the settings header.
+- Added shaders: RAVU Zoom R3 and RAVU Zoom AR R3.
+- Added XySubFilter support.
+- Added RTX Video HDR for SDR videos (NVIDIA RTX, Windows HDR on).
+- Added Smooth Motion setting "Present in Advance" (Scaling > Filters), like madVR's "present several frames in advance": 1 to 4 refreshes, or Automatic. Automatic keeps the lowest latency (one refresh) and only presents further ahead after pictures actually miss their refresh, then returns to one after a quiet minute.
+- Added Smooth Motion setting "Oversample Threshold" (Scaling > Filters): shows a whole picture instead of a blend when the other picture would cover only a small share of a refresh, for fewer double edges on motion. 0 keeps the previous behaviour.
+- Added menu languages: German and Chinese (Simplified).
+- Added profiles. Videos from folders you choose can get their own settings, for example a different upscaler for anime. A profile can change any setting in the menu.<br>• Click "+" on the Profiles page to create a profile, then add one or more folders. Videos in these folders use the profile, all other videos use your normal settings ("Default").<br>• At the top of the menu, next to Quality, choose which profile you want to change. All pages then change that profile.<br>• A profile only remembers what you change in it. Everything else comes from Default.<br>• Ctrl+J shows which profile a video uses.<br>• Choosing the display whose normal settings the menu shows is on the Profiles page.
+- Added display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (BT.709, SMPTE C, EBU / PAL, BT.2020, DCI-P3 (DCI white) or P3-D65 (Display P3)) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.80 in steps of 0.05) on that display; when it is off, SDR stays as before.
+- Added switch "Same Settings on All Displays" (Profiles > Default): copies the chosen display's settings to all displays and keeps them equal while on. Turned off, every display keeps those settings and can be changed alone again.
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
-- One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
 - Fixed a brief white properties window when opening the settings menu in MPC-BE.
 - Fixed regular single frame drops during playback, most noticeable with Smooth Motion.
 - Fixed bursts of dropped frames when switching to fullscreen or another display, resizing the window or toggling statistics with Ctrl+J.
 - Fixed missing frames after Stop and Play or a decoder change.
 - Fixed the first picture being shown twice after starting playback or seeking while paused.
 - Fixed failed rendering and screenshots of interlaced video with hardware decoding at native size on some systems.
-- Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
-- Settings previewed in an open settings dialog are reverted on the next start if the player closes unexpectedly.
-- One invalid stored setting no longer resets the whole display profile.
-- Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
+- Fixed settings previewed in an open settings dialog staying active after the player closed unexpectedly; they are now reverted on the next start.
+- Fixed one invalid stored setting resetting the whole display profile.
 - Fixed a possible crash when the player closes the settings while a list or file dialog is open.
-- Settings menu: Reset Shader resets only the selected shader; clearer messages for missing ICC/LUT files and other small fixes.
-- Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
-- HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
-- New: display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).
 - Fixed Dolby Vision Profile 7 on UHD Blu-ray: the enhancement layer is now used when playing a BDMV `.m2ts` clip or `.mpls` playlist, which carry no Dolby Vision descriptor ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
-- Smaller download (about 12 MB instead of 20 MB): FFmpeg is now built with only what Dolby Vision processing needs (HEVC decoding and MKV/MP4/TS reading).
-- Updated FFmpeg to the latest LAV-maintained version (30 October 2026), including newer HEVC decoding and Dolby Vision RPU parsing.
 - Fixed the Dolby Vision status for Profile 7 discs that are flagged as FEL but add no residual: they are now shown as MEL processing instead of "FEL not processed" ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
 - Fixed a washed-out picture with "Prefer 16-bit Float" output when Windows HDR is off: SDR white was written above the display's white level and clipped.
-- New HDR mode "Tone Map HDR to Display Peak": keeps HDR output but rolls off highlights above the display's peak, for monitors and laptops that do not tone map themselves. The target is "HDR Target Peak", or the peak Windows reports for the display when set to 0 ([#6](https://github.com/mryx007/FrankyRenderer/issues/6)).
-- Clearer Ctrl+J statistics: grouped into Display, Video, Processing and Performance with aligned columns, and colour for render load, drops and Dolby Vision. Render time is now shown against the time available per picture, and the box no longer changes size while the numbers change.<br><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/statistics.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/statistics.png" alt="Ctrl+J statistics" width="360"></a>
-- New settings UI with themes.<br><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/1-general-indigo-violet.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/1-general-indigo-violet.png" alt="Settings menu" width="240"></a><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/2-processing-graphite-blue.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/2-processing-graphite-blue.png" alt="Settings menu" width="240"></a><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/3-scaling-midnight-teal.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/3-scaling-midnight-teal.png" alt="Settings menu" width="240"></a><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/4-color-ocean-orange.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/4-color-ocean-orange.png" alt="Settings menu" width="240"></a><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/5-hdr-light-green.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/5-hdr-light-green.png" alt="Settings menu" width="240"></a><a href="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/6-shaders-indigo-pink.png"><img src="https://raw.githubusercontent.com/mryx007/FrankyRenderer-Nightly/main/docs/screenshots/menu/6-shaders-indigo-pink.png" alt="Settings menu" width="240"></a>
-- End credits are no longer detected as black bars and cropped.
-- Settings menu can be translated (Weblate). Language choice under General > Themes.
-- Quality preset (Fast / Default / High Quality) in the settings header, or "Measure this PC" to pick the best settings for the display's GPU.
-- Reset All button in the settings header.
-- New shaders: RAVU Zoom R3 and RAVU Zoom AR R3.
-- XySubFilter support.
-- RTX Video HDR for SDR videos (NVIDIA RTX, Windows HDR on).
-- Quality selector shows "Measured" after a measurement and switches to "Custom" as soon as any setting changes.
-- "Measure this PC" now includes active shaders, Adaptive Sharpen and Smooth Motion.
+- Fixed end credits being detected as black bars and cropped.
 - Fixed Smooth Motion slowly falling behind during long playback: render peaks above 100 % in the statistics, blocking presents and dropped frames that only went away after pausing. The audio clock and the display drift apart, and surplus pictures piled up in the display queue. Smooth Motion now presents every picture on its own display refresh and leaves out or repeats a single interpolated picture when the clocks drift.
-- New Smooth Motion setting "Present in Advance" (Scaling > Filters), like madVR's "present several frames in advance": 1 to 4 refreshes, or Automatic. Automatic keeps the lowest latency (one refresh) and only presents further ahead after pictures actually miss their refresh, then returns to one after a quiet minute.
 - Fixed SSIM Downscaler, AMD CAS, Anti-Ringing and PixelClipper being skipped with "Prefer 16-bit Float" output ("output-stage shaders bypassed for linear scRGB"). They run during scaling, before the output conversion, and now work the same as with 10-bit output.
 - Fixed two settings menu icons shown as empty boxes on Windows 10 ([#10](https://github.com/mryx007/FrankyRenderer/issues/10)). The sidebar now uses icons that every Windows 10 and 11 version has, with new icons for Processing, Scaling and Shaders.
-- The player stays usable while the settings menu is open: pause, seek or switch to fullscreen and compare settings live. The menu closes itself when the player opens another file or closes, and opening it again brings the open menu forward.
 - Fixed SSimDownscaler oversharpening with visible ringing, especially at strong downscaling: it now uses igv's original shader instead of the PlayKit variant and downscales in gamma light as recommended for mpv. Mitchell works best as the base downscaler.
 - Fixed double edges on moving objects in a paused picture with Smooth Motion: paused and redrawn pictures now show the current frame instead of the last blend of two frames.
-- New Smooth Motion setting "Oversample Threshold" (Scaling > Filters): shows a whole picture instead of a blend when the other picture would cover only a small share of a refresh, for fewer double edges on motion. 0 keeps the previous behaviour.
-- Fixed the settings menu closing right after opening when MPC-BE shows it without a video (since Nightly 20261103-0737).
-- Menu languages are now included only when fully translated (previously from 95%).
-- New menu languages: German and Chinese (Simplified).
-- The menu now follows a Chinese Windows display language automatically (zh-CN and similar now find the Simplified Chinese translation).
+- Fixed the menu not following a Chinese Windows display language (zh-CN and similar now find the Simplified Chinese translation).
 - Fixed the "Allowed Modes" description and the list of display modes under it staying in English in translated menus.
-- New: profiles. Videos from folders you choose can get their own settings, for example a different upscaler for anime. A profile can change any setting in the menu.<br>• Click "+" on the Profiles page to create a profile, then add one or more folders. Videos in these folders use the profile, all other videos use your normal settings ("Default").<br>• At the top of the menu, next to Quality, choose which profile you want to change. All pages then change that profile.<br>• A profile only remembers what you change in it. Everything else comes from Default.<br>• Ctrl+J shows which profile a video uses.
 - Fixed the Ctrl+J statistics dropping frames: updating the overlay stalled rendering for about 14 ms four times a second.
+- Fixed text fields changing their font while typing.
+- Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
+- One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
+- Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
+- Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
+- Settings menu: Reset Shader resets only the selected shader; clearer messages for missing ICC/LUT files and other small fixes.
+- Smaller download (about 16 MB instead of 20 MB): FFmpeg is now built with only what Dolby Vision processing needs (HEVC decoding and MKV/MP4/TS reading).
+- Clearer Ctrl+J statistics: grouped into Display, Video, Processing and Performance with aligned columns, and colour for render load, drops and Dolby Vision. Render time is now shown against the time available per picture, and the box no longer changes size while the numbers change.
+- Quality selector shows "Measured" after a measurement and "Custom" as soon as any setting changes. "Custom" is always the last entry and brings back your own settings after you tried a preset.
+- The player stays usable while the settings menu is open: pause, seek or switch to fullscreen and compare settings live. The menu closes itself when the player opens another file or closes, and opening it again brings the open menu forward.
+- Menu languages are now included only when fully translated (previously from 95%).
 - "Render peak 5s" in Ctrl+J is now coloured only when pictures were actually lost; a slow picture the display queue absorbed shows as "absorbed by queue". In the Drops row only counts above zero are coloured.
 - Settings menu buttons and text fields use the same font size as the choice boxes.
-- Profiles work differently than in the previous nightly: you now change a profile's settings on the normal pages after choosing it at the top of the menu. Display selection moved to the Profiles page. Display mode settings of old profiles must be set again.
 - Cancel in the settings menu now also restores profiles: their settings, folders, displays and names, and profiles added or deleted.
 - Choice lists in the settings menu are only as wide as their text.
-- Text fields keep their font while typing.
 - Ctrl+J shows "Default" instead of "none" when a video uses no profile.
 - Shader settings that only know 0 or 1 (e.g. SHARP in AiUpscale) are now on/off switches instead of number fields.
 - Shaders are switched on only in the shader list; the extra "Enabled" switch in each shader's settings is gone. Reset Shader now resets only its settings.
-- Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including fixes for Dolby Vision metadata.
+- Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including newer HEVC decoding and fixes for Dolby Vision metadata and RPU parsing.
 - Updated libplacebo with fixes made after version 7.387.0: more accurate colour conversion for PQ, HLG and the black level, ICC profiles without a brightness value, and a Smooth Motion queue fix.
-- New display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (e.g. P3-D65) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.80 in steps of 0.05) on that display; when it is off, SDR stays as before.
-- Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, and the search box no longer shows the Ctrl+F hint.
-- Quality selector: "Custom" is always the last entry and brings back your own settings after you tried a preset.
-- Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
-- "Display Gamma" and "SDR Gamma Processing" now go up to 2.80 (PAL). "Display Gamut" entries are now named BT.709, DCI-P3 (DCI white) and P3-D65 (Display P3).
+- Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, even spacing between the buttons at the top, narrower choice lists, and the search box no longer shows the Ctrl+F hint.

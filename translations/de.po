@@ -1432,14 +1432,6 @@ msgstr "Bildschirm"
 msgid "Display Gamut"
 msgstr "Display-Farbraum"
 
-#. Setting description (Color > Display > Display Gamut)
-msgid ""
-"For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours from "
-"looking oversaturated."
-msgstr ""
-"Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. DCI-P3. "
-"Verhindert übersättigte Farben."
-
 #. Choice (Color > Display > Display Gamut)
 msgid "SMPTE C"
 msgstr "SMPTE C"
@@ -3576,3 +3568,15 @@ msgstr "P3-D65 (Display P3)"
 #. Setting description (Color > Display > Display Contrast)
 msgid "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means infinite (OLED), where BT.1886 equals 2.40."
 msgstr "Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. 0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40."
+
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr "Gleiche Einstellungen auf allen Displays"
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
+msgstr "Änderungen gelten für jedes Display. Aus: Jedes behält sie und lässt sich einzeln ändern."
+
+#. Setting description (Color > Display > Display Gamut)
+msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
+msgstr "Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. P3-D65. Verhindert übersättigte Farben."

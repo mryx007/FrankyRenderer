@@ -1181,7 +1181,7 @@ msgid "Display Gamut"
 msgstr ""
 
 #. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours from looking oversaturated."
+msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
@@ -2630,6 +2630,14 @@ msgstr ""
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Displays"
+msgstr ""
+
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr ""
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
 msgstr ""
 
 #. Setting description (Profiles > Display > Display)

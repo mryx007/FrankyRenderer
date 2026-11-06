@@ -185,6 +185,28 @@ DefaultCards(D2DPage& page, const std::wstring& display, const std::vector<Displ
         if (const int i = int(v); i >= 0 && i < int(ids->size()))
             g_requestDisplay = (*ids)[size_t(i)];
     };
+
+    // Linking copies this display's settings to all, then keeps them equal.
+    D2DControl link;
+    link.name = L"Same Settings on All Displays";
+    link.kind = ControlKind::Toggle;
+    link.desc = L"Changes apply to every display. Off: each keeps them and can be changed alone.";
+    link.get = [] { return DisplayProfiles::Linked() ? 1.f : 0.f; };
+    link.defaultValue = [] { return 0.f; };
+    link.set = [display](float v)
+    {
+        if (v && !DisplayProfiles::Linked())
+        {
+            if (SUCCEEDED(DisplayProfiles::SetLinked(true)) && !display.empty())
+                SaveSettings(LoadSettings(display));
+        }
+        else if (!v)
+            DisplayProfiles::SetLinked(false);
+        ++g_version;
+    };
+    card.controls.push_back(std::move(link));
+    // While linked every display is the same: choosing or renaming one is off.
+    choice.enabled = [] { return !DisplayProfiles::Linked(); };
     card.controls.push_back(std::move(choice));
 
     D2DControl name;
@@ -205,6 +227,7 @@ DefaultCards(D2DPage& page, const std::wstring& display, const std::vector<Displ
         return true;
     };
     name.invalidText = L"Enter a display name (1 to 80 characters).";
+    name.enabled = [] { return !DisplayProfiles::Linked(); };
     card.controls.push_back(std::move(name));
     page.cards.push_back(std::move(card));
 }

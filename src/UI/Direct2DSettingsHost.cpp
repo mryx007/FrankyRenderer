@@ -1378,7 +1378,7 @@ void Direct2DHostWindow::Render()
     const float saveWidth = m_standalone ? 114.f : 0.f, titleRoom = 200.f;
     float searchWidth = std::min(260.f, contentW);
     float presetWidth = measure(presetLabel) + 50, profileWidth = measure(profileLabel) + 50;
-    if (contentW - searchWidth - saveWidth - presetWidth - profileWidth - 20 < titleRoom)
+    if (contentW - searchWidth - saveWidth - presetWidth - profileWidth - 30 < titleRoom)
     {
         presetLabel = presetName;
         presetWidth = measure(presetLabel) + 50;
@@ -1386,8 +1386,9 @@ void Direct2DHostWindow::Render()
         profileWidth = measure(profileLabel) + 50;
     }
     searchWidth =
-        std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - profileWidth - 20 - titleRoom));
-    float headerActionsLeft = searchRight - searchWidth;
+        std::min(searchWidth, std::max(180.f, contentW - saveWidth - presetWidth - profileWidth - 30 - titleRoom));
+    // 20 px between the search box and each header button.
+    float headerActionsLeft = searchRight - searchWidth - 10;
     // Left edge of Reset All / Reset Page; the first row of tabs ends before it.
     float resetLeft = searchRight;
     if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))

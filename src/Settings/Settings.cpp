@@ -690,7 +690,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     return out;
 }
 
-HRESULT SaveSettings(const PlaceboSettings& s)
+static HRESULT WriteSettings(const PlaceboSettings& s)
 {
     HRESULT valid = ValidateSettings(s);
     if (FAILED(valid))
@@ -787,6 +787,34 @@ HRESULT SaveSettings(const PlaceboSettings& s)
     return HRESULT_FROM_WIN32(result);
 }
 
+// The values another display takes over from linked settings. Its display
+// modes and measured quality belong to that display and stay its own.
+static PlaceboSettings LinkedCopy(const PlaceboSettings& s, const std::wstring& id, const PlaceboSettings& own)
+{
+    auto copy = s;
+    wcscpy_s(copy.displayProfile, id.c_str());
+    wcscpy_s(copy.displayModes, own.displayModes);
+    copy.measuredQuality = own.measuredQuality;
+    copy.qualityStamp = own.qualityStamp;
+    return copy;
+}
+
+HRESULT SaveSettings(const PlaceboSettings& s)
+{
+    auto hr = WriteSettings(s);
+    if (FAILED(hr) || !s.displayProfile[0] || !DisplayProfiles::Linked())
+        return hr;
+    for (const auto& id : DisplayProfiles::StoredIds())
+    {
+        if (id == s.displayProfile)
+            continue;
+        hr = WriteSettings(LinkedCopy(s, id, LoadSettings(id)));
+        if (FAILED(hr))
+            return hr;
+    }
+    return S_OK;
+}
+
 HRESULT PrepareDisplaySettings(PlaceboSettings& settings,
                                const std::vector<DisplayProfiles::Device>& devices,
                                HMONITOR preferred)
@@ -832,7 +860,14 @@ HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& device
             // genuinely new displays. Never copy another display's edits.
             auto initial = version == 1 ? PlaceboSettings{} : legacy;
             wcscpy_s(initial.displayProfile, device.id.c_str());
-            auto hr = SaveSettings(initial);
+            // Linked displays share their settings with a new one as well.
+            if (DisplayProfiles::Linked())
+                for (const auto& id : DisplayProfiles::StoredIds())
+                {
+                    initial = LinkedCopy(LoadSettings(id), device.id, PlaceboSettings{});
+                    break;
+                }
+            auto hr = WriteSettings(initial);
             if (FAILED(hr))
                 return hr;
             const auto result = RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_SET_VALUE, &key);

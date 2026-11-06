@@ -791,7 +791,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                    L"Display Gamut",
                                    &s.displayPrimaries,
                                    D2DChoices(DisplayPrimariesChoices),
-                                   L"For a wide-gamut display in its native mode, e.g. DCI-P3. Keeps colours from "
+                                   L"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
                                    L"looking oversaturated.");
         primaries.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(primaries));

@@ -15,6 +15,8 @@ class ChoicePopup
     std::vector<std::wstring> labels, descriptions;
     HWND window = nullptr;
     int selected = -1, active = 0, first = 0, rows = 12, rowHeight = 32;
+    // Width of the tick column, the same for rows with and without descriptions.
+    int checkWidth = 32;
     int width = 320, wheel = 0, dragOffset = -1;
     bool done = false, tracking = false;
     HFONT font = nullptr, descriptionFont = nullptr;
@@ -78,7 +80,7 @@ class ChoicePopup
             if (index == active)
                 fill(rect, MenuColorRef(palette.activeBg));
             RECT text = rect;
-            text.left += rowHeight;
+            text.left += checkWidth;
             if (described)
             {
                 // Heading and description as one block with padding to the highlight.
@@ -102,7 +104,7 @@ class ChoicePopup
                     dc, labels[index].c_str(), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
             if (index == selected)
             {
-                rect.right = rect.left + rowHeight;
+                rect.right = rect.left + checkWidth;
                 DrawTextW(dc, L"✓", 1, &rect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
             }
         }
@@ -271,6 +273,7 @@ class ChoicePopup
             descriptions.size() == labels.size() &&
             std::any_of(descriptions.begin(), descriptions.end(), [](const auto& text) { return !text.empty(); });
         rowHeight = std::max(1, int((described ? 60 : 32) * scale));
+        checkWidth = std::max(1, int(32 * scale));
         rows = std::max(1,
                         std::min({described ? 8 : 12,
                                   int(labels.size()),
@@ -332,7 +335,7 @@ class ChoicePopup
         RECT host = {};
         if (GetWindowRect(GetAncestor(owner, GA_ROOT), &host))
             IntersectRect(&area, &area, &host);
-        const int room = rowHeight + int(28 * scale);
+        const int room = checkWidth + int(28 * scale);
         const int needed =
             std::max(longest, described ? std::min(longestDescription, int(480 * scale) - room) : 0) + room;
         width = std::min(std::max(int(anchor.right - anchor.left), needed), int(area.right - area.left));
