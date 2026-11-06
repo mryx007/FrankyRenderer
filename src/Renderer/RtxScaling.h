@@ -41,6 +41,7 @@ class RtxScaling
     std::map<uint64_t, std::shared_ptr<Frame>> frames;
     int width = 0, height = 0, outputWidth = 0, outputHeight = 0;
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    bool upscaling = false, hdr = false;
     bool failed = false;
     uint64_t evaluations = 0;
     std::wstring status = L"off";
@@ -97,6 +98,12 @@ class RtxScaling
             pl_renderer_flush_cache(converter);
     }
 
+    // RTX Video HDR may be requested: the driver accepted it so far.
+    bool HdrUsable() const
+    {
+        return !failed;
+    }
+
     void Reset()
     {
         Invalidate();
@@ -108,23 +115,35 @@ class RtxScaling
         gpu = nullptr;
         width = height = outputWidth = outputHeight = 0;
         format = DXGI_FORMAT_UNKNOWN;
+        upscaling = hdr = false;
         status = L"off";
     }
 
+    // superResolution upscales to outW x outH; trueHdr turns an SDR source
+    // into HDR10 (PQ, BT.2020) at that size or the source size.
     std::shared_ptr<Frame> Get(pl_d3d11 d3d,
                                ID3D11DeviceContext* context,
                                const pl_frame& source,
                                uint64_t key,
                                int outW,
                                int outH,
-                               const pl_render_params& options)
+                               const pl_render_params& options,
+                               bool superResolution = true,
+                               bool trueHdr = false)
     {
         const int w = int(std::ceil(std::abs(source.crop.x1 - source.crop.x0)));
         const int h = int(std::ceil(std::abs(source.crop.y1 - source.crop.y0)));
-        if (w < 1 || h < 1 || outW < w || outH < h || (outW == w && outH == h))
+        trueHdr = trueHdr && !pl_color_space_is_hdr(&source.color);
+        const bool upscale = superResolution && w >= 1 && h >= 1 && outW >= w && outH >= h && (outW > w || outH > h);
+        if (w < 1 || h < 1 || (!upscale && !trueHdr))
         {
             status = L"bypassed (no upscaling)";
             return {};
+        }
+        if (!upscale)
+        {
+            outW = w;
+            outH = h;
         }
         if (source.rotation || source.repr.dovi || source.repr.alpha != PL_ALPHA_UNKNOWN ||
             source.color.transfer == PL_COLOR_TRC_HLG || source.color.transfer == PL_COLOR_TRC_LINEAR ||
@@ -135,10 +154,11 @@ class RtxScaling
         }
         if (failed)
             return {};
-        const int bits = pl_color_space_is_hdr(&source.color) || source.repr.bits.color_depth > 8 ? 10 : 8;
+        // RTX Video HDR takes the 10-bit YCbCr input the driver path expects.
+        const int bits = trueHdr || pl_color_space_is_hdr(&source.color) || source.repr.bits.color_depth > 8 ? 10 : 8;
         const auto type = bits == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
         if (width != w || height != h || outputWidth != outW || outputHeight != outH || format != type ||
-            !pl_color_space_equal(&sourceColor, &source.color))
+            !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale || hdr != trueHdr)
         {
             frames.clear();
             for (auto& plane : input)
@@ -150,6 +170,8 @@ class RtxScaling
             outputHeight = outH;
             sourceColor = source.color;
             format = type;
+            upscaling = upscale;
+            hdr = trueHdr;
         }
         if (const auto found = frames.find(key); found != frames.end())
         {
@@ -171,7 +193,7 @@ class RtxScaling
         }
         const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
         const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
-        HRESULT hr = processor.Configure(d3d->device, w, h, outW, outH, bits, pq, bt2020);
+        HRESULT hr = processor.Configure(d3d->device, w, h, outW, outH, bits, pq, bt2020, upscale, trueHdr);
         if (FAILED(hr))
         {
             Fail(hr);
@@ -267,12 +289,14 @@ class RtxScaling
             Fail(E_FAIL);
             return {};
         }
-        saved->image = Describe(saved->texture, source.color, bits);
+        saved->image = Describe(saved->texture, trueHdr ? pl_color_space_hdr10 : source.color, trueHdr ? 10 : bits);
         if (frames.size() >= 16 && !frames.count(key))
             frames.erase(frames.begin());
         frames[key] = saved;
         ++evaluations;
-        status = L"driver requested";
+        status = upscale && trueHdr ? L"driver requested (Super Resolution + HDR)"
+                 : trueHdr          ? L"driver requested (HDR)"
+                                    : L"driver requested";
         return saved;
     }
 };

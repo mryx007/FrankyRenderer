@@ -5,6 +5,7 @@
 #include "Runtime.h"
 #include "Transport.h"
 #include "EnhancementReader.h"
+#include "BlurayPlaylist.h"
 #include "BaseLayerMetadataReader.h"
 #include "../DirectShow/Include/ID3DVideoMemoryConfiguration.h"
 #include "../DirectShow/Include/IMediaSideData.h"
@@ -50,9 +51,17 @@ class DeviceMutexGuard
     }
 };
 
+// Dolby Vision and HDR need more than 8 bits; only such pictures, or ones a
+// decoder still marks as HDR after reducing them to 8 bits, justify looking
+// into the source file.
+static bool MayCarryHdr(const MediaFormat& format)
+{
+    return Layout(format.frame.format).depth > 8 || pl_color_transfer_is_hdr(format.frame.color.transfer);
+}
+
 // Follow only the connected video/stream path. During initial type negotiation
 // the pin is not connected yet, so accept an unambiguous file source in the graph.
-static std::wstring SourcePath(IFilterGraph* graph, IPin* upstream)
+std::wstring SourcePath(IFilterGraph* graph, IPin* upstream)
 {
     std::vector<ComPtr<IBaseFilter>> queue;
     std::vector<ComPtr<IUnknown>> visited;
@@ -136,7 +145,7 @@ struct DvProcessor::State
     std::atomic<bool> cancelled{false}, layered{false};
     std::atomic<bool> modeKnown{false};
     std::unique_ptr<DvGpu> gpu;
-    std::unique_ptr<EnhancementReader> reader;
+    std::unique_ptr<TitleEnhancementReader> reader;
     // Per-picture metadata for decoders that deliver pictures without it.
     std::unique_ptr<BaseLayerMetadataReader> rpuReader, hdr10PlusReader;
     bool rpuFailed = false, hdr10PlusFailed = false;
@@ -170,11 +179,14 @@ struct DvProcessor::State
                 source = {};
                 container = {};
             }
-            if (!path.empty() && GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+            // A Blu-ray playlist plays its clips; inspect the first one.
+            const auto clips = ReadBlurayPlaylist(path);
+            const auto& inspected = clips.empty() ? path : clips.front().path;
+            if (!path.empty() && GetFileAttributesW(inspected.c_str()) != INVALID_FILE_ATTRIBUTES)
             {
-                int count = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                int count = WideCharToMultiByte(CP_UTF8, 0, inspected.c_str(), -1, nullptr, 0, nullptr, nullptr);
                 std::string utf8(count, '\0');
-                WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), count, nullptr, nullptr);
+                WideCharToMultiByte(CP_UTF8, 0, inspected.c_str(), -1, utf8.data(), count, nullptr, nullptr);
                 AVFormatContext* context = nullptr;
                 // This is passive DV-container inspection, not another source
                 // filter. In particular, never execute AviSynth/VapourSynth or
@@ -216,6 +228,13 @@ struct DvProcessor::State
                     source.hdr10Base = record->dv_profile == 7 || record->dv_bl_signal_compatibility_id == 1;
                     profile7 |= record->dv_profile == 7 && record->el_present_flag && record->rpu_present_flag;
                 }
+                if (!profile7 && BlurayLayers(context).second >= 0)
+                {
+                    source.present = true;
+                    source.profile = 7;
+                    source.hdr10Base = true;
+                    profile7 = true;
+                }
             }
             if (path.empty())
             {
@@ -253,13 +272,9 @@ struct DvProcessor::State
     {
         if (reader)
             return;
-        const auto& path = filename;
-        check(layered && !path.empty(), "local Profile 7 filename required");
-        int size = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
-        std::string utf8(size, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, utf8.data(), size, nullptr, nullptr);
+        check(layered && !filename.empty(), "local Profile 7 filename required");
         gpu = std::make_unique<DvGpu>(decoderDevice ? decoderDevice.Get() : fallback);
-        reader = std::make_unique<EnhancementReader>(utf8.c_str(), gpu->d3d->device, &cancelled);
+        reader = std::make_unique<TitleEnhancementReader>(filename, gpu->d3d->device, &cancelled);
         LogDv("opened enhancement only; existing base decoder retained");
     }
 
@@ -697,6 +712,11 @@ HRESULT DvProcessor::CheckFormat(IFilterGraph* graph, IPin* peer, const MediaFor
 {
     RefreshSource(graph, peer);
     std::lock_guard guard(state->lock);
+    // 8-bit SDR pictures carry neither Dolby Vision nor HDR, so their file is
+    // not inspected. Decoders offer the source's own depth first, so a 10-bit
+    // source still negotiates P010 before any 8-bit fallback.
+    if (!state->modeKnown && !MayCarryHdr(format))
+        return S_OK;
     auto hr = state->SelectMode(graph, peer);
     if (FAILED(hr))
         return hr;
@@ -719,6 +739,8 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
     std::lock_guard guard(s.lock);
     if (s.cancelled)
         return S_OK;
+    if (!s.modeKnown && !MayCarryHdr(format))
+        return S_FALSE;
     auto hr = s.SelectMode(graph, peer);
     if (FAILED(hr))
         return hr;
@@ -771,8 +793,14 @@ HRESULT DvProcessor::Prepare(IFilterGraph* graph,
         pl_color_repr repr = {};
         pl_map_avdovi_metadata(&info.color, &repr, &info.dovi, reinterpret_cast<const AVDOVIMetadata*>(sd->data));
         const bool residual = info.dovi.nlq_active;
-        const auto header = av_dovi_get_header(reinterpret_cast<const AVDOVIMetadata*>(sd->data));
-        s.source.layer = header->disable_residual_flag ? DolbyVisionSource::Layer::MEL : DolbyVisionSource::Layer::FEL;
+        // Report the layer from the actual residual, not disable_residual_flag:
+        // some discs flag FEL but carry a trivial NLQ throughout, which is MEL
+        // in effect. Once a picture adds a residual the stream stays FEL, so
+        // single pictures without one do not flip the status.
+        if (residual)
+            s.source.layer = DolbyVisionSource::Layer::FEL;
+        else if (s.source.layer != DolbyVisionSource::Layer::FEL)
+            s.source.layer = DolbyVisionSource::Layer::MEL;
         check(!residual || (el->width > 0 && el->height > 0), "decoded enhancement dimensions");
         info.width[1] = residual ? el->width : 0;
         info.height[1] = residual ? el->height : 0;

@@ -197,7 +197,10 @@ HRESULT ParseFormat(const AM_MEDIA_TYPE& type, MediaFormat& out)
         ((next.frame.height & 1) && layout.chromaY))
         return VFW_E_TYPE_NOT_ACCEPTED;
     next.frame.stride = MinimumStride(next.frame.format, next.frame.width);
-    next.frame.bottomUp = layout.rgb && bitmap.biCompression == BI_RGB && bitmap.biHeight > 0;
+    // Uncompressed RGB (BI_RGB or BI_BITFIELDS) with a positive height is a
+    // bottom-up DIB; YUV is always top-down.
+    next.frame.bottomUp =
+        layout.rgb && (bitmap.biCompression == BI_RGB || bitmap.biCompression == BI_BITFIELDS) && bitmap.biHeight > 0;
     const size_t minimum = ImageBytes(next.frame.format, next.frame.stride, next.frame.height);
     if (bitmap.biSizeImage >= minimum)
     {

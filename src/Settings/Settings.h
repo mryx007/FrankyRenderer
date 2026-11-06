@@ -49,16 +49,37 @@ struct PlaceboSettings
     float hue = 0, temperature = 0;
     BOOL colorAdjustment = TRUE;
     BOOL allowDelayedPeak = FALSE;
-    int hdrMode = 2; // 1=HDR passthrough, 2=GPU tone mapping to SDR; legacy 0 is migrated
+    // 1=HDR passthrough, 2=GPU tone mapping to SDR, 3=HDR output with highlights
+    // rolled off to the display peak; legacy 0 is migrated
+    int hdrMode = 2;
     ScalingSettings scaling;
-    int maximumFramesInFlight = 0;   // 0=retain the device's original DXGI latency
+    int maximumFramesInFlight = 0; // 0=retain the device's original DXGI latency
+    // Smooth Motion refreshes presented in advance; 0=automatic, 1-4 fixed.
+    int presentAhead = 0;
+    // How the display decodes the signal: 0=auto (sRGB), 1=BT.1886 with the
+    // display's contrast (0 = infinite, e.g. OLED), 180-260 = pure power x100.
+    int displayGammaCurve = 0;
+    int displayContrast = 0;
+    // The display's gamut: 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3.
+    int displayPrimaries = 0;
+    // SDR gamma processing: 0=off, 180-260 = look like this pure power x100.
+    int sdrGammaCurve = 0;
+    // Smooth Motion oversample mixing: a frame showing for less than this share
+    // of a refresh is left out instead of blended (0 = always blend, max .5).
+    float motionThreshold = 0;
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
+    BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on
     BOOL imageAnalysis = FALSE;
     // Display mode switching in fullscreen, e.g. L"2160p23, 2160p24, 2160p60".
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};
     float displayModeDelay = 2; // seconds paused after a switch
+    // Where the quality values came from (Settings/QualityPresets.h): 0 none,
+    // MeasuredFlag | upgrades = measured, PresetSource + i = preset i.
+    // qualityStamp fingerprints all settings at that moment.
+    int measuredQuality = 0;
+    uint32_t qualityStamp = 0;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -66,7 +87,7 @@ inline void NormalizeLegacyHdrSettings(PlaceboSettings& s)
 {
     if (s.hdrMode == 0)
         s.hdrMode = s.hdrPassthrough ? 1 : 2;
-    s.hdrPassthrough = s.hdrMode == 1;
+    s.hdrPassthrough = s.hdrMode != 2;
     s.autoHdr = FALSE;
 }
 
@@ -82,7 +103,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("883EBF97-3947-4ACF-BE58-75E3A616227D")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("322DB0D4-840D-4D31-AFA9-2BFCCA325A35")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;

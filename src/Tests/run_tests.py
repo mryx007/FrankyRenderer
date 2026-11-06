@@ -11,14 +11,14 @@ import winreg
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS = {
-    'sdr-present': 'test_sdr_present', 'sdr-target': 'test_sdr_target',
+    'sdr-present': 'test_sdr_present', 'gamma-present': 'test_gamma_present', 'media-format': 'test_media_format', 'sdr-target': 'test_sdr_target',
     'tonal': 'test_tonal', 'color-mapping': 'test_color_mapping',
     'motion-timing': 'test_motion_timing', 'monitor-change': 'test_monitor_change',
     'statistics': 'test_statistics_bitmap', 'native-hdr': 'test_native_hdr',
     'display-profiles': 'test_display_profiles', 'direct2d-model': 'test_direct2d_model',
     'direct2d-page': 'test_direct2d_page', 'choice-popup': 'test_choice_popup',
-    'settings-ini': 'test_settings_ini', 'rtx-scaling': 'test_rtx_scaling',
-    'registration': 'test_registration', 'display-modes': 'test_display_modes',
+    'settings-ini': 'test_settings_ini', 'content-profiles': 'test_content_profiles','rtx-scaling': 'test_rtx_scaling',
+    'registration': 'test_registration', 'display-modes': 'test_display_modes', 'fp16-present': 'test_fp16_present', 'hdr-rolloff': 'test_hdr_rolloff', 'hdr-display-peak': 'test_hdr_display_peak', 'translation': 'test_translation', 'quality-presets': 'test_quality_presets', 'user-shaders': 'test_user_shaders', 'quality-benchmark': 'test_quality_benchmark',
 }
 # These tests exercise the live-preview session (Cancel restores the opening
 # state), which PLACEBO_RENDERER_TEST_DEFER_APPLY deliberately switches off.
@@ -26,7 +26,7 @@ LIVE_APPLY = {'test_display_profiles', 'test_direct2d_page'}
 FILTER_FLAGS = (
     'flush-race', 'gpu', 'nv12', 'p016', 'srv', 'interlaced', 'bff', 'weave',
     'eos', 'yadif', 'force-bff', 'motion', 'sharpen', 'measure', 'startup',
-    'mpcbe-owner', 'rtx', 'focus',
+    'mpcbe-owner', 'rtx', 'rtx-hdr', 'focus',
 )
 
 
@@ -76,7 +76,7 @@ def main():
         print('Native test PID', process.pid, flush=True)
         timed_out = False
         try:
-            output = process.communicate(timeout=6 if options.flush_race else 35)[0]
+            output = process.communicate(timeout=6 if options.flush_race else 90 if options.test == 'test_quality_benchmark' else 35)[0]
         except subprocess.TimeoutExpired:
             timed_out = True
             process.kill()

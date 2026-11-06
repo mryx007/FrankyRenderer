@@ -77,7 +77,7 @@ def main(out=OUT, source=SOURCE):
     setup = (ROOT / "Tools/setup.ps1").read_text(encoding="utf-8-sig")
     (out / "setup.ps1").write_text(setup, encoding="utf-8-sig")
     (out / "INSTALL.txt").write_text(
-        f"FrankyRenderer 1.1 - Windows x64\n\n"
+        f"FrankyRenderer 1.2 - Windows x64\n\n"
         "Extract this package to a permanent folder and close all video players.\n"
         "Run Install.cmd. Administrator approval may be requested.\n"
         "Run Uninstall.cmd before moving or removing the installed folder.\n"

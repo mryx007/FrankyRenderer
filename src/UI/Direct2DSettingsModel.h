@@ -5,6 +5,7 @@
 #include "UI/Direct2DSettingsHelp.h"
 #include "Settings/ShaderParameterLabels.h"
 #include "Renderer/DisplayModes.h"
+#include "UI/Translation.h"
 
 // The view edits a private draft. Every mutation is validated before preview.
 inline std::wstring D2DWide(const char* s)
@@ -362,7 +363,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             monitor.cbSize = sizeof(monitor);
             if (device.id != s.displayProfile || !GetMonitorInfoW(device.monitor, &monitor))
                 continue;
-            offered = DisplayModes::Describe(monitor.szDevice);
+            offered = DisplayModes::Describe(monitor.szDevice, [](const wchar_t* text) { return Tr(text); });
         }
         list.desc = L"Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and 59 mean "
                     L"23.976, 29.97 and 59.94 Hz.";
@@ -406,10 +407,13 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                        L"Difference threshold for detecting banding.",
                                        def.threshold,
                                        true));
+        d.controls.back().logarithmic = true;
         d.controls.push_back(
             D2DNumber(s, L"Radius", &s.debandRadius, 0, 1000, .1f, L"Search radius in pixels.", def.radius, true));
+        d.controls.back().logarithmic = true;
         d.controls.push_back(
             D2DNumber(s, L"Grain", &s.debandGrain, 0, 1000, .001f, L"Grain added after debanding.", def.grain, true));
+        d.controls.back().logarithmic = true;
         auto& a = card(p, L"Adaptive Sharpen");
         a.controls.push_back(D2DBool(s, L"Enhance Edges and Details", &s.adaptiveSharpen));
         a.controls.push_back(D2DNumber(s, L"Strength", &s.sharpenStrength, 0, 2, .001f));
@@ -469,6 +473,23 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                        pl_render_default_params.antiringing_strength,
                                        true));
         c.controls.push_back(D2DBool(s, L"Enable Smooth Motion", &s.smoothMotion));
+        c.controls.push_back(D2DChoice(
+            s,
+            L"Present in Advance",
+            &s.presentAhead,
+            {{0, L"Automatic"}, {1, L"1 Refresh"}, {2, L"2 Refreshes"}, {3, L"3 Refreshes"}, {4, L"4 Refreshes"}},
+            L"Smooth Motion pictures handed to the display ahead of time. More absorbs "
+            L"render peaks on slower PCs but adds latency. Automatic starts at one and "
+            L"adds more only after late pictures."));
+        c.controls.push_back(D2DNumber(s,
+                                       L"Oversample Threshold",
+                                       &s.motionThreshold,
+                                       0,
+                                       .5f,
+                                       .01f,
+                                       L"Smooth Motion shows a whole picture instead of a blend when the other "
+                                       L"picture would cover less than this share of a refresh. Fewer double "
+                                       L"edges on motion; 0 always blends. Used with the oversample frame mixer."));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,
@@ -624,8 +645,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"HDR & Color Mapping",
                        L"Display output, HDR metadata, peak detection, tone mapping and gamut mapping.");
         auto& c = card(p, L"HDR Output");
-        auto mode =
-            D2DChoice(s, L"HDR Mode", &s.hdrMode, {{1, L"Passthrough HDR to Display"}, {2, L"Tone Map HDR to SDR"}});
+        auto mode = D2DChoice(
+            s,
+            L"HDR Mode",
+            &s.hdrMode,
+            {{1, L"Passthrough HDR to Display"}, {3, L"Tone Map HDR to Display Peak"}, {2, L"Tone Map HDR to SDR"}});
         mode.set = [&s](float v)
         {
             s.hdrMode = int(v);
@@ -635,10 +659,20 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
         protection.enabled = [&s] { return s.hdrMode != 1; };
         c.controls.push_back(std::move(protection));
+        auto peak = D2DNumber(s, L"HDR Target Peak (0 = Auto)", &s.hdrNits, 0, 10000, 1);
+        // Values between 0 and 80 nits are not valid peaks; skip them.
+        peak.set = [&s](float v) { s.hdrNits = v > 0 && v < 80 ? (v < s.hdrNits ? 0.f : 80.f) : v; };
+        peak.enabled = [&s] { return s.hdrMode == 3; };
+        c.controls.push_back(std::move(peak));
         c.controls.push_back(D2DNumber(s, L"SDR Target Brightness (nits)", &s.sdrNits, 40, 1000, 1));
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
         c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
+        c.controls.push_back(D2DBool(s,
+                                     L"RTX Video HDR",
+                                     &s.rtxHdr,
+                                     L"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, an "
+                                     L"RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));
@@ -752,6 +786,53 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
     }
     {
         auto& p = page(L"Color Management", L"Color Management", L"ICC display profiles and 3D LUT calibration.");
+        auto& g = card(p, L"Display");
+        auto primaries = D2DChoice(s,
+                                   L"Display Gamut",
+                                   &s.displayPrimaries,
+                                   D2DChoices(DisplayPrimariesChoices),
+                                   L"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
+                                   L"looking oversaturated.");
+        primaries.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(primaries));
+        // Pure powers 1.80 to 2.80 in steps of 0.05, stored x100.
+        auto curves = [](std::vector<ChoiceItem> items)
+        {
+            for (int v = 180; v <= 280; v += 5)
+            {
+                wchar_t label[8];
+                swprintf_s(label, std::size(label), L"%d.%02d", v / 100, v % 100);
+                items.push_back({v, label});
+            }
+            return items;
+        };
+        auto displayCurves = curves({{0, L"Auto"}});
+        displayCurves.push_back({1, L"BT.1886"});
+        auto gamma = D2DChoice(s,
+                               L"Display Gamma",
+                               &s.displayGammaCurve,
+                               std::move(displayCurves),
+                               L"How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
+                               L"tone mapped to SDR.");
+        gamma.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(gamma));
+        auto contrast = D2DNumber(s,
+                                  L"Display Contrast",
+                                  &s.displayContrast,
+                                  0,
+                                  1000000,
+                                  100,
+                                  L"For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
+                                  L"infinite (OLED), where BT.1886 equals 2.40.");
+        contrast.enabled = [&s] { return !s.iccEnabled && s.displayGammaCurve == 1; };
+        g.controls.push_back(std::move(contrast));
+        auto sdr = D2DChoice(s,
+                             L"SDR Gamma Processing",
+                             &s.sdrGammaCurve,
+                             curves({{0, L"Off"}}),
+                             L"Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display.");
+        sdr.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(sdr));
         auto& c = card(p, L"ICC Profile");
         auto browse = [&s](bool icc, HWND owner)
         {
@@ -800,21 +881,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             const auto& info = ShaderCatalog[id];
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
-            D2DControl n;
-            n.name = L"Enabled";
-            n.kind = ControlKind::Toggle;
-            n.get = [&f] { return float(f.enabled); };
-            n.set = [&f](float v) { f.enabled = uint32_t(v); };
-            n.reset = [&f] { f = {}; };
-            c.controls.push_back(std::move(n));
+            // Shaders are switched on in the list above; the card holds their parameters.
             for (int i = 0; i < info.count; i++)
             {
                 const auto& param = info.parameters[i];
-                n = {};
+                D2DControl n;
                 n.name = ShaderParameterLabel(param.name) + L" (" + D2DWide(param.name) + L")";
                 n.desc = std::wstring(L"Adjust ") + ShaderParameterLabel(param.name) +
                          L" for this shader. The default preserves the shader author's setting.";
-                n.kind = param.integer ? ControlKind::SliderInt : ControlKind::SliderFloat;
+                // A whole number that is only 0 or 1 switches a shader variant on or off.
+                const bool onOff = param.integer && param.minimum == 0 && param.maximum == 1;
+                n.kind = onOff           ? ControlKind::Toggle
+                         : param.integer ? ControlKind::SliderInt
+                                         : ControlKind::SliderFloat;
                 n.minVal = param.minimum;
                 n.maxVal = param.maximum;
                 n.stepVal = param.integer ? 1 : .001f;

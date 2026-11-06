@@ -5,10 +5,10 @@
 Restore normal libplacebo/MSYS2 dependencies first. In a Visual Studio x64 tools prompt:
 
 ```
-python src/Tools/prepare_dv_dependencies.py --ffmpeg <local-clsid2-FFmpeg-checkout> --runtime <matching-runtime-folder>
+python src/Tools/prepare_dv_dependencies.py --ffmpeg <local-clsid2-FFmpeg-checkout>
 ```
 
-This verifies `src/deps/dv-ffmpeg.lock.json` and restores headers, import libraries and four runtime DLLs. No filter is registered by the dependency setup. Both package variants retain only their existing renderer and settings-page identities. Their installers retire their own legacy DV-filter entries when updating an existing installation, without touching the other variant.
+This checks the pinned commit in `src/deps/dv-ffmpeg.lock.json`, builds the three FFmpeg DLLs with only HEVC decoding and MKV/MP4/TS reading enabled, and restores headers and import libraries. No filter is registered by the dependency setup. Both package variants retain only their existing renderer and settings-page identities. Their installers retire their own legacy DV-filter entries when updating an existing installation, without touching the other variant.
 
 The integrated path accepts local progressive Profile 7 with P010 base input. Base dimensions come from the decoded input; enhancement dimensions come from the enhancement decoder's SPS/output. There is no fixed 3840x2160 base or 1920x1080 enhancement requirement. CPU and native D3D11 inputs are supported. MEL needs metadata only. This provides processed HDR/PQ or SDR output, not native Dolby Vision TV signalling. Ordinary SDR/HDR10 and other DV profiles retain their existing renderer path.
 

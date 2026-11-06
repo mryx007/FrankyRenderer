@@ -27,7 +27,9 @@ class FieldSample final : public IMediaSample
     QueuedVideoFrame frame;
     uint64_t previous = 0, next = 0;
     pl_field field;
-    bool motion = false;
+    bool motion = false, surplus = false, refreshLocked = false;
+    int64_t presentQpc = 0, deadlineQpc = 0;
+    int lead = 0;
     pl_field following = PL_FIELD_NONE;
     float position = 0, duration = 0;
     uint64_t afterNext = 0;

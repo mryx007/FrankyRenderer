@@ -1,6 +1,21 @@
 #include "UI/Direct2DSettingsPage.h"
 #include "Settings/LiveSettings.h"
 
+// Whether the renderer behind the page is part of a filter graph. A player
+// opening the settings without a video creates a renderer outside any graph.
+static bool InGraph(IPlaceboSettings* config)
+{
+    IBaseFilter* filter = nullptr;
+    FILTER_INFO info = {};
+    const bool joined = config && SUCCEEDED(config->QueryInterface(IID_PPV_ARGS(&filter))) &&
+                        SUCCEEDED(filter->QueryFilterInfo(&info)) && info.pGraph;
+    if (info.pGraph)
+        info.pGraph->Release();
+    if (filter)
+        filter->Release();
+    return joined;
+}
+
 Direct2DSettingsPage::Direct2DSettingsPage(IUnknown* outer, HRESULT* hr)
     : CBasePropertyPage(NAME("FrankyRenderer Settings"), outer, 116, 216)
 {
@@ -60,12 +75,15 @@ HRESULT Direct2DSettingsPage::OnActivate()
     {
         frame.BeginOpening(m_Dlg);
         PostMessageW(m_Dlg, WM_APP + 304, 0, 0);
+        if (InGraph(config))
+            SetTimer(m_Dlg, GraphTimer, 500, nullptr);
     }
     return view ? S_OK : E_FAIL;
 }
 
 HRESULT Direct2DSettingsPage::OnDeactivate()
 {
+    KillTimer(m_Dlg, GraphTimer);
     frame.Detach();
     Direct2DSettingsHost::Destroy(view);
     view = nullptr;
@@ -76,11 +94,15 @@ HRESULT Direct2DSettingsPage::OnApplyChanges()
 {
     if (!config)
         return E_UNEXPECTED;
-    auto hr = ValidateSettings(draft);
+    // The menu may show a profile on top; the renderer keeps the normal settings.
+    PlaceboSettings normal = draft;
+    if (view)
+        Direct2DSettingsHost::Save(view, &normal);
+    auto hr = ValidateSettings(normal);
     if (FAILED(hr))
         return hr;
-    LiveSettings::RememberDisplay(m_Dlg, draft);
-    hr = config->SetSettings(&draft);
+    LiveSettings::RememberDisplay(m_Dlg, normal);
+    hr = config->SetSettings(&normal);
     if (SUCCEEDED(hr))
         m_bDirty = FALSE;
     return hr;
@@ -111,6 +133,14 @@ INT_PTR Direct2DSettingsPage::OnReceiveMessage(HWND h, UINT msg, WPARAM w, LPARA
     {
         frame.Attach(m_Dlg, preferredSize);
         frame.FinishOpening();
+        return TRUE;
+    }
+    // The player stays usable while the menu is open. Once it opens another
+    // file or closes, this renderer leaves its graph; close its menu too.
+    if (msg == WM_TIMER && w == GraphTimer)
+    {
+        if (!InGraph(config))
+            frame.Close();
         return TRUE;
     }
     if (msg == WM_WINDOWPOSCHANGED || msg == WM_SHOWWINDOW)

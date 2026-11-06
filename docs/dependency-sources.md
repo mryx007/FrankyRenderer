@@ -2,11 +2,11 @@
 
 libplacebo is built from pinned upstream source; the remaining runtime libraries use official MSYS2 source packages. The local libplacebo build recipe is `src/Tools/build_libplacebo.py`, with source, compiler and Python tool locks under `src/deps/libplacebo-*.lock.json`. Download links are provided below; the [machine-readable manifest](dependency-sources.json) records the same URLs, sizes and SHA-256 checksums. The [runtime names](runtime-names.md) document the DLL names used in the installation package.
 
-- [libplacebo 7.387.0 release, commit 275f7dea2792](https://codeload.github.com/haasn/libplacebo/tar.gz/275f7dea27924cdd34ab2e6c20e448b6bc4fab65)
+- [libplacebo 7.387.0 with later fixes, commit 29a56f9290ba](https://codeload.github.com/haasn/libplacebo/tar.gz/29a56f9290bacc3f7c6bd899ac7a64ec4e68c8e2)
 
   SHA-256: `adbca47395410ada01414bc527e0103c716b9b758be857464c40e5ff0ec695be`
 
-- [LAV-maintained FFmpeg, commit 29e0b0813d85](https://github.com/clsid2/FFmpeg/tree/29e0b0813d855d55536cd11ae4a8b6de88ee6461)
+- [LAV-maintained FFmpeg, commit f67e27d31cc4](https://github.com/clsid2/FFmpeg/tree/f67e27d31cc4da05d463d57300bc8f4358e4ef6b)
 
   Used internally for local-file enhancement-layer reading/decoding, without replacing the player's DirectShow decoder. The exact four runtime hashes are in [dv-ffmpeg.lock.json](../src/deps/dv-ffmpeg.lock.json); the package includes their original FFmpeg license files under `licenses/ffmpeg`. [Build setup](../src/DolbyVision/BUILD.md) verifies the source revision and runtime hashes before generating MSVC import libraries.
 

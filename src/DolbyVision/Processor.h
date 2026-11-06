@@ -12,6 +12,10 @@ struct StaticHdr
     pl_hdr_metadata hdr = {};
 };
 
+// Local file feeding the video path upstream of `upstream` (or the graph's only
+// file source while the pin is unconnected); empty for streams.
+std::wstring SourcePath(IFilterGraph* graph, IPin* upstream);
+
 // Internal local-file supplementation. No registered DirectShow filter is needed.
 class DvProcessor
 {

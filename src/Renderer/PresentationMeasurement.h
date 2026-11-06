@@ -4,6 +4,66 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <utility>
+
+// Smooth Motion ticks follow the DirectShow reference clock, scanout follows
+// the display. A slightly fast clock adds one surplus picture every few
+// minutes; it waits in DXGI's queue and its delay persists. Track the scanout
+// latency of timed presents (actual minus due) against its lowest level since
+// the last restart. Within one refresh that is only the phase between both
+// clocks: leaving out a tick there would just repeat a picture. A full
+// refresh beyond it is a queued surplus picture; then one tick is left out.
+// A slow clock needs nothing: scanout repeats and the level follows it down.
+class ClockDrift
+{
+    double reference = 0, smoothed = 0;
+    unsigned seeded = 0, outliers = 0;
+    bool surplus = false;
+
+  public:
+    static constexpr unsigned Seed = 60;
+
+    void Reset()
+    {
+        seeded = outliers = 0;
+        surplus = false;
+    }
+
+    // latency and period in the same clock units.
+    void Observe(double latency, double period)
+    {
+        if (!std::isfinite(latency) || !(period > 0))
+            return;
+        if (seeded < Seed)
+        {
+            smoothed = seeded ? smoothed + (latency - smoothed) / (seeded + 1) : latency;
+            if (++seeded == Seed)
+                reference = smoothed;
+            return;
+        }
+        // Clock conversion noise and isolated stalls are not drift; a lasting
+        // jump (new output path) re-establishes the level.
+        if (std::abs(latency - smoothed) > 2 * period)
+        {
+            if (++outliers > Seed)
+                Reset();
+            return;
+        }
+        outliers = 0;
+        smoothed += (latency - smoothed) * .02;
+        reference = std::min(reference, smoothed);
+        if (smoothed > reference + period * 1.25)
+        {
+            surplus = true;
+            smoothed -= period;
+        }
+    }
+
+    bool TakeSurplus()
+    {
+        return std::exchange(surplus, false);
+    }
+};
 
 // DXGI feedback is delayed. These are acknowledged presentation IDs, not a
 // physical driver queue. No clock, sleep, flush or scheduling calls live here.
@@ -28,10 +88,12 @@ class PresentationMeasurement
     uint64_t confirmed = 0, repeatedRefreshes = 0, glitches = 0, resets = 0, submissions = 0;
     bool feedback = false, timing = false, haveCounters = false;
     uint32_t pending = 0;
+    ClockDrift drift;
 
     void Reset(bool counters = true, bool keepLatency = false)
     {
         tickets.clear();
+        drift.Reset();
         submitted = observed = 0;
         anchored = feedback = timing = false;
         pending = 0;
@@ -47,6 +109,7 @@ class PresentationMeasurement
     void Disjoint()
     {
         tickets.clear();
+        drift.Reset();
         anchored = feedback = timing = haveLatency = false;
         pending = 0;
         observed = 0;
@@ -149,6 +212,8 @@ class PresentationMeasurement
         }
         const bool clocked = actualQpc > 0;
         const double latency = static_cast<double>(actualQpc) - current.due;
+        if (clocked)
+            drift.Observe(latency, period);
         // After seek/flush retain the established output latency, not the old
         // media timestamp/refresh anchor. This can assess the first returning
         // frame instead of blindly accepting any restart delay as a new normal.
@@ -180,6 +245,44 @@ class PresentationMeasurement
             anchorRefresh = refresh;
             anchored = true;
         }
+    }
+};
+
+// Smooth Motion ticks follow the DirectShow reference clock, scanout follows
+// the display. When that clock runs slightly fast, one surplus picture
+// accumulates every few minutes until DXGI's queue is full: Present blocks,
+// rendering waits for a back buffer and DirectShow starts dropping frames.
+// Pause drains it, so it only shows after long playback. Ordinary jitter
+// briefly queues two deep; a drift backlog never drains on its own. Leave out
+// one interpolated tick only after a full run of ticks without relief.
+class PresentBacklog
+{
+    unsigned run = 0;
+
+  public:
+    static constexpr unsigned Ticks = 120;
+    uint64_t skipped = 0;
+
+    void Reset()
+    {
+        run = 0;
+    }
+
+    // queued: presents submitted but not yet scanned out, before this one.
+    // depth: the lowest backlog. Refresh-locked presents land exactly on a
+    // vsync and read their lead or one more by chance; only lead + 2 is one.
+    bool Skip(uint32_t queued, uint32_t depth = 2)
+    {
+        if (queued < depth)
+        {
+            run = 0;
+            return false;
+        }
+        if (++run < Ticks)
+            return false;
+        run = 0;
+        ++skipped;
+        return true;
     }
 };
 

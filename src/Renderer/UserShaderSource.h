@@ -23,7 +23,8 @@ inline std::string LoadUserShaderSource(int id)
     if (!file)
         return {};
     const auto size = file.tellg();
-    if (size <= 0 || size > 4 * 1024 * 1024)
+    // RAVU Zoom AR R3 embeds a 5 MB weight table.
+    if (size <= 0 || size > 16 * 1024 * 1024)
         return {};
     std::string source(static_cast<size_t>(size), '\0');
     file.seekg(0);

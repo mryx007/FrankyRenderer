@@ -1,7 +1,12 @@
-# libplacebo 7.387.0 release update
+# libplacebo 7.387.0 with later upstream fixes
 
-FrankyRenderer now builds the official libplacebo **v7.387.0** release, pinned to
-upstream commit `275f7dea27924cdd34ab2e6c20e448b6bc4fab65` (released 25 October 2026).
+FrankyRenderer builds the official libplacebo **v7.387.0** release (upstream commit
+`275f7dea27924cdd34ab2e6c20e448b6bc4fab65`, released 25 October 2026) plus the fixes
+merged upstream until 2 November 2026, pinned to master commit
+`29a56f9290bacc3f7c6bd899ac7a64ec4e68c8e2`. These include PQ/ICtCp clamping and black-floor
+scaling in the colour conversion, HLG peak scaling, ICC profiles without a positive
+luminance tag and the frame-queue reset. The API remains 387; the next release is
+offered as a pull request by the dependency-update workflow.
 The release adds one Vulkan pipeline-stage synchronization fix to the previously
 used snapshot `1532bf6893f7e6dbe1b1943488180d125a421f6f`. The API remains 387.
 Our renderer-side screenshot correction is retained.

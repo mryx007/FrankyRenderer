@@ -80,6 +80,33 @@ int main()
             Check(raster.Submit(L"replaced", 800 + i, 600), "replace pending work");
         Check(raster.Submit(L"latest", 777, 480), "latest request");
         Check(Wait(raster, 777).has_value(), "latest request survives queue coalescing");
+        // Changing numbers must not make the box jitter: it keeps its largest
+        // size for the same view and starts over after a reset.
+        Check(raster.Submit(L"render 12.34ms (GPU) - 148% of 8.33ms, over budget\nline", 1000, 600), "wide text");
+        const auto wide = Wait(raster, 1000);
+        Check(raster.Submit(L"render 1.2ms", 1000, 600), "narrow text");
+        const auto narrow = Wait(raster, 1000);
+        Check(wide && narrow && narrow->width == wide->width && narrow->height == wide->height,
+              "box keeps its size while the text gets shorter");
+        raster.Reset();
+        Check(raster.Submit(L"render 1.2ms", 1000, 600), "narrow text after reset");
+        const auto fresh = Wait(raster, 1000);
+        Check(fresh && fresh->width < wide->width, "box starts over after a reset");
+        // Markup: headings and rows draw in their own colours, values can be
+        // green, yellow or red; the overlay texture is RGB.
+        Check(raster.Submit(L"\x01Performance\nDrops\t\x02g0 dropped\nRender\t\x02r120% of 8 ms", 1100, 600),
+              "markup text");
+        const auto colors = Wait(raster, 1100);
+        Check(colors.has_value(), "markup rasterized");
+        bool green = false, red = false, blue = false;
+        for (size_t i = 0; i < colors->pixels.size(); i += 4)
+        {
+            const int r = colors->pixels[i], g = colors->pixels[i + 1], b = colors->pixels[i + 2];
+            green |= g > 180 && g > r + 60 && g > b + 60;
+            red |= r > 180 && r > g + 80 && r > b + 80;
+            blue |= b > 200 && b > r + 60;
+        }
+        Check(green && red && blue, "green and red values and a blue heading in RGB order");
         raster.Stop();
         Check(!raster.Submit(L"stopped", 1280, 1080), "no work after shutdown");
     }

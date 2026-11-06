@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/BlackBarDetector.h"
+#include "Renderer/RenderProbe.h"
 #include <libplacebo/renderer.h>
 #include <libplacebo/d3d11.h>
 #include <wrl/client.h>
@@ -57,7 +58,8 @@ class BlackBarAnalysis
                  const pl_frame& source,
                  int sourceW,
                  int sourceH,
-                 const BlackBarSettings& settings)
+                 const BlackBarSettings& settings,
+                 RenderProbe::Scope* probe = nullptr)
     {
         if (!settings.enabled)
         {
@@ -78,6 +80,8 @@ class BlackBarAnalysis
         const auto now = GetTickCount64();
         if (pending)
         {
+            if (probe)
+                probe->Next(RenderProbe::BarsMap);
             D3D11_MAPPED_SUBRESOURCE mapped = {};
             const HRESULT hr = context->Map(readback.Get(), 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped);
             if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
@@ -88,10 +92,16 @@ class BlackBarAnalysis
                 failed = true;
                 return;
             }
+            if (probe)
+                probe->Next(RenderProbe::BarsScan);
             if (detector.Observe(
                     static_cast<const uint8_t*>(mapped.pData), width, height, mapped.RowPitch, sw, sh, settings, now))
                 ++generation;
+            if (probe)
+                probe->Next(RenderProbe::BarsMap);
             context->Unmap(readback.Get(), 0);
+            if (probe)
+                probe->Next(RenderProbe::Bars);
         }
         // Only the first three observations form a fast startup burst.
         // Ambiguous dark/title frames must not cause a full scan every frame.
@@ -156,13 +166,21 @@ class BlackBarAnalysis
         params.peak_detect_params = nullptr;
         params.sigmoid_params = nullptr;
         params.dither_params = nullptr;
+        if (probe)
+            probe->Next(RenderProbe::BarsRender);
         if (!pl_render_image(renderer, &input, &output, &params))
         {
             failed = true;
             return;
         }
+        if (probe)
+            probe->Next(RenderProbe::BarsFlush);
         pl_gpu_flush(gpu);
+        if (probe)
+            probe->Next(RenderProbe::BarsCopy);
         context->CopyResource(readback.Get(), target.Get());
+        if (probe)
+            probe->Next(RenderProbe::Bars);
         pending = true;
     }
 };

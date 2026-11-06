@@ -12,6 +12,7 @@
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/PresentationMeasurement.h"
 #include "Renderer/GpuMeasurement.h"
+#include "Renderer/RenderProbe.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/ShaderCache.h"
 #include <deque>
@@ -19,9 +20,11 @@
 #include <iomanip>
 #pragma comment(lib, "gdi32.lib")
 #include "Renderer/SharpenShader.h"
-#include "Renderer/UserShaderSource.h"
+#include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
+#include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
+#include "Renderer/OutputGammaHook.h"
 #include <libplacebo/shaders/custom.h>
 #include <charconv>
 #include "Renderer/Trace.h"
@@ -80,16 +83,28 @@ struct PlaceboBackend::State
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
     pl_frame mixFrames[16] = {};
+    // Gamma for the frame being presented. SDR gamma processing: the gamma
+    // x100 the SDR picture should have on the display (0 = off). Output
+    // gamma: power raising the encoded output to a pure-power display gamma
+    // between libplacebo's fixed curves (1 = none).
+    int sdrGammaCurve = 0;
+    float outputGamma = 1;
+    OutputGammaHook outputGammaHook;
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
     bool mixing = false;
+    // Untimed presents (paused, repaints) show the current frame alone; a
+    // Smooth Motion blend of two frames would stay on screen as a ghost.
+    bool stillPicture = false;
     pl_deinterlace_params deinterlace = pl_deinterlace_default_params;
     TonalHook tonalHook;
     const pl_hook* userHooks[ShaderCount] = {};
     ShaderConfig userCached[ShaderCount];
     bool userFailed[ShaderCount] = {};
     std::wstring userShaderMessage;
+    // Content profile in use, or why none applies; shown in the statistics.
+    std::wstring contentProfile;
 
     bool PrepareUserShader(int id)
     {
@@ -103,33 +118,7 @@ struct PlaceboBackend::State
             return true;
         userFailed[id] = false;
         cached = c;
-        const auto shaderSource = LoadUserShaderSource(id);
-        const pl_hook* hook = shaderSource.empty()
-                                  ? nullptr
-                                  : pl_mpv_user_shader_parse(d3d->gpu, shaderSource.data(), shaderSource.size());
-        if (hook)
-            for (int p = 0; p < ShaderCatalog[id].count; p++)
-                if (c.overrides & (1u << p))
-                {
-                    const pl_hook_par* found = nullptr;
-                    for (int n = 0; n < hook->num_parameters; n++)
-                        if (!strcmp(hook->parameters[n].name, ShaderCatalog[id].parameters[p].name))
-                        {
-                            found = &hook->parameters[n];
-                            break;
-                        }
-                    if (!found)
-                    {
-                        pl_mpv_user_shader_destroy(&hook);
-                        break;
-                    }
-                    if (found->type == PL_VAR_FLOAT)
-                        found->data->f = c.values[p];
-                    else if (found->type == PL_VAR_SINT)
-                        found->data->i = static_cast<int>(c.values[p]);
-                    else if (found->type == PL_VAR_UINT)
-                        found->data->u = static_cast<unsigned>(c.values[p]);
-                }
+        const pl_hook* hook = ParseUserShader(d3d->gpu, id, c);
         if (!hook)
         {
             userFailed[id] = true;
@@ -152,12 +141,53 @@ struct PlaceboBackend::State
     bool statisticsDirect = false;
     int statisticsDropped = -1;
     std::wstring statisticsText;
+    bool statisticsShown = false;
     ULONGLONG statisticsUpdated = 0;
+    // Lost-picture totals over the render peak's window (as its measurements).
+    static constexpr ULONGLONG RenderPeakWindow = 5000;
+    std::deque<std::pair<ULONGLONG, uint64_t>> lostHistory;
     PresentationMeasurement presentation;
     DropMeasurement drops;
     std::mutex dropsLock;
     DurationMeasurement renderCpu, presentCpu;
+    RenderProbe renderProbe;
     GpuMeasurement renderGpu;
+    uint64_t traceGpuCount = 0, traceSummary = 0, traceFrames = 0;
+    double traceCpuMax = 0, traceGpuMax = 0;
+
+    // Opt-in diagnostics: render peaks and presentation queue every 10 s.
+    void TraceRender(uint64_t now)
+    {
+        if (!TraceEnabled())
+            return;
+        ++traceFrames;
+        traceCpuMax = std::max(traceCpuMax, renderCpu.last);
+        if (renderGpu.duration.count != traceGpuCount)
+        {
+            traceGpuCount = renderGpu.duration.count;
+            traceGpuMax = std::max(traceGpuMax, renderGpu.duration.last);
+        }
+        if (!traceSummary)
+            traceSummary = now;
+        if (now - traceSummary < 10000)
+            return;
+        Trace("Render summary %llu frames, peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
+              "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue",
+              static_cast<unsigned long long>(traceFrames),
+              traceCpuMax,
+              traceGpuMax,
+              presentCpu.Maximum(now),
+              static_cast<unsigned long long>(traceQueued[0]),
+              static_cast<unsigned long long>(traceQueued[1]),
+              static_cast<unsigned long long>(traceQueued[2]),
+              static_cast<unsigned long long>(traceQueued[3]),
+              static_cast<unsigned long long>(driftSkips),
+              static_cast<unsigned long long>(backlog.skipped));
+        std::fill(std::begin(traceQueued), std::end(traceQueued), 0);
+        traceSummary = now;
+        traceFrames = 0;
+        traceCpuMax = traceGpuMax = 0;
+    }
 
     uint64_t DropTotal()
     {
@@ -186,6 +216,7 @@ struct PlaceboBackend::State
     int64_t presentationDue = 0;
     int64_t presentationMediaTime = -1;
     bool presentationTimed = false;
+    int presentationLead = 0;
     ULONGLONG periodUpdated = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
@@ -208,6 +239,54 @@ struct PlaceboBackend::State
         return output;
     }
 
+    PresentBacklog backlog;
+    uint64_t driftSkips = 0, traceQueued[4] = {};
+
+    bool SkipForBacklog(int refreshLead)
+    {
+        // Drift is noticed from scanout latency before the queue deepens; the
+        // queue depth remains the safety net when latency feedback is missing.
+        // Refresh-locked ticks already absorb drift and vary by design within
+        // one refresh of their due time, which is not a surplus. Late ticks
+        // are left out before they queue, so only a blocking queue counts.
+        if (presentation.drift.TakeSurplus() && !refreshLead)
+        {
+            backlog.Reset();
+            ++driftSkips;
+            Trace("Smooth Motion tick left out: reference clock ahead of scanout (total %llu)",
+                  static_cast<unsigned long long>(driftSkips));
+            return true;
+        }
+        ComPtr<IDXGISwapChain> native = OutputSwapchain();
+        UINT submitted = 0;
+        DXGI_FRAME_STATISTICS shown = {};
+        if (!native || FAILED(native->GetLastPresentCount(&submitted)) || FAILED(native->GetFrameStatistics(&shown)) ||
+            !shown.PresentCount || submitted < shown.PresentCount)
+        {
+            backlog.Reset();
+            return false;
+        }
+        // Statistics stop advancing while nothing is composed (file change,
+        // occlusion); a stale PresentCount is not a queue.
+        LARGE_INTEGER now = {}, frequency = {};
+        QueryPerformanceCounter(&now);
+        QueryPerformanceFrequency(&frequency);
+        const double period = measuredPeriod > 0 ? measuredPeriod : 1e6;
+        if (now.QuadPart - shown.SyncQPCTime.QuadPart > 4 * period * frequency.QuadPart / 1e7)
+        {
+            backlog.Reset();
+            return false;
+        }
+        const UINT queued = submitted - shown.PresentCount;
+        ++traceQueued[std::min<UINT>(queued, 3)];
+        if (!backlog.Skip(queued, refreshLead ? refreshLead + 2 : 2))
+            return false;
+        Trace("Smooth Motion tick left out: %u presents queued ahead of scanout (total %llu)",
+              queued,
+              static_cast<unsigned long long>(backlog.skipped));
+        return true;
+    }
+
     void DestroySwapchain()
     {
         nativeSwapchain.Destroy();
@@ -219,6 +298,7 @@ struct PlaceboBackend::State
         lastSyncQpc = 0;
         lastSyncRefresh = 0;
         stableCadence = true;
+        backlog.Reset();
     }
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     std::function<void(ID3D11Texture2D*)> presentProbe;
@@ -262,6 +342,8 @@ struct PlaceboBackend::State
     ComPtr<IDXGIDevice1> latencyDevice;
     UINT originalLatency = 0;
     bool latencyChanged = false;
+    // Highest Smooth Motion lead the frame latency allows without blocking.
+    std::atomic<int> presentCeiling = 2;
     OverlayPainter painter;
     ComPtr<ID3D11Texture2D> overlayTexture;
     ComPtr<ID3D11RenderTargetView> overlayView;
@@ -336,16 +418,31 @@ struct PlaceboBackend::State
         overlayTexture.Reset();
     }
 
+    // Smooth Motion presenting more than two refreshes ahead was requested
+    // explicitly, like a manual frames-in-flight value; queue one more.
+    int FramesInFlight() const
+    {
+        return std::max(settings.maximumFramesInFlight, settings.presentAhead > 2 ? settings.presentAhead + 1 : 0);
+    }
+
     HRESULT ConfigureLatency()
     {
         if (!d3d)
             return S_OK;
+        const int requested = FramesInFlight();
         if (!latencyDevice)
         {
             // Auto must not touch a decoder-owned device. Capture its original
             // value only when the user first requests a manual override.
-            if (!settings.maximumFramesInFlight)
+            if (!requested)
+            {
+                ComPtr<IDXGIDevice1> device;
+                UINT current = 0;
+                if (SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&device))) &&
+                    SUCCEEDED(device->GetMaximumFrameLatency(&current)))
+                    presentCeiling = std::max(1, int(current) - 1);
                 return S_OK;
+            }
             ComPtr<IDXGIDevice1> device;
             HRESULT hr = d3d->device->QueryInterface(IID_PPV_ARGS(&device));
             if (FAILED(hr))
@@ -355,8 +452,7 @@ struct PlaceboBackend::State
                 return hr;
             latencyDevice = std::move(device);
         }
-        const UINT wanted =
-            settings.maximumFramesInFlight ? static_cast<UINT>(settings.maximumFramesInFlight) : originalLatency;
+        const UINT wanted = requested ? static_cast<UINT>(requested) : originalLatency;
         UINT actual = 0;
         HRESULT hr = latencyDevice->GetMaximumFrameLatency(&actual);
         if (FAILED(hr))
@@ -368,6 +464,7 @@ struct PlaceboBackend::State
                 return hr;
         }
         latencyChanged = wanted != originalLatency;
+        presentCeiling = std::max(1, int(wanted) - 1);
         return S_OK;
     }
 
@@ -387,6 +484,7 @@ struct PlaceboBackend::State
         unpack422.Reset();
         renderGpu.Reset();
         renderCpu.Reset();
+        renderProbe.Reset();
         presentCpu.Reset();
         presentation.Reset(false);
         statisticsBitmap.Reset();
@@ -711,9 +809,9 @@ struct PlaceboBackend::State
             const bool scalingChanged = previous.scaling.has_value() != settings.scaling.has_value() ||
                                         (previous.scaling && settings.scaling &&
                                          memcmp(&*previous.scaling, &*settings.scaling, sizeof(ScalingSettings)));
-            if (!settings.rtxSuperResolution)
+            if (!settings.rtxSuperResolution && !settings.rtxHdr)
                 rtx.Reset();
-            else if (previous.rtxSuperResolution != settings.rtxSuperResolution ||
+            else if (previous.rtxSuperResolution != settings.rtxSuperResolution || previous.rtxHdr != settings.rtxHdr ||
                      previous.deinterlacing != settings.deinterlacing ||
                      previous.chromaUpscaler != settings.chromaUpscaler || scalingChanged)
                 rtx.Invalidate();
@@ -744,79 +842,8 @@ struct PlaceboBackend::State
         HRESULT latency = ConfigureLatency();
         if (FAILED(latency))
             return latency;
-        pl_options_reset(options, &pl_render_default_params);
-        if (!settings.scaling)
-        {
-            if (!pl_options_set_str(options, "upscaler", settings.upscaler.c_str()) ||
-                !pl_options_set_str(options, "downscaler", settings.downscaler.c_str()))
-                return E_INVALIDARG;
-            if (settings.chromaUpscaler != "auto" &&
-                !pl_options_set_str(options, "plane_upscaler", settings.chromaUpscaler.c_str()))
-                return E_INVALIDARG;
-        }
-        else if (!ApplyScaling(options, *settings.scaling))
-            return E_INVALIDARG;
-        if (settings.toneMapping != "auto")
-        {
-            if (!pl_options_set_str(options, "tone_mapping", settings.toneMapping.c_str()))
-                return E_INVALIDARG;
-            options->params.color_map_params = &options->color_map_params;
-        }
-        options->peak_detect_params = pl_peak_detect_default_params;
-        options->peak_detect_params.smoothing_period = settings.peakSmoothing;
-        options->peak_detect_params.scene_threshold_low = settings.sceneLow;
-        options->peak_detect_params.scene_threshold_high = settings.sceneHigh;
-        options->peak_detect_params.percentile = settings.peakPercentile;
-        options->params.peak_detect_params = settings.peakDetect ? &options->peak_detect_params : nullptr;
-        options->peak_detect_params.black_cutoff = settings.blackCutoff;
-        options->peak_detect_params.allow_delayed = settings.allowDelayedPeak;
-        if (settings.gamutMapping &&
-            !pl_options_set_str(options, "gamut_mapping", GamutChoices[settings.gamutMapping].name))
-            return E_INVALIDARG;
-        options->color_map_params.contrast_recovery = settings.contrastRecovery;
-        options->color_map_params.contrast_smoothness = settings.contrastSmoothness;
-        options->color_map_params.tone_constants.knee_adaptation = settings.kneeAdaptation;
-        options->color_map_params.tone_constants.spline_contrast = settings.splineContrast;
-        options->color_map_params.tone_constants.knee_minimum = settings.kneeMinimum;
-        options->color_map_params.tone_constants.knee_maximum = settings.kneeMaximum;
-        options->color_map_params.tone_constants.knee_default = std::clamp(
-            options->color_map_params.tone_constants.knee_default, settings.kneeMinimum, settings.kneeMaximum);
-        options->color_map_params.gamut_constants.perceptual_strength = settings.perceptualStrength;
-        options->color_map_params.gamut_constants.softclip_knee = settings.softclipKnee;
-        options->color_map_params.show_clipping = settings.showClipping;
-        options->params.color_map_params = &options->color_map_params;
-        if (!ApplyMappingOverrides(options, settings.colorMapping))
-            return E_INVALIDARG;
-        if (!settings.scaling)
-        {
-            options->params.antiringing_strength = settings.antiringing;
-            if (settings.upscalerBlur > 0 && options->params.upscaler && options->params.upscaler->kernel)
-            {
-                options->upscaler = *options->params.upscaler;
-                options->upscaler.blur = settings.upscalerBlur;
-                options->params.upscaler = &options->upscaler;
-            }
-            if (settings.downscalerBlur > 0 && options->params.downscaler && options->params.downscaler->kernel)
-            {
-                options->downscaler = *options->params.downscaler;
-                options->downscaler.blur = settings.downscalerBlur;
-                options->params.downscaler = &options->downscaler;
-            }
-        }
-        options->deband_params = pl_deband_default_params;
-        options->deband_params.iterations = settings.debandIterations;
-        options->deband_params.threshold = settings.debandThreshold;
-        options->deband_params.radius = settings.debandRadius;
-        options->deband_params.grain = settings.debandGrain;
-        options->params.deband_params = settings.deband ? &options->deband_params : nullptr;
-        options->dither_params = pl_dither_default_params;
-        const pl_dither_method methods[] = {PL_DITHER_BLUE_NOISE, PL_DITHER_ORDERED_FIXED, PL_DITHER_WHITE_NOISE};
-        if (settings.ditherMethod < 3)
-            options->dither_params.method = methods[settings.ditherMethod];
-        options->dither_params.temporal = settings.ditherTemporal;
-        options->params.dither_params = settings.ditherMethod == 3 ? nullptr : &options->dither_params;
-        if (!ApplyExtras(options, settings.extras))
-            return E_INVALIDARG;
+        if (HRESULT hr = BuildRenderOptions(options, settings); FAILED(hr))
+            return hr;
         deinterlace.algo = settings.deinterlacing == 2 ? PL_DEINTERLACE_YADIF : PL_DEINTERLACE_BWDIF;
         options->params.deinterlace_params = settings.deinterlacing ? &deinterlace : nullptr;
         return S_OK;
@@ -826,21 +853,7 @@ struct PlaceboBackend::State
     {
         if (sharpenHook && sharpenCached == settings.sharpenStrength)
             return true;
-        std::string shaderText = AdaptiveSharpenSource;
-        auto stage = shaderText.find("//!HOOK OUTPUT");
-        if (stage == std::string::npos)
-            return false;
-        shaderText.replace(stage, 14, "//!HOOK PREOUTPUT");
-        auto first = shaderText.find("#define curve_height"), last = shaderText.find('\n', first);
-        if (first == std::string::npos || last == std::string::npos)
-            return false;
-        char value[32];
-        auto converted = std::to_chars(value, value + 32, settings.sharpenStrength);
-        if (converted.ec != std::errc{})
-            return false;
-        shaderText.replace(
-            first, last - first, std::string("#define curve_height ") + std::string(value, converted.ptr));
-        const pl_hook* next = pl_mpv_user_shader_parse(d3d->gpu, shaderText.data(), shaderText.size());
+        const pl_hook* next = ParseSharpenShader(d3d->gpu, settings.sharpenStrength);
         if (!next)
             return false;
         pl_mpv_user_shader_destroy(&sharpenHook);
@@ -940,71 +953,77 @@ struct PlaceboBackend::State
                 SUCCEEDED(out6->GetDesc1(&display)))
                 haveDisplay = true;
         }
+        // Markup for StatisticsRasterizer: headings, label/value rows, colours.
+        const auto heading = [&](const wchar_t* title)
+        {
+            if (text.tellp() > 0)
+                text << L"\n";
+            text << L'\x01' << title;
+        };
+        const auto row = [&](const wchar_t* label) -> std::wostream& { return text << L"\n"
+                                                                                   << label << L'\t'; };
+        const auto colored = [&](const wchar_t* label, wchar_t color) -> std::wostream&
+        { return row(label) << L'\x02' << color; };
+        constexpr wchar_t dot[] = L" · ", arrow[] = L" → ";
+
+        heading(L"Display");
         if (period > 0 || haveDisplay)
-            text << L"display ";
-        if (period > 0)
-            text << std::setprecision(5) << 1e7 / period << L"Hz";
-        if (haveDisplay)
-            text << L" (" << display.BitsPerColor << L" bit, "
-                 << (display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ||
-                             display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ||
-                             display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709
-                         ? L"RGB, full"
-                         : L"DXGI color space " + std::to_wstring(display.ColorSpace))
-                 << L")";
-        if (period > 0 || haveDisplay)
-            text << L"\n";
-        text << L"smooth motion ";
-        if (mixing && settings.smoothMotion)
-            text << L"on (" << wide(options->params.frame_mixer ? options->params.frame_mixer->name : "none") << L")";
-        else
-            text << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
-        text << L"\nD3D11 "
-             << (window && IsZoomed(GetAncestor(window, GA_ROOT)) ? L"maximized" : L"windowed / borderless")
-             << L"\noutput " << output.planes[0].texture->params.format->component_depth[0] << L" bit "
-             << (output.planes[0].texture->params.format->type == PL_FMT_FLOAT ? L"float" : L"integer") << L", "
-             << (outputLevels == 2 ? L"TV levels" : L"PC levels") << L", dither ";
-        if (outputDitherDepth)
-            text << outputDitherDepth.load() << L" bit";
-        else
-            text << L"auto / float";
+        {
+            auto& value = row(L"Signal");
+            if (period > 0)
+                value << std::setprecision(3) << 1e7 / period << L" Hz";
+            if (haveDisplay)
+            {
+                value << (period > 0 ? dot : L"") << display.BitsPerColor << L" bit ";
+                if (display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+                    value << L"RGB full" << dot << L"Windows HDR";
+                else if (display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ||
+                         display.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709)
+                    value << L"RGB full";
+                else
+                    value << L"DXGI color space " << display.ColorSpace;
+            }
+        }
+        {
+            auto& value = row(L"Output");
+            value << output.planes[0].texture->params.format->component_depth[0] << L" bit "
+                  << (output.planes[0].texture->params.format->type == PL_FMT_FLOAT ? L"float" : L"integer") << dot
+                  << (outputLevels == 2 ? L"TV levels" : L"PC levels") << dot << L"dither ";
+            if (outputDitherDepth)
+                value << outputDitherDepth.load() << L" bit";
+            else
+                value << L"auto / float";
+        }
+        row(L"Window") << (window && IsZoomed(GetAncestor(window, GA_ROOT)) ? L"D3D11 maximized"
+                                                                            : L"D3D11 windowed / borderless");
+        if (settings.hdrMode == 1 && !nativeHdr.Status().empty())
+            row(L"HDR output") << wide(nativeHdr.Status());
+
+        heading(L"Video");
         const auto layout = Layout(description.format);
-        text << L"\n"
-             << (sourceCodec.empty() ? L"" : wide(sourceCodec) + L" -> ") << wide(layout.name) << L", " << layout.depth
-             << L" bit, "
-             << (layout.rgb                           ? L"RGB"
-                 : !layout.chromaX && !layout.chromaY ? L"4:4:4"
-                 : layout.chromaY                     ? L"4:2:0"
-                                                      : L"4:2:2");
-        if (statisticsFps > 0)
-            text << L"\nvideo " << std::setprecision(3) << statisticsFps << L" fps (says source filter)";
-        text << L"\n"
-             << description.width << L"x" << description.height << L" -> " << int(output.crop.x1 - output.crop.x0)
-             << L"x" << int(output.crop.y1 - output.crop.y0) << L", " << std::setprecision(2)
-             << double(description.aspectX > 0 ? description.aspectX : description.width) /
-                    (description.aspectY > 0 ? description.aspectY : description.height)
-             << L":1";
-        text << L"\nscale " << int(image.crop.x0) << L"," << int(image.crop.y0) << L"," << int(image.crop.x1) << L","
-             << int(image.crop.y1) << L" -> " << int(output.crop.x0) << L"," << int(output.crop.y0) << L","
-             << int(output.crop.x1) << L"," << int(output.crop.y1);
-        text << L"\ntouch window from inside";
-        const auto* chromaFilter =
-            options->params.plane_upscaler ? options->params.plane_upscaler : options->params.upscaler;
-        text << L"\nchroma > " << wide(chromaFilter ? chromaFilter->name : "bilinear");
-        const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
-                          output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
-        text << L"\nimage " << (down ? L"< " : L"> ")
-             << wide((down ? options->params.downscaler : options->params.upscaler)
-                         ? (down ? options->params.downscaler : options->params.upscaler)->name
-                         : "bilinear")
-             << ((output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
-                  output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0)
-                     ? L" (1:1, bypassed)"
-                     : L" (selected)");
-        if (period > 0)
-            text << L"\nvsync " << std::setprecision(2) << period / 1e4 << L"ms";
-        if (statisticsFps > 0)
-            text << (period > 0 ? L", frame " : L"\nframe ") << std::setprecision(2) << 1000 / statisticsFps << L"ms";
+        row(L"Source") << (sourceCodec.empty() ? L"" : wide(sourceCodec) + arrow) << wide(layout.name) << dot
+                       << layout.depth << L" bit "
+                       << (layout.rgb                           ? L"RGB"
+                           : !layout.chromaX && !layout.chromaY ? L"4:4:4"
+                           : layout.chromaY                     ? L"4:2:0"
+                                                                : L"4:2:2");
+        if (statisticsFps > 0 || period > 0)
+        {
+            auto& value = row(L"Timing");
+            if (statisticsFps > 0)
+                value << std::setprecision(3) << statisticsFps << L" fps (" << std::setprecision(2)
+                      << 1000 / statisticsFps << L" ms)";
+            if (period > 0)
+                value << (statisticsFps > 0 ? dot : L"") << L"vsync " << std::setprecision(2) << period / 1e4 << L" ms";
+        }
+        row(L"Size") << description.width << L"×" << description.height << arrow << int(output.crop.x1 - output.crop.x0)
+                     << L"×" << int(output.crop.y1 - output.crop.y0) << dot << std::setprecision(2)
+                     << double(description.aspectX > 0 ? description.aspectX : description.width) /
+                            (description.aspectY > 0 ? description.aspectY : description.height)
+                     << L":1";
+        row(L"Crop") << int(image.crop.x0) << L"," << int(image.crop.y0) << L"," << int(image.crop.x1) << L","
+                     << int(image.crop.y1) << arrow << int(output.crop.x0) << L"," << int(output.crop.y0) << L","
+                     << int(output.crop.x1) << L"," << int(output.crop.y1);
         const char* matrix =
             description.matrix == PL_COLOR_SYSTEM_BT_2020_NC || description.matrix == PL_COLOR_SYSTEM_BT_2020_C
                 ? "BT.2020"
@@ -1019,124 +1038,226 @@ struct PlaceboBackend::State
                    : p == PL_COLOR_PRIM_DISPLAY_P3 ? L"Display-P3"
                                                    : L"other/unknown";
         };
-        text << L"\nmatrix " << wide(matrix) << L" (says upstream)\nprimaries " << prim(description.color.primaries)
-             << L" -> " << prim(output.color.primaries);
-        const bool hdrSource = pl_color_space_is_hdr(&description.color);
-        AppendDolbyVisionStatus(text, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
-        if (hdrSource)
+        row(L"Color") << L"matrix " << wide(matrix) << dot << prim(description.color.primaries) << arrow
+                      << prim(output.color.primaries) << dot
+                      << (description.levels == PL_COLOR_LEVELS_LIMITED ? L"limited range"
+                          : description.levels == PL_COLOR_LEVELS_FULL  ? L"full range"
+                                                                        : L"unknown range");
+        {
+            // Dolby Vision status lines "Name: value" become rows; the
+            // processing state is green when active, yellow otherwise.
+            std::wostringstream dv;
+            AppendDolbyVisionStatus(
+                dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
+            std::wistringstream lines(dv.str());
+            for (std::wstring line; std::getline(lines, line);)
+            {
+                const auto colon = line.find(L": ");
+                if (colon == std::wstring::npos)
+                    continue;
+                const auto label = line.substr(0, colon), value = line.substr(colon + 2);
+                if (label == L"Dolby Vision")
+                    colored(L"Dolby Vision",
+                            value.find(L"processing active") != std::wstring::npos &&
+                                    value.find(L"not processed") == std::wstring::npos
+                                ? L'g'
+                                : L'y')
+                        << value;
+                else
+                    row(label == L"Source" ? L"Format" : label.c_str()) << value;
+            }
+        }
+        if (pl_color_space_is_hdr(&description.color))
         {
             const bool dovi = bool(image.repr.dovi),
                        plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
             if (!description.dvSource.present && !dovi)
-                text << L"\nHDR "
-                     << (plus                                             ? L"HDR10+"
-                         : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
-                                                                          : L"HDR10");
-            if (std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0)
-                text << (description.dvSource.present || dovi ? L"\nSource peak: " : L", ") << std::setprecision(0)
-                     << description.color.hdr.max_luma << L" nits";
+                row(L"HDR") << (plus ? L"HDR10+" : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG" : L"HDR10");
             pl_hdr_metadata measured = {};
-            if (pl_renderer_get_hdr_metadata(renderer, &measured))
-                text << L"\nmeasured frame " << std::setprecision(1)
-                     << pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, measured.max_pq_y) << L" nits";
+            const bool haveMeasured = pl_renderer_get_hdr_metadata(renderer, &measured);
+            if ((std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0) || haveMeasured)
+            {
+                auto& value = row(L"Peak");
+                if (std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0)
+                    value << std::setprecision(0) << description.color.hdr.max_luma << L" nits source";
+                if (haveMeasured)
+                    value << (description.color.hdr.max_luma > 0 ? dot : L"") << std::setprecision(1)
+                          << pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, measured.max_pq_y) << L" nits measured";
+            }
             if (!actualTone.empty() && actualTone != "n/a")
             {
-                text << L"\ntone mapping " << wide(actualTone);
+                auto& value = row(L"Tone mapping");
+                value << wide(actualTone);
                 if (std::isfinite(actualTarget) && actualTarget > 0)
-                    text << L"; target " << std::setprecision(0) << actualTarget << L" nits";
+                    value << arrow << std::setprecision(0) << actualTarget << L" nits";
             }
         }
-        text << L"\n"
-             << (description.levels == PL_COLOR_LEVELS_LIMITED ? L"limited range"
-                 : description.levels == PL_COLOR_LEVELS_FULL  ? L"full range"
-                                                               : L"unknown range")
-             << L" (says upstream)";
-        text << L"\ndeinterlacing "
-             << (image.field == PL_FIELD_NONE  ? L"off (progressive / not active)"
-                 : settings.deinterlacing == 2 ? L"Yadif"
-                 : settings.deinterlacing == 1 ? L"Bwdif"
-                                               : L"off (settings)");
+
+        heading(L"Processing");
+        const auto* chromaFilter =
+            options->params.plane_upscaler ? options->params.plane_upscaler : options->params.upscaler;
+        row(L"Chroma") << L"upscale" << dot << wide(chromaFilter ? chromaFilter->name : "bilinear");
+        const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
+                          output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
+        const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
+                          output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0;
+        row(L"Image") << (same   ? L"1:1 (scaler bypassed)"
+                          : down ? L"downscale"
+                                 : L"upscale")
+                      << (same ? L""
+                               : dot + wide((down ? options->params.downscaler : options->params.upscaler)
+                                                ? (down ? options->params.downscaler : options->params.upscaler)->name
+                                                : "bilinear"));
+        {
+            auto& value = row(L"Smooth motion");
+            if (mixing && settings.smoothMotion)
+                value << L"on (" << wide(options->params.frame_mixer ? options->params.frame_mixer->name : "none")
+                      << L")";
+            else
+                value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
+        }
+        row(L"Deinterlacing") << (image.field == PL_FIELD_NONE  ? L"off (progressive / not active)"
+                                  : settings.deinterlacing == 2 ? L"Yadif"
+                                  : settings.deinterlacing == 1 ? L"Bwdif"
+                                                                : L"off (settings)");
+        row(L"Debanding") << (settings.deband ? L"on" : L"off");
+        row(L"Sharpening") << L"adaptive sharpen "
+                           << (sharpenState == 1   ? L"on"
+                               : sharpenState == 2 ? L"bypassed"
+                                                   : L"off");
+        {
+            auto& value = row(L"RTX Video");
+            value << rtx.Status();
+            if (settings.rtxSuperResolution || settings.rtxHdr)
+                value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+        }
+        if (settings.blackBars.enabled)
+        {
+            const RECT r = blackBars.detector.Bounds(description.width, description.height);
+            auto& value = row(L"Black bars");
+            if (blackBars.failed)
+                value << L"analysis unavailable (uncropped)";
+            else if (!blackBars.detector.measured)
+                value << L"detecting";
+            else
+                value << L"L " << r.left << L", T " << r.top << L", R " << description.width - r.right << L", B "
+                      << description.height - r.bottom << L" px" << dot
+                      << (settings.blackBars.crop ? L"crop on" : L"detect only");
+        }
+        {
+            std::wstring shaders;
+            for (int id : settings.userShaders.order)
+                if (settings.userShaders.shaders[id].enabled)
+                    shaders += (shaders.empty() ? L"" : L", ") + std::wstring(ShaderCatalog[id].label);
+            if (!shaders.empty())
+                row(L"Shaders") << shaders;
+            if (!userShaderMessage.empty())
+                colored(L"Shaders", L'y') << userShaderMessage;
+        }
+        row(L"Profile") << (contentProfile.empty() ? L"Default" : contentProfile);
+        row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
+
+        heading(L"Performance");
+        // Time available per rendered picture: one refresh with Smooth Motion,
+        // otherwise one video frame (one field when deinterlacing).
+        const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
+                              : statisticsFps > 0 ? 1000 / statisticsFps / (image.field != PL_FIELD_NONE ? 2 : 1)
+                                                  : period / 1e4;
+        // Pictures lost in the peak's window (dropped, repeated or late). A
+        // slow picture the display queue absorbed is no visible problem, so
+        // the peak is coloured only when pictures were actually lost.
+        const uint64_t lost = uint64_t(statisticsDropped >= 0 ? DropTotal() : 0) +
+                              (presentation.haveCounters ? presentation.repeatedRefreshes + presentation.glitches : 0);
+        if (!lostHistory.empty() && lost < lostHistory.back().second)
+            lostHistory.clear(); // counters were reset
+        lostHistory.emplace_back(now, lost);
+        while (lostHistory.size() > 1 && now - lostHistory[1].first >= RenderPeakWindow)
+            lostHistory.pop_front();
+        const bool lostRecently = lost > lostHistory.front().second;
+        const auto render = [&](const wchar_t* label, bool maximum)
+        {
+            if (!renderCpu.count && !renderGpu.duration.count)
+                return;
+            double slowest = 0;
+            std::wostringstream value;
+            value.imbue(std::locale::classic());
+            value << std::fixed << std::setprecision(2);
+            if (renderCpu.count)
+            {
+                slowest = maximum ? renderCpu.Maximum(now) : renderCpu.Average();
+                value << slowest << L" ms CPU";
+            }
+            if (renderGpu.duration.count)
+            {
+                const double gpu = maximum ? renderGpu.duration.Maximum(now) : renderGpu.duration.Average();
+                slowest = std::max(slowest, gpu);
+                value << (renderCpu.count ? dot : L"") << gpu << L" ms GPU";
+            }
+            // CPU and GPU work overlap; the slower one must fit the budget.
+            wchar_t color = 0;
+            if (budget > 0)
+            {
+                const double load = 100 * slowest / budget;
+                const bool absorbed = maximum && !lostRecently;
+                color = absorbed ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : L'g';
+                value << dot << std::setprecision(0) << load << L"% of " << std::setprecision(2) << budget << L" ms"
+                      << (absorbed && load > 100 ? L", absorbed by queue"
+                          : absorbed             ? L""
+                          : load > 100           ? L", over budget"
+                          : load >= 80           ? L", near limit"
+                                                 : L"");
+            }
+            (color ? colored(label, color) : row(label)) << value.str();
+        };
+        render(L"Render", false);
+        render(L"Render peak 5s", true);
+        if (const auto* peak = renderProbe.Peak(now))
+        {
+            int first = 0, second = 1;
+            if (peak->ms[second] > peak->ms[first])
+                std::swap(first, second);
+            for (int i = 2; i < RenderProbe::Count; ++i)
+                if (peak->ms[i] > peak->ms[first])
+                {
+                    second = first;
+                    first = i;
+                }
+                else if (peak->ms[i] > peak->ms[second])
+                    second = i;
+            row(L"CPU peak work") << std::setprecision(2) << RenderProbe::Names[first] << L" " << peak->ms[first]
+                                  << L" ms" << dot << RenderProbe::Names[second] << L" " << peak->ms[second] << L" ms";
+        }
+        if (presentCpu.count)
+            row(L"Present") << std::setprecision(2) << presentCpu.Average() << L" ms" << dot << L"peak "
+                            << presentCpu.Maximum(now) << L" ms (CPU call)";
         if (presentation.feedback)
         {
-            text << L"\npresent queue ~" << presentation.pending;
+            auto& value = row(L"Queue");
+            value << presentation.pending;
             UINT latency = 0;
             ComPtr<IDXGIDevice1> dxgi;
             if (SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
                 SUCCEEDED(dxgi->GetMaximumFrameLatency(&latency)))
-                text << L" / " << latency << L" (DXGI pending / limit)";
+                value << L" / " << latency << L" (DXGI pending / limit)";
             else
-                text << L" (DXGI pending)";
+                value << L" (DXGI pending)";
         }
-        if (statisticsDropped >= 0 && presentation.haveCounters)
-            text << L"\ndrop/rep/glitch " << DropTotal() << L"/" << presentation.repeatedRefreshes << L"/"
-                 << presentation.glitches;
-        else
+        if (statisticsDropped >= 0 || presentation.haveCounters)
         {
+            // Only the counts that are not zero are coloured.
+            const auto drops = statisticsDropped >= 0 ? DropTotal() : 0;
+            const auto mark = [](bool problem, const wchar_t* code) { return problem ? code : L"\x02w"; };
+            auto& value = row(L"Drops");
             if (statisticsDropped >= 0)
-                text << L"\ndrop " << DropTotal();
+                value << mark(drops > 0, L"\x02r") << drops << L" dropped" << L"\x02w";
             if (presentation.haveCounters)
-                text << L"\nrep/glitch " << presentation.repeatedRefreshes << L"/" << presentation.glitches;
+                value << (statisticsDropped >= 0 ? dot : L"") << mark(presentation.repeatedRefreshes > 0, L"\x02y")
+                      << presentation.repeatedRefreshes << L" repeated (extra refresh)" << L"\x02w" << dot
+                      << mark(presentation.glitches > 0, L"\x02y") << presentation.glitches << L" late (>1 vsync)"
+                      << L"\x02w";
         }
-        text << L"\nDXGI timing " << presentation.confirmed << L" confirmed; " << presentation.resets << L" resets ("
-             << (presentation.timing ? L"active" : L"collecting") << L")";
-        text << L"\nrep: extra refreshes; glitch: late >1 vsync";
-        auto durations = [&](bool maximum)
-        {
-            if (!renderCpu.count && !renderGpu.duration.count && !presentCpu.count)
-                return;
-            text << (maximum ? L"\nmax stats (5s)" : L"\naverage stats") << std::setprecision(2);
-            if (renderCpu.count || renderGpu.duration.count)
-            {
-                text << L"\n  render ";
-                if (renderCpu.count)
-                    text << (maximum ? renderCpu.Maximum(now) : renderCpu.Average()) << L"ms (CPU)";
-                if (renderGpu.duration.count)
-                {
-                    if (renderCpu.count)
-                        text << L", ";
-                    text << (maximum ? renderGpu.duration.Maximum(now) : renderGpu.duration.Average()) << L"ms (GPU)";
-                }
-            }
-            if (presentCpu.count)
-                text << L"\n  present " << (maximum ? presentCpu.Maximum(now) : presentCpu.Average())
-                     << L"ms (CPU call)";
-        };
-        durations(false);
-        durations(true);
-        if (settings.hdrMode == 1 && !nativeHdr.Status().empty())
-            text << L"\n" << wide(nativeHdr.Status());
-        text << L"\ndebanding " << (settings.deband ? L"on" : L"off") << L"; adaptive sharpen "
-             << (sharpenState == 1   ? L"on"
-                 : sharpenState == 2 ? L"bypassed"
-                                     : L"off");
-        text << L"\nRTX VSR " << rtx.Status();
-        if (settings.rtxSuperResolution)
-            text << L"\nquality: NVIDIA driver; submitted " << rtx.Evaluations();
-        if (settings.blackBars.enabled)
-        {
-            const RECT r = blackBars.detector.Bounds(description.width, description.height);
-            text << L"\nblack bars ";
-            if (blackBars.failed)
-                text << L"analysis unavailable (uncropped)";
-            else if (!blackBars.detector.measured)
-                text << L"detecting";
-            else
-                text << L"L " << r.left << L", T " << r.top << L", R " << description.width - r.right << L", B "
-                     << description.height - r.bottom << L" px; "
-                     << (settings.blackBars.crop ? L"crop on" : L"detect only");
-        }
-        {
-            bool first = true;
-            for (int id : settings.userShaders.order)
-                if (settings.userShaders.shaders[id].enabled)
-                {
-                    text << (first ? L"\nshaders: " : L", ") << ShaderCatalog[id].label;
-                    first = false;
-                }
-            if (!userShaderMessage.empty())
-                text << L"\n" << userShaderMessage;
-        }
-        text << L"\ntransfer " << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory -> GPU upload");
+        row(L"DXGI timing") << presentation.confirmed << L" confirmed" << dot << presentation.resets << L" resets ("
+                            << (presentation.timing ? L"active" : L"collecting") << L")";
         statisticsText = text.str();
     }
 
@@ -1185,6 +1306,23 @@ struct PlaceboBackend::State
         return pl_color_space_is_hdr(&description.color) ? settings.sdrNits : PL_COLOR_SDR_WHITE;
     }
 
+    // Peak luminance Windows reports for the display in HDR mode, in nits; 0 if
+    // unknown or not in HDR mode. On some laptops it follows the brightness slider.
+    float DisplayPeak()
+    {
+        if (!swapchain)
+            return 0;
+        ComPtr<IDXGIOutput> output;
+        ComPtr<IDXGIOutput6> output6;
+        ComPtr<IDXGISwapChain> native;
+        native = OutputSwapchain();
+        DXGI_OUTPUT_DESC1 desc = {};
+        if (!native || FAILED(native->GetContainingOutput(&output)) || FAILED(output.As(&output6)) ||
+            FAILED(output6->GetDesc1(&desc)) || desc.ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+            return 0;
+        return std::isfinite(desc.MaxLuminance) && desc.MaxLuminance >= 80 ? desc.MaxLuminance : 0;
+    }
+
     bool HdrActive()
     {
         if (!swapchain)
@@ -1224,6 +1362,8 @@ struct PlaceboBackend::State
         if (!rendered)
             return E_FAIL;
         renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        renderProbe.Record(GetTickCount64(), renderCpu.last);
+        TraceRender(GetTickCount64());
         QueryPerformanceCounter(&begin);
         const HRESULT result = nativeSwapchain.Submit();
         QueryPerformanceCounter(&end);
@@ -1238,7 +1378,9 @@ struct PlaceboBackend::State
 
     bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
-        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars);
+        RenderProbe::Scope probe(renderProbe, showStatistics.load());
+        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars, &probe);
+        probe.Next(RenderProbe::Setup);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
         bool cropBars = autoZoom && blackBars.detector.measured;
 
@@ -1367,19 +1509,31 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
-        if (settings.rtxSuperResolution)
+        probe.Next(RenderProbe::Rtx);
+        // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
+        const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
+        if (settings.rtxSuperResolution || rtxHdr)
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
             if (rotation % 180)
                 std::swap(outW, outH);
-            auto current = rtx.Get(d3d, context.Get(), image, rtxKey, outW, outH, options->params);
+            auto current = rtx.Get(
+                d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
             for (int i = 0; ready && mixing && i < mixCount; ++i)
             {
-                auto mixed = rtx.Get(d3d, context.Get(), mixFrames[i], mixSignatures[i], outW, outH, options->params);
+                auto mixed = rtx.Get(d3d,
+                                     context.Get(),
+                                     mixFrames[i],
+                                     mixSignatures[i],
+                                     outW,
+                                     outH,
+                                     options->params,
+                                     settings.rtxSuperResolution,
+                                     rtxHdr);
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));
@@ -1392,9 +1546,23 @@ struct PlaceboBackend::State
                 if (mixing)
                     for (int i = 0; i < mixCount; ++i)
                         mixFrames[i] = rtxFrames[i + 1]->image;
+                // The driver maps to the brightness set in the NVIDIA app; treat
+                // its output as mastered for this display so it is not tone mapped.
+                auto display = [&](pl_frame& frame)
+                {
+                    if (!pl_color_space_is_hdr(&frame.color) || !rtxHdr)
+                        return;
+                    frame.color.hdr = {};
+                    frame.color.hdr.max_luma = target.color.hdr.max_luma > 0 ? target.color.hdr.max_luma : 1000;
+                    frame.color.hdr.min_luma = target.color.hdr.min_luma;
+                };
+                display(image);
+                for (int i = 0; mixing && i < mixCount; ++i)
+                    display(mixFrames[i]);
             }
         }
         // Apply after preprocessing, to the main image and every temporal sample.
+        probe.Next(RenderProbe::Hooks);
         // MPC-HC's SetFlip convention mirrors the source horizontally.
         auto transform = [&](pl_frame& frame)
         {
@@ -1406,14 +1574,21 @@ struct PlaceboBackend::State
         for (int i = 0; i < mixCount; ++i)
             transform(mixFrames[i]);
         pl_color_adjustment adjustment = pl_color_adjustment_neutral;
-        adjustment.saturation = settings.saturation;
-        adjustment.contrast = settings.contrast;
-        adjustment.brightness = settings.brightness;
-        adjustment.gamma = settings.gamma;
-        adjustment.hue = settings.hue;
-        adjustment.temperature = settings.temperature;
+        if (settings.colorAdjustment)
+        {
+            adjustment.saturation = settings.saturation;
+            adjustment.contrast = settings.contrast;
+            adjustment.brightness = settings.brightness;
+            adjustment.gamma = settings.gamma;
+            adjustment.hue = settings.hue;
+            adjustment.temperature = settings.temperature;
+        }
+        // SDR gamma processing: the picture is decoded as gamma 2.2 after
+        // this power on its signal, so its light follows the chosen gamma.
+        if (sdrGammaCurve)
+            adjustment.gamma *= 220.f / float(sdrGammaCurve);
         pl_render_params params = options->params;
-        params.color_adjustment = settings.colorAdjustment ? &adjustment : nullptr;
+        params.color_adjustment = settings.colorAdjustment || sdrGammaCurve ? &adjustment : nullptr;
         // Default preserves the established output-calibration stage. Manual
         // LUT types use libplacebo's actual color-mapping LUT semantics.
         if (!hdrOutput && colors && colors->lut && settings.extras.values[14] >= 0)
@@ -1442,7 +1617,7 @@ struct PlaceboBackend::State
                 sharpenState = 2;
         }
 
-        const pl_hook* hooks[ShaderCount + 4] = {};
+        const pl_hook* hooks[ShaderCount + 5] = {};
         int hookIds[ShaderCount] = {};
         int users = 0, count = 0;
         if (params.num_hooks)
@@ -1450,6 +1625,10 @@ struct PlaceboBackend::State
         tonalHook.settings = settings.tonal;
         if (ActiveTonal(settings.tonal) && pl_color_space_is_hdr(&image.color))
             hooks[count++] = &tonalHook.hook;
+        // A target LUT is applied before output hooks and already describes
+        // the display.
+        if (outputGamma != 1 && !target.lut)
+            hooks[count++] = outputGammaHook.Prepare(outputGamma, target.repr);
         const pl_hook* analysisHooks[2] = {};
         int analysisCount = 0;
         if (settings.imageAnalysis)
@@ -1482,15 +1661,16 @@ struct PlaceboBackend::State
                 userFailed[id] = false;
                 continue;
             }
-            if (ShaderCatalog[id].outputStage && target.color.transfer == PL_COLOR_TRC_LINEAR)
-            {
-                userShaderMessage = L"output-stage shaders bypassed for linear scRGB";
-                continue;
-            }
             if (PrepareUserShader(id))
             {
                 hooks[count++] = userHooks[id];
                 hookIds[users++] = id;
+                // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
+                // in linear light it overshoots into ringing.
+                const float source = pl_rect_w(image.crop) * pl_rect_h(image.crop),
+                            output = pl_rect_w(target.crop) * pl_rect_h(target.crop);
+                if (!strcmp(ShaderCatalog[id].file, "SSimDownscaler_RT.glsl") && std::abs(output) < std::abs(source))
+                    params.disable_linear_scaling = true;
             }
             else
                 userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
@@ -1567,6 +1747,7 @@ struct PlaceboBackend::State
         auto& overlayInfo = overlays[0];
         auto& part = parts[0];
 
+        probe.Next(RenderProbe::PlayerOverlay);
         if (painter)
         {
             const int w = target.planes[0].texture->params.w, h = target.planes[0].texture->params.h;
@@ -1596,9 +1777,17 @@ struct PlaceboBackend::State
             target.overlays = &overlayInfo;
             target.num_overlays = 1;
         }
-        if (showStatistics.load())
+        const bool statistics = showStatistics.load();
+        probe.Next(RenderProbe::StatisticsInfo);
+        // The overlay box keeps its largest size while shown; start over each
+        // time the statistics are switched on.
+        if (statistics && !statisticsShown)
+            statisticsBitmap.Reset();
+        statisticsShown = statistics;
+        if (statistics)
         {
             UpdateStatistics(target);
+            probe.Next(RenderProbe::StatisticsUpload);
             if (statisticsBitmap.Update(d3d->gpu,
                                         statisticsText,
                                         target.planes[0].texture->params.w,
@@ -1611,6 +1800,7 @@ struct PlaceboBackend::State
                 target.num_overlays = index + 1;
             }
         }
+        probe.Next(RenderProbe::Analysis);
         if (settings.imageAnalysis)
         {
             const int index = target.num_overlays;
@@ -1623,11 +1813,21 @@ struct PlaceboBackend::State
                 target.num_overlays = index + 1;
             }
         }
-        if (mixing && settings.smoothMotion)
+        probe.Next(RenderProbe::Draw);
+        pl_frame shown = image;
+        pl_frame gammaFrames[16];
+        if (sdrGammaCurve)
+            shown.color.transfer = PL_COLOR_TRC_GAMMA22;
+        if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
             for (size_t i = 0; i < static_cast<size_t>(mixCount); i++)
-                frames[i] = &mixFrames[i];
+            {
+                gammaFrames[i] = mixFrames[i];
+                if (sdrGammaCurve)
+                    gammaFrames[i].color.transfer = PL_COLOR_TRC_GAMMA22;
+                frames[i] = &gammaFrames[i];
+            }
             pl_frame_mix mix = {};
             mix.num_frames = mixCount;
             if (mix.num_frames == 2 && mixSignatures[0] == mixSignatures[1])
@@ -1638,6 +1838,8 @@ struct PlaceboBackend::State
                 signatures[i] =
                     mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
+                    (uint64_t(sdrGammaCurve) * 0xbf58476d1ce4e5b9ULL) ^
+                    (uint64_t(outputGamma * 1e6f) * 0x2545f4914f6cdd1dULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -1646,9 +1848,33 @@ struct PlaceboBackend::State
             mix.vsync_duration = mixDuration;
             if (!settings.scaling)
                 params.frame_mixer = &pl_filter_oversample;
+            // libplacebo reads the oversample threshold from its constant kernel,
+            // so leave out frames below the configured share here, weighting
+            // them exactly as libplacebo does: the visible part of the refresh.
+            double kept[16];
+            if (settings.motionThreshold > 0 && mix.num_frames > 1 && params.frame_mixer &&
+                params.frame_mixer->kernel == &pl_filter_function_oversample)
+            {
+                int count = 0;
+                for (int i = 0; i < mix.num_frames; i++)
+                {
+                    const double start = std::max(mixTimes[i], 0.),
+                                 end = std::min(i + 1 < mix.num_frames ? mixTimes[i + 1] : INFINITY, mixDuration);
+                    if (end > start && (end - start) / mixDuration < settings.motionThreshold)
+                        continue;
+                    frames[count] = frames[i];
+                    signatures[count] = signatures[i];
+                    kept[count++] = mixTimes[i];
+                }
+                if (count)
+                {
+                    mix.num_frames = count;
+                    mix.timestamps = kept;
+                }
+            }
             return renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); });
         }
-        return renderWithRecovery([&]() { return pl_render_image(renderer, &image, &target, &params); });
+        return renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); });
     }
 };
 
@@ -1862,12 +2088,21 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(settings))
         return E_INVALIDARG;
-    if (settings.hdrMode < 1 || settings.hdrMode > 2)
+    if (settings.hdrMode < 1 || settings.hdrMode > 3)
         return E_INVALIDARG;
     float radius = 0;
     if (settings.scaling && !ValidScaling(*settings.scaling, &radius))
         return E_INVALIDARG;
     if (settings.maximumFramesInFlight < 0 || settings.maximumFramesInFlight > 16)
+        return E_INVALIDARG;
+    if (settings.presentAhead < 0 || settings.presentAhead > 4)
+        return E_INVALIDARG;
+    if ((settings.displayGammaCurve != 0 && settings.displayGammaCurve != 1 &&
+         !ValidGammaCurve(settings.displayGammaCurve)) ||
+        (settings.sdrGammaCurve != 0 && !ValidGammaCurve(settings.sdrGammaCurve)) || settings.displayContrast < 0 ||
+        settings.displayContrast > 1000000 || settings.displayPrimaries < 0 || settings.displayPrimaries > 5)
+        return E_INVALIDARG;
+    if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
     if (!ValidHdrTuning(settings))
         return E_INVALIDARG;
@@ -2227,7 +2462,10 @@ HRESULT PlaceboBackend::Present()
     s.ApplyMeasurementReset();
     const auto due = s.presentationDue;
     const bool timed = s.presentationTimed;
+    const int lead = s.presentationLead;
+    s.stillPicture = !timed;
     s.presentationTimed = false;
+    s.presentationLead = 0;
     if (s.resizeHold)
         return S_FALSE;
     if (s.resizeResumed.exchange(false))
@@ -2237,6 +2475,8 @@ HRESULT PlaceboBackend::Present()
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
+    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
+        return S_FALSE;
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
     const bool nativeWanted =
         s.settings.hdrMode == 1 && s.settings.hdrPassthrough && pl_color_space_is_hdr(&s.image.color);
@@ -2261,8 +2501,7 @@ HRESULT PlaceboBackend::Present()
             return S_FALSE;
         if (s.swapchain)
             s.DestroySwapchain();
-        HRESULT result =
-            s.nativeSwapchain.Ensure(s.d3d, s.window, bounds.right, bounds.bottom, s.settings.maximumFramesInFlight);
+        HRESULT result = s.nativeSwapchain.Ensure(s.d3d, s.window, bounds.right, bounds.bottom, s.FramesInFlight());
         if (SUCCEEDED(result) && s.nativeHdr.Activate(monitor, s.image.color))
             return s.PresentNative(due, timed);
         s.failedNativeMonitor = monitor;
@@ -2295,25 +2534,93 @@ HRESULT PlaceboBackend::Present()
     }
     if (!pl_swapchain_resize(s.swapchain, &width, &height))
         return E_FAIL;
-    const bool hdr =
-        s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() && pl_color_space_is_hdr(&s.image.color);
+    // RTX Video HDR outputs HDR10 for SDR sources while Windows HDR is on.
+    const bool rtxHdr = s.settings.rtxHdr && s.HdrActive() && !pl_color_space_is_hdr(&s.image.color) &&
+                        s.rtx.HdrUsable() && s.image.num_planes;
+    const bool hdr = rtxHdr || (s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() &&
+                                pl_color_space_is_hdr(&s.image.color));
     // The swapchain hint selects the signal format, not the tone-map peak.
     // libplacebo 7.360.1 treats SDR hints above 203 nits as HDR and may select
     // PQ on 10-bit buffers. Keep SDR signalling fixed; apply the user's peak
     // only to the render target below, after its SDR transfer is established.
-    pl_color_space hint = hdr ? s.image.color : pl_color_space_srgb;
+    pl_color_space hint = rtxHdr ? pl_color_space_hdr10 : hdr ? s.image.color : pl_color_space_srgb;
+    if (rtxHdr)
+    {
+        const float peak = s.DisplayPeak();
+        hint.hdr.max_luma = peak > 0 ? peak : 1000;
+    }
     if (!hdr)
         hint.hdr.max_luma = PL_COLOR_SDR_WHITE;
-    if (hdr && s.settings.hdrMode != 1 && s.settings.hdrNits > 0)
-        hint.hdr.max_luma = s.settings.hdrNits;
+    if (hdr && s.settings.hdrMode == 3)
+    {
+        // HDR output with highlights rolled off to the display's peak: the
+        // target peak is HDR Target Peak, else the peak Windows reports now.
+        const float peak = s.settings.hdrNits > 0 ? s.settings.hdrNits : s.DisplayPeak();
+        hint.hdr.max_luma = peak > 0 ? peak : 1000;
+        hint.hdr.max_cll = hint.hdr.max_fall = 0;
+        hint.hdr.scene_max[0] = hint.hdr.scene_max[1] = hint.hdr.scene_max[2] = hint.hdr.scene_avg = 0;
+        hint.hdr.max_pq_y = hint.hdr.avg_pq_y = 0;
+        hint.hdr.ootf = {};
+    }
     pl_swapchain_colorspace_hint(s.swapchain, &hint);
     pl_swapchain_frame frame = {};
     if (!pl_swapchain_start_frame(s.swapchain, &frame))
         return E_FAIL;
     pl_frame target = {};
     pl_frame_from_swapchain(&target, &frame);
+    // A 16-bit float swapchain is scRGB (linear, 1.0 = 80 nits), and libplacebo
+    // writes SDR white at 203 nits. With Windows HDR off the desktop shows 1.0
+    // as the display's white and clips above it, so write linear SDR with white
+    // at 1.0 there.
+    if (target.color.transfer == PL_COLOR_TRC_SCRGB && !s.HdrActive())
+        target.color.transfer = PL_COLOR_TRC_LINEAR;
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
+    // Display gamma: HDR tone mapped to SDR is encoded for how the display
+    // decodes. SDR only changes with gamma processing, which converts it from
+    // the desired gamma to the display gamma; otherwise it stays as before.
+    // Only a plain sRGB target qualifies: linear 16-bit float and Windows HDR
+    // outputs have no display gamma to match.
+    // An ICC profile describes the display itself.
+    const bool sdrTarget = !hdr && target.color.transfer == PL_COLOR_TRC_SRGB && !s.settings.iccEnabled;
+    const bool hdrSource = pl_color_space_is_hdr(&s.image.color);
+    // A wide-gamut display shows the picture's colours correctly only when
+    // they are mapped into its gamut.
+    static constexpr pl_color_primaries DisplayPrimaries[] = {PL_COLOR_PRIM_UNKNOWN,
+                                                              PL_COLOR_PRIM_BT_601_525,
+                                                              PL_COLOR_PRIM_BT_601_625,
+                                                              PL_COLOR_PRIM_BT_2020,
+                                                              PL_COLOR_PRIM_DCI_P3,
+                                                              PL_COLOR_PRIM_DISPLAY_P3};
+    if (sdrTarget && s.settings.displayPrimaries > 0)
+        target.color.primaries = DisplayPrimaries[s.settings.displayPrimaries];
+    // A pure-power display gamma is encoded with the nearest of libplacebo's
+    // curves (1.8 to 2.8 in steps of 0.2), then raised to the exact gamma.
+    static constexpr pl_color_transfer PowerCurves[] = {PL_COLOR_TRC_GAMMA18,
+                                                        PL_COLOR_TRC_GAMMA20,
+                                                        PL_COLOR_TRC_GAMMA22,
+                                                        PL_COLOR_TRC_GAMMA24,
+                                                        PL_COLOR_TRC_GAMMA26,
+                                                        PL_COLOR_TRC_GAMMA28};
+    const int display = s.settings.displayGammaCurve;
+    if (sdrTarget && (hdrSource || s.settings.sdrGammaCurve > 0))
+    {
+        if (display == 1)
+            target.color.transfer = PL_COLOR_TRC_BT_1886;
+        else if (display >= 180)
+        {
+            const int nearest = std::clamp((display - 170) / 20, 0, 5);
+            target.color.transfer = PowerCurves[nearest];
+            s.outputGamma = float(180 + 20 * nearest) / float(display);
+        }
+    }
+    // BT.1886 follows the display's black point. Without a contrast it is an
+    // infinite-contrast display (identical to 2.4), not libplacebo's 1000:1.
+    if (target.color.transfer == PL_COLOR_TRC_BT_1886)
+        target.color.hdr.min_luma = s.settings.displayContrast > 0
+                                        ? target.color.hdr.max_luma / float(s.settings.displayContrast)
+                                        : PL_COLOR_HDR_BLACK;
+    s.sdrGammaCurve = sdrTarget && !hdrSource ? s.settings.sdrGammaCurve : 0;
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -2325,10 +2632,16 @@ HRESULT PlaceboBackend::Present()
     s.renderGpu.Begin(s.d3d->device, s.context.Get());
     QueryPerformanceCounter(&begin);
     const bool rendered = s.Render(target, hdr);
+    s.sdrGammaCurve = 0;
+    s.outputGamma = 1;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)
+    {
         s.renderCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        s.renderProbe.Record(GetTickCount64(), s.renderCpu.last);
+        s.TraceRender(GetTickCount64());
+    }
     const bool submitted = pl_swapchain_submit_frame(s.swapchain);
     if (!rendered || !submitted)
         return E_FAIL;
@@ -2388,7 +2701,8 @@ PlaceboBackend::RenderOffscreen(
     if (hdrTarget)
     {
         target.color = pl_color_space_hdr10;
-        target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : 1000;
+        const float display = s.settings.hdrMode == 3 ? s.DisplayPeak() : 0;
+        target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : display > 0 ? display : 1000;
     }
     bool ok = s.Render(target, hdrTarget, false, windowGeometry);
     rgba.resize(static_cast<size_t>(width) * height * format->texel_size);
@@ -2409,7 +2723,9 @@ void PlaceboBackend::Flush(bool preserveBlackBars)
         s.MeasurePresentation(0, false);
     s.presentation.Reset(false, true);
     s.presentationTimed = false;
+    s.backlog.Reset();
     s.renderCpu.Reset();
+    s.renderProbe.Reset();
     s.presentCpu.Reset();
     s.renderGpu.Reset();
     s.statisticsText.clear();
@@ -2599,6 +2915,13 @@ uint64_t PlaceboBackend::RtxFrames() const
     return state->rtx.Evaluations();
 }
 
+void PlaceboBackend::SetContentProfile(const std::wstring& label)
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    s.contentProfile = label;
+}
+
 void PlaceboBackend::SetSourceCodec(const std::string& codec)
 {
     auto& s = *state;
@@ -2636,13 +2959,35 @@ std::wstring PlaceboBackend::StatisticsText() const
     return s.statisticsText;
 }
 
-void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime)
+void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, int refreshLead)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
     s.presentationDue = due;
     s.presentationMediaTime = mediaTime;
     s.presentationTimed = running && due > 0;
+    s.presentationLead = refreshLead;
+}
+
+int PlaceboBackend::PresentAheadCeiling() const
+{
+    return state->presentCeiling;
+}
+
+bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    LARGE_INTEGER now = {}, frequency = {};
+    QueryPerformanceCounter(&now);
+    QueryPerformanceFrequency(&frequency);
+    if (!s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
+        now.QuadPart - s.lastSyncQpc > frequency.QuadPart / 2)
+        return false;
+    qpc = s.lastSyncQpc;
+    refresh = s.lastSyncRefresh;
+    period = s.measuredPeriod * frequency.QuadPart / 1e7;
+    return true;
 }
 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)

@@ -271,6 +271,25 @@ int wmain(int argc, wchar_t** argv)
         PlaceboSettings invalid;
         wcscpy_s(invalid.displayProfile, L"..\\other");
         Check(FAILED(SaveSettings(invalid)), "invalid profile key cannot write outside device root");
+        // Linked displays: saving one writes the same values to every display;
+        // unlinking keeps them and lets each change alone again.
+        Check(SUCCEEDED(DisplayProfiles::SetLinked(true)) && DisplayProfiles::Linked(), "link displays");
+        auto shared = LoadSettings(monitor.id);
+        shared.brightness = .42f;
+        shared.smoothMotion = TRUE;
+        Check(SUCCEEDED(SaveSettings(shared)), "save linked settings");
+        auto mirrored = LoadSettings(tv.id);
+        Check(mirrored.brightness == .42f && mirrored.smoothMotion && mirrored.displayProfile == tv.id,
+              "linked save reaches the other display under its own key");
+        auto linkedNew = Device(L"Linked display", L"test:linked");
+        Check(SUCCEEDED(EnsureDisplayProfiles({monitor, linkedNew}, a)), "discover display while linked");
+        Check(LoadSettings(linkedNew.id).brightness == .42f, "new display joins the linked settings");
+        Check(LoadSettings(monitor.id).brightness == .42f, "discovery while linked leaves the others alone");
+        Check(SUCCEEDED(DisplayProfiles::SetLinked(false)) && !DisplayProfiles::Linked(), "unlink displays");
+        mirrored.brightness = .1f;
+        Check(SUCCEEDED(SaveSettings(mirrored)), "save one display after unlinking");
+        Check(LoadSettings(monitor.id).brightness == .42f && LoadSettings(tv.id).brightness == .1f,
+              "unlinked displays keep the shared values and change alone");
         puts(
             "PASS display profiles: stable serial identity, path fallback, initial migration, all settings separated, factory defaults for new devices, reconnect, custom names, portable INI and key validation");
         return 0;

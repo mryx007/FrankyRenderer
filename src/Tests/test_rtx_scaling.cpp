@@ -130,6 +130,90 @@ int main()
                 scaling.Invalidate();
                 pl_tex_destroy(d3d->gpu, &input);
             }
+            {
+                // RTX Video HDR: an SDR source leaves the driver as HDR10, at
+                // the source size alone or upscaled together with VSR.
+                constexpr int w = 960, h = 540;
+                std::vector<float> pixels(w * h * 4);
+                for (int y = 0; y < h; ++y)
+                    for (int x = 0; x < w; ++x)
+                    {
+                        auto p = &pixels[(y * w + x) * 4];
+                        p[0] = p[1] = p[2] = float(x) / (w - 1);
+                        p[3] = 1;
+                    }
+                pl_tex_params texture = {};
+                texture.w = w;
+                texture.h = h;
+                texture.sampleable = true;
+                texture.format = pl_find_fmt(d3d->gpu, PL_FMT_FLOAT, 4, 32, 0, PL_FMT_CAP_SAMPLEABLE);
+                texture.initial_data = pixels.data();
+                auto input = pl_tex_create(d3d->gpu, &texture);
+                Require(input != nullptr, "SDR source GPU texture");
+                pl_frame source = {};
+                source.num_planes = 1;
+                source.planes[0].texture = input;
+                source.planes[0].components = 3;
+                for (int i = 0; i < 4; ++i)
+                    source.planes[0].component_mapping[i] = i < 3 ? i : -1;
+                source.crop = {0, 0, float(w), float(h)};
+                source.repr = pl_color_repr_rgb;
+                source.repr.bits.sample_depth = source.repr.bits.color_depth = 8;
+                source.color = pl_color_space_bt709;
+                for (const bool upscale : {false, true})
+                {
+                    auto processed = scaling.Get(d3d,
+                                                 context.Get(),
+                                                 source,
+                                                 upscale ? 201 : 200,
+                                                 1920,
+                                                 1080,
+                                                 pl_render_default_params,
+                                                 upscale,
+                                                 true);
+                    if (!processed)
+                        wprintf(L"RTX HDR status: %ls\n", scaling.Status().c_str());
+                    Require(bool(processed), "driver accepts the RTX Video HDR request");
+                    Require(processed->image.color.transfer == PL_COLOR_TRC_PQ &&
+                                processed->image.color.primaries == PL_COLOR_PRIM_BT_2020,
+                            "RTX Video HDR output is described as HDR10");
+                    D3D11_TEXTURE2D_DESC actual;
+                    processed->pixels->GetDesc(&actual);
+                    Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM &&
+                                int(actual.Width) == (upscale ? 1920 : w) && int(actual.Height) == (upscale ? 1080 : h),
+                            "RTX Video HDR output format and size");
+                    Require(scaling.Status().find(upscale ? L"Super Resolution + HDR" : L"(HDR)") != std::wstring::npos,
+                            "RTX Video HDR status");
+                    actual.Usage = D3D11_USAGE_STAGING;
+                    actual.BindFlags = actual.MiscFlags = 0;
+                    actual.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+                    Microsoft::WRL::ComPtr<ID3D11Texture2D> readback;
+                    Require(SUCCEEDED(d3d->device->CreateTexture2D(&actual, nullptr, &readback)), "RTX HDR readback");
+                    context->CopyResource(readback.Get(), processed->pixels.Get());
+                    D3D11_MAPPED_SUBRESOURCE mapped;
+                    Require(SUCCEEDED(context->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "RTX HDR map");
+                    const auto row = reinterpret_cast<const UINT*>(static_cast<const BYTE*>(mapped.pData) +
+                                                                   actual.Height / 2 * mapped.RowPitch);
+                    const auto nits = [&](UINT x)
+                    { return pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, float((row[x] >> 10) & 1023) / 1023.f); };
+                    const float dark = nits(actual.Width / 20), white = nits(actual.Width - 2);
+                    context->Unmap(readback.Get(), 0);
+                    printf("RTX Video HDR%s: dark %.1f nits, SDR white -> %.1f nits\n",
+                           upscale ? " + VSR" : "",
+                           dark,
+                           white);
+                    Require(white > 50 && white > dark * 4, "RTX Video HDR keeps the picture");
+                }
+                pl_frame hdrSource = source;
+                hdrSource.color = pl_color_space_hdr10;
+                auto passthrough =
+                    scaling.Get(d3d, context.Get(), hdrSource, 202, 1920, 1080, pl_render_default_params, true, true);
+                Require(bool(passthrough) && scaling.Status().find(L"HDR") == std::wstring::npos,
+                        "HDR sources get Super Resolution only");
+                passthrough.reset();
+                scaling.Invalidate();
+                pl_tex_destroy(d3d->gpu, &input);
+            }
             scaling.Reset();
             auto warpParams = pl_d3d11_default_params;
             warpParams.force_software = true;

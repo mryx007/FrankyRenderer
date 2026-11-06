@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/MotionTiming.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -75,6 +76,104 @@ int main()
     Check(MotionIntervalEnd(100000, 517083, 800000) == 517083, "large discontinuity is not bridged");
     Check(MotionIntervalEnd(100000, 517083, 90000) == 517083, "backward seek is not bridged");
     Check(MotionIntervalEnd(100000, 90000, 520000) == 90000, "invalid interval remains invalid");
+
+    // One hour at 120 Hz with the reference clock 100 ppm fast, exact and
+    // 100 ppm slow, plus clock conversion jitter of up to 0.4 refresh and
+    // readings two refreshes early.
+    struct Run
+    {
+        int surplus = 0, repeats = 0, widest = 0;
+    };
+
+    auto run = [](double ppm)
+    {
+        VsyncSlots slots;
+        Run result;
+        LONGLONG previous = 0;
+        bool first = true;
+        for (int tick = 0; tick < 120 * 3600; ++tick)
+        {
+            const double jitter = tick % 31 == 0 ? -2 : (static_cast<LONGLONG>(tick) * 7919 % 9 - 4) * .1;
+            LONGLONG slot = 0;
+            if (!slots.Assign(5000.3 + tick / (1 + ppm * 1e-6) + jitter, slot))
+            {
+                ++result.surplus;
+                continue;
+            }
+            // The first second settles an anchor taken from a single reading.
+            if (!first && tick >= 120)
+            {
+                result.repeats += int(slot - previous - 1);
+                result.widest = std::max(result.widest, int(slot - previous));
+            }
+            first = false;
+            previous = slot;
+        }
+        return result;
+    };
+    const auto fast = run(100), exact = run(0), slow = run(-100);
+    Check(fast.surplus >= 42 && fast.surplus <= 44 && !fast.repeats, "fast clock leaves out only surplus ticks");
+    Check(!exact.surplus && !exact.repeats, "jitter alone never leaves out or repeats a refresh");
+    Check(!slow.surplus && slow.repeats >= 42 && slow.repeats <= 44 && slow.widest == 2,
+          "slow clock repeats single refreshes only");
+    VsyncSlots slots;
+    LONGLONG slot = 0;
+    Check(slots.Assign(9000.2, slot) && slot == 9000 && slots.Assign(9001.1, slot) && slot == 9001,
+          "consecutive refreshes");
+    Check(slots.Assign(9000.0, slot) && slot == 9002 && slots.Assign(9005.1, slot) && slot == 9003,
+          "single readings refreshes off do not leave out or repeat");
+    Check(slots.Assign(9004.9, slot) && slot == 9004, "a few ticks shown outside the grid continue it");
+    Check(slots.Assign(9009.2, slot) && slot == 9009, "ticks dropped outside the grid anchor again");
+    Check(slots.Assign(4000.4, slot) && slot == 4000, "a backward seek anchors again");
+    Check(slots.Assign(4500.6, slot) && slot == 4501, "a forward jump anchors again");
+    printf("PASS display-synchronous refreshes: %d surplus (fast), %d repeats (slow), none with jitter alone\n",
+           fast.surplus,
+           slow.repeats);
+
+    // Presenting in advance: a tick every 8 ms, 125 per second.
+    PresentLead lead;
+    lead.Configure(0, 2);
+    ULONGLONG now = 1000;
+    for (int i = 0; i < 125 * 60; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 1, "automatic presents one refresh ahead while every tick is on time");
+    lead.Restart(now);
+    for (int i = 0; i < 300; ++i, now += 8)
+        lead.Tight(now);
+    Check(lead.Current() == 1, "tight ticks while playback starts or seeks do not add latency");
+    for (int i = 0; i < 125 * 60; ++i, now += 8)
+        lead.OnTime(now);
+    for (int i = 0; i < 600; ++i, now += 8)
+        if (i % 300 == 0)
+            lead.Tight(now);
+        else
+            lead.OnTime(now);
+    Check(lead.Current() == 1, "isolated tight ticks do not add latency");
+    for (int i = 0; i < 3; ++i, now += 100)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "a burst of tight ticks adds one refresh");
+    for (int i = 0; i < 20; ++i, now += 8)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "ticks tight while the queue fills do not raise again");
+    for (int i = 0; i < 5; ++i, now += 300)
+        lead.Tight(now);
+    Check(lead.Current() == 2, "the frame latency limit caps automatic");
+    for (int i = 0; i < 125 * 59; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 2, "less than a quiet minute keeps the lead");
+    for (int i = 0; i < 125 * 2; ++i, now += 8)
+        lead.OnTime(now);
+    Check(lead.Current() == 1, "a quiet minute gives the refresh back");
+    lead.Configure(3, 2);
+    Check(lead.Current() == 2, "a fixed value never exceeds what the queue allows");
+    lead.Configure(3, 4);
+    for (int i = 0; i < 10; ++i, now += 100)
+        lead.Tight(now);
+    Check(lead.Current() == 3, "a fixed value ignores tight ticks");
+    lead.Configure(0, 4);
+    Check(lead.Current() == 1, "automatic resumes where it was");
+    puts("PASS present in advance: automatic adds a refresh after bursts of tight ticks, gives it back after a quiet "
+         "minute, respects the frame latency limit and fixed values");
     puts(
         "PASS captured overlap, rounded film/50/59.94/60/120 fps, exact display grid, empty intervals, faster-source fallback, EOS and discontinuities");
 }

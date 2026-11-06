@@ -53,11 +53,14 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(lutPath);
     INI_FIELD(adaptiveSharpen);
     INI_FIELD(rtxSuperResolution);
+    INI_FIELD(rtxHdr);
     INI_FIELD(imageAnalysis);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
     INI_FIELD(outputLevels);
     INI_FIELD(displayDepth);
+    INI_FIELD(measuredQuality);
+    INI_FIELD(qualityStamp);
     INI_FIELD(peakDetect);
     INI_FIELD(peakSmoothing);
     INI_FIELD(sceneLow);
@@ -80,6 +83,12 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(allowDelayedPeak);
     INI_FIELD(hdrMode);
     INI_FIELD(maximumFramesInFlight);
+    INI_FIELD(presentAhead);
+    INI_FIELD(displayGammaCurve);
+    INI_FIELD(sdrGammaCurve);
+    INI_FIELD(displayContrast);
+    INI_FIELD(displayPrimaries);
+    INI_FIELD(motionThreshold);
     INI_FIELD(displayModeSwitch);
     INI_FIELD(displayModes);
     INI_FIELD(displayModeDelay);
@@ -341,6 +350,8 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.allowDelayedPeak})
         if (flag != FALSE && flag != TRUE)
             throw std::runtime_error("Boolean settings must be 0 or 1.");
+    // Files from before the added shaders list fewer chain slots.
+    CompleteShaderOrder(candidate.userShaders.order);
     NormalizeLegacyHdrSettings(candidate);
     if (FAILED(ValidateSettings(candidate)))
         throw std::runtime_error("Imported settings are outside the supported range.");

@@ -11,6 +11,7 @@
 #include <commctrl.h>
 #include "DirectShow/Include/FilterInterfaces.h"
 #include "DirectShow/Include/ISubRender11.h"
+#include "DirectShow/Include/SubRenderIntf.h"
 #include <atomic>
 #include <thread>
 #include <d3d11.h>
@@ -86,7 +87,7 @@ class TestPresenter final : public IUnknown
 
 static bool interlacedTest = false, bottomFirst = false, weaveTest = false, eosTest = false, yadifTest = false,
             forceBffTest = false, motionTest = false, sharpenTest = false;
-static bool flushRaceTest = false, rtxTest = false;
+static bool flushRaceTest = false, rtxTest = false, rtxHdrTest = false;
 static std::atomic<bool> blockSampleTime = false;
 static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
 static DXGI_FORMAT textureFormat = DXGI_FORMAT_P010;
@@ -240,6 +241,214 @@ class TextureSample final : public IMediaSample, public IMediaSampleD3D11
     STDMETHODIMP SetMediaTime(LONGLONG* a, LONGLONG* b) override
     {
         return sample->SetMediaTime(a, b);
+    }
+};
+
+// Behaves like XySubFilter: delivers inside RequestFrame, positions bitmaps
+// for the consumer's videoOutputRect and sends premultiplied BGRA pixels.
+class FakeSubFrame final : public ISubRenderFrame
+{
+    std::atomic<ULONG> refs = 1;
+    RECT output;
+    std::vector<BYTE> pixels;
+
+  public:
+    explicit FakeSubFrame(RECT rect) : output(rect)
+    {
+        const int w = (rect.right - rect.left) / 2, h = (rect.bottom - rect.top) / 2;
+        pixels.resize(size_t(w) * h * 4);
+        for (size_t i = 0; i < pixels.size(); i += 4)
+        {
+            pixels[i + 2] = 255; // red
+            pixels[i + 3] = 255;
+        }
+    }
+
+    STDMETHODIMP QueryInterface(REFIID id, void** out) override
+    {
+        if (!out)
+            return E_POINTER;
+        *out = nullptr;
+        if (id != IID_IUnknown && id != __uuidof(ISubRenderFrame))
+            return E_NOINTERFACE;
+        *out = static_cast<ISubRenderFrame*>(this);
+        AddRef();
+        return S_OK;
+    }
+
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return ++refs;
+    }
+
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        ULONG n = --refs;
+        if (!n)
+            delete this;
+        return n;
+    }
+
+    STDMETHODIMP GetOutputRect(RECT* rect) override
+    {
+        *rect = output;
+        return S_OK;
+    }
+
+    STDMETHODIMP GetClipRect(RECT* rect) override
+    {
+        *rect = output;
+        return S_OK;
+    }
+
+    STDMETHODIMP GetBitmapCount(int* count) override
+    {
+        *count = 1;
+        return S_OK;
+    }
+
+    STDMETHODIMP GetBitmap(int, ULONGLONG* id, POINT* position, SIZE* size, LPCVOID* data, int* pitch) override
+    {
+        const int w = (output.right - output.left) / 2, h = (output.bottom - output.top) / 2;
+        *id = 1;
+        *position = {output.left + w / 2, output.top + h / 2};
+        *size = {w, h};
+        *data = pixels.data();
+        *pitch = w * 4;
+        return S_OK;
+    }
+};
+
+class FakeSubProvider final : public ISubRenderProvider
+{
+    std::atomic<ULONG> refs = 1;
+
+  public:
+    ISubRenderConsumer* consumer = nullptr;
+    bool empty = false;
+    unsigned requests = 0;
+
+    STDMETHODIMP QueryInterface(REFIID id, void** out) override
+    {
+        if (!out)
+            return E_POINTER;
+        *out = nullptr;
+        if (id != IID_IUnknown && id != __uuidof(ISubRenderOptions) && id != __uuidof(ISubRenderProvider))
+            return E_NOINTERFACE;
+        *out = static_cast<ISubRenderProvider*>(this);
+        AddRef();
+        return S_OK;
+    }
+
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return ++refs;
+    }
+
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        ULONG n = --refs;
+        if (!n)
+            delete this;
+        return n;
+    }
+
+    STDMETHODIMP RequestFrame(REFERENCE_TIME start, REFERENCE_TIME stop, LPVOID context) override
+    {
+        ++requests;
+        RECT video = {};
+        if (FAILED(consumer->GetRect("videoOutputRect", &video)))
+            return E_FAIL;
+        if (empty)
+            return consumer->DeliverFrame(start, stop, context, nullptr);
+        ComPtr<FakeSubFrame> frame;
+        frame.Attach(new FakeSubFrame(video));
+        return consumer->DeliverFrame(start, stop, context, frame.Get());
+    }
+
+    STDMETHODIMP Disconnect() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP GetBool(LPCSTR, bool*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetInt(LPCSTR, int*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetSize(LPCSTR, SIZE*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetRect(LPCSTR, RECT*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetUlonglong(LPCSTR, ULONGLONG*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetDouble(LPCSTR, double*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetString(LPCSTR, LPWSTR*, int*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP GetBin(LPCSTR, LPVOID*, int*) override
+    {
+        return E_INVALIDARG;
+    }
+
+    STDMETHODIMP SetBool(LPCSTR, bool) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetInt(LPCSTR, int) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetSize(LPCSTR, SIZE) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetRect(LPCSTR, RECT) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetUlonglong(LPCSTR, ULONGLONG) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetDouble(LPCSTR, double) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetString(LPCSTR, LPWSTR, int) override
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP SetBin(LPCSTR, LPVOID, int) override
+    {
+        return E_NOTIMPL;
     }
 };
 
@@ -537,14 +746,18 @@ class PatternStream final : public CSourceStream
         hdr.white_point_y = .329;
         hdr.max_display_mastering_luminance = 1000;
         hdr.min_display_mastering_luminance = .0001;
-        hr = side->SetSideData(IID_MediaSideDataHDR, reinterpret_cast<const BYTE*>(&hdr), sizeof(hdr));
-        if (FAILED(hr))
-            return hr;
-        MediaSideDataHDRContentLightLevel light = {1200, 400};
-        hr = side->SetSideData(
-            IID_MediaSideDataHDRContentLightLevel, reinterpret_cast<const BYTE*>(&light), sizeof(light));
-        if (FAILED(hr))
-            return hr;
+        // The RTX Video HDR test needs an SDR source: no HDR metadata.
+        if (!rtxHdrTest)
+        {
+            hr = side->SetSideData(IID_MediaSideDataHDR, reinterpret_cast<const BYTE*>(&hdr), sizeof(hdr));
+            if (FAILED(hr))
+                return hr;
+            MediaSideDataHDRContentLightLevel light = {1200, 400};
+            hr = side->SetSideData(
+                IID_MediaSideDataHDRContentLightLevel, reinterpret_cast<const BYTE*>(&light), sizeof(light));
+            if (FAILED(hr))
+                return hr;
+        }
         if (textureFormat == DXGI_FORMAT_NV12)
         {
             std::fill_n(bytes, 64 * 64, static_cast<BYTE>(90));
@@ -874,6 +1087,8 @@ int wmain(int argc, wchar_t** argv)
             sharpenTest = true;
         if (wcscmp(argv[i], L"--motion") == 0)
             motionTest = true;
+        if (wcscmp(argv[i], L"--rtx-hdr") == 0)
+            rtxHdrTest = true;
         if (wcscmp(argv[i], L"--rtx") == 0)
             rtxTest = true;
         if (wcscmp(argv[i], L"--interlaced") == 0)
@@ -1020,6 +1235,7 @@ int wmain(int argc, wchar_t** argv)
     settings.adaptiveSharpen = sharpenTest;
     settings.smoothMotion = motionTest;
     settings.rtxSuperResolution = rtxTest;
+    settings.rtxHdr = rtxHdrTest;
     settings.autoHdr = FALSE;
     settings.deinterlacing = yadifTest ? 2 : 1;
     settings.fieldOverride = forceBffTest ? 2 : 0;
@@ -1217,6 +1433,20 @@ int wmain(int argc, wchar_t** argv)
             ExitProcess(1);
         }
         printf("PASS RTX DirectShow driver path: submitted=%lld\n", processed);
+    }
+    if (rtxHdrTest)
+    {
+        // SDR test video with Windows HDR on: the driver converts every frame.
+        __int64 processed = 0;
+        Check(hostConfig->Flt_GetInt64("placeboStatsRtxFrames", &processed), "RTX HDR processing counter");
+        if (processed <= 0)
+        {
+            printf("FAIL RTX Video HDR DirectShow path (needs Windows HDR on): counter=%lld\n", processed);
+            ExitProcess(1);
+        }
+        printf("PASS RTX Video HDR DirectShow path: submitted=%lld\n", processed);
+        control->Stop();
+        return 0;
     }
     if (startupTest)
     {
@@ -1626,6 +1856,55 @@ int wmain(int argc, wchar_t** argv)
                probe->drawn);
         return 5;
     }
+    {
+        // XySubFilter-style subtitle renderer together with the player's own subtitles.
+        ComPtr<ISubRenderConsumer2> consumer;
+        Check(renderer.As(&consumer), "subtitle consumer interface");
+        ULONG merit = 0;
+        LPWSTR name = nullptr;
+        Check(consumer->GetMerit(&merit), "subtitle consumer merit");
+        Check(consumer->GetString("name", &name, nullptr), "subtitle consumer name");
+        const bool named = name && !wcscmp(name, L"FrankyRenderer");
+        LocalFree(name);
+        ComPtr<FakeSubProvider> provider;
+        provider.Attach(new FakeSubProvider);
+        provider->consumer = consumer.Get();
+        Check(consumer->Connect(provider.Get()), "connect subtitle renderer");
+        Check(config->ReadPixels(64, 64, color.data(), color.size()), "subtitle renderer pixels");
+        const size_t corner = (2 * 64 + 2) * 4;
+        if (merit != 0x00040000 || !named || !provider->requests || color[center] < 253 || color[center + 1] > 2 ||
+            color[center + 2] > 2 || color[corner] > 2 || color[corner + 1] < 253)
+        {
+            printf("FAIL subtitle renderer with player subtitles: center=%u/%u/%u corner=%u/%u/%u requests=%u\n",
+                   color[center],
+                   color[center + 1],
+                   color[center + 2],
+                   color[corner],
+                   color[corner + 1],
+                   color[corner + 2],
+                   provider->requests);
+            return 8;
+        }
+        provider->empty = true;
+        probe->empty = true;
+        Check(config->ReadPixels(64, 64, color.data(), color.size()), "empty subtitle renderer frame");
+        if (color != gray)
+        {
+            puts("FAIL empty subtitle renderer frame changed video pixels");
+            return 9;
+        }
+        provider->empty = false;
+        Check(consumer->Disconnect(), "disconnect subtitle renderer");
+        Check(config->ReadPixels(64, 64, color.data(), color.size()), "disconnected subtitle renderer");
+        if (color != gray)
+        {
+            puts("FAIL subtitle renderer pixels remained after disconnect");
+            return 10;
+        }
+        probe->empty = false;
+        puts("PASS subtitle renderer (XySubFilter interface): bitmap placement, shared with player subtitles, "
+             "empty frame and disconnect");
+    }
     probe->empty = true;
     Check(config->ReadPixels(64, 64, color.data(), color.size()), "MPC-BE expired subtitle keeps video");
     if (color != gray)
@@ -1647,6 +1926,33 @@ int wmain(int argc, wchar_t** argv)
         return 7;
     }
     printf("PASS DirectShow subtitle callback device, composed pixels and detach\n");
+    {
+        // Subtitle renderer alone, as with the player's own subtitles switched off.
+        ComPtr<ISubRenderConsumer2> consumer;
+        Check(renderer.As(&consumer), "subtitle consumer interface");
+        ComPtr<FakeSubProvider> provider;
+        provider.Attach(new FakeSubProvider);
+        provider->consumer = consumer.Get();
+        Check(consumer->Connect(provider.Get()), "reconnect subtitle renderer");
+        Check(config->ReadPixels(64, 64, color.data(), color.size()), "subtitle renderer alone");
+        const size_t middle = (32 * 64 + 32) * 4, corner = (2 * 64 + 2) * 4;
+        const bool red = color[middle] > 252 && color[middle + 1] < 3 && color[middle + 2] < 3;
+        const bool video = std::abs(int(color[corner]) - int(gray[corner])) < 3 &&
+                           std::abs(int(color[corner + 1]) - int(gray[corner + 1])) < 3;
+        Check(consumer->Disconnect(), "disconnect subtitle renderer");
+        if (!red || !video)
+        {
+            printf("FAIL subtitle renderer alone: center=%u/%u/%u corner=%u/%u/%u\n",
+                   color[middle],
+                   color[middle + 1],
+                   color[middle + 2],
+                   color[corner],
+                   color[corner + 1],
+                   color[corner + 2]);
+            return 11;
+        }
+        puts("PASS subtitle renderer alone draws its bitmap over the video");
+    }
     {
         PlaceboSettings original;
         Check(config->GetSettings(&original), "analysis baseline settings");

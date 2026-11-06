@@ -7,10 +7,13 @@
 #include <d3d11.h>
 #include "DirectShow/Include/ID3DVideoMemoryConfiguration.h"
 #include "DirectShow/Include/ISubRender11.h"
+#include "Renderer/XySubConsumer.h"
 #include "DirectShow/Include/FilterInterfaces.h"
 #include "DirectShow/Include/FilterInterfacesImpl.h"
 #include "Renderer/MediaFormat.h"
+#include "Renderer/MotionTiming.h"
 #include "Settings/Settings.h"
+#include "Settings/ContentProfiles.h"
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
@@ -108,6 +111,7 @@ class Renderer final : public CBaseVideoRenderer,
                        public IAMFilterMiscFlags,
                        public ISpecifyPropertyPages,
                        public ISubRender11,
+                       public ISubRenderConsumer2,
                        public IPlaceboSettings,
                        public IPlaceboDiagnostics,
                        public CExFilterConfigImpl
@@ -133,6 +137,13 @@ class Renderer final : public CBaseVideoRenderer,
     RECT source = {}, target = {};
     REFERENCE_TIME segment = 0;
     std::atomic<REFERENCE_TIME> frameStart = 0, frameStop = 0, frameDuration = 0;
+    // Player subtitles (ISubRender11) and a subtitle renderer such as
+    // XySubFilter (ISubRenderConsumer) share the overlay; both may be active.
+    std::mutex overlayLock;
+    PlaceboBackend::OverlayPainter hostSubtitles;
+    std::shared_ptr<XySubBridge> xySub = std::make_shared<XySubBridge>();
+    bool xySubInstalled = false;
+    void InstallSubtitleOverlay();
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;
@@ -156,6 +167,21 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<bool> smoothEnabled = false;
     std::atomic<double> motionPeriod = 0;
     std::atomic<bool> refreshDirty = true;
+    // Display-synchronous Smooth Motion; the streaming thread owns the slots,
+    // state changes only request a fresh anchor.
+    VsyncSlots vsyncSlots;
+    std::atomic<bool> vsyncReanchor = true;
+    uint64_t surplusTicks = 0;
+    unsigned lateTicks = 0;
+    HANDLE refreshTimer = nullptr;
+    PresentLead presentLead;
+    std::atomic<int> presentAheadSetting = 0;
+    int traceLead = 0;
+    unsigned traceTight = 0;
+    double traceMargin = 1e9;
+    LONGLONG traceSlot = 0;
+    uint64_t tracePhaseAt = 0;
+    double tracePhaseLow = 1e9, tracePhaseHigh = -1e9, traceOffsetLow = 1e9, traceOffsetHigh = -1e9;
     HMONITOR motionMonitor = nullptr;
     std::vector<QueuedVideoFrame> motionQueue, motionPast;
     std::atomic<float> motionRadius = 0;
@@ -172,6 +198,20 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT PrepareWindow();
     std::atomic<HMONITOR> profileMonitor = nullptr;
     HRESULT UpdateDisplayProfile(bool refresh = false);
+    // Content profile for the playing file (by folder, or previewed by the menu);
+    // `settings` stays the normal settings, the backend and Smooth Motion use
+    // Effective(settings).
+    ContentProfiles::Profile contentProfile;
+
+    PlaceboSettings Effective(const PlaceboSettings& base) const
+    {
+        return ContentProfiles::Apply(base, contentProfile);
+    }
+
+    std::wstring contentPath;
+    void UpdateMotionSettings();
+    void UpdateContentProfile(IPin* peer);
+    bool SelectContentProfile(const wchar_t* display);
 
     // Display mode switching in fullscreen. The window thread owns the switcher;
     // other threads publish the active profile's list and request a check.
@@ -226,6 +266,8 @@ class Renderer final : public CBaseVideoRenderer,
     // during active playback is left to the next scheduled frame.
     std::atomic<uint64_t> lastTimedPresent = 0;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
+    HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    bool WaitForQpc(int64_t until, int64_t deadline);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
     STDMETHODIMP Stop() override;
@@ -234,6 +276,28 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT OnStartStreaming() override;
     STDMETHODIMP GetPages(CAUUID*) override;
     STDMETHODIMP SetCallback11(ISubRender11Callback*) override;
+    // ISubRenderConsumer2 (SubRenderIntf.h)
+    STDMETHODIMP GetBool(LPCSTR, bool*) override;
+    STDMETHODIMP GetInt(LPCSTR, int*) override;
+    STDMETHODIMP GetSize(LPCSTR, SIZE*) override;
+    STDMETHODIMP GetRect(LPCSTR, RECT*) override;
+    STDMETHODIMP GetUlonglong(LPCSTR, ULONGLONG*) override;
+    STDMETHODIMP GetDouble(LPCSTR, double*) override;
+    STDMETHODIMP GetString(LPCSTR, LPWSTR*, int*) override;
+    STDMETHODIMP GetBin(LPCSTR, LPVOID*, int*) override;
+    STDMETHODIMP SetBool(LPCSTR, bool) override;
+    STDMETHODIMP SetInt(LPCSTR, int) override;
+    STDMETHODIMP SetSize(LPCSTR, SIZE) override;
+    STDMETHODIMP SetRect(LPCSTR, RECT) override;
+    STDMETHODIMP SetUlonglong(LPCSTR, ULONGLONG) override;
+    STDMETHODIMP SetDouble(LPCSTR, double) override;
+    STDMETHODIMP SetString(LPCSTR, LPWSTR, int) override;
+    STDMETHODIMP SetBin(LPCSTR, LPVOID, int) override;
+    STDMETHODIMP GetMerit(ULONG*) override;
+    STDMETHODIMP Connect(ISubRenderProvider*) override;
+    STDMETHODIMP Disconnect() override;
+    STDMETHODIMP DeliverFrame(REFERENCE_TIME, REFERENCE_TIME, LPVOID, ISubRenderFrame*) override;
+    STDMETHODIMP Clear(REFERENCE_TIME) override;
     STDMETHODIMP GetSettings(PlaceboSettings*) override;
     STDMETHODIMP SetSettings(const PlaceboSettings*) override;
     STDMETHODIMP GetStatus(PlaceboStatus*) override;

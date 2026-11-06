@@ -793,9 +793,7 @@ static PlaceboSettings InitialSettings()
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
-    smoothEnabled = !!settings.smoothMotion;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     Trace("Renderer created; public DirectShow/libplacebo implementation");
     *hr = backend.SetSettings(BackendSettings(settings));
     if (FAILED(*hr) && (settings.iccEnabled || settings.lutEnabled))
@@ -831,10 +829,22 @@ Renderer::~Renderer()
             modePause->Cancel();
     }
     SetPreviewed(nullptr);
+    if (refreshTimer)
+        CloseHandle(refreshTimer);
     Trace("Renderer destruction begin; rendered=%llu hardware=%llu last=%08lX",
           status.rendered,
           status.hardwareFrames,
           static_cast<unsigned long>(status.lastResult));
+    // A subtitle renderer must drop its consumer before this object goes away.
+    if (auto provider = xySub->Disconnect())
+    {
+        provider->Disconnect();
+        Trace("Subtitle renderer disconnected");
+    }
+    {
+        std::lock_guard guard(overlayLock);
+        hostSubtitles = {};
+    }
     backend.SetOverlayPainter({});
     Trace("Renderer subtitle bridge released");
     const HWND video = window ? window->GetWindowHWND() : nullptr;
@@ -889,6 +899,8 @@ STDMETHODIMP Renderer::NonDelegatingQueryInterface(REFIID id, void** out)
         return GetInterface(static_cast<ISpecifyPropertyPages*>(this), out);
     if (id == __uuidof(ISubRender11))
         return GetInterface(static_cast<ISubRender11*>(this), out);
+    if (id == __uuidof(ISubRenderConsumer2) || id == __uuidof(ISubRenderConsumer) || id == __uuidof(ISubRenderOptions))
+        return GetInterface(static_cast<ISubRenderConsumer2*>(this), out);
     if (id == __uuidof(IPlaceboSettings))
         return GetInterface(static_cast<IPlaceboSettings*>(this), out);
     if (id == __uuidof(IPlaceboDiagnostics))
@@ -1005,6 +1017,7 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
 
 void Renderer::ResetFields(bool preserveBlackBars, bool preserveVideo)
 {
+    vsyncReanchor = true;
     pending = {};
     previous = {};
     followingQueued = {};
@@ -1412,14 +1425,160 @@ HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* star
     const HRESULT hr = CBaseVideoRenderer::ShouldDrawSampleNow(sample, start, stop);
     REFERENCE_TIME now = 0;
     if (hr != E_FAIL || !m_pClock || FAILED(m_pClock->GetTime(&now)))
-        return hr;
+        return ScheduleOnRefresh(sample, start, stop, hr);
     const REFERENCE_TIME late = now - m_tStart - *start;
     const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * (*stop - *start), 250000);
     if (late > limit)
-        return hr;
+        return ScheduleOnRefresh(sample, start, stop, hr);
     // The base class marked a drop; keep its next decision on the normal path.
     m_nNormal = 0;
-    return S_OK;
+    return ScheduleOnRefresh(sample, start, stop, S_OK);
+}
+
+bool Renderer::WaitForQpc(int64_t until, int64_t deadline)
+{
+    LARGE_INTEGER now = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&now);
+    if (now.QuadPart >= deadline)
+        return false;
+    // Bounded: a stale target must never hold up the stream.
+    if (until <= now.QuadPart || until - now.QuadPart > frequency.QuadPart / 20)
+        return true;
+    if (!refreshTimer)
+        refreshTimer =
+            CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    const int64_t margin = frequency.QuadPart / 2000;
+    if (refreshTimer && until - now.QuadPart > margin)
+    {
+        LARGE_INTEGER due = {};
+        due.QuadPart = -static_cast<LONGLONG>(double(until - margin - now.QuadPart) * 1e7 / frequency.QuadPart);
+        if (SetWaitableTimer(refreshTimer, &due, 0, nullptr, nullptr, FALSE))
+            WaitForSingleObject(refreshTimer, 100);
+    }
+    do
+    {
+        YieldProcessor();
+        QueryPerformanceCounter(&now);
+    } while (now.QuadPart < until);
+    return true;
+}
+
+HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop, HRESULT decided)
+{
+    ComPtr<IMediaSample> fieldInterface;
+    sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
+    auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
+    if (vsyncReanchor.exchange(false))
+    {
+        vsyncSlots.Reset();
+        presentLead.Restart(GetTickCount64());
+    }
+    REFERENCE_TIME wanted = 0, until = 0, clock = 0;
+    int64_t syncQpc = 0;
+    uint32_t syncRefresh = 0;
+    double period = 0;
+    // Without feedback (a repaint can interrupt DXGI statistics briefly) the
+    // tick follows the reference clock; the slots continue once it returns.
+    if (decided == E_FAIL || !field || !field->motion || m_State != State_Running ||
+        FAILED(sample->GetTime(&wanted, &until)) || !backend.VsyncGrid(syncQpc, syncRefresh, period))
+        return decided;
+    LARGE_INTEGER before = {}, after = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&before);
+    if (FAILED(m_pClock->GetTime(&clock)))
+        return decided;
+    QueryPerformanceCounter(&after);
+    const double qpcNow = (double(before.QuadPart) + double(after.QuadPart)) / 2;
+    const double streamNow = double(clock - m_tStart), perUnit = frequency.QuadPart / 1e7;
+    // The refresh this tick belongs on, from its own time stamp.
+    const double dueQpc = qpcNow + (double(wanted) - streamNow) * perUnit;
+    LONGLONG slot = 0;
+    const double position = syncRefresh + (dueQpc - double(syncQpc)) / period;
+    if (!vsyncSlots.Assign(position, slot))
+    {
+        field->surplus = true;
+        ++surplusTicks;
+        Trace("Smooth Motion tick surplus at stream %lld ms: reference clock ahead of the display (total %llu)",
+              static_cast<long long>(wanted / 10000),
+              static_cast<unsigned long long>(surplusTicks));
+        return S_OK;
+    }
+    if (TraceEnabled())
+    {
+        // Opt-in: the reading behind each repeated refresh and phase extremes.
+        const double offset = position - double(slot);
+        tracePhaseLow = std::min(tracePhaseLow, vsyncSlots.Phase());
+        tracePhaseHigh = std::max(tracePhaseHigh, vsyncSlots.Phase());
+        traceOffsetLow = std::min(traceOffsetLow, offset);
+        traceOffsetHigh = std::max(traceOffsetHigh, offset);
+        if (traceSlot && slot > traceSlot + 1)
+            Trace("Smooth Motion refresh repeated at stream %lld ms: reference clock behind the display",
+                  static_cast<long long>(wanted / 10000));
+        traceSlot = slot;
+        const auto now = GetTickCount64();
+        if (now - tracePhaseAt >= 10000)
+        {
+            Trace("Smooth Motion phase %.2f..%.2f, single readings %.2f..%.2f refreshes, %u ticks after their "
+                  "planned present (least %.1f ms before their refresh)",
+                  tracePhaseLow,
+                  tracePhaseHigh,
+                  traceOffsetLow,
+                  traceOffsetHigh,
+                  traceTight,
+                  traceTight ? traceMargin : 0.);
+            traceTight = 0;
+            traceMargin = 1e9;
+            tracePhaseAt = now;
+            tracePhaseLow = traceOffsetLow = 1e9;
+            tracePhaseHigh = traceOffsetHigh = -1e9;
+        }
+    }
+    // Present the configured number of refreshes ahead of the tick's refresh.
+    const auto tickNow = GetTickCount64();
+    presentLead.Configure(presentAheadSetting, backend.PresentAheadCeiling());
+    const int lead = presentLead.Current();
+    if (lead != traceLead)
+    {
+        Trace("Smooth Motion presents %d refresh(es) in advance", lead);
+        traceLead = lead;
+    }
+    const double refreshQpc = double(syncQpc) + double(slot - LONGLONG(syncRefresh)) * period;
+    double presentQpc = refreshQpc - lead * period;
+    // A tick arriving after its refresh has passed would queue behind the
+    // next ones and leave every later tick a refresh behind. Leave it out,
+    // unless ticks keep arriving late: then show them rather than freeze.
+    if (refreshQpc < qpcNow && ++lateTicks <= 12)
+    {
+        field->surplus = true;
+        presentLead.Tight(tickNow);
+        Trace("Smooth Motion tick left out at stream %lld ms: arrived %.1f ms after its refresh",
+              static_cast<long long>(wanted / 10000),
+              (qpcNow - refreshQpc) / frequency.QuadPart * 1e3);
+        return S_OK;
+    }
+    lateTicks = 0;
+    // Only ticks that miss their refresh (left out above or after the wait)
+    // raise the lead. Arriving after the planned present is routine: the
+    // first tick of each new picture follows its upload and still has
+    // milliseconds to spare before its refresh.
+    presentLead.OnTime(tickNow);
+    if (presentQpc < qpcNow)
+    {
+        ++traceTight;
+        traceMargin = (std::min)(traceMargin, (refreshQpc - qpcNow) / frequency.QuadPart * 1e3);
+    }
+    field->refreshLocked = true;
+    field->lead = lead;
+    field->presentQpc = static_cast<int64_t>(presentQpc);
+    field->deadlineQpc = static_cast<int64_t>(refreshQpc);
+    // The reference clock wakes this thread with up to a refresh of jitter;
+    // wake early and meet the refresh on the performance counter instead.
+    presentQpc -= 1.5 * period;
+    const auto target = static_cast<REFERENCE_TIME>(std::llround(streamNow + (presentQpc - qpcNow) / perUnit));
+    *start = target;
+    *stop = target + static_cast<REFERENCE_TIME>(std::llround(period / perUnit));
+    return target > streamNow ? S_FALSE : S_OK;
 }
 
 void Renderer::OnReceiveFirstSample(IMediaSample* sample)
@@ -1453,10 +1612,15 @@ bool Renderer::LookupFileMetadata(IMediaSample* sample, bool hdr, FileMetadata& 
     ComPtr<IPin> upstream;
     m_pInputPin->ConnectedTo(&upstream);
     REFERENCE_TIME base = 0;
+    bool deep = false;
     {
         CAutoLock render(&m_RendererLock);
         base = segment;
+        deep = Layout(format.frame.format).depth > 8;
     }
+    // 8-bit SDR pictures carry neither Dolby Vision nor HDR: leave the file alone.
+    if (!deep && !hdr)
+        return false;
     const bool decoderDovi = HasDoviSideData(sample);
     if (!decoderDovi)
         dv.SingleLayerMetadata(m_pGraph, upstream.Get(), start, base, out.dovi);
@@ -1498,6 +1662,9 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     ComPtr<IMediaSample> fieldInterface;
     sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
     auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
+    // Its display refresh already holds the previous tick.
+    if (field && field->surplus)
+        return S_OK;
     VideoFrame frame = field ? field->frame.frame : format.frame;
     ComPtr<IDvLayerSample> layered;
     if (SUCCEEDED(sample->QueryInterface(IID_PPV_ARGS(&layered))))
@@ -1641,10 +1808,20 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     }
     if (sample->IsDiscontinuity() == S_OK)
         backend.ResetPresentationMeasurement();
-    backend.SetPresentationTiming(dueQpc, m_State == State_Running, start);
+    backend.SetPresentationTiming(
+        dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
+    // A refresh-locked tick that woke after its refresh would queue behind
+    // the next ones; its refresh shows the previous picture anyway.
+    if (SUCCEEDED(hr) && field && field->refreshLocked && !WaitForQpc(field->presentQpc, field->deadlineQpc))
+    {
+        presentLead.Tight(GetTickCount64());
+        Trace("Smooth Motion tick left out at stream %lld ms: woke after its refresh",
+              static_cast<long long>(start / 10000));
+        return S_OK;
+    }
     if (SUCCEEDED(hr))
         hr = backend.Present();
     if (hr == S_OK && m_State == State_Running)
@@ -1860,6 +2037,7 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     Trace("Renderer run begin start=%lld", start);
     const bool external = ExternalStateChange();
     backend.ResetPresentationMeasurement();
+    vsyncReanchor = true;
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
@@ -1880,6 +2058,7 @@ STDMETHODIMP Renderer::Pause()
     Trace("Renderer pause begin");
     ExternalStateChange();
     backend.ResetPresentationMeasurement();
+    vsyncReanchor = true;
     // Stop and disconnect cancel waiting DV work. A new streaming run starts
     // here, not at Run: the decoder already delivers the preroll while paused,
     // and a still-cancelled processor would silently swallow those samples.
@@ -1905,6 +2084,7 @@ HRESULT Renderer::OnStartStreaming()
     if (input && SUCCEEDED(input->ConnectedTo(&peer)))
         backend.SetSourceCodec(SourceCodecFromOutput(peer.Get()));
     dv.RefreshSource(m_pGraph, peer.Get());
+    UpdateContentProfile(peer.Get());
     dv.Resume();
     int rawDrops = 0;
     get_FramesDroppedInRenderer(&rawDrops);
@@ -1950,7 +2130,11 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
 
     if (!next)
     {
-        backend.SetOverlayPainter({});
+        {
+            std::lock_guard guard(overlayLock);
+            hostSubtitles = {};
+        }
+        InstallSubtitleOverlay();
         return S_OK;
     }
     ComPtr<IUnknown> callbackIdentity, ownerIdentity;
@@ -1968,30 +2152,226 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     if (callbackIdentity.Get() != ownerIdentity.Get())
         bridge->retained = next;
     Trace("Subtitle callback ownership: aggregate=%d", !bridge->retained);
-    backend.SetOverlayPainter(
+    PlaceboBackend::OverlayPainter painter =
         [this, bridge](ID3D11Device* device, ID3D11DeviceContext*, int width, int height, const RECT& video) -> HRESULT
+    {
+        if (bridge->device.Get() != device)
         {
-            if (bridge->device.Get() != device)
+            if (bridge->device)
             {
-                if (bridge->device)
-                {
-                    bridge->callback->SetDevice11(nullptr);
-                    bridge->device.Reset();
-                }
-                HRESULT hr = bridge->callback->SetDevice11(device);
-                if (FAILED(hr))
-                    return hr;
-                bridge->device = device;
+                bridge->callback->SetDevice11(nullptr);
+                bridge->device.Reset();
             }
-            const RECT viewport = {0, 0, width, height};
-            HRESULT hr = bridge->callback->Render11(
-                frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
-            // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
-            // cleared before the callback; keep the video and its empty overlay.
-            // Device initialization failures above remain actual errors.
-            return hr == E_FAIL ? S_FALSE : hr;
+            HRESULT hr = bridge->callback->SetDevice11(device);
+            if (FAILED(hr))
+                return hr;
+            bridge->device = device;
+        }
+        const RECT viewport = {0, 0, width, height};
+        HRESULT hr = bridge->callback->Render11(
+            frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
+        // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
+        // cleared before the callback; keep the video and its empty overlay.
+        // Device initialization failures above remain actual errors.
+        return hr == E_FAIL ? S_FALSE : hr;
+    };
+    {
+        std::lock_guard guard(overlayLock);
+        hostSubtitles = std::move(painter);
+    }
+    InstallSubtitleOverlay();
+    return S_OK;
+}
+
+void Renderer::InstallSubtitleOverlay()
+{
+    PlaceboBackend::OverlayPainter host;
+    bool subtitleRenderer = false;
+    {
+        std::lock_guard guard(overlayLock);
+        host = hostSubtitles;
+        subtitleRenderer = xySubInstalled;
+    }
+    if (!subtitleRenderer)
+    {
+        backend.SetOverlayPainter(host, true);
+        return;
+    }
+    auto bridge = xySub;
+    auto paint =
+        [this, bridge](
+            ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video, bool inverted)
+    {
+        const auto frame = format.frame;
+        XySubBridge::Info info;
+        info.original = {frame.width, frame.height};
+        info.arAdjusted = info.original;
+        if (frame.aspectX > 0 && frame.aspectY > 0)
+            info.arAdjusted.cx = LONG(std::lround(double(frame.height) * frame.aspectX / frame.aspectY));
+        info.frameDuration = contentDuration.load() > 0 ? contentDuration.load() : frameDuration.load();
+        info.video = video;
+        info.display = {width, height};
+        bridge->Update(info);
+        const HRESULT hr =
+            bridge->Paint(device, context, width, height, video, frameStart.load(), frameStop.load(), inverted);
+        // A subtitle failure must never cost the video picture.
+        if (FAILED(hr))
+            Trace("Subtitle renderer frame failed: %08lX", static_cast<unsigned long>(hr));
+        return S_OK;
+    };
+    if (!host)
+    {
+        backend.SetOverlayPainter(
+            [paint](ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video)
+            { return paint(device, context, width, height, video, false); });
+        return;
+    }
+    // The host draws first into its inverted-alpha target; subtitle renderer
+    // bitmaps are then blended over it before the renderer restores alpha.
+    backend.SetOverlayPainter(
+        [host, paint](ID3D11Device* device, ID3D11DeviceContext* context, int width, int height, const RECT& video)
+        {
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> target;
+            context->OMGetRenderTargets(1, &target, nullptr);
+            D3D11_VIEWPORT viewport = {};
+            UINT viewports = 1;
+            context->RSGetViewports(&viewports, &viewport);
+            const HRESULT hr = host(device, context, width, height, video);
+            if (FAILED(hr))
+                return hr;
+            auto view = target.Get();
+            context->OMSetRenderTargets(1, &view, nullptr);
+            context->RSSetViewports(1, &viewport);
+            paint(device, context, width, height, video, true);
+            return S_OK;
         },
         true);
+}
+
+STDMETHODIMP Renderer::GetBool(LPCSTR field, bool* value)
+{
+    return !field || !value ? E_POINTER : E_INVALIDARG;
+}
+
+STDMETHODIMP Renderer::GetInt(LPCSTR field, int* value)
+{
+    return XySubBridge::Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetSize(LPCSTR field, SIZE* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetRect(LPCSTR field, RECT* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetUlonglong(LPCSTR field, ULONGLONG* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetDouble(LPCSTR field, double* value)
+{
+    return xySub->Get(field, value);
+}
+
+STDMETHODIMP Renderer::GetString(LPCSTR field, LPWSTR* value, int* chars)
+{
+    return XySubBridge::Get(field, value, chars);
+}
+
+STDMETHODIMP Renderer::GetBin(LPCSTR field, LPVOID* value, int*)
+{
+    return !field || !value ? E_POINTER : E_INVALIDARG;
+}
+
+// Consumer fields are read-only for the subtitle renderer.
+STDMETHODIMP Renderer::SetBool(LPCSTR, bool)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetInt(LPCSTR, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetSize(LPCSTR, SIZE)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetRect(LPCSTR, RECT)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetUlonglong(LPCSTR, ULONGLONG)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetDouble(LPCSTR, double)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetString(LPCSTR, LPWSTR, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::SetBin(LPCSTR, LPVOID, int)
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP Renderer::GetMerit(ULONG* merit)
+{
+    if (!merit)
+        return E_POINTER;
+    *merit = 0x00040000; // recommended merit for video renderers
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Connect(ISubRenderProvider* provider)
+{
+    if (!provider)
+        return E_POINTER;
+    Trace("Subtitle renderer connected");
+    xySub->Connect(provider);
+    bool install = false;
+    {
+        std::lock_guard guard(overlayLock);
+        install = !xySubInstalled;
+        xySubInstalled = true;
+    }
+    // Installed once and kept: Disconnect may arrive from inside a frame request.
+    if (install)
+        InstallSubtitleOverlay();
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Disconnect()
+{
+    Trace("Subtitle renderer disconnect request");
+    auto provider = xySub->Disconnect();
+    provider.Reset();
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::DeliverFrame(REFERENCE_TIME start, REFERENCE_TIME, LPVOID context, ISubRenderFrame* frame)
+{
+    xySub->Deliver(start, context, frame);
+    return S_OK;
+}
+
+STDMETHODIMP Renderer::Clear(REFERENCE_TIME)
+{
+    xySub->Clear();
     return S_OK;
 }
 
@@ -2029,20 +2409,19 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     if (wcscmp(next->displayProfile, settings.displayProfile))
         return SaveSettings(*next);
     Trace("Settings requested: HDR=%d AutoHDR=%d", next->hdrPassthrough, next->autoHdr);
-    hr = backend.SetSettings(BackendSettings(*next));
+    SelectContentProfile(next->displayProfile);
+    hr = backend.SetSettings(BackendSettings(Effective(*next)));
     if (FAILED(hr))
         return hr;
     hr = SaveSettings(*next);
     if (FAILED(hr))
     {
-        backend.SetSettings(BackendSettings(settings));
+        backend.SetSettings(BackendSettings(Effective(settings)));
         return hr;
     }
     settings = *next;
     PublishDisplayModes();
-    smoothEnabled = !!settings.smoothMotion;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     // Never render or change the display mode synchronously from the page.
     if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
@@ -2052,10 +2431,12 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
 
 void Renderer::PublishDisplayModes()
 {
+    // A content profile may set display modes for the active display.
+    const auto effective = Effective(settings);
     ModeConfig next;
-    next.enabled = !!settings.displayModeSwitch;
-    DisplayModes::Parse(settings.displayModes, next.modes);
-    next.delay = settings.displayModeDelay;
+    next.enabled = !!effective.displayModeSwitch;
+    DisplayModes::Parse(effective.displayModes, next.modes);
+    next.delay = effective.displayModeDelay;
     {
         std::lock_guard lock(modeLock);
         modeConfig = std::move(next);
@@ -2239,11 +2620,13 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
         return S_OK;
     }
     auto selected = LoadSettings(found->id);
-    auto hr = backend.SetSettings(BackendSettings(selected));
+    // A profile may apply on some displays only.
+    SelectContentProfile(selected.displayProfile);
+    auto hr = backend.SetSettings(BackendSettings(Effective(selected)));
     if (FAILED(hr) && (selected.iccEnabled || selected.lutEnabled))
     {
         selected.iccEnabled = selected.lutEnabled = FALSE;
-        hr = backend.SetSettings(BackendSettings(selected));
+        hr = backend.SetSettings(BackendSettings(Effective(selected)));
     }
     if (FAILED(hr))
         return hr;
@@ -2255,11 +2638,91 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
           settings.hdrMode,
           settings.brightness);
     profileMonitor = monitor;
-    smoothEnabled = !!settings.smoothMotion;
-    motionRadius = BackendSettings(settings).motionRadius;
-    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+    UpdateMotionSettings();
     refreshDirty = true;
     return S_OK;
+}
+
+void Renderer::UpdateMotionSettings()
+{
+    const auto effective = Effective(settings);
+    smoothEnabled = !!effective.smoothMotion;
+    presentAheadSetting = effective.presentAhead;
+    motionRadius = BackendSettings(effective).motionRadius;
+    motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);
+}
+
+// Reads the profiles from disk and picks the one for the playing file on the
+// display: the profile the open menu previews, else by folder. Returns whether
+// it changed; the caller applies it.
+bool Renderer::SelectContentProfile(const wchar_t* display)
+{
+    const auto profiles = ContentProfiles::Load();
+    const auto* automatic = ContentProfiles::Match(profiles, contentPath, display);
+    // The menu shows the profile of the playing video and may preview another
+    // one on it. A renderer the player creates only for the menu has no video
+    // and stays out of both.
+    std::wstring preview;
+    if (m_pGraph)
+    {
+        ContentProfiles::PublishPlaying(contentPath, automatic ? automatic->name : L"");
+        preview = ContentProfiles::Preview(contentPath);
+    }
+    const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
+    auto next = match ? *match : ContentProfiles::Profile{};
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) + L" (menu preview)"
+                              : match          ? next.name
+                              : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
+                                                                         : L"Default");
+    if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
+        return false;
+    contentProfile = std::move(next);
+    return true;
+}
+
+// Profiles are read again when playback starts and with every settings change,
+// so edits in the Profiles page apply to the playing video right away.
+void Renderer::UpdateContentProfile(IPin* peer)
+{
+    // Some players' built-in splitters keep the path to themselves along the
+    // video chain; then accept the graph's only file source.
+    auto path = SourcePath(m_pGraph, peer);
+    if (path.empty())
+        path = SourcePath(m_pGraph, nullptr);
+    contentPath = path;
+    if (path.empty() && TraceEnabled() && m_pGraph)
+    {
+        ComPtr<IEnumFilters> filters;
+        ComPtr<IBaseFilter> filter;
+        if (SUCCEEDED(m_pGraph->EnumFilters(&filters)))
+            while (filters->Next(1, &filter, nullptr) == S_OK)
+            {
+                FILTER_INFO info = {};
+                if (SUCCEEDED(filter->QueryFilterInfo(&info)) && info.pGraph)
+                    info.pGraph->Release();
+                ComPtr<IFileSourceFilter> source;
+                Trace("Content profile: no file path; graph filter %ls file source=%d",
+                      info.achName,
+                      SUCCEEDED(filter.As(&source)));
+                filter.Reset();
+            }
+    }
+    if (!SelectContentProfile(settings.displayProfile))
+        return;
+    if (FAILED(backend.SetSettings(BackendSettings(Effective(settings)))))
+    {
+        Trace("Content profile %ls rejected by the renderer", contentProfile.name.c_str());
+        contentProfile = {};
+        backend.SetSettings(BackendSettings(settings));
+    }
+    else
+        Trace("Content profile %ls (%zu settings) for %ls",
+              contentProfile.name.empty() ? L"none" : contentProfile.name.c_str(),
+              contentProfile.overrides.size(),
+              path.c_str());
+    UpdateMotionSettings();
+    PublishDisplayModes();
+    refreshDirty = true;
 }
 
 STDMETHODIMP Renderer::GetStatus(PlaceboStatus* out)

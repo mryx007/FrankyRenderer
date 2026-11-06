@@ -60,6 +60,9 @@ inline constexpr const wchar_t* DitherChoices[] = {
     L"Blue Noise (recommended)", L"Ordered Dithering", L"Random Dithering", L"Off"};
 inline constexpr const wchar_t* OutputChoices[] = {
     L"Auto (libplacebo)", L"8-bit Integer (SDR)", L"Prefer 10-bit Integer", L"Prefer 16-bit Float"};
+// The colour gamut the display shows; pictures are mapped into it.
+inline constexpr const wchar_t* DisplayPrimariesChoices[] = {
+    L"BT.709", L"SMPTE C", L"EBU / PAL", L"BT.2020", L"DCI-P3 (DCI white)", L"P3-D65 (Display P3)"};
 inline constexpr const wchar_t* LevelChoices[] = {L"Auto (Output)", L"PC Levels (0–255)", L"TV Levels (16–235)"};
 inline constexpr int DisplayDepths[] = {0, 4, 5, 6, 8, 10, 12, 16};
 inline constexpr const wchar_t* DepthChoices[] = {

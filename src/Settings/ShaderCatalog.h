@@ -1,8 +1,9 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <iterator>
-inline constexpr int ShaderCount = 21, ShaderParameterLimit = 12;
+inline constexpr int ShaderCount = 23, ShaderParameterLimit = 12;
 
 struct ShaderParameterInfo
 {
@@ -17,7 +18,6 @@ struct ShaderInfo
     const wchar_t* label;
     const wchar_t* category;
     const wchar_t* help;
-    bool outputStage;
     int count;
     ShaderParameterInfo parameters[ShaderParameterLimit];
 };
@@ -27,14 +27,12 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"AMD CAS",
      L"Sharpening",
      L"Contrast-adaptive sharpening after scaling.",
-     true,
      1,
      {{"STR", 0.5f, 0.0f, 1.0f, false}}},
     {"FineDehalo_lite_RT.glsl",
      L"FineDehalo",
      L"Edge Cleanup",
      L"Reduce bright and dark halos around edges.",
-     false,
      11,
      {{"RX", 2.0f, 1.0f, 4.0f, false},
       {"RY", 2.0f, 1.0f, 4.0f, false},
@@ -51,14 +49,12 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"Anti-Ringing",
      L"Edge Cleanup",
      L"Limit ringing introduced by image upscaling.",
-     true,
      2,
      {{"TAP", 2.0f, 2.0f, 4.0f, true}, {"STR", 0.75f, 0.0f, 1.0f, false}}},
     {"PixelClipper_RT.glsl",
      L"PixelClipper",
      L"Edge Cleanup",
      L"Limit overshoot during image and chroma scaling.",
-     true,
      5,
      {{"TAPS_scale", 0.0f, 0.0f, 1.0f, true},
       {"TAPS_cscale", 0.0f, 0.0f, 1.0f, true},
@@ -69,14 +65,12 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"KrigBilateral",
      L"Chroma",
      L"Reconstruct chroma guided by luma. Requires subsampled YUV input.",
-     false,
      0,
      {}},
     {"CfL_Prediction_RT.glsl",
      L"CfL Prediction",
      L"Chroma",
      L"Predict chroma from luma. Requires subsampled YUV input.",
-     false,
      4,
      {{"chroma_offset_x", 0.0f, -3.402823e+38f, 3.402823e+38f, false},
       {"chroma_offset_y", 0.0f, -3.402823e+38f, 3.402823e+38f, false},
@@ -86,28 +80,19 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"NLMeans",
      L"Denoising",
      L"Reduce luma noise using similar image patches.",
-     false,
      1,
      {{"REF", 0.0f, 0.0f, 1.0f, true}}},
     {"kBFDN_RT.glsl",
      L"Bilateral Denoise",
      L"Denoising",
      L"Edge-aware luma noise reduction.",
-     false,
      3,
      {{"TAP", 5.0f, 1.0f, 9.0f, true}, {"SS", 0.8f, 0.0f, 10.0f, false}, {"SR", 0.1f, 0.0f, 1.0f, false}}},
-    {"kCCD_RT.glsl",
-     L"Chroma Denoise",
-     L"Denoising",
-     L"Reduce color noise.",
-     false,
-     1,
-     {{"THR", 8.0f, 0.0f, 255.0f, false}}},
+    {"kCCD_RT.glsl", L"Chroma Denoise", L"Denoising", L"Reduce color noise.", 1, {{"THR", 8.0f, 0.0f, 255.0f, false}}},
     {"hdeband_rgb_RT.glsl",
      L"hdeband",
      L"Debanding",
      L"Reduce banding in smooth gradients.",
-     false,
      9,
      {{"S", 0.0f, 0.0f, 10.0f, false},
       {"SI", 50.0f, 0.0f, 100.0f, false},
@@ -122,7 +107,6 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"neo-f3kdb",
      L"Debanding",
      L"Reduce gradient banding with adjustable thresholds and grain.",
-     false,
      9,
      {{"RANGE", 15.0f, 1.0f, 64.0f, true},
       {"GRAIN", 0.0f, 0.0f, 1.0f, false},
@@ -137,7 +121,6 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"Guided Detail Enhance",
      L"Detail / Contrast",
      L"Enhance detail with guided filtering.",
-     false,
      4,
      {{"RAD", 2.0f, 1.0f, 8.0f, true},
       {"EPS", 0.004f, 0.001f, 0.1f, false},
@@ -147,7 +130,6 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"Clarity",
      L"Detail / Contrast",
      L"Adjust local contrast in dark and bright areas.",
-     false,
      9,
      {{"RAD", 4.0f, 1.0f, 5.0f, true},
       {"SHIFT", 2.0f, 1.0f, 5.0f, false},
@@ -162,52 +144,64 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"FSRCNNX 2x",
      L"Image Upscaling",
      L"Neural 2x upscaling. Activates only when enlargement is sufficient.",
-     false,
      0,
      {}},
     {"AiUpscale_Fast_2x_Photo_RT.glsl",
      L"AiUpscale Photo 2x",
      L"Image Upscaling",
      L"Photo-oriented neural 2x upscaling.",
-     false,
      1,
      {{"SHARP", 0.0f, 0.0f, 1.0f, true}}},
-    {"ravu_zoom_ar_r2.glsl", L"RAVU Zoom", L"Image Upscaling", L"Adaptive upscaling with anti-ringing.", false, 0, {}},
+    {"ravu_zoom_ar_r2.glsl",
+     L"RAVU Zoom AR R2",
+     L"Image Upscaling",
+     L"Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom.",
+     0,
+     {}},
     {"Anime4K_Upscale_CNN_x2_M.glsl",
      L"Anime4K CNN 2x M",
      L"Anime Upscaling",
      L"For 2D animation. Neural 2x upscaling.",
-     false,
      0,
      {}},
     {"ArtCNN_C4F16.glsl",
      L"ArtCNN C4F16",
      L"Anime Upscaling",
      L"For 2D animation. Initial shader compilation can take several seconds.",
-     false,
      0,
      {}},
     {"CuNNy_2x12_DS.glsl",
      L"CuNNy 2x12 DS",
      L"Anime Upscaling",
      L"For 2D animation. Neural 2x upscaling with denoising.",
-     false,
      0,
      {}},
     {"SSimDownscaler_RT.glsl",
      L"SSimDownscaler",
      L"Image Downscaling",
-     L"Refine image downscaling. Requires a smaller output size.",
-     true,
+     L"Refine image downscaling. Requires a smaller output size; works best with Mitchell as downscaler.",
      2,
      {{"THR", 0.0f, 0.0f, 1.0f, false}, {"DEBUG", 0.0f, 0.0f, 1.0f, true}}},
     {"DPID_RT.glsl",
      L"DPID",
      L"Image Downscaling",
      L"Detail-preserving downscaling. Requires a smaller output size.",
-     false,
      1,
      {{"LBD", 1.0f, 0.0f, 3.0f, false}}},
+    // Appended so stored shader indices keep their meaning; the chain order
+    // places them after RAVU Zoom AR R2.
+    {"ravu_zoom_r3.glsl",
+     L"RAVU Zoom R3",
+     L"Image Upscaling",
+     L"Adaptive upscaling with radius 3. More detail than R2, slower.",
+     0,
+     {}},
+    {"ravu_zoom_ar_r3.glsl",
+     L"RAVU Zoom AR R3",
+     L"Image Upscaling",
+     L"Radius 3 with anti-ringing. Highest RAVU quality, slowest.",
+     0,
+     {}},
 };
 
 struct ShaderConfig
@@ -219,8 +213,47 @@ struct ShaderConfig
 struct UserShaderSettings
 {
     ShaderConfig shaders[ShaderCount];
-    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20};
 };
+
+// Index of RAVU Zoom AR R2; shaders added later join the chain after it.
+inline constexpr int ShaderRavuR2 = 15, ShaderAddedFirst = 21;
+
+// Completes a chain order saved before shaders were added: keeps the first
+// occurrence of every known shader and inserts missing ones after RAVU Zoom
+// AR R2 (or at the end). A complete order is left unchanged.
+inline void CompleteShaderOrder(int (&order)[ShaderCount], int savedCount = ShaderCount)
+{
+    int kept[ShaderCount] = {}, count = 0;
+    uint32_t seen = 0;
+    for (int i = 0; i < savedCount; i++)
+        if (order[i] >= 0 && order[i] < ShaderCount && !(seen & (1u << order[i])))
+        {
+            seen |= 1u << order[i];
+            kept[count++] = order[i];
+        }
+    if (count == ShaderCount)
+    {
+        std::copy(kept, kept + ShaderCount, order);
+        return;
+    }
+    int at = count;
+    for (int i = 0; i < count; i++)
+        if (kept[i] == ShaderRavuR2)
+            at = i + 1;
+    int merged[ShaderCount] = {}, n = 0;
+    for (int i = 0; i < at; i++)
+        merged[n++] = kept[i];
+    for (int id = ShaderAddedFirst; id < ShaderCount; id++)
+        if (!(seen & (1u << id)))
+            merged[n++] = id, seen |= 1u << id;
+    for (int i = at; i < count; i++)
+        merged[n++] = kept[i];
+    for (int id = 0; id < ShaderCount; id++)
+        if (!(seen & (1u << id)))
+            merged[n++] = id;
+    std::copy(merged, merged + ShaderCount, order);
+}
 
 inline bool ValidUserShaders(const UserShaderSettings& s)
 {

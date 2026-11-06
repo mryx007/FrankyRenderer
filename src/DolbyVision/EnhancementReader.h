@@ -1,6 +1,31 @@
 #pragma once
 #include "MetadataParser.h"
 #include <atomic>
+#include <cstring>
+#include <utility>
+
+// UHD Blu-ray carries Profile 7 as two HEVC streams and signals Dolby Vision in
+// the clip information (.clpi), not in the transport stream, so FFmpeg attaches
+// no DV configuration. The format fixes the PIDs: base layer 0x1011,
+// enhancement layer (EL pictures and RPU) 0x1015. Returns {base, enhancement}
+// stream indices, or {-1, -1}.
+inline std::pair<int, int> BlurayLayers(const AVFormatContext* context)
+{
+    int base = -1, enhancement = -1;
+    if (!context || !context->iformat || !strstr(context->iformat->name, "mpegts"))
+        return {-1, -1};
+    for (unsigned i = 0; i < context->nb_streams; ++i)
+    {
+        const auto* stream = context->streams[i];
+        if (stream->codecpar->codec_id != AV_CODEC_ID_HEVC)
+            continue;
+        if (stream->id == 0x1011)
+            base = int(i);
+        else if (stream->id == 0x1015)
+            enhancement = int(i);
+    }
+    return base >= 0 && enhancement >= 0 ? std::pair{base, enhancement} : std::pair{-1, -1};
+}
 
 // Reads local enhancement pictures or MEL metadata; never decodes the base layer.
 class EnhancementReader
@@ -203,9 +228,22 @@ class EnhancementReader
     }
 
   public:
-    EnhancementReader(const char* path, ID3D11Device* decoderDevice, const std::atomic<bool>* cancel = nullptr)
+    // clipOrigin (100 ns) replaces the stream start as time zero, e.g. a
+    // Blu-ray playlist item's IN time. Negative keeps the stream start.
+    EnhancementReader(const char* path,
+                      ID3D11Device* decoderDevice,
+                      const std::atomic<bool>* cancel = nullptr,
+                      LONGLONG clipOrigin = -1)
         : cancelled(cancel), device(decoderDevice)
     {
+        const auto startOf = [clipOrigin](const AVStream* stream)
+        {
+            if (clipOrigin >= 0)
+                return clipOrigin;
+            return stream->start_time == AV_NOPTS_VALUE
+                       ? 0LL
+                       : av_rescale_q(stream->start_time, stream->time_base, AVRational{1, 10000000});
+        };
         try
         {
             input = avformat_alloc_context();
@@ -216,7 +254,9 @@ class EnhancementReader
                                              const_cast<std::atomic<bool>*>(cancelled)};
             avcheck(avformat_open_input(&input, path, nullptr, nullptr), "open local enhancement file");
             avcheck(avformat_find_stream_info(input, nullptr), "enhancement stream information");
-            video = av_find_best_stream(input, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+            const auto bluray = BlurayLayers(input);
+            video =
+                bluray.first >= 0 ? bluray.first : av_find_best_stream(input, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
             check(video >= 0, "video source required");
             auto source = input->streams[video];
             auto c = source->codecpar;
@@ -228,16 +268,15 @@ class EnhancementReader
                 auto parameters = candidate->codecpar;
                 auto config = av_packet_side_data_get(
                     parameters->coded_side_data, parameters->nb_coded_side_data, AV_PKT_DATA_DOVI_CONF);
-                if (i == unsigned(video) || parameters->codec_id != AV_CODEC_ID_HEVC || !config ||
-                    config->size < sizeof(AVDOVIDecoderConfigurationRecord))
+                const auto* record = config && config->size >= sizeof(AVDOVIDecoderConfigurationRecord)
+                                         ? reinterpret_cast<const AVDOVIDecoderConfigurationRecord*>(config->data)
+                                         : nullptr;
+                if (i == unsigned(video) || parameters->codec_id != AV_CODEC_ID_HEVC)
                     continue;
-                auto record = reinterpret_cast<const AVDOVIDecoderConfigurationRecord*>(config->data);
-                if (record->dv_profile == 7 && record->el_present_flag && record->rpu_present_flag &&
-                    !record->bl_present_flag)
+                if (int(i) == bluray.second || (record && record->dv_profile == 7 && record->el_present_flag &&
+                                                record->rpu_present_flag && !record->bl_present_flag))
                 {
-                    origin = source->start_time == AV_NOPTS_VALUE
-                                 ? 0
-                                 : av_rescale_q(source->start_time, source->time_base, AVRational{1, 10000000});
+                    origin = startOf(source);
                     video = int(i);
                     separateTrack = true;
                     enhancement.stream = candidate;
@@ -255,9 +294,7 @@ class EnhancementReader
                   "Profile 7 layered file required");
             check(c->extradata_size > 21 && c->extradata[0] == 1, "HVCC source required");
             lengthSize = (c->extradata[21] & 3) + 1;
-            origin = source->start_time == AV_NOPTS_VALUE
-                         ? 0
-                         : av_rescale_q(source->start_time, source->time_base, AVRational{1, 10000000});
+            origin = startOf(source);
             description = avformat_alloc_context();
             check(description != nullptr, "EL stream description");
             auto stream = avformat_new_stream(description, nullptr);

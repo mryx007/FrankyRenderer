@@ -80,7 +80,7 @@ class FileSource final : public CBaseFilter, public IFileSourceFilter
     }
 };
 
-static void Probe(const std::filesystem::path& path, bool profile7 = false)
+static ComPtr<IFilterGraph> Graph(const std::filesystem::path& path)
 {
     ComPtr<IFilterGraph> graph;
     Check(CoCreateInstance(CLSID_FilterGraph, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&graph)), "test graph");
@@ -88,10 +88,17 @@ static void Probe(const std::filesystem::path& path, bool profile7 = false)
     auto file = new FileSource(path.c_str());
     Check(file->QueryInterface(IID_PPV_ARGS(&source)), "source interface");
     Check(graph->AddFilter(source.Get(), L"Source"), "add file source");
+    return graph;
+}
+
+// 10-bit pictures make the processor read the source file.
+static void Probe(const std::filesystem::path& path, bool profile7 = false)
+{
+    const auto graph = Graph(path);
     MediaFormat format;
     format.frame.width = profile7 ? 3840 : 1280;
     format.frame.height = profile7 ? 2160 : 720;
-    format.frame.format = profile7 ? PixelFormat::P010 : PixelFormat::BGR24;
+    format.frame.format = PixelFormat::P010;
     DvProcessor processor;
     Check(processor.CheckFormat(graph.Get(), nullptr, format), "optional probe must not reject decoded input");
     if (processor.Active() != profile7 || processor.ShouldProcess() != profile7)
@@ -99,6 +106,22 @@ static void Probe(const std::filesystem::path& path, bool profile7 = false)
     // Repeated negotiation must use the cached result rather than retrying a script.
     Check(processor.CheckFormat(graph.Get(), nullptr, format), "cached format check");
     printf("PASS source probe: %ls, profile7=%d\n", path.filename().c_str(), profile7);
+}
+
+// 8-bit SDR pictures carry neither Dolby Vision nor HDR: the source file stays
+// untouched and the mode stays unknown until a deeper picture arrives.
+static void ProbeEightBit(const std::filesystem::path& path)
+{
+    const auto graph = Graph(path);
+    MediaFormat format;
+    format.frame.width = 1280;
+    format.frame.height = 720;
+    format.frame.format = PixelFormat::BGR24;
+    DvProcessor processor;
+    Check(processor.CheckFormat(graph.Get(), nullptr, format), "8-bit format check");
+    if (processor.Active() || !processor.ShouldProcess())
+        throw std::runtime_error("8-bit SDR picture decided the DV mode");
+    printf("PASS 8-bit SDR leaves the source alone: %ls\n", path.filename().c_str());
 }
 
 int wmain(int argc, wchar_t** argv)
@@ -114,6 +137,7 @@ int wmain(int argc, wchar_t** argv)
         // never evaluate this script as another AviSynth source.
         std::ofstream(script) << "Assert(false, \"FRANKY_PROBE_EXECUTED_SCRIPT\")\n"
                                  "BlankClip(width=1280, height=720, fps=60, pixel_type=\"RGB24\")\n";
+        ProbeEightBit(script);
         Probe(script);
         const auto unsupported = folder / L"player-supported-source.bin";
         std::ofstream(unsupported) << "Source handled by the player, not a DV container";

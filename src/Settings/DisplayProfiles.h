@@ -195,6 +195,51 @@ inline std::wstring Key(const std::wstring& id)
     return Root() + L"\\Displays\\" + id;
 }
 
+// While displays are linked, saving one display's settings writes the same
+// values to every display. Unlinking keeps them, so each starts from that
+// shared state and can then be changed alone.
+inline bool Linked()
+{
+    DWORD value = 0, bytes = sizeof(value);
+    return RegGetValueW(
+               HKEY_CURRENT_USER, Root().c_str(), L"LinkDisplays", RRF_RT_REG_DWORD, nullptr, &value, &bytes) ==
+               ERROR_SUCCESS &&
+           value;
+}
+
+inline HRESULT SetLinked(bool linked)
+{
+    HKEY root;
+    auto result =
+        RegCreateKeyExW(HKEY_CURRENT_USER, Root().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &root, nullptr);
+    if (result != ERROR_SUCCESS)
+        return HRESULT_FROM_WIN32(result);
+    const DWORD value = linked;
+    result = RegSetValueExW(root, L"LinkDisplays", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
+    RegCloseKey(root);
+    return HRESULT_FROM_WIN32(result);
+}
+
+// Every display that has stored settings, without querying the hardware.
+inline std::vector<std::wstring> StoredIds()
+{
+    std::vector<std::wstring> ids;
+    HKEY root;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, (Root() + L"\\Displays").c_str(), 0, KEY_READ, &root) != ERROR_SUCCESS)
+        return ids;
+    for (DWORD index = 0;; ++index)
+    {
+        wchar_t id[128];
+        DWORD count = 128;
+        if (RegEnumKeyExW(root, index, id, &count, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
+            break;
+        if (ValidId(id))
+            ids.push_back(id);
+    }
+    RegCloseKey(root);
+    return ids;
+}
+
 inline std::wstring ReadString(HKEY key, const wchar_t* name)
 {
     wchar_t text[2048];

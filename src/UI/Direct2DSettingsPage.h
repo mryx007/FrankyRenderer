@@ -10,6 +10,7 @@ class Direct2DSettingsPage final : public CBasePropertyPage
     HWND view = nullptr;
     Direct2DFrame frame;
     SIZE preferredSize = {};
+    static constexpr UINT_PTR GraphTimer = 0x7f20;
 
   public:
     Direct2DSettingsPage(IUnknown* outer, HRESULT* hr);

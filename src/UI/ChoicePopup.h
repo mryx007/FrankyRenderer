@@ -6,6 +6,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include "UI/MenuTheme.h"
 
 // A bounded selection window; native popup menus do not support wheel scrolling.
 class ChoicePopup
@@ -14,6 +15,8 @@ class ChoicePopup
     std::vector<std::wstring> labels, descriptions;
     HWND window = nullptr;
     int selected = -1, active = 0, first = 0, rows = 12, rowHeight = 32;
+    // Width of the tick column, the same for rows with and without descriptions.
+    int checkWidth = 32;
     int width = 320, wheel = 0, dragOffset = -1;
     bool done = false, tracking = false;
     HFONT font = nullptr, descriptionFont = nullptr;
@@ -61,44 +64,52 @@ class ChoicePopup
             FillRect(dc, &rect, brush);
             DeleteObject(brush);
         };
-        fill(bounds, RGB(43, 45, 50));
+        const auto palette = CurrentMenuPalette();
+        fill(bounds, MenuColorRef(palette.border));
         InflateRect(&bounds, -1, -1);
-        fill(bounds, RGB(18, 19, 22));
+        fill(bounds, MenuColorRef(palette.light ? palette.card : palette.input));
         auto old = SelectObject(dc, font);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, RGB(235, 237, 240));
+        SetTextColor(dc, MenuColorRef(palette.textMain));
         for (int row = 0; row < rows && first + row < int(labels.size()); ++row)
         {
             const int index = first + row;
-            RECT rect = {1, 1 + row * rowHeight, width - 13, 1 + (row + 1) * rowHeight};
+            // Leave room for the scroll thumb only when the list scrolls.
+            RECT rect = {
+                1, 1 + row * rowHeight, width - (int(labels.size()) > rows ? 13 : 1), 1 + (row + 1) * rowHeight};
             if (index == active)
-                fill(rect, RGB(42, 45, 51));
+                fill(rect, MenuColorRef(palette.activeBg));
             RECT text = rect;
-            text.left += rowHeight;
+            text.left += checkWidth;
             if (described)
             {
+                // Heading and description as one block with padding to the highlight.
+                const int pad = rowHeight / 8;
                 RECT title = text;
-                title.bottom = title.top + rowHeight / 2;
+                title.top += pad;
+                title.bottom = title.top + rowHeight * 2 / 5;
                 DrawTextW(
                     dc, labels[index].c_str(), -1, &title, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-                text.top += rowHeight / 2;
+                text.top = title.bottom;
+                text.bottom -= pad;
+                text.right -= pad;
                 SelectObject(dc, descriptionFont);
-                SetTextColor(dc, RGB(188, 194, 204));
+                SetTextColor(dc, MenuColorRef(palette.textMuted));
                 DrawTextW(dc, descriptions[index].c_str(), -1, &text, DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX);
                 SelectObject(dc, font);
-                SetTextColor(dc, RGB(235, 237, 240));
+                SetTextColor(dc, MenuColorRef(palette.textMain));
             }
             else
                 DrawTextW(
                     dc, labels[index].c_str(), -1, &text, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
             if (index == selected)
             {
-                rect.right = rect.left + rowHeight;
+                rect.right = rect.left + checkWidth;
                 DrawTextW(dc, L"✓", 1, &rect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
             }
         }
         if (int(labels.size()) > rows)
-            fill(Thumb(), RGB(79, 84, 93));
+            fill(Thumb(), MenuColorRef(palette.toggleOff));
         SelectObject(dc, old);
         if (bitmap)
         {
@@ -208,7 +219,8 @@ class ChoicePopup
                     MulDiv(y - 1 - self->dragOffset, int(self->labels.size()) - self->rows, std::max(1, travel));
                 self->Scroll(index - self->first);
             }
-            else if (x > 0 && x < self->width - 13 && y > 0 && y < 1 + self->rows * self->rowHeight)
+            else if (x > 0 && x < self->width - (int(self->labels.size()) > self->rows ? 13 : 1) && y > 0 &&
+                     y < 1 + self->rows * self->rowHeight)
             {
                 const int hovered = std::min(int(self->labels.size()) - 1, self->first + (y - 1) / self->rowHeight);
                 if (hovered != self->active)
@@ -260,25 +272,19 @@ class ChoicePopup
         described =
             descriptions.size() == labels.size() &&
             std::any_of(descriptions.begin(), descriptions.end(), [](const auto& text) { return !text.empty(); });
-        rowHeight = std::max(1, int((described ? 56 : 32) * scale));
+        rowHeight = std::max(1, int((described ? 60 : 32) * scale));
+        checkWidth = std::max(1, int(32 * scale));
         rows = std::max(1,
                         std::min({described ? 8 : 12,
                                   int(labels.size()),
                                   int(monitor.rcWork.bottom - monitor.rcWork.top - 16) / rowHeight}));
-        width = std::min(std::max(int((described ? 480 : 320) * scale), int(anchor.right - anchor.left)),
-                         int(monitor.rcWork.right - monitor.rcWork.left));
-        const int height = rows * rowHeight + 2;
-        const int x = std::clamp(int(anchor.left), int(monitor.rcWork.left), int(monitor.rcWork.right) - width);
-        int y = anchor.bottom;
-        if (y + height > monitor.rcWork.bottom)
-            y = std::max(int(monitor.rcWork.top), int(anchor.top) - height);
-        active = std::max(0, selected);
-        Move(active);
+        // Semibold like the menu's DirectWrite text: GDI renders Segoe UI
+        // "medium" as regular, which looked thinner than the closed field.
         font = CreateFontW(-int(14 * scale),
                            0,
                            0,
                            0,
-                           FW_MEDIUM,
+                           FW_SEMIBOLD,
                            FALSE,
                            FALSE,
                            FALSE,
@@ -302,11 +308,54 @@ class ChoicePopup
                                       CLEARTYPE_QUALITY,
                                       0,
                                       L"Segoe UI");
+        // As wide as the longest entry, at least the field; grow leftwards and
+        // stay inside the settings window (and the monitor). Descriptions wider
+        // than 480 pixels wrap to a second line instead.
+        int longest = 0, longestDescription = 0;
+        if (HDC dc = GetDC(owner))
+        {
+            const auto old = SelectObject(dc, font);
+            for (const auto& label : labels)
+            {
+                SIZE extent = {};
+                GetTextExtentPoint32W(dc, label.c_str(), int(label.size()), &extent);
+                longest = std::max(longest, int(extent.cx));
+            }
+            SelectObject(dc, descriptionFont);
+            for (const auto& description : descriptions)
+            {
+                SIZE extent = {};
+                GetTextExtentPoint32W(dc, description.c_str(), int(description.size()), &extent);
+                longestDescription = std::max(longestDescription, int(extent.cx));
+            }
+            SelectObject(dc, old);
+            ReleaseDC(owner, dc);
+        }
+        RECT area = monitor.rcWork;
+        RECT host = {};
+        if (GetWindowRect(GetAncestor(owner, GA_ROOT), &host))
+            IntersectRect(&area, &area, &host);
+        const int room = checkWidth + int(28 * scale);
+        const int needed =
+            std::max(longest, described ? std::min(longestDescription, int(480 * scale) - room) : 0) + room;
+        width = std::min(std::max(int(anchor.right - anchor.left), needed), int(area.right - area.left));
+        const int height = rows * rowHeight + 2;
+        const int x = std::clamp(int(anchor.right) - width, int(area.left), int(area.right) - width);
+        int y = anchor.bottom + int(4 * scale);
+        if (y + height > monitor.rcWork.bottom)
+            y = std::max(int(monitor.rcWork.top), int(anchor.top) - height - int(4 * scale));
+        active = std::max(0, selected);
+        Move(active);
         HWND previousFocus = GetFocus();
         window = CreateWindowExW(
             WS_EX_TOOLWINDOW, wc.lpszClassName, L"", WS_POPUP, x, y, width, height, owner, nullptr, module, this);
         if (window)
         {
+            // Windows 11 rounds the list's corners; the border follows the theme.
+            const int corners = 3; // DWMWCP_ROUNDSMALL
+            DwmSetWindowAttribute(window, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &corners, sizeof(corners));
+            const COLORREF border = MenuColorRef(CurrentMenuPalette().border);
+            DwmSetWindowAttribute(window, 34 /* DWMWA_BORDER_COLOR */, &border, sizeof(border));
             ShowWindow(window, SW_SHOWNOACTIVATE);
             SetFocus(window);
             SetCapture(window);

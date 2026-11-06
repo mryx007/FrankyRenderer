@@ -21,6 +21,13 @@
 #include "DolbyVision/DolbyVisionStatus.h"
 #include <optional>
 
+// Pure-power gammas x100 offered for the display and SDR gamma processing:
+// 1.80 to 2.80 in steps of 0.05.
+inline bool ValidGammaCurve(int value)
+{
+    return value >= 180 && value <= 280 && value % 5 == 0;
+}
+
 struct VideoFrame
 {
     int width = 0, height = 0, stride = 0;
@@ -75,10 +82,16 @@ struct RenderSettings
     float blackCutoff = 1, perceptualStrength = .8f, softclipKnee = .7f;
     bool showClipping = false;
     int maximumFramesInFlight = 0;
+    int presentAhead = 0;
+    int displayGammaCurve = 0; // 0=auto (sRGB), 1=BT.1886, 180-280=pure power x100
+    int displayContrast = 0;   // BT.1886 display contrast, 0 = infinite
+    int displayPrimaries = 0;  // 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3
+    int sdrGammaCurve = 0;     // 0=off, 180-280=pure power x100
+    float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
     bool smoothMotion = false;
-    bool rtxSuperResolution = false;
+    bool rtxSuperResolution = false, rtxHdr = false;
     bool imageAnalysis = false;
     std::optional<ScalingSettings> scaling;
     float motionRadius = 0;
@@ -167,10 +180,20 @@ class PlaceboBackend
     bool StatisticsVisible() const;
     uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
+    // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
+    void SetContentProfile(const std::wstring& label);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
     std::wstring StatisticsText() const;
-    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1);
+    // refreshLead: Smooth Motion scheduled this present on its own display
+    // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
+    void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
+    // Last observed vsync (QPC, absolute refresh count) and refresh period in
+    // QPC units; false while DXGI feedback is missing, stale or irregular.
+    bool VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const;
+    // Highest number of refreshes Smooth Motion may present ahead without the
+    // frame latency limit blocking Present.
+    int PresentAheadCeiling() const;
     void RestartDropMeasurement(int rawBeforeReset);
     MeasurementSnapshot Measurements() const;
     BlackBarStatus BlackBars() const;
