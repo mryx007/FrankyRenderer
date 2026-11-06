@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-05 14:56+0000\n"
+"PO-Revision-Date: 2026-11-06 10:03+0000\n"
 "Last-Translator: Klaus Luppert <klaus1189@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/de/>\n"
@@ -608,7 +608,7 @@ msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
-"Automatisch folgt den Kennzeichnungen der Quelle. Nur überschreiben, wenn "
+"Automatisch folgt den Quellkennzeichnungen. Nur überschreiben, wenn "
 "Bewegungen in Material mit Zeilensprung die falsche Halbbildreihenfolge "
 "haben."
 
@@ -727,7 +727,7 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 msgid "Detection Stability (seconds)"
-msgstr "Erkennungsstabilität (Sekunden)"
+msgstr "Erkennungsstabilisierung (Sekunden)"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
@@ -757,14 +757,14 @@ msgstr "Benutzerdefinierte Filter"
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 msgid "Image Upscaler"
-msgstr "Hochskalierung des Bildes"
+msgstr "Bild-Hochskalierer"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid ""
 "Reconstruct image detail when enlarging video. Custom copies the selected "
 "filter for editing."
 msgstr ""
-"Rekonstruiert Bilddetails beim Vergrößern des Videos. Benutzerdefiniert "
+"Rekonstruiert Bilddetails beim Vergrößern des Videos. 'Benutzerdefiniert' "
 "übernimmt den ausgewählten Filter zur Bearbeitung."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
@@ -1430,6 +1430,14 @@ msgstr "Bildschirm"
 #. Setting name (Color > Display)
 msgid "Display Gamut"
 msgstr "Display-Farbraum"
+
+#. Setting description (Color > Display > Display Gamut)
+msgid ""
+"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
+"looking oversaturated."
+msgstr ""
+"Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. P3-D65. "
+"Verhindert übersättigte Farben."
 
 #. Choice (Color > Display > Display Gamut)
 msgid "BT.709"
@@ -3265,6 +3273,18 @@ msgstr "Ordner"
 msgid "Displays"
 msgstr "Bildschirme"
 
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr "Gleiche Einstellungen auf allen Displays"
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid ""
+"Changes apply to every display. Off: each keeps them and can be changed "
+"alone."
+msgstr ""
+"Änderungen gelten für jedes Display. Aus: Jedes behält sie und lässt sich "
+"einzeln ändern."
+
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
 msgstr ""
@@ -3571,15 +3591,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
-msgstr "Für einen Bildschirm mit großem Farbraum im nativen Modus, z. B. P3-D65. Verhindert übersättigte Farben."
-
-#. Setting name (Profiles > Display)
-msgid "Same Settings on All Displays"
-msgstr "Gleiche Einstellungen auf allen Displays"
-
-#. Setting description (Profiles > Display > Same Settings on All Displays)
-msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
-msgstr "Änderungen gelten für jedes Display. Aus: Jedes behält sie und lässt sich einzeln ändern."
