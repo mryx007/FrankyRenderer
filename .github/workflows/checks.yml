@@ -26,6 +26,7 @@ jobs:
       - run: python .github/scripts/translation_checks.py
       - run: python .github/scripts/test_weblate_prs.py
       - run: python .github/scripts/test_dependency_updates.py
+      - run: python .github/scripts/test_nightly_notes.py
   formatting:
     runs-on: windows-2022
     steps:
