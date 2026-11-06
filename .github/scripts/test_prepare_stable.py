@@ -39,6 +39,7 @@ class StablePromotionTest(unittest.TestCase):
             for name in ("automation.md", "nightly-builds.md", "build.md"):
                 write("docs/" + name, "base docs")
             write(".github/workflows/build.yml", "base CI")
+            write("docs/screenshots/general.png", "base screenshot")
             write("docs/nightly-changelog.md", "- Fixed the first issue.\n")
             write("src/Renderer/Feature.cpp", "base implementation")
             write("src/Renderer/Renderer.rc", 'FILEVERSION 1,0,9,0\nPRODUCTVERSION 1,0,9,0\n'
@@ -51,6 +52,8 @@ class StablePromotionTest(unittest.TestCase):
             write("src/Renderer/Feature.cpp", "tested Nightly implementation")
             write("README.md", "short Nightly overview")
             write(".github/workflows/build.yml", "Nightly CI")
+            write("docs/screenshots/general.png", "old Nightly screenshot")
+            write("docs/screenshots/menu/1.png", "Nightly changelog image")
             write("docs/nightly-changelog.md", "- Fixed the first issue.\n- Fixed the second issue.\n")
             (root / "src/Tools/package_variants.py").unlink()
             write("src/Tools/package_release.py", 'version = "nightly-" + build_id if channel == "nightly" else "1.0.9"\n')
@@ -61,6 +64,8 @@ class StablePromotionTest(unittest.TestCase):
             write("src/Renderer/Feature.cpp", "divergent stable implementation")
             write("README.md", "full stable overview")
             write(".github/workflows/build.yml", "stable publication CI")
+            write("docs/screenshots/general.png", "stable screenshot")
+            write("docs/screenshots/profiles.png", "stable-only screenshot")
             write(".github/release-notices/1.1.md", "## Important upgrade information\n\nOne package for both players.\n")
             git("add", ".")
             git("commit", "-m", "Divergent stable changes")
@@ -75,6 +80,9 @@ class StablePromotionTest(unittest.TestCase):
                 self.assertEqual(git("show", "HEAD:src/Renderer/Feature.cpp"), "tested Nightly implementation")
                 self.assertEqual(git("show", "HEAD:README.md"), "full stable overview")
                 self.assertEqual(git("show", "HEAD:.github/workflows/build.yml"), "stable publication CI")
+                self.assertEqual(git("show", "HEAD:docs/screenshots/general.png"), "stable screenshot")
+                self.assertEqual(git("show", "HEAD:docs/screenshots/profiles.png"), "stable-only screenshot")
+                self.assertNotIn("docs/screenshots/menu/1.png", git("ls-tree", "-r", "--name-only", "HEAD").splitlines())
                 self.assertFalse((root / "src/Tools/package_variants.py").exists())
                 changed = git("diff", "--name-only", nightly, "HEAD", "--", "src").splitlines()
                 self.assertEqual(set(changed), {"src/Renderer/Renderer.rc", "src/Tools/package.py",

@@ -52,7 +52,7 @@ def prepare(previous, nightly_sha, output, version=None):
     notice = ROOT / ".github/release-notices" / f"{version}.md"
     if notice.is_file():
         notes = notice.read_text(encoding="utf-8").strip() + "\n\n## Changes\n\n" + notes
-    protected = ["README.md", ".github", "docs/automation.md", "docs/nightly-builds.md", "docs/build.md"]
+    protected = ["README.md", ".github", "docs/automation.md", "docs/nightly-builds.md", "docs/build.md", "docs/screenshots"]
     # Promote the tested snapshot, not a new combination of divergent renderer trees.
     # Record Nightly ancestry, then replace the tracked tree before restoring stable docs/CI.
     git("merge", "--strategy=ours", "--no-ff", "--no-commit", nightly_sha)
