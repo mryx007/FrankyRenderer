@@ -143,15 +143,6 @@ msgstr ""
 msgid "Image Analysis"
 msgstr "Bildanalyse"
 
-#. Setting description (General > Image Analysis > Image Analysis)
-msgid ""
-"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
-"after color mapping; excludes subtitles. SDR nits are nominal."
-msgstr ""
-"Wellenform, Histogramm, RGB-Parade, Falschfarben und Grauverlauf. Messung "
-"vor und nach der Farbumrechnung; Untertitel werden nicht einbezogen. Die "
-"Helligkeitsangaben für SDR in Nits sind Nennwerte."
-
 #. Setting name (General > Image Analysis)
 msgid "Statistics in Video Area"
 msgstr "Statistik im Bildbereich"
@@ -178,15 +169,6 @@ msgstr ""
 #. Setting name (General > Display Mode)
 msgid "Switch Display Mode in Fullscreen"
 msgstr "Anzeigemodus im Vollbild wechseln"
-
-#. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
-msgid ""
-"Uses the listed mode with the lowest refresh rate that is a whole multiple "
-"of the video frame rate. Applies to this display profile only."
-msgstr ""
-"Verwendet den aufgeführten Modus mit der niedrigsten Bildwiederholrate, die "
-"ein ganzzahliges Vielfaches der Videobildrate ist. Gilt nur für dieses "
-"Anzeigeprofil."
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
@@ -286,15 +268,6 @@ msgstr ""
 #. Setting name (General > Background & Transparency)
 msgid "Skip Target Clearing"
 msgstr "Löschen der Ausgabefläche überspringen"
-
-#. Setting description (General > Background & Transparency > Skip Target Clearing)
-msgid ""
-"Skip clearing uncovered output borders. May leave old or undefined pixels "
-"there; no benefit for full-frame video. Default is Off."
-msgstr ""
-"Überspringt das Löschen unbedeckter Ausgaberänder. Dort können alte oder "
-"undefinierte Pixel stehen bleiben. Kein Vorteil bei bildfüllendem Video. "
-"Standard: Aus."
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
@@ -993,17 +966,6 @@ msgstr ""
 msgid "Present in Advance"
 msgstr "Bilder im Voraus ausgeben"
 
-#. Setting description (Scaling > Filters > Present in Advance)
-msgid ""
-"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-"render peaks on slower PCs but adds latency. Automatic starts at one and "
-"adds more only after late pictures."
-msgstr ""
-"Anzahl der Bilder, die Smooth Motion vorab an den Bildschirm übergibt. Mehr "
-"Bilder puffern Renderzeitspitzen auf langsameren PCs ab, erhöhen aber die "
-"Latenz. Automatisch beginnt mit einem Bild und erhöht die Anzahl nur nach "
-"verspäteten Bildern."
-
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "Automatic"
 msgstr "Automatisch"
@@ -1028,44 +990,13 @@ msgstr "4 Bildwiederholungen"
 msgid "Oversample Threshold"
 msgstr "Schwellenwert für Oversampling"
 
-#. Setting description (Scaling > Filters > Oversample Threshold)
-msgid ""
-"Smooth Motion shows a whole picture instead of a blend when the other "
-"picture would cover less than this share of a refresh. Fewer double edges on "
-"motion; 0 always blends. Used with the oversample frame mixer."
-msgstr ""
-"Smooth Motion zeigt ein vollständiges Bild statt einer Mischung, wenn das "
-"andere Bild weniger als diesen Anteil einer Bildwiederholung abdecken würde. "
-"Verringert doppelte Kanten bei Bewegung. 0 mischt immer. Wird mit dem "
-"Bildmischer im Modus Oversampling verwendet."
-
 #. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
 msgstr "Kantenglättung beim Herunterskalieren überspringen"
 
-#. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
-msgid ""
-"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
-"edges. Default: Off; leave Off for best quality."
-msgstr ""
-"Beschleunigt das Herunterskalieren durch Auslassen der Kantenglättung. Kann "
-"Moiré und gezackte Kanten verursachen. Standard: Aus; für die beste Qualität "
-"ausgeschaltet lassen."
-
 #. Setting name (Scaling > Filters)
 msgid "Preserve Frame Mixer Cache"
 msgstr "Zwischenspeicher des Bildmischers beibehalten"
-
-#. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
-msgid ""
-"Reuse mixed frames after resizing or parameter changes. May make transitions "
-"smoother but briefly reuse lower-quality or older processing. Default: Off; "
-"used with Smooth Motion."
-msgstr ""
-"Verwendet gemischte Bilder nach Größen- oder Parameteränderungen erneut. "
-"Kann Übergänge glätten, aber kurzzeitig Bilder geringerer Qualität oder aus "
-"einer älteren Verarbeitung wiederverwenden. Standard: Aus; wird mit Smooth "
-"Motion verwendet."
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -1592,19 +1523,6 @@ msgstr ""
 msgid "LUT Type"
 msgstr "LUT-Typ"
 
-#. Setting description (Color > 3D LUT > LUT Type)
-msgid ""
-"Default keeps the existing SDR calibration LUT stage. Manual types use this "
-"file as a color-mapping LUT. Normalized uses linear-light RGB; Conversion "
-"replaces color conversion, tone mapping and ICC correction. Match the LUT's "
-"intended data representation."
-msgstr ""
-"Standard behält die bisherige LUT zur Kalibrierung von SDR bei. Manuelle "
-"Typen verwenden diese Datei als LUT zur Farbumrechnung. Normalisiert "
-"verwendet RGB in linearem Licht. Konvertierung ersetzt "
-"Farbraumkonvertierung, Tone Mapping und die Korrektur mit dem ICC-Profil. "
-"Der Typ muss zur vorgesehenen Datendarstellung der LUT passen."
-
 #. Choice (Color > 3D LUT > LUT Type)
 msgid "Default (SDR Calibration)"
 msgstr "Standard (Kalibrierung für SDR)"
@@ -1658,17 +1576,6 @@ msgstr "Ausgabe von HDR"
 msgid "HDR Mode"
 msgstr "Modus für HDR"
 
-#. Setting description (HDR > HDR Output > HDR Mode)
-msgid ""
-"Pass HDR and its metadata to the display; keep HDR output but roll off "
-"highlights above the display's peak, for monitors and laptops that do not "
-"tone map themselves; or tone map HDR to SDR."
-msgstr ""
-"HDR und seine Metadaten an den Bildschirm weitergeben; die Ausgabe von HDR "
-"beibehalten, aber Spitzlichter oberhalb der Spitzenhelligkeit des "
-"Bildschirms sanft absenken, für Monitore und Laptops ohne eigenes Tone "
-"Mapping; oder HDR in SDR umrechnen."
-
 #. Choice (HDR > HDR Output > HDR Mode)
 msgid "Passthrough HDR to Display"
 msgstr "HDR an den Bildschirm weitergeben"
@@ -1696,16 +1603,6 @@ msgstr ""
 #. Setting name (HDR > HDR Output)
 msgid "HDR Target Peak (0 = Auto)"
 msgstr "Zielspitzenhelligkeit für HDR (0 = automatisch)"
-
-#. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
-msgid ""
-"Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak "
-"Windows reports for the display, which on some laptops follows the "
-"brightness setting."
-msgstr ""
-"Spitzenhelligkeit des Bildschirms für die Anpassung von HDR an den "
-"Bildschirm, in Nits. 0 verwendet den von Windows gemeldeten Wert, der bei "
-"manchen Laptops von der Helligkeitseinstellung abhängt."
 
 #. Setting name (HDR > HDR Output)
 msgid "SDR Target Brightness (nits)"
@@ -1830,15 +1727,6 @@ msgstr ""
 #. Setting name (HDR > HDR Output)
 msgid "RTX Video HDR"
 msgstr "RTX Video HDR"
-
-#. Setting description (HDR > HDR Output > RTX Video HDR)
-msgid ""
-"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
-"an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
-msgstr ""
-"Umrechnung von SDR in HDR durch die KI im Grafiktreiber von NVIDIA. Benötigt "
-"aktiviertes HDR in Windows, eine RTX-GPU und aktiviertes RTX Video HDR in "
-"der NVIDIA App. Die Helligkeit wird dort eingestellt."
 
 #. Section heading (HDR)
 msgid "HDR Peak Detection"
@@ -3809,3 +3697,51 @@ msgstr "Entf"
 #. Menu text; keep %d and %s placeholders
 msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
 msgstr "Alle Tastenkürzel entfernen? Strg+J bleibt für die Statistik."
+
+#. Setting description (General > Image Analysis > Image Analysis)
+msgid "Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles."
+msgstr "Wellenform, Histogramm, RGB-Parade, Falschfarben und Grauverlauf, vor oder nach der Farbumrechnung, ohne Untertitel."
+
+#. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
+msgid "Uses the listed mode whose refresh rate is the lowest whole multiple of the frame rate. Only for this display."
+msgstr "Nimmt den Modus aus der Liste, dessen Bildwiederholrate das kleinste ganze Vielfache der Bildrate ist. Nur für dieses Display."
+
+#. Setting description (General > Background & Transparency > Skip Target Clearing)
+msgid "Skips clearing the borders around the picture. Old pixels may remain there. Default: Off."
+msgstr "Lässt das Löschen der Ränder um das Bild aus. Dort können alte Pixel stehen bleiben. Standard: Aus."
+
+#. Setting description (Scaling > Filters > Present in Advance)
+msgid "Pictures handed to the display ahead of time. More absorbs render peaks but adds latency. Automatic adds more only after late pictures."
+msgstr "Bilder, die vorab an das Display gehen. Mehr fängt Renderspitzen ab, erhöht aber die Latenz. Automatisch erhöht nur nach verspäteten Bildern."
+
+#. Setting description (Scaling > Filters > Oversample Threshold)
+msgid "Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends."
+msgstr "Zeigt ein ganzes Bild statt einer Mischung, wenn das andere weniger als diesen Anteil einer Bildwiederholung abdeckt. Weniger Doppelkanten; 0 mischt immer."
+
+#. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
+msgid "Faster downscaling without anti-aliasing. Can cause moire and jagged edges. Default: Off."
+msgstr "Schnelleres Verkleinern ohne Kantenglättung. Kann Moiré und Treppenkanten erzeugen. Standard: Aus."
+
+#. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
+msgid "Reuses mixed frames after resizing or setting changes. Smoother transitions, but briefly older quality. Default: Off."
+msgstr "Verwendet gemischte Bilder nach Größen- oder Einstellungsänderungen weiter. Glattere Übergänge, kurz aber ältere Qualität. Standard: Aus."
+
+#. Setting description (Color > 3D LUT > LUT Type)
+msgid "Default keeps the SDR calibration LUT. Normalized uses linear-light RGB; Conversion replaces color conversion, tone mapping and ICC. Must match the LUT."
+msgstr "Standard behält die SDR-Kalibrier-LUT. Normalisiert nutzt lineares RGB; Konvertierung ersetzt Farbumrechnung, Tone Mapping und ICC. Muss zur LUT passen."
+
+#. Setting description (HDR > HDR Output > HDR Mode)
+msgid "Pass HDR to the display; keep HDR but roll off highlights above the display's peak, for screens without own tone mapping; or tone map to SDR."
+msgstr "HDR an das Display weitergeben; HDR behalten, aber Spitzlichter über der Display-Spitze absenken, für Bildschirme ohne eigenes Tone Mapping; oder in SDR umrechnen."
+
+#. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
+msgid "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows reports; on some laptops it follows brightness."
+msgstr "Spitzenhelligkeit für die Anpassung an die Display-Spitze, in Nits. 0 nimmt den Wert von Windows, bei manchen Laptops abhängig von der Helligkeit."
+
+#. Setting description (HDR > HDR Output > RTX Video HDR)
+msgid "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."
+msgstr "KI-Umwandlung von SDR in HDR durch den NVIDIA-Treiber. Braucht Windows-HDR, eine RTX-GPU und RTX Video HDR in der NVIDIA App."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Range"
+msgstr "Bereich"

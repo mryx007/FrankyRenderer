@@ -496,14 +496,14 @@ int wmain()
             host->m_scrollY = 0;
             host->m_pRenderTarget->SetDpi(96.f, 96.f);
             // The reset button has its own row, as high as a row of tabs, above cards without tabs.
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 226))), "fitting layout target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 204))), "fitting layout target");
             host->Render();
             Require(host->m_maxScrollY == 0, "last card fits without scrolling into trailing padding");
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 216))), "overflow layout target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 194))), "overflow layout target");
             host->Render();
             Require(host->m_maxScrollY > 0, "actual clipped content remains scrollable");
             host->m_scrollY = host->m_maxScrollY;
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 240))), "restore fitting target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 218))), "restore fitting target");
             host->Render();
             Require(host->m_maxScrollY == 0 && host->m_scrollY == 0, "resize removes stale scroll offset");
             for (const auto& hit : host->m_hitRegions)

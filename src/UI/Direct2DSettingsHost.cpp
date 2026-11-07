@@ -131,6 +131,7 @@ static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
                                                L"Could not measure this display.",
                                                L"Measurement failed.",
                                                L"Reset All",
+                                               L"Range",
                                                L"Reset Shortcuts",
                                                L"Remove all shortcuts? Ctrl+J stays for the statistics.",
                                                L"Reset all settings for this display to their defaults? Theme and "
@@ -1864,6 +1865,71 @@ void Direct2DHostWindow::Render()
             return metrics.height;
         return 0.f;
     };
+    // A control's description.
+    const auto describe = [&](const D2DControl& c)
+    {
+        auto text = c.detail ? c.detail() : c.desc;
+        return text.empty() ? c.desc : text;
+    };
+
+    // A number's range as a chip after its name: on the name's last line when
+    // it fits there, else on a line of its own below the name.
+    struct RangeChip
+    {
+        std::wstring label, values;
+        float labelWidth = 0, width = 0, x = 0, y = 0, extra = 0;
+    };
+
+    const auto rangeChip = [&](const D2DControl& c, float width)
+    {
+        RangeChip chip;
+        if (c.kind != ControlKind::SliderInt && c.kind != ControlKind::SliderFloat)
+            return chip;
+        chip.label = Tr(L"Range");
+        chip.values = NumberText(c, c.minVal, true) + L" – " + NumberText(c, c.maxVal, true);
+        const auto measure = [&](const std::wstring& text)
+        {
+            ComPtr<IDWriteTextLayout> layout;
+            DWRITE_TEXT_METRICS metrics = {};
+            if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                    text.c_str(), UINT32(text.size()), m_fmtRange.Get(), 1000, 40, layout.GetAddressOf())) &&
+                SUCCEEDED(layout->GetMetrics(&metrics)))
+                return std::ceil(metrics.widthIncludingTrailingWhitespace);
+            return float(text.size()) * 7.f;
+        };
+        chip.labelWidth = measure(chip.label);
+        chip.width = 10.f + chip.labelWidth + 5.f + measure(chip.values) + 10.f;
+        // Where the name ends.
+        float endX = 0, lineTop = 0, lineHeight = 19.f;
+        ComPtr<IDWriteTextLayout> layout;
+        if (!c.name.empty() && SUCCEEDED(m_pDWriteFactory->CreateTextLayout(c.name.c_str(),
+                                                                            UINT32(c.name.size()),
+                                                                            m_fmtLabel.Get(),
+                                                                            std::max(1.f, width),
+                                                                            4096.f,
+                                                                            layout.GetAddressOf())))
+        {
+            DWRITE_HIT_TEST_METRICS end = {};
+            FLOAT x = 0, y = 0;
+            if (SUCCEEDED(layout->HitTestTextPosition(UINT32(c.name.size() - 1), TRUE, &x, &y, &end)))
+            {
+                endX = x + 8.f;
+                lineTop = end.top;
+                lineHeight = end.height;
+            }
+        }
+        if (endX > 0 && endX + chip.width > width)
+        {
+            endX = 0;
+            lineTop += lineHeight + 3.f;
+            chip.extra = 25.f;
+        }
+        else
+            chip.extra = 3.f; // the chip is taller than the name; keep it off the description
+        chip.x = endX;
+        chip.y = lineTop + (lineHeight - 22.f) / 2.f;
+        return chip;
+    };
     float contentBottom = currentY + m_scrollY;
     for (const auto& item : cardsToRender)
     {
@@ -1885,7 +1951,7 @@ void Direct2DHostWindow::Render()
             textHeightFor(headerTitle, m_fmtCardTitle.Get(), contentW - (headerToggle ? 88.f : 32.f));
         // A card without a title (the shortcut tree) has no header.
         const bool noHeader = card.title.empty();
-        const float headerHeight = noHeader ? 0.f : std::max(38.f, 18.f + titleHeight);
+        const float headerHeight = noHeader ? 0.f : std::max(32.f, 12.f + titleHeight);
         float cardHeight = headerHeight;
         for (const auto* control : visibleControls)
         {
@@ -1904,9 +1970,7 @@ void Direct2DHostWindow::Render()
                 cardHeight += height;
                 continue;
             }
-            auto description = control->detail ? control->detail() : control->desc;
-            if (description.empty())
-                description = control->desc;
+            const auto description = describe(*control);
             if (control->kind == ControlKind::Tabs)
             {
                 // Tab row, then its description across the card.
@@ -1919,7 +1983,8 @@ void Direct2DHostWindow::Render()
             }
             const float indent = control->include ? 52.f : 0.f;
             const float labelHeight = textHeightFor(control->name, m_fmtLabel.Get(), contentW - 316.f - indent);
-            const float descriptionTop = std::max(30.f, 9.f + labelHeight + 4.f);
+            const float descriptionTop =
+                std::max(30.f, 9.f + labelHeight + 4.f) + rangeChip(*control, contentW - 316.f - indent).extra;
             const float descriptionHeight = textHeightFor(description, m_fmtDesc.Get(), contentW - 316.f - indent);
             const float height = std::max(SettingsLayout::RowHeight, descriptionTop + descriptionHeight + 8.f);
             descriptionOffsets.push_back(descriptionTop);
@@ -1947,12 +2012,12 @@ void Direct2DHostWindow::Render()
 
             m_pRenderTarget->FillRoundedRectangle(
                 D2D1::RoundedRect(
-                    D2D1::RectF(contentX + 5, currentY + 10, contentX + 8, currentY + headerHeight - 10), 2, 2),
+                    D2D1::RectF(contentX + 5, currentY + 8, contentX + 8, currentY + headerHeight - 8), 2, 2),
                 m_brushAccent.Get());
             D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
-                                                    currentY + 9.f,
+                                                    currentY + 6.f,
                                                     contentX + contentW - (headerToggle ? 72.f : 16.f),
-                                                    currentY + 9.f + titleHeight);
+                                                    currentY + 6.f + titleHeight);
             m_pRenderTarget->DrawText(headerTitle.c_str(),
                                       (UINT32)headerTitle.length(),
                                       m_fmtCardTitle.Get(),
@@ -2248,11 +2313,35 @@ void Direct2DHostWindow::Render()
                                                rowY + descriptionOffsets[ci],
                                                contentX + contentW - 300,
                                                rowY + rowHeight - 8.f);
-            auto description = ctrl.detail ? ctrl.detail() : ctrl.desc;
-            if (description.empty())
-                description = ctrl.desc;
+            const auto description = describe(ctrl);
             m_pRenderTarget->DrawText(
                 description.c_str(), (UINT32)description.length(), m_fmtDesc.Get(), descRect, m_brushTextDim.Get());
+            if (const auto chip = rangeChip(ctrl, labelRect.right - labelRect.left); chip.width > 0)
+            {
+                const auto rect = D2D1::RectF(labelRect.left + chip.x,
+                                              labelRect.top + chip.y,
+                                              labelRect.left + chip.x + chip.width,
+                                              labelRect.top + chip.y + 22.f);
+                m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 11, 11), m_brushInputBg.Get());
+                m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 11, 11), m_brushBorderCard.Get(), 1.f);
+                const auto alignment = m_fmtRange->GetTextAlignment();
+                const auto paragraph = m_fmtRange->GetParagraphAlignment();
+                m_fmtRange->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+                m_fmtRange->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                m_pRenderTarget->DrawText(chip.label.c_str(),
+                                          UINT32(chip.label.size()),
+                                          m_fmtRange.Get(),
+                                          D2D1::RectF(rect.left + 10.f, rect.top, rect.right, rect.bottom),
+                                          m_brushTextDim.Get());
+                m_pRenderTarget->DrawText(
+                    chip.values.c_str(),
+                    UINT32(chip.values.size()),
+                    m_fmtRange.Get(),
+                    D2D1::RectF(rect.left + 15.f + chip.labelWidth, rect.top, rect.right, rect.bottom),
+                    m_brushTextMain.Get());
+                m_fmtRange->SetParagraphAlignment(paragraph);
+                m_fmtRange->SetTextAlignment(alignment);
+            }
 
             // Right: Control area aligned to cardRight - 16
             const float rightEdge = contentX + contentW - 16.0f;
@@ -2295,7 +2384,7 @@ void Direct2DHostWindow::Render()
 
             if (ctrl.kind == ControlKind::Toggle)
             {
-                drawToggle(ctrl, rightEdge - 40.f, rowY + 18.f);
+                drawToggle(ctrl, rightEdge - 40.f, rowY + 16.f);
             }
             else if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
             {
@@ -2303,7 +2392,7 @@ void Direct2DHostWindow::Render()
                 const float plusX = rightEdge - buttonW;
                 const float numBoxX = plusX - gap - numBoxW;
                 const float minusX = numBoxX - gap - buttonW;
-                const auto numRect = D2D1::RectF(numBoxX, rowY + 16.f, numBoxX + numBoxW, rowY + 44.f);
+                const auto numRect = D2D1::RectF(numBoxX, rowY + 13.f, numBoxX + numBoxW, rowY + 41.f);
                 m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(numRect, 4, 4), m_brushInputBg.Get());
                 m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(numRect, 4, 4), m_brushBorderCard.Get(), 1.f);
                 const auto value = NumberText(ctrl, ctrl.Value());
@@ -2320,12 +2409,12 @@ void Direct2DHostWindow::Render()
                     m_hitRegions.push_back(number);
                 const auto drawStep = [&](float left, bool increase)
                 {
-                    const auto rect = D2D1::RectF(left, rowY + 16.f, left + buttonW, rowY + 44.f);
+                    const auto rect = D2D1::RectF(left, rowY + 13.f, left + buttonW, rowY + 41.f);
                     const bool available =
                         enabled && (increase ? ctrl.Value() < ctrl.maxVal : ctrl.Value() > ctrl.minVal);
                     m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 4, 4), m_brushInputBg.Get());
                     m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 4, 4), m_brushBorderCard.Get(), 1.f);
-                    const float cx = left + buttonW / 2.f, cy = rowY + 30.f;
+                    const float cx = left + buttonW / 2.f, cy = rowY + 27.f;
                     auto brush = available ? m_brushTextMain.Get() : m_brushTextDim.Get();
                     m_pRenderTarget->DrawLine(D2D1::Point2F(cx - 4, cy), D2D1::Point2F(cx + 4, cy), brush, 1.5f);
                     if (increase)
@@ -2341,20 +2430,14 @@ void Direct2DHostWindow::Render()
                 };
                 drawStep(minusX, false);
                 drawStep(plusX, true);
-                const auto range = NumberText(ctrl, ctrl.minVal, true) + L" - " + NumberText(ctrl, ctrl.maxVal, true);
-                m_pRenderTarget->DrawText(range.c_str(),
-                                          UINT32(range.size()),
-                                          m_fmtRange.Get(),
-                                          D2D1::RectF(numRect.left, rowY + 49.f, numRect.right, rowY + 65.f),
-                                          m_brushTextDim.Get());
-                drawReset(D2D1::RectF(minusX - 40.f, rowY + 13.f, minusX - 6.f, rowY + 47.f));
+                drawReset(D2D1::RectF(minusX - 40.f, rowY + 10.f, minusX - 6.f, rowY + 44.f));
             }
             else if (ctrl.kind == ControlKind::Choice)
             {
                 const float boxW = 220.0f;
                 const float boxH = 28.0f;
                 float boxX = rightEdge - boxW;
-                float boxY = rowY + 15.0f;
+                float boxY = rowY + 13.0f;
 
                 D2D1_RECT_F dropRect = D2D1::RectF(boxX, boxY, boxX + boxW, boxY + boxH);
                 D2D1_ROUNDED_RECT roundedDrop = D2D1::RoundedRect(dropRect, 6.0f, 6.0f);
@@ -2402,7 +2485,7 @@ void Direct2DHostWindow::Render()
 
             else if (ctrl.kind == ControlKind::Text)
             {
-                D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 15, rightEdge, rowY + 43);
+                D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 13, rightEdge, rowY + 41);
                 const D2D1_ROUNDED_RECT rounded = D2D1::RoundedRect(r, 4, 4);
                 m_pRenderTarget->FillRoundedRectangle(rounded, m_brushInputBg.Get());
                 m_pRenderTarget->DrawRoundedRectangle(rounded, m_brushBorderCard.Get(), 1.0f);
@@ -2429,7 +2512,7 @@ void Direct2DHostWindow::Render()
             }
             else if (ctrl.kind == ControlKind::Action)
             {
-                D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 15, rightEdge, rowY + 43);
+                D2D1_RECT_F r = D2D1::RectF(rightEdge - 220, rowY + 13, rightEdge, rowY + 41);
                 m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(r, 6, 6), m_brushInputBg.Get());
                 // Same font as the choice boxes beside them.
                 auto text = r;
@@ -2463,7 +2546,7 @@ void Direct2DHostWindow::Render()
         }
 
         contentBottom = currentY + m_scrollY + cardHeight;
-        currentY += cardHeight + 14.0f;
+        currentY += cardHeight + 10.0f;
     }
 
     m_pRenderTarget->PopLayer();

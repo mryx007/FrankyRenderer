@@ -5,7 +5,7 @@
 namespace SettingsLayout
 {
 inline constexpr float SidebarWidth = 260.f;
-inline constexpr float RowHeight = 70.f;
+inline constexpr float RowHeight = 54.f;
 
 // Work area is in physical pixels; preferred is measured at the initial DPI.
 inline SIZE ContentSize(SIZE preferred, UINT initialDpi, UINT dpi)

@@ -328,7 +328,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto& analysis = card(p, L"Image Analysis");
         auto scope = D2DBool(s, L"Image Analysis", &s.imageAnalysis);
         scope.desc =
-            L"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal.";
+            L"Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles.";
         analysis.controls.push_back(std::move(scope));
         analysis.controls.push_back(
             D2DBool(s,
@@ -339,12 +339,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                           L"Display Mode",
                           L"Switches the display to a listed mode matching the video frame rate in fullscreen and "
                           L"restores it when leaving fullscreen or stopping.");
-        mode.controls.push_back(
-            D2DBool(s,
-                    L"Switch Display Mode in Fullscreen",
-                    &s.displayModeSwitch,
-                    L"Uses the listed mode with the lowest refresh rate that is a whole multiple of the "
-                    L"video frame rate. Applies to this display profile only."));
+        mode.controls.push_back(D2DBool(
+            s,
+            L"Switch Display Mode in Fullscreen",
+            &s.displayModeSwitch,
+            L"Uses the listed mode whose refresh rate is the lowest whole multiple of the frame rate. Only for this display."));
         D2DControl list;
         list.name = L"Allowed Modes";
         list.kind = ControlKind::Text;
@@ -484,18 +483,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             L"Present in Advance",
             &s.presentAhead,
             {{0, L"Automatic"}, {1, L"1 Refresh"}, {2, L"2 Refreshes"}, {3, L"3 Refreshes"}, {4, L"4 Refreshes"}},
-            L"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-            L"render peaks on slower PCs but adds latency. Automatic starts at one and "
-            L"adds more only after late pictures."));
-        c.controls.push_back(D2DNumber(s,
-                                       L"Oversample Threshold",
-                                       &s.motionThreshold,
-                                       0,
-                                       .5f,
-                                       .01f,
-                                       L"Smooth Motion shows a whole picture instead of a blend when the other "
-                                       L"picture would cover less than this share of a refresh. Fewer double "
-                                       L"edges on motion; 0 always blends. Used with the oversample frame mixer."));
+            L"Pictures handed to the display ahead of time. More absorbs render peaks but adds latency. Automatic adds more only after late pictures."));
+        c.controls.push_back(D2DNumber(
+            s,
+            L"Oversample Threshold",
+            &s.motionThreshold,
+            0,
+            .5f,
+            .01f,
+            L"Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends."));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,
@@ -683,11 +679,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
         c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
-        c.controls.push_back(D2DBool(s,
-                                     L"RTX Video HDR",
-                                     &s.rtxHdr,
-                                     L"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, an "
-                                     L"RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."));
+        c.controls.push_back(D2DBool(
+            s,
+            L"RTX Video HDR",
+            &s.rtxHdr,
+            L"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));

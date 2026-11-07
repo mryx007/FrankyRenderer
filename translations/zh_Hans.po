@@ -138,14 +138,6 @@ msgstr "0 表示保留设备默认值。缓冲越多，延迟越高。"
 msgid "Image Analysis"
 msgstr "图像分析"
 
-#. Setting description (General > Image Analysis > Image Analysis)
-msgid ""
-"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
-"after color mapping; excludes subtitles. SDR nits are nominal."
-msgstr ""
-"波形图、直方图、RGB 分量图、伪彩色与灰阶渐变。采样于色彩映射前/后；不含字幕。"
-"SDR 尼特为标称值。"
-
 #. Setting name (General > Image Analysis)
 msgid "Statistics in Video Area"
 msgstr "统计信息显示在画面内"
@@ -168,12 +160,6 @@ msgstr "全屏时切换到与视频帧率匹配的所列显示模式，退出全
 #. Setting name (General > Display Mode)
 msgid "Switch Display Mode in Fullscreen"
 msgstr "全屏切换显示模式"
-
-#. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
-msgid ""
-"Uses the listed mode with the lowest refresh rate that is a whole multiple "
-"of the video frame rate. Applies to this display profile only."
-msgstr "使用所列模式中刷新率最低且为视频帧率整数倍的模式。仅适用于此显示配置。"
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
@@ -263,14 +249,6 @@ msgstr "视频圆角的相对程度。0 表示保持直角；1 表示应用最�
 #. Setting name (General > Background & Transparency)
 msgid "Skip Target Clearing"
 msgstr "跳过目标清除"
-
-#. Setting description (General > Background & Transparency > Skip Target Clearing)
-msgid ""
-"Skip clearing uncovered output borders. May leave old or undefined pixels "
-"there; no benefit for full-frame video. Default is Off."
-msgstr ""
-"跳过清除未覆盖的输出边框。可能会导致该区域出现残留或无效像素；对全屏视频无益"
-"处。默认为关闭。"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
@@ -905,15 +883,6 @@ msgstr "混合视频帧以减少因视频与显示刷新率差异导致的抖动
 msgid "Present in Advance"
 msgstr "预呈现帧数"
 
-#. Setting description (Scaling > Filters > Present in Advance)
-msgid ""
-"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-"render peaks on slower PCs but adds latency. Automatic starts at one and "
-"adds more only after late pictures."
-msgstr ""
-"预先提交给显示器显示的平滑运动帧数。数值越大越能吸收慢速 PC 上的渲染峰值，但"
-"会增加延迟。自动模式从 1 开始，仅在出现迟到的画面后才增加更多。"
-
 #. Choice (Scaling > Filters > Present in Advance)
 msgid "Automatic"
 msgstr "自动"
@@ -938,39 +907,13 @@ msgstr "4 次刷新"
 msgid "Oversample Threshold"
 msgstr "过采样阈值"
 
-#. Setting description (Scaling > Filters > Oversample Threshold)
-msgid ""
-"Smooth Motion shows a whole picture instead of a blend when the other "
-"picture would cover less than this share of a refresh. Fewer double edges on "
-"motion; 0 always blends. Used with the oversample frame mixer."
-msgstr ""
-"当另一幅画面在一个刷新周期内的占比低于此值时，平滑运动将显示完整画面而非混合"
-"结果。可减少运动中的重影；设为 0 时始终混合。用于过采样帧混合器。"
-
 #. Setting name (Scaling > Filters)
 msgid "Skip Downscale Anti-Aliasing"
 msgstr "跳过降采样抗锯齿"
 
-#. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
-msgid ""
-"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
-"edges. Default: Off; leave Off for best quality."
-msgstr ""
-"通过跳过抗锯齿来加速降采样。可能会引入莫尔纹和锯齿边缘。默认为关闭；为获得最"
-"佳画质请保持关闭。"
-
 #. Setting name (Scaling > Filters)
 msgid "Preserve Frame Mixer Cache"
 msgstr "保留帧混合器缓存"
-
-#. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
-msgid ""
-"Reuse mixed frames after resizing or parameter changes. May make transitions "
-"smoother but briefly reuse lower-quality or older processing. Default: Off; "
-"used with Smooth Motion."
-msgstr ""
-"调整大小或更改参数后复用混合帧。可让过渡更平滑，但会短暂复用较低质量或较早的"
-"处理结果。默认为关闭；用于平滑运动。"
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -1443,17 +1386,6 @@ msgstr "在 LUT 类型指定的阶段应用所选 3D LUT。"
 msgid "LUT Type"
 msgstr "LUT 类型"
 
-#. Setting description (Color > 3D LUT > LUT Type)
-msgid ""
-"Default keeps the existing SDR calibration LUT stage. Manual types use this "
-"file as a color-mapping LUT. Normalized uses linear-light RGB; Conversion "
-"replaces color conversion, tone mapping and ICC correction. Match the LUT's "
-"intended data representation."
-msgstr ""
-"默认：保留现有 SDR 校准 LUT 阶段。手动类型：将此文件用作色彩映射 LUT。归一"
-"化：使用线性光 RGB；转换：替换色彩转换、色调映射与 ICC 校正。请匹配 LUT 预期"
-"的数据表示方式。"
-
 #. Choice (Color > 3D LUT > LUT Type)
 msgid "Default (SDR Calibration)"
 msgstr "默认（SDR 校准）"
@@ -1507,15 +1439,6 @@ msgstr "HDR 输出"
 msgid "HDR Mode"
 msgstr "HDR 模式"
 
-#. Setting description (HDR > HDR Output > HDR Mode)
-msgid ""
-"Pass HDR and its metadata to the display; keep HDR output but roll off "
-"highlights above the display's peak, for monitors and laptops that do not "
-"tone map themselves; or tone map HDR to SDR."
-msgstr ""
-"将 HDR 及其元数据直通给显示器；保持 HDR 输出，但将高于显示器峰值的亮部滚降"
-"（适用于自身不做色调映射的显示器和笔记本）；或将 HDR 色调映射为 SDR。"
-
 #. Choice (HDR > HDR Output > HDR Mode)
 msgid "Passthrough HDR to Display"
 msgstr "将 HDR 直通到显示器"
@@ -1541,15 +1464,6 @@ msgstr "自动将 HDR 高光压缩至目标峰值。HDR 直通时绕过此处理
 #. Setting name (HDR > HDR Output)
 msgid "HDR Target Peak (0 = Auto)"
 msgstr "HDR 目标峰值（0 = 自动）"
-
-#. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
-msgid ""
-"Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak "
-"Windows reports for the display, which on some laptops follows the "
-"brightness setting."
-msgstr ""
-"'HDR 色调映射至显示器峰值'所用的显示器峰值，单位：尼特。0 表示使用 Windows 报"
-"告的显示器峰值；部分笔记本上该值随亮度设置变化。"
 
 #. Setting name (HDR > HDR Output)
 msgid "SDR Target Brightness (nits)"
@@ -1666,14 +1580,6 @@ msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
 #. Setting name (HDR > HDR Output)
 msgid "RTX Video HDR"
 msgstr "RTX 视频 HDR"
-
-#. Setting description (HDR > HDR Output > RTX Video HDR)
-msgid ""
-"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
-"an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
-msgstr ""
-"通过 NVIDIA 驱动将 SDR 视频 AI 转换为 HDR。需启用 Windows HDR、使用 RTX GPU，"
-"并在 NVIDIA 应用中开启 RTX 视频 HDR；亮度设置也在其中。"
 
 #. Section heading (HDR)
 msgid "HDR Peak Detection"
@@ -3438,3 +3344,51 @@ msgstr "Delete"
 #. Menu text; keep %d and %s placeholders
 msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
 msgstr "移除所有快捷键？Ctrl+J 保留用于统计信息。"
+
+#. Setting description (General > Image Analysis > Image Analysis)
+msgid "Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles."
+msgstr "波形、直方图、RGB 分量、伪色和灰阶，取样于色彩映射之前或之后，不含字幕。"
+
+#. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
+msgid "Uses the listed mode whose refresh rate is the lowest whole multiple of the frame rate. Only for this display."
+msgstr "使用列表中刷新率为帧率最小整数倍的模式。仅适用于此显示器。"
+
+#. Setting description (General > Background & Transparency > Skip Target Clearing)
+msgid "Skips clearing the borders around the picture. Old pixels may remain there. Default: Off."
+msgstr "跳过清除画面周围的边框。那里可能残留旧像素。默认：关。"
+
+#. Setting description (Scaling > Filters > Present in Advance)
+msgid "Pictures handed to the display ahead of time. More absorbs render peaks but adds latency. Automatic adds more only after late pictures."
+msgstr "提前交给显示器的画面数。更多可吸收渲染峰值但增加延迟。自动仅在画面迟到后增加。"
+
+#. Setting description (Scaling > Filters > Oversample Threshold)
+msgid "Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends."
+msgstr "当另一画面在一次刷新中所占比例低于此值时，显示完整画面而非混合。减少重影；0 表示始终混合。"
+
+#. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
+msgid "Faster downscaling without anti-aliasing. Can cause moire and jagged edges. Default: Off."
+msgstr "跳过抗锯齿以加快缩小。可能产生摩尔纹和锯齿。默认：关。"
+
+#. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
+msgid "Reuses mixed frames after resizing or setting changes. Smoother transitions, but briefly older quality. Default: Off."
+msgstr "调整大小或更改设置后复用已混合的帧。过渡更平滑，但短时间内画质较旧。默认：关。"
+
+#. Setting description (Color > 3D LUT > LUT Type)
+msgid "Default keeps the SDR calibration LUT. Normalized uses linear-light RGB; Conversion replaces color conversion, tone mapping and ICC. Must match the LUT."
+msgstr "默认保留 SDR 校准 LUT。归一化使用线性光 RGB；转换将替代色彩转换、色调映射和 ICC。须与 LUT 匹配。"
+
+#. Setting description (HDR > HDR Output > HDR Mode)
+msgid "Pass HDR to the display; keep HDR but roll off highlights above the display's peak, for screens without own tone mapping; or tone map to SDR."
+msgstr "将 HDR 直通显示器；保持 HDR 但压缩超出显示器峰值的高光，适用于自身不做色调映射的屏幕；或映射为 SDR。"
+
+#. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
+msgid "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows reports; on some laptops it follows brightness."
+msgstr "“映射到显示器峰值”使用的峰值亮度（尼特）。0 使用 Windows 报告的值，部分笔记本会随亮度变化。"
+
+#. Setting description (HDR > HDR Output > RTX Video HDR)
+msgid "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."
+msgstr "由 NVIDIA 驱动通过 AI 将 SDR 转为 HDR。需要 Windows HDR、RTX 显卡并在 NVIDIA App 中开启 RTX Video HDR。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Range"
+msgstr "范围"
