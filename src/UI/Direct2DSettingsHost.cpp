@@ -1925,7 +1925,8 @@ void Direct2DHostWindow::Render()
             chip.extra = 21.f;
         }
         chip.x = endX;
-        chip.y = lineTop + (lineHeight - 18.f) / 2.f;
+        // The line box has room for descenders below; centre on the letters.
+        chip.y = lineTop + (lineHeight - 18.f) / 2.f + 2.f;
         return chip;
     };
     float contentBottom = currentY + m_scrollY;
