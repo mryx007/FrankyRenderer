@@ -3221,3 +3221,11 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Setting name (General > Image Analysis)
+msgid "Statistics in Video Area"
+msgstr "统计信息显示在画面内"
+
+#. Setting description (General > Image Analysis > Statistics in Video Area)
+msgid "Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+msgstr "Ctrl+J 统计信息和图像分析显示在画面上，而不是黑边中。"

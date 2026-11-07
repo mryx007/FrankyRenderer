@@ -749,6 +749,7 @@ class Direct2DHostWindow
     void OnMouseMove(float x, float y, WPARAM flags);
     void OnLButtonUp(float x, float y);
     void OnMouseWheel(short delta, float x, float y);
+    void RehoverAfterScroll();
     void OnChar(wchar_t ch);
     void OnKeyDown(WPARAM key);
 
@@ -3824,7 +3825,23 @@ void Direct2DHostWindow::OnMouseWheel(short delta, float x, float y)
     }
     EndEdit();
     m_scrollY = std::clamp(m_scrollY - static_cast<float>(delta) * 0.45f, 0.0f, m_maxScrollY);
+    RehoverAfterScroll();
+}
+
+// The hover highlight is kept in window coordinates. After the content moved,
+// draw it at the new scroll position and highlight what is now under the
+// mouse, instead of leaving the old highlight where the control used to be.
+void Direct2DHostWindow::RehoverAfterScroll()
+{
+    m_hoverRect = m_previousHoverRect = m_pressRect = {};
+    m_hoverTab = -1;
     InvalidateRect(m_hwnd, nullptr, FALSE);
+    UpdateWindow(m_hwnd); // rebuilds the hit regions
+    POINT cursor = {};
+    RECT client = {};
+    if (GetCursorPos(&cursor) && ScreenToClient(m_hwnd, &cursor) && GetClientRect(m_hwnd, &client) &&
+        PtInRect(&client, cursor))
+        OnMouseMove(float(cursor.x) / Scale(), float(cursor.y) / Scale(), 0);
 }
 
 void Direct2DHostWindow::OnChar(wchar_t ch)
@@ -3875,7 +3892,7 @@ void Direct2DHostWindow::OnKeyDown(WPARAM key)
                         : std::clamp(m_scrollY + (key == VK_NEXT ? 1 : -1) * m_pRenderTarget->GetSize().height * .8f,
                                      0.f,
                                      m_maxScrollY);
-        InvalidateRect(m_hwnd, nullptr, FALSE);
+        RehoverAfterScroll();
         return;
     }
     if (key == VK_TAB && !m_hitRegions.empty())

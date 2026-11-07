@@ -631,8 +631,9 @@ int wmain()
                 "INI import applies once and refreshes accepted settings");
         Require(SUCCEEDED(host->ApplyImported(beforeImport)), "restore before import test");
         host->m_preview = {};
-        // General, Processing and Color: first tabs fit without scrolling.
-        for (int index : {0, 1, 3})
+        // Processing and Color: first tabs fit without scrolling. General's
+        // Output tab grew (image analysis placement, display mode) and scrolls.
+        for (int index : {1, 3})
         {
             host->m_activePage = index;
             host->m_scrollY = 0;

@@ -71,6 +71,8 @@ struct PlaceboSettings
     BOOL rtxSuperResolution = FALSE;
     BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on
     BOOL imageAnalysis = FALSE;
+    // Ctrl+J statistics and image analysis follow the picture, not the window.
+    BOOL statisticsInVideo = FALSE;
     // Display mode switching in fullscreen, e.g. L"2160p23, 2160p24, 2160p60".
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};

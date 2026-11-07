@@ -55,6 +55,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
     INI_FIELD(imageAnalysis);
+    INI_FIELD(statisticsInVideo);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
     INI_FIELD(outputLevels);
@@ -346,6 +347,7 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.peakDetect,
                       candidate.showClipping,
                       candidate.imageAnalysis,
+                      candidate.statisticsInVideo,
                       candidate.colorAdjustment,
                       candidate.allowDelayedPeak})
         if (flag != FALSE && flag != TRUE)

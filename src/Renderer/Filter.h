@@ -32,9 +32,18 @@ class DecoderPin final : public CRendererInputPin,
     Renderer* owner;
     std::atomic<unsigned> queried = 0;
     std::atomic<bool> nativeDecoder = false;
+    // Our allocator, and the top-down RGB type the upstream filter accepted.
+    class SideDataAllocator* ownAllocator = nullptr;
+    CMediaType topDown;
+    bool wantTopDown = false;
 
   public:
     DecoderPin(Renderer*, HRESULT*);
+    // Bottom-up RGB: ask the upstream filter to write top-down instead, as MPC
+    // Video Renderer does. Filters such as DirectVobSub otherwise disagree
+    // with the renderer about the row order and the picture turns upside down.
+    void RequestTopDown(IPin* upstream);
+    STDMETHODIMP NotifyAllocator(IMemAllocator*, BOOL) override;
     DECLARE_IUNKNOWN
     STDMETHODIMP NonDelegatingQueryInterface(REFIID, void**) override;
     STDMETHODIMP GetAllocator(IMemAllocator**) override;

@@ -11,6 +11,14 @@
 
 // Convert/deinterlace each decoded image once, upscale it, then let the normal
 // renderer mix, color-map and composite subtitles at the presentation rate.
+// While the output size changes (resizing, moving to another display, entering
+// fullscreen) RTX pauses: a newly created driver processor briefly outputs
+// broken lines, and every intermediate size would create one. The renderer
+// posts SettleMessage to its window to draw again once the size held still.
+inline constexpr UINT RtxSettleMessage = WM_APP + 0x4c1;
+inline constexpr UINT_PTR RtxSettleTimer = 0x4c2;
+inline constexpr uint64_t RtxSettleMilliseconds = 300;
+
 class RtxScaling
 {
   public:

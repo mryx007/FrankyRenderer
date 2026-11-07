@@ -15,6 +15,7 @@
 - Added profiles. Videos from folders you choose can get their own settings, for example a different upscaler for anime. A profile can change any setting in the menu.<br>• Click "+" on the Profiles page to create a profile, then add one or more folders. Videos in these folders use the profile, all other videos use your normal settings ("Default").<br>• At the top of the menu, next to Quality, choose which profile you want to change. All pages then change that profile.<br>• A profile only remembers what you change in it. Everything else comes from Default.<br>• Ctrl+J shows which profile a video uses.<br>• Choosing the display whose normal settings the menu shows is on the Profiles page.
 - Added display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (BT.709, SMPTE C, EBU / PAL, BT.2020, DCI-P3 (DCI white) or P3-D65 (Display P3)) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.80 in steps of 0.05) on that display; when it is off, SDR stays as before.
 - Added switch "Same Settings on All Displays" (Profiles > Default): copies the chosen display's settings to all displays and keeps them equal while on. Turned off, every display keeps those settings and can be changed alone again.
+- Added "Statistics in Video Area" (General > Image Analysis): the Ctrl+J statistics and image analysis sit at the edge of the picture instead of in black bars, like madVR.
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
@@ -42,6 +43,10 @@
 - Fixed text fields changing their font while typing.
 - Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
 - Fixed Chinese menu text mixing bold and thin characters: the menu now lays out text in the menu language, so all characters use Microsoft YaHei UI ([#17](https://github.com/mryx007/FrankyRenderer/issues/17)).
+- Fixed the highlight in the settings menu staying in place while scrolling with the mouse wheel; it now follows the control under the mouse.
+- Fixed RTX Video Super Resolution output being scaled again by a fraction of a pixel when the picture did not fill whole pixels; it is now shown 1:1, slightly sharper and with less GPU work.
+- Fixed brief broken lines with RTX Video Super Resolution while resizing the window, moving it to another display or entering fullscreen: RTX now pauses until the size holds still for a moment.
+- Fixed an upside-down picture with DirectVobSub (VSFilter) and other filters that pass RGB video: like MPC Video Renderer, the renderer now asks them for top-down rows ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
 - One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
 - Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
 - Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.

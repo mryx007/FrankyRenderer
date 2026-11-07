@@ -7,6 +7,7 @@
 #include "Renderer/SideDataAllocator.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/StatisticsKey.h"
+#include "Renderer/RtxScaling.h"
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/StatisticsRasterizer.h"
 #include "Renderer/VideoBackground.h"
@@ -160,6 +161,7 @@ STDMETHODIMP DecoderPin::GetAllocator(IMemAllocator** out)
             delete allocator;
             return hr;
         }
+        ownAllocator = allocator;
         Trace("Decoder allocator provides IMediaSideData samples");
     }
     *out = m_pAllocator;
@@ -216,12 +218,42 @@ STDMETHODIMP DecoderPin::ActivateD3D11Decoding(ID3D11Device* device, ID3D11Devic
     return hr;
 }
 
+void DecoderPin::RequestTopDown(IPin* upstream)
+{
+    CAutoLock guard(m_pLock);
+    wantTopDown = false;
+    CMediaType type = m_mt;
+    if (!upstream || !MakeTopDown(type))
+        return;
+    const HRESULT accepted = upstream->QueryAccept(&type);
+    Trace("Top-down RGB request accepted=%08lX", static_cast<unsigned long>(accepted));
+    if (accepted != S_OK)
+        return;
+    topDown = type;
+    wantTopDown = true;
+}
+
+STDMETHODIMP DecoderPin::NotifyAllocator(IMemAllocator* allocator, BOOL readOnly)
+{
+    HRESULT hr = CRendererInputPin::NotifyAllocator(allocator, readOnly);
+    if (FAILED(hr))
+        return hr;
+    CAutoLock guard(m_pLock);
+    // Only our allocator can hand the type over with a buffer.
+    if (wantTopDown && ownAllocator && allocator == static_cast<IMemAllocator*>(ownAllocator))
+        ownAllocator->SetPendingType(topDown);
+    return hr;
+}
+
 HRESULT DecoderPin::BreakConnect()
 {
     Trace("Input disconnect begin; native=%d", nativeDecoder.load());
     HRESULT hr = CRendererInputPin::BreakConnect();
     if (SUCCEEDED(hr))
+    {
         nativeDecoder = false;
+        wantTopDown = false;
+    }
     Trace("Input disconnect completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
 }
@@ -608,6 +640,19 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     {
         if (!(l & (1LL << 30)))
             owner->ToggleStatistics();
+        return 0;
+    }
+    if (msg == RtxSettleMessage)
+    {
+        SetTimer(hwnd, RtxSettleTimer, UINT(RtxSettleMilliseconds + 50), nullptr);
+        return 0;
+    }
+    if (msg == WM_TIMER && w == RtxSettleTimer)
+    {
+        KillTimer(hwnd, RtxSettleTimer);
+        // Playback draws RTX with its next frame; a paused picture needs one.
+        if (owner->windowState.load() != State_Running)
+            owner->Repaint("RTX settled");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
@@ -1007,6 +1052,7 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
     // Hosts may supply the video owner before or after connection. AutoShow
     // belongs to Pause/Run; the video child starts hidden inside the player.
     backend.SetSourceCodec(SourceCodecFromOutput(pin));
+    static_cast<DecoderPin*>(m_pInputPin)->RequestTopDown(pin);
     // Connection alone must not create a desktop window. If the player has
     // not supplied a parent yet, put_Owner creates the child when it arrives.
     if (!window->GetOwnerWindow())

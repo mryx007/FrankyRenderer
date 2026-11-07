@@ -175,6 +175,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
         FIELD(imageAnalysis),
+        FIELD(statisticsInVideo),
         FIELD(displayModeSwitch),
         COPY_TEXT(displayModes),
         FIELD(displayModeDelay),
@@ -320,6 +321,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
     Bool(key, L"RtxHdr", settings.rtxHdr);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
+    Bool(key, L"StatisticsInVideo", settings.statisticsInVideo);
     Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
     String(key, L"DisplayModes", settings.displayModes);
     Float(key, L"DisplayModeDelay", settings.displayModeDelay);
@@ -541,7 +543,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         (s.sdrGammaCurve != 0 && !ValidGammaCurve(s.sdrGammaCurve)) || s.displayContrast < 0 ||
         s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
         return E_INVALIDARG;
-    if (s.imageAnalysis != FALSE && s.imageAnalysis != TRUE)
+    if ((s.imageAnalysis != FALSE && s.imageAnalysis != TRUE) ||
+        (s.statisticsInVideo != FALSE && s.statisticsInVideo != TRUE))
         return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE) || (s.rtxHdr != FALSE && s.rtxHdr != TRUE))
         return E_INVALIDARG;
@@ -638,6 +641,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.rtxSuperResolution = !!s.rtxSuperResolution;
     out.rtxHdr = !!s.rtxHdr;
     out.imageAnalysis = !!s.imageAnalysis;
+    out.statisticsInVideo = !!s.statisticsInVideo;
     out.sharpenStrength = s.sharpenStrength;
     out.peakDetect = !!s.peakDetect;
     out.allowDelayedPeak = !!s.allowDelayedPeak;
@@ -728,6 +732,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
     save(L"RtxHdr", REG_DWORD, &s.rtxHdr, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
+    save(L"StatisticsInVideo", REG_DWORD, &s.statisticsInVideo, 4);
     save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
     save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
     save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);

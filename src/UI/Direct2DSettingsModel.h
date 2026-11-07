@@ -329,6 +329,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         scope.desc =
             L"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal.";
         analysis.controls.push_back(std::move(scope));
+        analysis.controls.push_back(
+            D2DBool(s,
+                    L"Statistics in Video Area",
+                    &s.statisticsInVideo,
+                    L"Ctrl+J statistics and image analysis sit on the picture, not in black bars."));
         auto& mode = card(p,
                           L"Display Mode",
                           L"Switches the display to a listed mode matching the video frame rate in fullscreen and "

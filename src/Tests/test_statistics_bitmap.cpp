@@ -110,7 +110,12 @@ int main()
         raster.Stop();
         Check(!raster.Submit(L"stopped", 1280, 1080), "no work after shutdown");
     }
-    puts("PASS worker pixels, paused notification, reset, bounded queue and shutdown");
+    // Statistics in the video area: start at the top of the picture, move up
+    // into the top bar only as far as needed, never above the window.
+    Check(OverlayTop(140, 940, 500) == 140, "box starts at the top of the picture");
+    Check(OverlayTop(140, 940, 900) == 40, "taller box moves up so it ends with the picture");
+    Check(OverlayTop(140, 640, 900) == 0, "box never leaves the window");
+    puts("PASS worker pixels, paused notification, reset, bounded queue and shutdown, overlay placement");
     auto params = pl_d3d11_default_params;
     auto d3d = pl_d3d11_create(nullptr, &params);
     Check(d3d != nullptr, "D3D11 device");

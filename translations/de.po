@@ -3591,3 +3591,11 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#. Setting name (General > Image Analysis)
+msgid "Statistics in Video Area"
+msgstr "Statistik im Bildbereich"
+
+#. Setting description (General > Image Analysis > Statistics in Video Area)
+msgid "Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+msgstr "Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen Balken."

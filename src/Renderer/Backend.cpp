@@ -82,6 +82,13 @@ struct PlaceboBackend::State
     uint64_t nextFrame = 1;
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
+    // RTX output size and since when it holds; RTX waits while it changes.
+    int rtxWidth = 0, rtxHeight = 0;
+    uint64_t rtxSizeSince = 0;
+    bool rtxResizing = false;
+    // Screenshots and readbacks render at their own size: no RTX pause, and
+    // they leave the window's size tracking alone.
+    bool offscreen = false;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -1127,7 +1134,7 @@ struct PlaceboBackend::State
                                                    : L"off");
         {
             auto& value = row(L"RTX Video");
-            value << rtx.Status();
+            value << (rtxResizing ? std::wstring(L"paused (resizing)") : rtx.Status());
             if (settings.rtxSuperResolution || settings.rtxHdr)
                 value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
         }
@@ -1518,6 +1525,35 @@ struct PlaceboBackend::State
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
             if (rotation % 180)
                 std::swap(outW, outH);
+            const uint64_t now = GetTickCount64();
+            if (offscreen)
+                rtxResizing = false;
+            else if (outW != rtxWidth || outH != rtxHeight)
+            {
+                // The first size at playback start applies at once.
+                const bool first = !rtxWidth;
+                rtxWidth = outW;
+                rtxHeight = outH;
+                rtxSizeSince = first ? now - RtxSettleMilliseconds : now;
+                // Draw again with RTX once the size holds, also when paused.
+                if (window)
+                    PostMessageW(window, RtxSettleMessage, 0, 0);
+            }
+            if (!offscreen)
+                rtxResizing = now - rtxSizeSince < RtxSettleMilliseconds;
+        }
+        else
+            rtxResizing = false;
+        if ((settings.rtxSuperResolution || rtxHdr) && !rtxResizing)
+        {
+            int outW = rtxWidth, outH = rtxHeight;
+            if (offscreen)
+            {
+                outW = int(std::lround(target.crop.x1 - target.crop.x0));
+                outH = int(std::lround(target.crop.y1 - target.crop.y0));
+                if (rotation % 180)
+                    std::swap(outW, outH);
+            }
             auto current = rtx.Get(
                 d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
             bool ready = bool(current);
@@ -1559,6 +1595,19 @@ struct PlaceboBackend::State
                 display(image);
                 for (int i = 0; mixing && i < mixCount; ++i)
                     display(mixFrames[i]);
+                // RTX delivers whole pixels of the rounded size. Put the picture
+                // on whole pixels of that size, so libplacebo shows it 1:1
+                // instead of resampling it by a fraction of a pixel.
+                auto snap = [](float& a, float& b)
+                {
+                    const bool reversed = b < a;
+                    const float low = std::min(a, b), size = std::round(std::abs(b - a));
+                    const float start = std::round(low);
+                    a = reversed ? start + size : start;
+                    b = reversed ? start : start + size;
+                };
+                snap(target.crop.x0, target.crop.x1);
+                snap(target.crop.y0, target.crop.y1);
             }
         }
         // Apply after preprocessing, to the main image and every temporal sample.
@@ -1778,6 +1827,14 @@ struct PlaceboBackend::State
             target.num_overlays = 1;
         }
         const bool statistics = showStatistics.load();
+        // The visible picture inside the window, for statistics placed on it.
+        const float viewW = float(target.planes[0].texture->params.w),
+                    viewH = float(target.planes[0].texture->params.h);
+        const pl_rect2df picture = {std::clamp(std::min(target.crop.x0, target.crop.x1), 0.f, viewW),
+                                    std::clamp(std::min(target.crop.y0, target.crop.y1), 0.f, viewH),
+                                    std::clamp(std::max(target.crop.x0, target.crop.x1), 0.f, viewW),
+                                    std::clamp(std::max(target.crop.y0, target.crop.y1), 0.f, viewH)};
+        const pl_rect2df* placement = settings.statisticsInVideo ? &picture : nullptr;
         probe.Next(RenderProbe::StatisticsInfo);
         // The overlay box keeps its largest size while shown; start over each
         // time the statistics are switched on.
@@ -1795,7 +1852,7 @@ struct PlaceboBackend::State
                                         window))
             {
                 const int index = target.num_overlays;
-                statisticsBitmap.Describe(overlays[index], parts[index]);
+                statisticsBitmap.Describe(overlays[index], parts[index], placement);
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
             }
@@ -1807,7 +1864,8 @@ struct PlaceboBackend::State
             if (imageAnalysis.Describe(overlays[index],
                                        parts[index],
                                        target.planes[0].texture->params.w,
-                                       target.planes[0].texture->params.h))
+                                       target.planes[0].texture->params.h,
+                                       placement))
             {
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
@@ -2704,7 +2762,9 @@ PlaceboBackend::RenderOffscreen(
         const float display = s.settings.hdrMode == 3 ? s.DisplayPeak() : 0;
         target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : display > 0 ? display : 1000;
     }
+    s.offscreen = true;
     bool ok = s.Render(target, hdrTarget, false, windowGeometry);
+    s.offscreen = false;
     rgba.resize(static_cast<size_t>(width) * height * format->texel_size);
     pl_tex_transfer_params transfer = {};
     transfer.tex = tex;
