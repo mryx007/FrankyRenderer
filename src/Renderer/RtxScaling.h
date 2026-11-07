@@ -3,6 +3,7 @@
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/filters.h>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <string>
@@ -26,6 +27,9 @@ class RtxScaling
         const pl_frame* previous = nullptr;
         const pl_frame* next = nullptr;
         pl_field firstField = PL_FIELD_NONE;
+        // The driver's number for this video frame and the picture size.
+        UINT index = 0;
+        int width = 0, height = 0;
 
         ~Frame()
         {
@@ -50,14 +54,14 @@ class RtxScaling
         Microsoft::WRL::ComPtr<ID3D11Texture2D> pixels;
         Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView> view;
         pl_tex texture = nullptr;
+        int width = 0, height = 0;
     };
 
     // Signals when libplacebo finished writing the RTX input texture.
     Microsoft::WRL::ComPtr<ID3D11Query> written;
 
     std::vector<Spare> spare;
-    // Video frame number for the driver and the frame it belongs to.
-    uint64_t lastKey = UINT64_MAX;
+    // The last video frame number given to the driver; each frame keeps its own.
     UINT inputIndex = 0;
 
     // Keeps the texture of a frame only the cache still holds.
@@ -65,7 +69,11 @@ class RtxScaling
     {
         if (frame && frame.use_count() == 1 && frame->texture)
         {
-            spare.push_back({std::move(frame->pixels), std::move(frame->view), std::exchange(frame->texture, nullptr)});
+            spare.push_back({std::move(frame->pixels),
+                             std::move(frame->view),
+                             std::exchange(frame->texture, nullptr),
+                             frame->width,
+                             frame->height});
         }
     }
 
@@ -171,6 +179,12 @@ class RtxScaling
 
     // superResolution upscales to outW x outH; trueHdr turns an SDR source
     // into HDR10 (PQ, BT.2020) at that size or the source size.
+    //
+    // whole is the full picture (source.crop before black bars are cut) and
+    // targetW x targetH the largest picture size: the driver's processor and
+    // input are made for these, and source.crop and outW x outH only set its
+    // rectangles. A crop that follows black bars or a zoom then costs one new
+    // evaluation of the frame, not a new processor and new textures.
     std::shared_ptr<Frame> Get(pl_d3d11 d3d,
                                ID3D11DeviceContext* context,
                                const pl_frame& source,
@@ -179,7 +193,10 @@ class RtxScaling
                                int outH,
                                const pl_render_params& options,
                                bool superResolution = true,
-                               bool trueHdr = false)
+                               bool trueHdr = false,
+                               const pl_rect2df* whole = nullptr,
+                               int targetW = 0,
+                               int targetH = 0)
     {
         const int w = int(std::ceil(std::abs(source.crop.x1 - source.crop.x0)));
         const int h = int(std::ceil(std::abs(source.crop.y1 - source.crop.y0)));
@@ -195,6 +212,17 @@ class RtxScaling
             outW = w;
             outH = h;
         }
+        const pl_rect2df full = whole ? *whole : source.crop;
+        const float fullX = std::min(full.x0, full.x1), fullY = std::min(full.y0, full.y1);
+        const int inW = std::max(w, int(std::ceil(std::abs(full.x1 - full.x0))));
+        const int inH = std::max(h, int(std::ceil(std::abs(full.y1 - full.y0))));
+        const int maxW = std::max(outW, targetW), maxH = std::max(outH, targetH);
+        // The part of the full picture to process.
+        const LONG left =
+            std::clamp(LONG(std::lround(std::min(source.crop.x0, source.crop.x1) - fullX)), 0L, LONG(inW));
+        const LONG top = std::clamp(LONG(std::lround(std::min(source.crop.y0, source.crop.y1) - fullY)), 0L, LONG(inH));
+        const RECT sourceRect = {left, top, std::min(LONG(inW), left + w), std::min(LONG(inH), top + h)};
+        const RECT destinationRect = {0, 0, outW, outH};
         if (source.rotation || source.repr.dovi || source.repr.alpha != PL_ALPHA_UNKNOWN ||
             source.color.transfer == PL_COLOR_TRC_HLG || source.color.transfer == PL_COLOR_TRC_LINEAR ||
             (source.color.transfer == PL_COLOR_TRC_PQ && source.color.primaries != PL_COLOR_PRIM_BT_2020))
@@ -207,31 +235,38 @@ class RtxScaling
         // RTX Video HDR takes the 10-bit YCbCr input the driver path expects.
         const int bits = trueHdr || pl_color_space_is_hdr(&source.color) || source.repr.bits.color_depth > 8 ? 10 : 8;
         const auto type = bits == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
-        if (width != w || height != h || outputWidth != outW || outputHeight != outH || format != type ||
+        // A larger picture than the processor was made for needs a new one;
+        // a smaller one fits into it.
+        if (width != inW || height != inH || outputWidth < outW || outputHeight < outH || format != type ||
             !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale || hdr != trueHdr)
         {
             ClearFrames();
             for (auto& plane : input)
                 if (plane)
                     pl_tex_destroy(gpu, &plane);
-            width = w;
-            height = h;
-            outputWidth = outW;
-            outputHeight = outH;
+            width = inW;
+            height = inH;
+            outputWidth = maxW;
+            outputHeight = maxH;
             sourceColor = source.color;
             format = type;
             upscaling = upscale;
             hdr = trueHdr;
         }
+        // A frame evaluated again keeps its number; a new one gets the next.
+        UINT index = inputIndex + 1;
         if (const auto found = frames.find(key); found != frames.end())
         {
             const auto& saved = found->second;
-            if (!memcmp(&saved->sourceCrop, &source.crop, sizeof(source.crop)) && saved->previous == source.prev &&
-                saved->next == source.next && saved->firstField == source.first_field)
+            const bool crop = !memcmp(&saved->sourceCrop, &source.crop, sizeof(source.crop));
+            const bool size = saved->width == outW && saved->height == outH;
+            if (crop && size && saved->previous == source.prev && saved->next == source.next &&
+                saved->firstField == source.first_field)
             {
                 status = L"driver requested (cached)";
                 return saved;
             }
+            index = saved->index;
         }
         gpu = d3d->gpu;
         if (!converter)
@@ -243,7 +278,8 @@ class RtxScaling
         }
         const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
         const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
-        HRESULT hr = processor.Configure(d3d->device, w, h, outW, outH, bits, pq, bt2020, upscale, trueHdr);
+        HRESULT hr =
+            processor.Configure(d3d->device, inW, inH, outputWidth, outputHeight, bits, pq, bt2020, upscale, trueHdr);
         if (FAILED(hr))
         {
             Fail(hr);
@@ -271,7 +307,9 @@ class RtxScaling
             }
         }
         auto prepared = Describe(input[0], source.color, bits);
-        prepared.crop = {0, 0, float(w), float(h)};
+        prepared.crop = {0, 0, float(inW), float(inH)};
+        pl_frame picture = source;
+        picture.crop = {fullX, fullY, fullX + float(inW), fullY + float(inH)};
         if (bits > 8)
         {
             prepared.num_planes = 2;
@@ -302,7 +340,7 @@ class RtxScaling
         mapping.gamut_mapping = &pl_gamut_map_clip;
         mapping.contrast_recovery = 0;
         conversion.color_map_params = &mapping;
-        if (!pl_render_image(converter, &source, &prepared, &conversion))
+        if (!pl_render_image(converter, &picture, &prepared, &conversion))
         {
             Fail(E_FAIL);
             return {};
@@ -322,22 +360,27 @@ class RtxScaling
             while (context->GetData(written.Get(), nullptr, 0, 0) == S_FALSE && GetTickCount64() < deadline)
                 SwitchToThread();
         }
-        if (key != lastKey)
-        {
-            lastKey = key;
-            ++inputIndex;
-        }
+        inputIndex = std::max(inputIndex, index);
         auto saved = std::make_shared<Frame>();
         saved->gpu = gpu;
         saved->sourceCrop = source.crop;
         saved->previous = source.prev;
         saved->next = source.next;
         saved->firstField = source.first_field;
+        saved->index = index;
+        saved->width = outW;
+        saved->height = outH;
         if (frames.size() >= 16 && !frames.count(key))
         {
             auto oldest = frames.begin();
             Recycle(oldest->second);
             frames.erase(oldest);
+        }
+        // Textures of another picture size are of no further use.
+        while (!spare.empty() && (spare.back().width != outW || spare.back().height != outH))
+        {
+            pl_tex_destroy(gpu, &spare.back().texture);
+            spare.pop_back();
         }
         if (!spare.empty())
         {
@@ -350,6 +393,8 @@ class RtxScaling
         {
             D3D11_TEXTURE2D_DESC desc;
             processor.Output()->GetDesc(&desc);
+            desc.Width = outW;
+            desc.Height = outH;
             desc.MiscFlags = 0;
             desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
             hr = d3d->device->CreateTexture2D(&desc, nullptr, &saved->pixels);
@@ -372,11 +417,11 @@ class RtxScaling
         }
         // Like MPC Video Renderer: the driver writes into the frame's own
         // texture; no copy that could start before RTX finished.
-        hr = processor.Evaluate(inputIndex, saved->view.Get());
+        hr = processor.Evaluate(index, saved->view.Get(), &sourceRect, &destinationRect);
         // A newly created processor can return broken lines once: process its
         // first frame twice and keep the second result.
         if (SUCCEEDED(hr) && processor.TakeFresh())
-            hr = processor.Evaluate(inputIndex, saved->view.Get());
+            hr = processor.Evaluate(index, saved->view.Get());
         if (FAILED(hr))
         {
             Fail(hr);

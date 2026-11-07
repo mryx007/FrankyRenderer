@@ -1534,10 +1534,27 @@ struct PlaceboBackend::State
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
+            // The largest picture: the whole target. A crop that follows black
+            // bars or a zoom then only moves the driver's rectangles.
+            int targetW = target.planes[0].texture ? target.planes[0].texture->params.w : outW;
+            int targetH = target.planes[0].texture ? target.planes[0].texture->params.h : outH;
             if (rotation % 180)
+            {
                 std::swap(outW, outH);
-            auto current = rtx.Get(
-                d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
+                std::swap(targetW, targetH);
+            }
+            auto current = rtx.Get(d3d,
+                                   context.Get(),
+                                   image,
+                                   rtxKey,
+                                   outW,
+                                   outH,
+                                   options->params,
+                                   settings.rtxSuperResolution,
+                                   rtxHdr,
+                                   &restore.main,
+                                   targetW,
+                                   targetH);
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
@@ -1551,7 +1568,10 @@ struct PlaceboBackend::State
                                      outH,
                                      options->params,
                                      settings.rtxSuperResolution,
-                                     rtxHdr);
+                                     rtxHdr,
+                                     &restore.saved[i],
+                                     targetW,
+                                     targetH);
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));

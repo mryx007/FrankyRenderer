@@ -129,6 +129,36 @@ int main()
                     printf("RTX output textures created for 40 frames: %llu\n",
                            (unsigned long long)(scaling.TexturesCreated() - created));
                 }
+                {
+                    // Black bars move the crop and the zoom changes the picture
+                    // size: the driver's processor and cache stay, the frame is
+                    // evaluated once more and keeps its number.
+                    const pl_rect2df whole = source.crop;
+                    const auto params = pl_render_default_params;
+                    auto older = scaling.Get(
+                        d3d, context.Get(), source, 299, 1920, 1080, params, true, false, &whole, 1920, 1080);
+                    auto first = scaling.Get(
+                        d3d, context.Get(), source, 300, 1920, 1080, params, true, false, &whole, 1920, 1080);
+                    Require(older && first && first->index > older->index, "frames get rising numbers");
+                    const auto evaluated = scaling.Evaluations();
+                    const auto textures = scaling.TexturesCreated();
+                    pl_frame cropped = source;
+                    cropped.crop = {0, 8, float(w), float(h) - 8};
+                    auto moved = scaling.Get(
+                        d3d, context.Get(), cropped, 300, 1920, 1048, params, true, false, &whole, 1920, 1080);
+                    Require(moved && scaling.Evaluations() == evaluated + 1 && moved->index == first->index,
+                            "a new crop evaluates the frame once and keeps its number");
+                    Require(moved->image.crop.x1 == 1920 && moved->image.crop.y1 == 1048, "picture of the new size");
+                    Require(scaling.TexturesCreated() - textures <= 1, "a new crop needs one texture of the new size");
+                    Require(scaling.Get(
+                                d3d, context.Get(), source, 299, 1920, 1080, params, true, false, &whole, 1920, 1080) ==
+                                    older &&
+                                scaling.Evaluations() == evaluated + 1,
+                            "a new crop keeps the driver's processor and the other cached frames");
+                    auto next = scaling.Get(
+                        d3d, context.Get(), cropped, 301, 1920, 1048, params, true, false, &whole, 1920, 1080);
+                    Require(next && next->index > moved->index, "the next frame gets the next number");
+                }
                 Require(!scaling.Get(d3d, context.Get(), source, 124, w, h, pl_render_default_params),
                         "native-size output bypasses RTX");
                 source.crop = {3, 5, 952, 532};

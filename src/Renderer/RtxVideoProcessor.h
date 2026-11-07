@@ -258,10 +258,22 @@ class RtxVideoProcessor
         return video->CreateVideoProcessorOutputView(texture, enumerator.Get(), &ov, &view);
     }
 
-    HRESULT Evaluate(UINT index, ID3D11VideoProcessorOutputView* target = nullptr)
+    // source: the part of the input to process; destination: where it goes
+    // in the target. Both stay set for later calls without them.
+    HRESULT Evaluate(UINT index,
+                     ID3D11VideoProcessorOutputView* target = nullptr,
+                     const RECT* source = nullptr,
+                     const RECT* destination = nullptr)
     {
         if (!processor || !inputView || !outputView)
             return E_UNEXPECTED;
+        if (source)
+            context->VideoProcessorSetStreamSourceRect(processor.Get(), 0, TRUE, source);
+        if (destination)
+        {
+            context->VideoProcessorSetStreamDestRect(processor.Get(), 0, TRUE, destination);
+            context->VideoProcessorSetOutputTargetRect(processor.Get(), TRUE, destination);
+        }
         D3D11_VIDEO_PROCESSOR_STREAM stream = {};
         stream.Enable = TRUE;
         stream.InputFrameOrField = index;

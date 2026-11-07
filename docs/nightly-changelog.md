@@ -19,6 +19,7 @@
 - Added keyboard shortcuts (new Shortcuts page). Every menu setting can get a key: switch it on or off, go to its next value or a chosen one, or raise and lower a number. Each row says what a key press does. The list follows the menu (General, Processing, Scaling, Color, HDR, Shaders, where every shader can be switched on or off); a closed group shows how many keys it holds. Renderer actions: statistics, all shaders off for comparison, next quality preset or profile, reset picture controls and reset statistics. A short message in the picture confirms each key. Only Ctrl+J is assigned by default.
 - Fixed the reset buttons in the settings header: they now look like the tabs beside them, and the Profiles page no longer shows them.
 - Fixed wasted space in the settings menu: rows, section headings and the gaps between sections are smaller, a number's range is a small label after its name, and long descriptions are shorter, so more settings fit without scrolling.
+- Fixed stutter and brief mixed pictures with RTX Video Super Resolution when black bar detection adjusts the picture.
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
