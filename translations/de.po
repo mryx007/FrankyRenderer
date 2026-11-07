@@ -152,6 +152,16 @@ msgstr ""
 "vor und nach der Farbumrechnung; Untertitel werden nicht einbezogen. Die "
 "Helligkeitsangaben für SDR in Nits sind Nennwerte."
 
+#. Setting name (General > Image Analysis)
+msgid "Statistics in Video Area"
+msgstr "Statistik im Bildbereich"
+
+#. Setting description (General > Image Analysis > Statistics in Video Area)
+msgid ""
+"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+msgstr ""
+"Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen Balken."
+
 #. Section heading (General)
 msgid "Display Mode"
 msgstr "Anzeigemodus"
@@ -3591,11 +3601,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Setting name (General > Image Analysis)
-msgid "Statistics in Video Area"
-msgstr "Statistik im Bildbereich"
-
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid "Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr "Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen Balken."
