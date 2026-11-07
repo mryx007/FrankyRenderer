@@ -3,6 +3,7 @@
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <wrl/client.h>
+#include <utility>
 
 // The driver owns the model and quality setting. This is the D3D11 request
 // used by MPC Video Renderer and Chromium, not an NVIDIA SDK integration.
@@ -20,7 +21,8 @@ class RtxVideoProcessor
     DXGI_FORMAT inputFormat = DXGI_FORMAT_UNKNOWN;
     DXGI_COLOR_SPACE_TYPE sourceSpace = DXGI_COLOR_SPACE_CUSTOM;
     bool superResolution = false, trueHdr = false;
-    UINT frame = 0;
+    // A newly created processor: its first output is not trusted.
+    bool fresh = false;
 
   public:
     ID3D11Texture2D* Input() const
@@ -48,7 +50,7 @@ class RtxVideoProcessor
         inputFormat = DXGI_FORMAT_UNKNOWN;
         sourceSpace = DXGI_COLOR_SPACE_CUSTOM;
         superResolution = trueHdr = false;
-        frame = 0;
+        fresh = false;
     }
 
     // upscale: RTX Video Super Resolution; hdr: RTX Video HDR (SDR in, HDR10
@@ -188,6 +190,7 @@ class RtxVideoProcessor
         sourceSpace = source;
         superResolution = upscale;
         trueHdr = hdr;
+        fresh = true;
         return S_OK;
     }
 
@@ -211,7 +214,7 @@ class RtxVideoProcessor
                     neutral[4] = {512 * 64 / 65535.f, 512 * 64 / 65535.f, 0, 0};
         immediate->ClearRenderTargetView(luma.Get(), white);
         immediate->ClearRenderTargetView(chroma.Get(), neutral);
-        hr = Evaluate();
+        hr = Evaluate(0);
         if (FAILED(hr))
             return hr;
         D3D11_TEXTURE2D_DESC desc;
@@ -237,14 +240,32 @@ class RtxVideoProcessor
         return green < 1023 * 3 / 4 ? S_OK : DXGI_ERROR_UNSUPPORTED;
     }
 
-    HRESULT Evaluate()
+    // index counts video frames, as MPC Video Renderer passes them: the same
+    // frame again keeps its number.
+    bool TakeFresh()
+    {
+        return std::exchange(fresh, false);
+    }
+
+    // An output view on a texture of the output's size and format, so the
+    // driver writes each frame straight into its own texture.
+    HRESULT OutputView(ID3D11Texture2D* texture, Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView>& view)
+    {
+        if (!video || !enumerator)
+            return E_UNEXPECTED;
+        D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC ov = {};
+        ov.ViewDimension = D3D11_VPOV_DIMENSION_TEXTURE2D;
+        return video->CreateVideoProcessorOutputView(texture, enumerator.Get(), &ov, &view);
+    }
+
+    HRESULT Evaluate(UINT index, ID3D11VideoProcessorOutputView* target = nullptr)
     {
         if (!processor || !inputView || !outputView)
             return E_UNEXPECTED;
         D3D11_VIDEO_PROCESSOR_STREAM stream = {};
         stream.Enable = TRUE;
-        stream.InputFrameOrField = frame;
+        stream.InputFrameOrField = index;
         stream.pInputSurface = inputView.Get();
-        return context->VideoProcessorBlt(processor.Get(), outputView.Get(), frame++, 1, &stream);
+        return context->VideoProcessorBlt(processor.Get(), target ? target : outputView.Get(), index, 1, &stream);
     }
 };

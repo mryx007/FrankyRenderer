@@ -45,9 +45,10 @@
 - Fixed Chinese menu text mixing bold and thin characters: the menu now lays out text in the menu language, so all characters use Microsoft YaHei UI ([#17](https://github.com/mryx007/FrankyRenderer/issues/17)).
 - Fixed the highlight in the settings menu staying in place while scrolling with the mouse wheel; it now follows the control under the mouse.
 - Fixed RTX Video Super Resolution output being scaled again by a fraction of a pixel when the picture did not fill whole pixels; it is now shown 1:1, slightly sharper and with less GPU work.
-- Fixed brief broken lines with RTX Video Super Resolution while resizing the window, moving it to another display or entering fullscreen: RTX now pauses until the size holds still for a moment.
+- Fixed occasional broken pictures, brief lines when switching to fullscreen and GPU spikes with RTX Video Super Resolution ([#19](https://github.com/mryx007/FrankyRenderer/issues/19)): like MPC Video Renderer, the driver now writes each frame straight into its own reused texture, RTX starts only once its input is complete, each video frame keeps its own frame number, and a newly created RTX processor gets a warm-up frame.
 - Fixed an upside-down picture with DirectVobSub (VSFilter) and other filters that pass RGB video: like MPC Video Renderer, the renderer now asks them for top-down rows ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
 - Fixed settings changes not applying to the playing video when PotPlayer's Preferences > Video renderer settings were used; they now apply at once like from the right-click menu ([#20](https://github.com/mryx007/FrankyRenderer/issues/20)).
+- Ctrl+J shows "Image: RTX Super Resolution" when RTX did the upscaling and "native size" when the video needs no scaling, instead of "1:1 (scaler bypassed)".
 - One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
 - Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
 - Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.

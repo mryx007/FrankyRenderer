@@ -117,6 +117,18 @@ int main()
                 Require(source.crop.x0 == 0 && source.crop.x1 == w, "source geometry unchanged");
                 auto changed = scaling.Get(d3d, context.Get(), source, 124, 1920, 1080, pl_render_default_params);
                 Require(bool(changed) && scaling.Evaluations() == before + 2, "new video frame is evaluated");
+                {
+                    // 40 more video frames: the 16-frame cache recycles its
+                    // output textures instead of creating one per frame.
+                    const auto created = scaling.TexturesCreated();
+                    for (uint64_t frame = 200; frame < 240; ++frame)
+                        Require(
+                            bool(scaling.Get(d3d, context.Get(), source, frame, 1920, 1080, pl_render_default_params)),
+                            "long run of video frames");
+                    Require(scaling.TexturesCreated() - created <= 16, "output textures are reused");
+                    printf("RTX output textures created for 40 frames: %llu\n",
+                           (unsigned long long)(scaling.TexturesCreated() - created));
+                }
                 Require(!scaling.Get(d3d, context.Get(), source, 124, w, h, pl_render_default_params),
                         "native-size output bypasses RTX");
                 source.crop = {3, 5, 952, 532};

@@ -4,6 +4,7 @@
 #include <libplacebo/renderer.h>
 #include <libplacebo/filters.h>
 #include <map>
+#include <vector>
 #include <string>
 #include <memory>
 #include <cmath>
@@ -11,14 +12,6 @@
 
 // Convert/deinterlace each decoded image once, upscale it, then let the normal
 // renderer mix, color-map and composite subtitles at the presentation rate.
-// While the output size changes (resizing, moving to another display, entering
-// fullscreen) RTX pauses: a newly created driver processor briefly outputs
-// broken lines, and every intermediate size would create one. The renderer
-// posts SettleMessage to its window to draw again once the size held still.
-inline constexpr UINT RtxSettleMessage = WM_APP + 0x4c1;
-inline constexpr UINT_PTR RtxSettleTimer = 0x4c2;
-inline constexpr uint64_t RtxSettleMilliseconds = 300;
-
 class RtxScaling
 {
   public:
@@ -27,6 +20,7 @@ class RtxScaling
         pl_gpu gpu = nullptr;
         pl_tex texture = nullptr;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> pixels;
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView> view;
         pl_frame image = {};
         pl_rect2df sourceCrop = {};
         const pl_frame* previous = nullptr;
@@ -47,16 +41,52 @@ class RtxScaling
     pl_tex input[2] = {};
     pl_color_space sourceColor = {};
     std::map<uint64_t, std::shared_ptr<Frame>> frames;
+
+    // Output textures of frames that left the cache, used again for new
+    // frames instead of creating a texture per frame (as MPC Video Renderer
+    // keeps its output). Cleared whenever the output size or format changes.
+    struct Spare
+    {
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> pixels;
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView> view;
+        pl_tex texture = nullptr;
+    };
+
+    // Signals when libplacebo finished writing the RTX input texture.
+    Microsoft::WRL::ComPtr<ID3D11Query> written;
+
+    std::vector<Spare> spare;
+    // Video frame number for the driver and the frame it belongs to.
+    uint64_t lastKey = UINT64_MAX;
+    UINT inputIndex = 0;
+
+    // Keeps the texture of a frame only the cache still holds.
+    void Recycle(std::shared_ptr<Frame>& frame)
+    {
+        if (frame && frame.use_count() == 1 && frame->texture)
+        {
+            spare.push_back({std::move(frame->pixels), std::move(frame->view), std::exchange(frame->texture, nullptr)});
+        }
+    }
+
+    void ClearFrames()
+    {
+        frames.clear();
+        for (auto& texture : spare)
+            pl_tex_destroy(gpu, &texture.texture);
+        spare.clear();
+    }
+
     int width = 0, height = 0, outputWidth = 0, outputHeight = 0;
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
     bool upscaling = false, hdr = false;
     bool failed = false;
-    uint64_t evaluations = 0;
+    uint64_t evaluations = 0, texturesCreated = 0;
     std::wstring status = L"off";
 
     void Fail(HRESULT result)
     {
-        frames.clear();
+        ClearFrames();
         for (auto& plane : input)
             if (plane)
                 pl_tex_destroy(gpu, &plane);
@@ -93,14 +123,26 @@ class RtxScaling
         return status;
     }
 
+    // The last frame was upscaled by RTX Video Super Resolution.
+    bool Upscaling() const
+    {
+        return upscaling;
+    }
+
     uint64_t Evaluations() const
     {
         return evaluations;
     }
 
+    // Output textures created so far; frames that leave the cache give theirs back.
+    uint64_t TexturesCreated() const
+    {
+        return texturesCreated;
+    }
+
     void Invalidate()
     {
-        frames.clear();
+        ClearFrames();
         failed = false;
         if (converter)
             pl_renderer_flush_cache(converter);
@@ -168,7 +210,7 @@ class RtxScaling
         if (width != w || height != h || outputWidth != outW || outputHeight != outH || format != type ||
             !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale || hdr != trueHdr)
         {
-            frames.clear();
+            ClearFrames();
             for (auto& plane : input)
                 if (plane)
                     pl_tex_destroy(gpu, &plane);
@@ -266,11 +308,24 @@ class RtxScaling
             return {};
         }
         pl_gpu_flush(gpu);
-        hr = processor.Evaluate();
-        if (FAILED(hr))
+        // The driver's RTX work may run apart from libplacebo's rendering:
+        // start it only once the input texture is completely written.
+        if (!written)
         {
-            Fail(hr);
-            return {};
+            D3D11_QUERY_DESC query = {D3D11_QUERY_EVENT, 0};
+            d3d->device->CreateQuery(&query, &written);
+        }
+        if (written)
+        {
+            context->End(written.Get());
+            const uint64_t deadline = GetTickCount64() + 100;
+            while (context->GetData(written.Get(), nullptr, 0, 0) == S_FALSE && GetTickCount64() < deadline)
+                SwitchToThread();
+        }
+        if (key != lastKey)
+        {
+            lastKey = key;
+            ++inputIndex;
         }
         auto saved = std::make_shared<Frame>();
         saved->gpu = gpu;
@@ -278,28 +333,58 @@ class RtxScaling
         saved->previous = source.prev;
         saved->next = source.next;
         saved->firstField = source.first_field;
-        D3D11_TEXTURE2D_DESC desc;
-        processor.Output()->GetDesc(&desc);
-        desc.MiscFlags = 0;
-        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-        hr = d3d->device->CreateTexture2D(&desc, nullptr, &saved->pixels);
+        if (frames.size() >= 16 && !frames.count(key))
+        {
+            auto oldest = frames.begin();
+            Recycle(oldest->second);
+            frames.erase(oldest);
+        }
+        if (!spare.empty())
+        {
+            saved->pixels = std::move(spare.back().pixels);
+            saved->view = std::move(spare.back().view);
+            saved->texture = spare.back().texture;
+            spare.pop_back();
+        }
+        else
+        {
+            D3D11_TEXTURE2D_DESC desc;
+            processor.Output()->GetDesc(&desc);
+            desc.MiscFlags = 0;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+            hr = d3d->device->CreateTexture2D(&desc, nullptr, &saved->pixels);
+            ++texturesCreated;
+            if (SUCCEEDED(hr))
+                hr = processor.OutputView(saved->pixels.Get(), saved->view);
+            if (FAILED(hr))
+            {
+                Fail(hr);
+                return {};
+            }
+            pl_d3d11_wrap_params wrap = {};
+            wrap.tex = saved->pixels.Get();
+            saved->texture = pl_d3d11_wrap(gpu, &wrap);
+            if (!saved->texture)
+            {
+                Fail(E_FAIL);
+                return {};
+            }
+        }
+        // Like MPC Video Renderer: the driver writes into the frame's own
+        // texture; no copy that could start before RTX finished.
+        hr = processor.Evaluate(inputIndex, saved->view.Get());
+        // A newly created processor can return broken lines once: process its
+        // first frame twice and keep the second result.
+        if (SUCCEEDED(hr) && processor.TakeFresh())
+            hr = processor.Evaluate(inputIndex, saved->view.Get());
         if (FAILED(hr))
         {
             Fail(hr);
             return {};
         }
-        context->CopyResource(saved->pixels.Get(), processor.Output());
-        pl_d3d11_wrap_params wrap = {};
-        wrap.tex = saved->pixels.Get();
-        saved->texture = pl_d3d11_wrap(gpu, &wrap);
-        if (!saved->texture)
-        {
-            Fail(E_FAIL);
-            return {};
-        }
         saved->image = Describe(saved->texture, trueHdr ? pl_color_space_hdr10 : source.color, trueHdr ? 10 : bits);
-        if (frames.size() >= 16 && !frames.count(key))
-            frames.erase(frames.begin());
+        if (const auto previous = frames.find(key); previous != frames.end())
+            Recycle(previous->second);
         frames[key] = saved;
         ++evaluations;
         status = upscale && trueHdr ? L"driver requested (Super Resolution + HDR)"

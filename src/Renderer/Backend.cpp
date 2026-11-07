@@ -82,13 +82,8 @@ struct PlaceboBackend::State
     uint64_t nextFrame = 1;
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
-    // RTX output size and since when it holds; RTX waits while it changes.
-    int rtxWidth = 0, rtxHeight = 0;
-    uint64_t rtxSizeSince = 0;
-    bool rtxResizing = false;
-    // Screenshots and readbacks render at their own size: no RTX pause, and
-    // they leave the window's size tracking alone.
-    bool offscreen = false;
+    // The picture being drawn was upscaled by RTX (statistics).
+    bool rtxUpscaled = false;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -1108,9 +1103,10 @@ struct PlaceboBackend::State
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
                           output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0;
-        row(L"Image") << (same   ? L"1:1 (scaler bypassed)"
-                          : down ? L"downscale"
-                                 : L"upscale")
+        row(L"Image") << (same && rtxUpscaled ? L"RTX Super Resolution"
+                          : same              ? L"native size"
+                          : down              ? L"downscale"
+                                              : L"upscale")
                       << (same ? L""
                                : dot + wide((down ? options->params.downscaler : options->params.upscaler)
                                                 ? (down ? options->params.downscaler : options->params.upscaler)->name
@@ -1134,7 +1130,7 @@ struct PlaceboBackend::State
                                                    : L"off");
         {
             auto& value = row(L"RTX Video");
-            value << (rtxResizing ? std::wstring(L"paused (resizing)") : rtx.Status());
+            value << rtx.Status();
             if (settings.rtxSuperResolution || settings.rtxHdr)
                 value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
         }
@@ -1516,6 +1512,7 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
+        rtxUpscaled = false;
         probe.Next(RenderProbe::Rtx);
         // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
         const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
@@ -1525,35 +1522,6 @@ struct PlaceboBackend::State
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
             if (rotation % 180)
                 std::swap(outW, outH);
-            const uint64_t now = GetTickCount64();
-            if (offscreen)
-                rtxResizing = false;
-            else if (outW != rtxWidth || outH != rtxHeight)
-            {
-                // The first size at playback start applies at once.
-                const bool first = !rtxWidth;
-                rtxWidth = outW;
-                rtxHeight = outH;
-                rtxSizeSince = first ? now - RtxSettleMilliseconds : now;
-                // Draw again with RTX once the size holds, also when paused.
-                if (window)
-                    PostMessageW(window, RtxSettleMessage, 0, 0);
-            }
-            if (!offscreen)
-                rtxResizing = now - rtxSizeSince < RtxSettleMilliseconds;
-        }
-        else
-            rtxResizing = false;
-        if ((settings.rtxSuperResolution || rtxHdr) && !rtxResizing)
-        {
-            int outW = rtxWidth, outH = rtxHeight;
-            if (offscreen)
-            {
-                outW = int(std::lround(target.crop.x1 - target.crop.x0));
-                outH = int(std::lround(target.crop.y1 - target.crop.y0));
-                if (rotation % 180)
-                    std::swap(outW, outH);
-            }
             auto current = rtx.Get(
                 d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
             bool ready = bool(current);
@@ -1577,6 +1545,7 @@ struct PlaceboBackend::State
             if (ready)
             {
                 processed.active = true;
+                rtxUpscaled = rtx.Upscaling();
                 processed.originals.assign(mixFrames, mixFrames + mixCount);
                 image = rtxFrames[0]->image;
                 if (mixing)
@@ -2762,9 +2731,7 @@ PlaceboBackend::RenderOffscreen(
         const float display = s.settings.hdrMode == 3 ? s.DisplayPeak() : 0;
         target.color.hdr.max_luma = s.settings.hdrNits > 0 ? s.settings.hdrNits : display > 0 ? display : 1000;
     }
-    s.offscreen = true;
     bool ok = s.Render(target, hdrTarget, false, windowGeometry);
-    s.offscreen = false;
     rgba.resize(static_cast<size_t>(width) * height * format->texel_size);
     pl_tex_transfer_params transfer = {};
     transfer.tex = tex;

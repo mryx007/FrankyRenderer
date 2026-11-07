@@ -7,7 +7,6 @@
 #include "Renderer/SideDataAllocator.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/StatisticsKey.h"
-#include "Renderer/RtxScaling.h"
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/StatisticsRasterizer.h"
 #include "Renderer/VideoBackground.h"
@@ -640,19 +639,6 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     {
         if (!(l & (1LL << 30)))
             owner->ToggleStatistics();
-        return 0;
-    }
-    if (msg == RtxSettleMessage)
-    {
-        SetTimer(hwnd, RtxSettleTimer, UINT(RtxSettleMilliseconds + 50), nullptr);
-        return 0;
-    }
-    if (msg == WM_TIMER && w == RtxSettleTimer)
-    {
-        KillTimer(hwnd, RtxSettleTimer);
-        // Playback draws RTX with its next frame; a paused picture needs one.
-        if (owner->windowState.load() != State_Running)
-            owner->Repaint("RTX settled");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
