@@ -279,6 +279,15 @@ class Renderer final : public CBaseVideoRenderer,
     bool WaitForQpc(int64_t until, int64_t deadline);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
+    // The settings change itself; SetSettings adds forwarding to the playing
+    // renderer when this one only serves a settings window.
+    HRESULT ApplySettings(const PlaceboSettings* next);
+    // Whether this renderer plays a video (connected in a graph).
+    bool Playing();
+    // Another renderer of this process that plays a video while this one has
+    // none, e.g. PotPlayer's Preferences > Video renderer settings. Called
+    // with LiveRenderers::lock held, which keeps that renderer alive.
+    Renderer* PlayingPeer();
     STDMETHODIMP Stop() override;
     STDMETHODIMP Run(REFERENCE_TIME) override;
     STDMETHODIMP Pause() override;

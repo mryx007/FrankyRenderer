@@ -1423,6 +1423,33 @@ int wmain(int argc, wchar_t** argv)
         }
         Check(config->GetStatus(&status), "status");
     } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0) && !eosTest)
+    {
+        // PotPlayer's Preferences > Video renderer opens the settings through a
+        // second renderer without a video; its changes reach the playing one.
+        ComPtr<IBaseFilter> settingsOnly;
+        Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&settingsOnly)), "settings-only renderer");
+        ComPtr<IPlaceboSettings> settingsConfig;
+        Check(settingsOnly.As(&settingsConfig), "settings-only interface");
+        PlaceboSettings shown = {}, playing = {}, after = {};
+        Check(settingsConfig->GetSettings(&shown), "settings-only read");
+        Check(config->GetSettings(&playing), "playing read");
+        if (wcscmp(shown.displayProfile, playing.displayProfile) || shown.brightness != playing.brightness)
+        {
+            puts("FAIL settings-only renderer shows the playing renderer's settings");
+            ExitProcess(1);
+        }
+        shown.brightness = playing.brightness > .5f ? playing.brightness - .1f : playing.brightness + .1f;
+        Check(settingsConfig->SetSettings(&shown), "settings-only change");
+        Check(config->GetSettings(&after), "playing read after change");
+        if (after.brightness != shown.brightness)
+        {
+            printf("FAIL settings-only change reaches the playing renderer: %.3f\n", double(after.brightness));
+            ExitProcess(1);
+        }
+        Check(settingsConfig->SetSettings(&playing), "settings-only restore");
+        puts("PASS settings opened without a video apply live to the playing renderer");
+    }
     if (rtxTest)
     {
         __int64 processed = 0;

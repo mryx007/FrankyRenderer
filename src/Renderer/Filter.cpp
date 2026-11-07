@@ -835,9 +835,37 @@ static PlaceboSettings InitialSettings()
     return LoadSettings();
 }
 
+// Every renderer of this process. A player may open the settings through a
+// separate renderer without a video; its changes go on to the playing one.
+namespace LiveRenderers
+{
+// Recursive: a forwarded call reaches the playing renderer, which checks again.
+std::recursive_mutex lock;
+std::vector<Renderer*> all;
+} // namespace LiveRenderers
+
+bool Renderer::Playing()
+{
+    return m_pGraph && m_pInputPin && m_pInputPin->IsConnected();
+}
+
+Renderer* Renderer::PlayingPeer()
+{
+    if (Playing())
+        return nullptr;
+    for (auto* other : LiveRenderers::all)
+        if (other != this && other->Playing())
+            return other;
+    return nullptr;
+}
+
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
+    {
+        std::lock_guard guard(LiveRenderers::lock);
+        LiveRenderers::all.push_back(this);
+    }
     UpdateMotionSettings();
     Trace("Renderer created; public DirectShow/libplacebo implementation");
     *hr = backend.SetSettings(BackendSettings(settings));
@@ -868,6 +896,11 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
 
 Renderer::~Renderer()
 {
+    {
+        std::lock_guard guard(LiveRenderers::lock);
+        LiveRenderers::all.erase(std::remove(LiveRenderers::all.begin(), LiveRenderers::all.end(), this),
+                                 LiveRenderers::all.end());
+    }
     {
         std::lock_guard lock(modeLock);
         if (modePause)
@@ -2425,6 +2458,12 @@ STDMETHODIMP Renderer::GetSettings(PlaceboSettings* out)
 {
     if (!out)
         return E_POINTER;
+    {
+        // A settings window opened without a video shows what plays.
+        std::lock_guard live(LiveRenderers::lock);
+        if (auto* peer = PlayingPeer())
+            return peer->GetSettings(out);
+    }
     const auto profileResult = UpdateDisplayProfile();
     if (FAILED(profileResult))
         return profileResult;
@@ -2434,6 +2473,22 @@ STDMETHODIMP Renderer::GetSettings(PlaceboSettings* out)
 }
 
 STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
+{
+    HRESULT hr = ApplySettings(next);
+    if (FAILED(hr))
+        return hr;
+    // PotPlayer opens its Preferences > Video renderer settings through a
+    // separate renderer: let the playing video show each change at once.
+    std::lock_guard live(LiveRenderers::lock);
+    if (auto* peer = PlayingPeer())
+    {
+        Trace("Settings forwarded to the playing renderer");
+        hr = peer->ApplySettings(next);
+    }
+    return hr;
+}
+
+HRESULT Renderer::ApplySettings(const PlaceboSettings* next)
 {
     if (!next)
         return E_POINTER;
