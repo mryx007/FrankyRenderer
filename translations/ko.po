@@ -141,6 +141,15 @@ msgid ""
 "after color mapping; excludes subtitles. SDR nits are nominal."
 msgstr ""
 
+#. Setting name (General > Image Analysis)
+msgid "Statistics in Video Area"
+msgstr ""
+
+#. Setting description (General > Image Analysis > Statistics in Video Area)
+msgid ""
+"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+msgstr ""
+
 #. Section heading (General)
 msgid "Display Mode"
 msgstr ""
