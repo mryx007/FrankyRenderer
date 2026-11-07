@@ -1922,12 +1922,10 @@ void Direct2DHostWindow::Render()
         {
             endX = 0;
             lineTop += lineHeight + 3.f;
-            chip.extra = 25.f;
+            chip.extra = 21.f;
         }
-        else
-            chip.extra = 3.f; // the chip is taller than the name; keep it off the description
         chip.x = endX;
-        chip.y = lineTop + (lineHeight - 22.f) / 2.f;
+        chip.y = lineTop + (lineHeight - 18.f) / 2.f;
         return chip;
     };
     float contentBottom = currentY + m_scrollY;
@@ -2321,9 +2319,9 @@ void Direct2DHostWindow::Render()
                 const auto rect = D2D1::RectF(labelRect.left + chip.x,
                                               labelRect.top + chip.y,
                                               labelRect.left + chip.x + chip.width,
-                                              labelRect.top + chip.y + 22.f);
-                m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 11, 11), m_brushInputBg.Get());
-                m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 11, 11), m_brushBorderCard.Get(), 1.f);
+                                              labelRect.top + chip.y + 18.f);
+                // Extra information: quieter than the name it follows.
+                m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 9, 9), m_brushInputBg.Get());
                 const auto alignment = m_fmtRange->GetTextAlignment();
                 const auto paragraph = m_fmtRange->GetParagraphAlignment();
                 m_fmtRange->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
@@ -2338,7 +2336,7 @@ void Direct2DHostWindow::Render()
                     UINT32(chip.values.size()),
                     m_fmtRange.Get(),
                     D2D1::RectF(rect.left + 15.f + chip.labelWidth, rect.top, rect.right, rect.bottom),
-                    m_brushTextMain.Get());
+                    m_brushTextMuted.Get());
                 m_fmtRange->SetParagraphAlignment(paragraph);
                 m_fmtRange->SetTextAlignment(alignment);
             }
