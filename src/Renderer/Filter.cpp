@@ -7,6 +7,9 @@
 #include "Renderer/SideDataAllocator.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/StatisticsKey.h"
+#include "Settings/QualityPresets.h"
+#include "UI/Translation.h"
+#include "UI/CustomShortcuts.h"
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/StatisticsRasterizer.h"
 #include "Renderer/VideoBackground.h"
@@ -25,6 +28,7 @@ namespace
 {
 constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
 constexpr UINT_PTR ModeTimer = 0x46524d44;
+constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
 }
 
 // Pauses the graph while the display resynchronises after a mode change and
@@ -634,11 +638,23 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         owner->Repaint("monitor change");
         return 0;
     }
-    if (msg == WM_KEYDOWN && w == 'J' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) &&
-        !(GetKeyState(VK_SHIFT) & 0x8000))
+    if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
     {
-        if (!(l & (1LL << 30)))
-            owner->ToggleStatistics();
+        const int action = StatisticsKey::ActionFor(
+            msg, w, GetKeyState(VK_CONTROL) & 0x8000, GetKeyState(VK_MENU) & 0x8000, GetKeyState(VK_SHIFT) & 0x8000);
+        if (action >= 0)
+        {
+            if (!(l & (1LL << 30)))
+                owner->RunShortcut(action);
+            return 0;
+        }
+    }
+    if (msg == WM_TIMER && w == ShortcutMessageTimer)
+    {
+        KillTimer(hwnd, ShortcutMessageTimer);
+        // Clear the shortcut message from a paused picture.
+        if (owner->windowState.load() != State_Running)
+            owner->Repaint("shortcut message");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
@@ -649,9 +665,9 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
             owner->Repaint();
         return 0;
     }
-    if (msg == StatisticsKey::ToggleMessage)
+    if (msg == StatisticsKey::ActionMessage)
     {
-        owner->ToggleStatistics();
+        owner->RunShortcut(int(w));
         return 0;
     }
     if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
@@ -2005,6 +2021,144 @@ void Renderer::ToggleStatistics()
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
+void Renderer::RunShortcut(int index)
+{
+    using Shortcuts::Action;
+    if (index < 0)
+        return;
+    // Custom entries follow the fixed actions.
+    const bool custom = index >= Shortcuts::Count;
+    Shortcuts::Custom entry;
+    if (custom)
+    {
+        const auto list = Shortcuts::LoadCustom();
+        if (size_t(index - Shortcuts::Count) >= list.size())
+            return;
+        entry = list[size_t(index - Shortcuts::Count)];
+    }
+    const auto action = Action(index);
+    if (action == Action::Statistics)
+    {
+        ToggleStatistics();
+        return;
+    }
+    std::wstring message;
+    if (action == Action::Shaders)
+    {
+        PlaceboSettings current;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            shadersBypassed = !shadersBypassed;
+            current = settings;
+        }
+        backend.SetSettings(BackendSettings(Effective(current)));
+        message = Tr(L"Shaders") + L": " + Tr(shadersBypassed ? L"Off" : L"On");
+    }
+    else if (action == Action::ResetStatistics)
+    {
+        backend.ResetStatistics();
+        message = Tr(L"Statistics") + L": " + Tr(L"Reset");
+    }
+    else if (action == Action::Profile)
+    {
+        // By folder -> Default -> each profile -> by folder, for this file only.
+        const auto profiles = ContentProfiles::Load();
+        std::vector<std::wstring> order{L"", ContentProfiles::DefaultName};
+        for (const auto& profile : profiles)
+            order.push_back(profile.name);
+        PlaceboSettings current;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            const auto at = std::find(order.begin(), order.end(), forcedProfile);
+            forcedProfile = order[at == order.end() ? 0 : (at - order.begin() + 1) % order.size()];
+            SelectContentProfile(settings.displayProfile);
+            current = settings;
+        }
+        backend.SetSettings(BackendSettings(Effective(current)));
+        const auto shown = contentProfile.name.empty() ? Tr(L"Default") : contentProfile.name;
+        message = Tr(L"Profile") + L": " + (forcedProfile.empty() ? Tr(L"Automatic") + L" (" + shown + L")" : shown);
+    }
+    else
+    {
+        // Change what the video shows: the active profile when one applies,
+        // otherwise the display's normal settings, as the menu would.
+        PlaceboSettings base, edit;
+        ContentProfiles::Profile profile;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            base = settings;
+            profile = contentProfile;
+        }
+        edit = ContentProfiles::Apply(base, profile);
+        if (custom)
+        {
+            // Any menu setting, through the same controls the menu shows.
+            auto pages = BuildD2DPages(edit);
+            const auto* control = CustomShortcuts::Apply(pages, entry);
+            if (!control)
+                return;
+            // Shader settings name their shader: "AMD CAS: On".
+            const auto value = Tr(CustomShortcuts::ValueText(*control, control->Value()));
+            message = entry.name == L"On/Off"    ? Tr(entry.card) + L": " + value
+                      : entry.page == L"Shaders" ? Tr(entry.card) + L"  3A " + Tr(control->name) + L": " + value
+                                                 : Tr(control->name) + L": " + value;
+        }
+        else if (action == Action::Quality)
+        {
+            const std::wstring key =
+                profile.name.empty() ? std::wstring(base.displayProfile) : L"profile-" + profile.name;
+            const int current = MatchQualityPreset(edit);
+            if (current < 0)
+                SaveCustomQuality(key, edit); // keep your own values for "Custom"
+            PlaceboSettings custom;
+            int next = current < 0 ? 0 : current + 1;
+            if (next == int(std::size(QualityPresets)) && LoadCustomQuality(key, custom))
+            {
+                CopyQualitySettings(custom, edit);
+                message = Tr(L"Quality") + L": " + Tr(L"Custom");
+            }
+            else
+            {
+                next %= int(std::size(QualityPresets));
+                ApplyQualityPreset(edit, next);
+                message = Tr(L"Quality") + L": " + Tr(QualityPresetNames[next]);
+            }
+        }
+        else if (action == Action::PictureReset)
+        {
+            Shortcuts::ResetPicture(edit);
+            message = Tr(L"Picture Controls") + L": " + Tr(L"Reset");
+        }
+        if (message.empty())
+            return;
+        if (!profile.name.empty())
+        {
+            profile.overrides = ContentProfiles::Differences(base, edit);
+            if (!ContentProfiles::Save(profile))
+                return;
+            {
+                CAutoLock guard(&m_InterfaceLock);
+                SelectContentProfile(settings.displayProfile);
+            }
+            backend.SetSettings(BackendSettings(Effective(base)));
+            UpdateMotionSettings();
+        }
+        else
+        {
+            wcscpy_s(edit.displayProfile, base.displayProfile);
+            if (FAILED(SetSettings(&edit)))
+                return;
+        }
+    }
+    backend.ShowMessage(message);
+    if (window && window->WindowExists())
+    {
+        SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
+        if (windowState.load() != State_Running)
+            Repaint("shortcut");
+    }
+}
+
 void Renderer::Repaint(const char* source)
 {
     // During playback the next scheduled frame follows within one display
@@ -2755,10 +2909,15 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
         ContentProfiles::PublishPlaying(contentPath, automatic ? automatic->name : L"");
         preview = ContentProfiles::Preview(contentPath);
     }
+    // A profile chosen with the shortcut, unless the menu previews one.
+    const bool forced = preview.empty() && !forcedProfile.empty();
+    if (forced)
+        preview = forcedProfile;
     const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
     auto next = match ? *match : ContentProfiles::Profile{};
-    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) + L" (menu preview)"
-                              : match          ? next.name
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) +
+                                                     (forced ? L" (shortcut)" : L" (menu preview)")
+                              : match                                    ? next.name
                               : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
                                                                          : L"Default");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
@@ -2776,6 +2935,9 @@ void Renderer::UpdateContentProfile(IPin* peer)
     auto path = SourcePath(m_pGraph, peer);
     if (path.empty())
         path = SourcePath(m_pGraph, nullptr);
+    // A profile chosen by shortcut belongs to the file it was chosen for.
+    if (path != contentPath)
+        forcedProfile.clear();
     contentPath = path;
     if (path.empty() && TraceEnabled() && m_pGraph)
     {

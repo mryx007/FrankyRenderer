@@ -3601,3 +3601,211 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#. Category
+#. Category heading
+#. Tab (Shortcuts)
+msgid "Shortcuts"
+msgstr "Tastenkürzel"
+
+#. Setting name (Shortcuts > Overlays)
+msgid "Statistics"
+msgstr "Statistik"
+
+#. Setting name (Shortcuts > Processing)
+msgid "All Shaders Off / Back On"
+msgstr "Alle Shader aus / wieder an"
+
+#. Setting name (Shortcuts > Modes)
+msgid "Next Quality Preset"
+msgstr "Nächste Qualitätsstufe"
+
+#. Setting name (Shortcuts > Modes)
+msgid "Next Profile"
+msgstr "Nächstes Profil"
+
+#. Setting name (Shortcuts > Picture Controls)
+msgid "Reset Picture Controls"
+msgstr "Bildregler zurücksetzen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Press the keys…"
+msgstr "Tasten drücken …"
+
+#. Menu text; keep %d and %s placeholders
+msgid "%s is already used by \"%s\"."
+msgstr "%s ist schon für „%s“ vergeben."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset"
+msgstr "Zurückgesetzt"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Smooth Motion"
+msgstr "Smooth Motion"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Black Bar Detection"
+msgstr "Schwarze-Balken-Erkennung"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Next"
+msgstr "Nächster Wert"
+
+#. Menu text; keep %d and %s placeholders
+msgid "On/Off"
+msgstr "Ein/Aus"
+
+#. Menu text; keep %d and %s placeholders
+msgid "not available"
+msgstr "nicht verfügbar"
+
+#. Setting description (Shaders > AMD CAS > On/Off)
+#. Setting description (Shaders > FineDehalo > On/Off)
+#. Setting description (Shaders > Anti-Ringing > On/Off)
+msgid "Switches this shader on or off."
+msgstr "Schaltet diesen Shader ein oder aus."
+
+#. Category description
+msgid "Keys for the playing video. Open a group, click a field and press the keys."
+msgstr "Tasten für das laufende Video. Gruppe öffnen, Feld anklicken und Tasten drücken."
+
+#. Setting name (Shortcuts > )
+msgid "Reset Shortcuts"
+msgstr "Tastenkürzel zurücksetzen"
+
+#. Setting name (Shortcuts > )
+msgid "Renderer"
+msgstr "Renderer"
+
+#. Setting name (Shortcuts > )
+msgid "Reset Statistics"
+msgstr "Statistik zurücksetzen"
+
+#. Setting description (Shortcuts >  > Statistics)
+msgid "Shows or hides the statistics."
+msgstr "Blendet die Statistik ein oder aus."
+
+#. Setting description (Shortcuts >  > All Shaders Off / Back On)
+msgid "Turns all shaders off; pressed again, back on."
+msgstr "Schaltet alle Shader aus, erneut gedrückt wieder ein."
+
+#. Setting description (Shortcuts >  > Next Quality Preset)
+msgid "Switches to the next quality preset."
+msgstr "Wechselt zur nächsten Qualitätsstufe."
+
+#. Setting description (Shortcuts >  > Next Profile)
+msgid "Switches this file to the next profile."
+msgstr "Wechselt für diese Datei zum nächsten Profil."
+
+#. Setting description (Shortcuts >  > Reset Picture Controls)
+msgid "Sets brightness, contrast, saturation and gamma back to neutral."
+msgstr "Setzt Helligkeit, Kontrast, Sättigung und Gamma auf neutral zurück."
+
+#. Setting description (Shortcuts >  > Reset Statistics)
+msgid "Counters, averages and peaks start from zero."
+msgstr "Zähler, Mittelwerte und Spitzen beginnen bei null."
+
+#. Setting description (Shortcuts >  > Next)
+msgid "Next value; after the last one, the first again."
+msgstr "Nächster Wert, nach dem letzten wieder der erste."
+
+#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > 8-bit Integer (SDR))
+#. Setting description (Shortcuts >  > Prefer 10-bit Integer)
+msgid "Sets exactly this value."
+msgstr "Setzt genau diesen Wert."
+
+#. Setting name (Shortcuts > )
+msgid "Increase"
+msgstr "Erhöhen"
+
+#. Setting description (Shortcuts >  > Increase)
+msgid "Raises the value by %s."
+msgstr "Erhöht den Wert um %s."
+
+#. Setting name (Shortcuts > )
+msgid "Decrease"
+msgstr "Verringern"
+
+#. Setting description (Shortcuts >  > Decrease)
+msgid "Lowers the value by %s."
+msgstr "Verringert den Wert um %s."
+
+#. Setting description (Shortcuts >  > Image Analysis)
+#. Setting description (Shortcuts >  > Statistics in Video Area)
+#. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+msgid "Switches on or off; each press changes it."
+msgstr "Schaltet ein oder aus, jeder Druck wechselt."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Ctrl"
+msgstr "Strg"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Alt"
+msgstr "Alt"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Shift"
+msgstr "Umschalt"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Space"
+msgstr "Leertaste"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Enter"
+msgstr "Eingabe"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Tab"
+msgstr "Tab"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Backspace"
+msgstr "Rücktaste"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Left"
+msgstr "Links"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Right"
+msgstr "Rechts"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Up"
+msgstr "Hoch"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Down"
+msgstr "Runter"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Up"
+msgstr "Bild auf"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Down"
+msgstr "Bild ab"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Home"
+msgstr "Pos1"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: End"
+msgstr "Ende"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Insert"
+msgstr "Einfg"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Delete"
+msgstr "Entf"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
+msgstr "Alle Tastenkürzel entfernen? Strg+J bleibt für die Statistik."

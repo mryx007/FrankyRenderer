@@ -178,6 +178,8 @@ class PlaceboBackend
     int CacheLoadedObjects() const;
     int CacheObjects() const;
     void ShowStatistics(bool enabled);
+    // Short text in the picture for about two seconds, e.g. after a shortcut.
+    void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;
     uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
@@ -189,6 +191,8 @@ class PlaceboBackend
     // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
     void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
+    // Ctrl+J from zero: lost pictures, DXGI counters, averages and peaks.
+    void ResetStatistics();
     // Last observed vsync (QPC, absolute refresh count) and refresh period in
     // QPC units; false while DXGI feedback is missing, stale or irregular.
     bool VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const;

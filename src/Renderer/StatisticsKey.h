@@ -3,13 +3,24 @@
 #include <mutex>
 #include <vector>
 #include <algorithm>
+#include "Settings/Shortcuts.h"
 
 // Thread-local message hooks only in this process, never a global keyboard hook.
-// Consume Ctrl+J before the host's accelerator handling, and post to the
-// renderer window. No renderer pointers are retained by the hook callback.
+// Consume the renderer's shortcuts (Ctrl+J and those assigned on the Shortcuts
+// page) before the host's accelerator handling, and post them to the renderer
+// window. No renderer pointers are retained by the hook callback.
 namespace StatisticsKey
 {
-inline constexpr UINT ToggleMessage = WM_APP + 0x4b1;
+// wParam: a Shortcuts::Action, or Count + a custom entry (Shortcuts::FindAny).
+inline constexpr UINT ActionMessage = WM_APP + 0x4b1;
+
+// The renderer action for a key message with the given modifiers, or -1.
+inline int ActionFor(UINT message, WPARAM key, bool control, bool alt, bool shift)
+{
+    if ((message != WM_KEYDOWN && message != WM_SYSKEYDOWN) || Shortcuts::ModifierKey(UINT(key)))
+        return -1;
+    return Shortcuts::FindAny(Shortcuts::Combo(UINT(key), control, alt, shift));
+}
 
 struct Entry
 {
@@ -29,7 +40,7 @@ inline std::vector<Hook> hooks;
 
 inline bool Handle(MSG& message, bool control, bool alt, bool shift, HWND foreground)
 {
-    if (message.message != WM_KEYDOWN || message.wParam != 'J' || !control || alt || shift)
+    if (message.message != WM_KEYDOWN && message.message != WM_SYSKEYDOWN)
         return false;
     HWND target = nullptr;
     {
@@ -43,8 +54,12 @@ inline bool Handle(MSG& message, bool control, bool alt, bool shift, HWND foregr
     }
     if (!target)
         return false;
+    // Only now read the assignments: most key presses belong to other windows.
+    const int action = ActionFor(message.message, message.wParam, control, alt, shift);
+    if (action < 0)
+        return false;
     if (!(message.lParam & (1LL << 30)))
-        PostMessageW(target, ToggleMessage, 0, 0);
+        PostMessageW(target, ActionMessage, WPARAM(action), 0);
     message.message = WM_NULL;
     message.wParam = message.lParam = 0;
     return true;

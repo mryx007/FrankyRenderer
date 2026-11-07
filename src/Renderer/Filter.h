@@ -214,8 +214,18 @@ class Renderer final : public CBaseVideoRenderer,
 
     PlaceboSettings Effective(const PlaceboSettings& base) const
     {
-        return ContentProfiles::Apply(base, contentProfile);
+        auto result = ContentProfiles::Apply(base, contentProfile);
+        // Shortcut comparison: all shaders off for this playback, never saved.
+        if (shadersBypassed)
+            for (auto& shader : result.userShaders.shaders)
+                shader.enabled = 0;
+        return result;
     }
+
+    bool shadersBypassed = false;
+    // Profile chosen with the "Next Profile" shortcut for the playing file:
+    // empty = by folder, otherwise a profile name or ContentProfiles::DefaultName.
+    std::wstring forcedProfile;
 
     std::wstring contentPath;
     void UpdateMotionSettings();
@@ -279,6 +289,8 @@ class Renderer final : public CBaseVideoRenderer,
     bool WaitForQpc(int64_t until, int64_t deadline);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
+    // Runs a keyboard shortcut (Shortcuts::Action) on the window thread.
+    void RunShortcut(int action);
     // The settings change itself; SetSettings adds forwarding to the playing
     // renderer when this one only serves a settings window.
     HRESULT ApplySettings(const PlaceboSettings* next);

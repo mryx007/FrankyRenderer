@@ -136,6 +136,11 @@ struct PlaceboBackend::State
     float sharpenCached = -1;
     std::atomic<int> sharpenState = 0;
     StatisticsBitmap statisticsBitmap;
+    // Shortcut feedback shown at the top centre until messageUntil.
+    StatisticsBitmap messageBitmap;
+    std::mutex messageLock;
+    std::wstring message;
+    uint64_t messageUntil = 0;
     ImageAnalysis imageAnalysis;
     std::atomic<bool> showStatistics = false;
     std::string sourceCodec;
@@ -209,6 +214,14 @@ struct PlaceboBackend::State
             {
                 std::lock_guard guard(dropsLock);
                 drops.Reset();
+            }
+            if (value & 4)
+            {
+                renderCpu.Reset();
+                renderGpu.duration.Reset();
+                renderGpu.skipped = renderGpu.disjoint = 0;
+                presentCpu.Reset();
+                lostHistory.clear();
             }
             statisticsText.clear();
             statisticsUpdated = 0;
@@ -490,6 +503,7 @@ struct PlaceboBackend::State
         presentCpu.Reset();
         presentation.Reset(false);
         statisticsBitmap.Reset();
+        messageBitmap.Reset();
         imageAnalysis.Reset();
         statisticsText.clear();
         statisticsUpdated = 0;
@@ -1760,8 +1774,8 @@ struct PlaceboBackend::State
         }
         actualTone = dynamicMap.tone_mapping_function ? dynamicMap.tone_mapping_function->name : "n/a";
         actualTarget = target.color.hdr.max_luma;
-        pl_overlay overlays[3] = {};
-        pl_overlay_part parts[3] = {};
+        pl_overlay overlays[4] = {};
+        pl_overlay_part parts[4] = {};
         auto& overlayInfo = overlays[0];
         auto& part = parts[0];
 
@@ -1822,6 +1836,33 @@ struct PlaceboBackend::State
             {
                 const int index = target.num_overlays;
                 statisticsBitmap.Describe(overlays[index], parts[index], placement);
+                target.overlays = overlays;
+                target.num_overlays = index + 1;
+            }
+        }
+        {
+            std::wstring note;
+            {
+                std::lock_guard guard(messageLock);
+                if (GetTickCount64() < messageUntil)
+                    note = message;
+            }
+            if (note.empty())
+            {
+                if (messageBitmap.Width())
+                    messageBitmap.Reset();
+            }
+            else if (messageBitmap.Update(d3d->gpu, note, int(viewW), int(viewH), window) && messageBitmap.Width())
+            {
+                // Top centre of the window, or of the picture like the statistics.
+                const float left = placement ? placement->x0 : 0, right = placement ? placement->x1 : viewW;
+                const float top =
+                    placement ? OverlayTop(placement->y0 + 16, placement->y1, float(messageBitmap.Height())) : 16.f;
+                const int index = target.num_overlays;
+                messageBitmap.DescribeAt(overlays[index],
+                                         parts[index],
+                                         std::max(0.f, (left + right - float(messageBitmap.Width())) / 2),
+                                         top);
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
             }
@@ -2931,6 +2972,13 @@ void PlaceboBackend::ShowStatistics(bool enabled)
     state->showStatistics = enabled;
 }
 
+void PlaceboBackend::ShowMessage(const std::wstring& text)
+{
+    std::lock_guard guard(state->messageLock);
+    state->message = text;
+    state->messageUntil = GetTickCount64() + 2000;
+}
+
 bool PlaceboBackend::StatisticsVisible() const
 {
     return state->showStatistics.load();
@@ -3020,6 +3068,11 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)
 {
     state->measurementReset.fetch_or(counters ? 2u : 1u);
+}
+
+void PlaceboBackend::ResetStatistics()
+{
+    state->measurementReset.fetch_or(2u | 4u);
 }
 
 MeasurementSnapshot PlaceboBackend::Measurements() const

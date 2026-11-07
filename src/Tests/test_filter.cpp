@@ -1155,13 +1155,14 @@ int wmain(int argc, wchar_t** argv)
         if (!StatisticsKey::Handle(key, true, false, false, keyWindow) || key.message != WM_NULL)
             exit(101);
         MSG posted = {};
-        if (!PeekMessageW(&posted, keyWindow, StatisticsKey::ToggleMessage, StatisticsKey::ToggleMessage, PM_REMOVE))
+        if (!PeekMessageW(&posted, keyWindow, StatisticsKey::ActionMessage, StatisticsKey::ActionMessage, PM_REMOVE) ||
+            posted.wParam != WPARAM(Shortcuts::Action::Statistics))
             exit(102);
         key.message = WM_KEYDOWN;
         key.wParam = 'J';
         key.lParam = 1LL << 30;
         if (!StatisticsKey::Handle(key, true, false, false, keyWindow) ||
-            PeekMessageW(&posted, keyWindow, StatisticsKey::ToggleMessage, StatisticsKey::ToggleMessage, PM_REMOVE))
+            PeekMessageW(&posted, keyWindow, StatisticsKey::ActionMessage, StatisticsKey::ActionMessage, PM_REMOVE))
             exit(103);
         key.message = WM_SYSKEYDOWN;
         key.wParam = 'A';

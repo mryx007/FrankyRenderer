@@ -1,4 +1,5 @@
 #pragma once
+#include "UI/SettingsModelTypes.h"
 #include "Settings/SettingsChoices.h"
 #include <functional>
 #include <cstring>
@@ -630,11 +631,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"Neutral values are Brightness 0, Contrast / Saturation / Gamma 1 and Temperature 6500 K.");
         auto& c = card(p, L"Picture Controls");
         c.controls.push_back(D2DBool(s, L"Enable Color Adjustment", &s.colorAdjustment));
-        c.controls.push_back(D2DNumber(s, L"Brightness", &s.brightness, -1, 1, .001f));
-        c.controls.push_back(D2DNumber(s, L"Contrast", &s.contrast, 0, 100, .001f));
-        c.controls.push_back(D2DNumber(s, L"Saturation", &s.saturation, 0, 100, .001f));
-        c.controls.push_back(D2DNumber(s, L"Gamma", &s.gamma, 0, 100, .001f));
+        // Keys step these like the former picture shortcuts.
+        const auto picture = [&](const wchar_t* name, float* value, float low, float high, float key)
+        {
+            auto n = D2DNumber(s, name, value, low, high, .001f);
+            n.keyStep = key;
+            c.controls.push_back(std::move(n));
+        };
+        picture(L"Brightness", &s.brightness, -1, 1, .02f);
+        picture(L"Contrast", &s.contrast, 0, 100, .05f);
+        picture(L"Saturation", &s.saturation, 0, 100, .05f);
+        picture(L"Gamma", &s.gamma, 0, 100, .05f);
         auto h = D2DNumber(s, L"Hue (degrees)", &s.hue, -180, 180, .01f);
+        h.keyStep = 1;
         h.defaultValue = [] { return 0.f; };
         h.get = [&s] { return s.hue * 180 / 3.141593f; };
         h.set = [&s](float v) { s.hue = v * 3.141593f / 180; };
@@ -643,6 +652,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         t.defaultValue = [] { return 6500.f; };
         t.get = [&s] { return 6500 + 3500 * s.temperature; };
         t.set = [&s](float v) { s.temperature = (v - 6500) / 3500; };
+        t.keyStep = 100;
         c.controls.push_back(std::move(t));
     }
     {
@@ -886,7 +896,16 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             const auto& info = ShaderCatalog[id];
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
-            // Shaders are switched on in the list above; the card holds their parameters.
+            // Shaders are switched on in the list above; the card holds their
+            // parameters. The hidden switch serves keyboard shortcuts.
+            D2DControl on;
+            on.name = L"On/Off";
+            on.desc = L"Switches this shader on or off.";
+            on.kind = ControlKind::Toggle;
+            on.hidden = true;
+            on.get = [&f] { return f.enabled ? 1.f : 0.f; };
+            on.set = [&f](float v) { f.enabled = v != 0; };
+            c.controls.push_back(std::move(on));
             for (int i = 0; i < info.count; i++)
             {
                 const auto& param = info.parameters[i];

@@ -3230,3 +3230,211 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Category
+#. Category heading
+#. Tab (Shortcuts)
+msgid "Shortcuts"
+msgstr "快捷键"
+
+#. Setting name (Shortcuts > Overlays)
+msgid "Statistics"
+msgstr "统计信息"
+
+#. Setting name (Shortcuts > Processing)
+msgid "All Shaders Off / Back On"
+msgstr "全部着色器 关闭/恢复"
+
+#. Setting name (Shortcuts > Modes)
+msgid "Next Quality Preset"
+msgstr "下一个画质预设"
+
+#. Setting name (Shortcuts > Modes)
+msgid "Next Profile"
+msgstr "下一个配置文件"
+
+#. Setting name (Shortcuts > Picture Controls)
+msgid "Reset Picture Controls"
+msgstr "重置画面调节"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Press the keys…"
+msgstr "请按下按键…"
+
+#. Menu text; keep %d and %s placeholders
+msgid "%s is already used by \"%s\"."
+msgstr "%s 已被“%s”使用。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset"
+msgstr "已重置"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Smooth Motion"
+msgstr "平滑运动"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Black Bar Detection"
+msgstr "黑边检测"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Next"
+msgstr "下一个值"
+
+#. Menu text; keep %d and %s placeholders
+msgid "On/Off"
+msgstr "开/关"
+
+#. Menu text; keep %d and %s placeholders
+msgid "not available"
+msgstr "不可用"
+
+#. Setting description (Shaders > AMD CAS > On/Off)
+#. Setting description (Shaders > FineDehalo > On/Off)
+#. Setting description (Shaders > Anti-Ringing > On/Off)
+msgid "Switches this shader on or off."
+msgstr "开启或关闭此着色器。"
+
+#. Category description
+msgid "Keys for the playing video. Open a group, click a field and press the keys."
+msgstr "用于正在播放的视频。展开分组，点击输入框并按下按键。"
+
+#. Setting name (Shortcuts > )
+msgid "Reset Shortcuts"
+msgstr "重置快捷键"
+
+#. Setting name (Shortcuts > )
+msgid "Renderer"
+msgstr "渲染器"
+
+#. Setting name (Shortcuts > )
+msgid "Reset Statistics"
+msgstr "重置统计信息"
+
+#. Setting description (Shortcuts >  > Statistics)
+msgid "Shows or hides the statistics."
+msgstr "显示或隐藏统计信息。"
+
+#. Setting description (Shortcuts >  > All Shaders Off / Back On)
+msgid "Turns all shaders off; pressed again, back on."
+msgstr "关闭所有着色器；再按一次重新开启。"
+
+#. Setting description (Shortcuts >  > Next Quality Preset)
+msgid "Switches to the next quality preset."
+msgstr "切换到下一个画质预设。"
+
+#. Setting description (Shortcuts >  > Next Profile)
+msgid "Switches this file to the next profile."
+msgstr "为此文件切换到下一个配置文件。"
+
+#. Setting description (Shortcuts >  > Reset Picture Controls)
+msgid "Sets brightness, contrast, saturation and gamma back to neutral."
+msgstr "将亮度、对比度、饱和度和伽马恢复为中性值。"
+
+#. Setting description (Shortcuts >  > Reset Statistics)
+msgid "Counters, averages and peaks start from zero."
+msgstr "计数、平均值和峰值从零开始。"
+
+#. Setting description (Shortcuts >  > Next)
+msgid "Next value; after the last one, the first again."
+msgstr "下一个值；最后一个之后回到第一个。"
+
+#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > 8-bit Integer (SDR))
+#. Setting description (Shortcuts >  > Prefer 10-bit Integer)
+msgid "Sets exactly this value."
+msgstr "直接设为此值。"
+
+#. Setting name (Shortcuts > )
+msgid "Increase"
+msgstr "增加"
+
+#. Setting description (Shortcuts >  > Increase)
+msgid "Raises the value by %s."
+msgstr "将数值增加 %s。"
+
+#. Setting name (Shortcuts > )
+msgid "Decrease"
+msgstr "降低"
+
+#. Setting description (Shortcuts >  > Decrease)
+msgid "Lowers the value by %s."
+msgstr "将数值降低 %s。"
+
+#. Setting description (Shortcuts >  > Image Analysis)
+#. Setting description (Shortcuts >  > Statistics in Video Area)
+#. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+msgid "Switches on or off; each press changes it."
+msgstr "开启或关闭，每按一次切换一次。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Ctrl"
+msgstr "Ctrl"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Alt"
+msgstr "Alt"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Shift"
+msgstr "Shift"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Space"
+msgstr "Space"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Enter"
+msgstr "Enter"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Tab"
+msgstr "Tab"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Backspace"
+msgstr "Backspace"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Left"
+msgstr "Left"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Right"
+msgstr "Right"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Up"
+msgstr "Up"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Down"
+msgstr "Down"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Up"
+msgstr "Page Up"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Down"
+msgstr "Page Down"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Home"
+msgstr "Home"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: End"
+msgstr "End"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Insert"
+msgstr "Insert"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Delete"
+msgstr "Delete"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
+msgstr "移除所有快捷键？Ctrl+J 保留用于统计信息。"

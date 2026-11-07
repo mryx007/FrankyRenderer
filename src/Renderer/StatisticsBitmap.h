@@ -96,6 +96,24 @@ class StatisticsBitmap
         return texture && lastViewWidth == viewWidth && lastViewHeight == viewHeight;
     }
 
+    int Width() const
+    {
+        return texture ? width : 0;
+    }
+
+    int Height() const
+    {
+        return texture ? height : 0;
+    }
+
+    // At a position in the window, e.g. a centred shortcut message.
+    void DescribeAt(pl_overlay& overlay, pl_overlay_part& part, float x, float y)
+    {
+        const pl_rect2df whole = {0, 0, 0, 0};
+        Describe(overlay, part, &whole);
+        part.dst = {x, y, x + float(width), y + float(height)};
+    }
+
     // Top left of the window, or of the picture (x0, y0, x1, y1) when given.
     void Describe(pl_overlay& overlay, pl_overlay_part& part, const pl_rect2df* picture = nullptr)
     {

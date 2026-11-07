@@ -32,90 +32,50 @@
 using Microsoft::WRL::ComPtr;
 #include "UI/GlassSidebar.h"
 
-enum class ControlKind
-{
-    Toggle,
-    SliderInt,
-    SliderFloat,
-    Choice,
-    Action,
-    Text,
-    Tabs // choices as a row of tabs across the card
-};
-
-struct ChoiceItem
-{
-    int value;
-    std::wstring label;
-    std::wstring description;
-};
-
-struct D2DControl
-{
-    std::wstring id; // English name; name is translated for display
-    std::wstring name;
-    std::wstring desc;
-    ControlKind kind;
-    float minVal = 0.0f;
-    float maxVal = 100.0f;
-    float stepVal = 1.0f;
-    std::vector<ChoiceItem> choices;
-
-    std::function<float()> get;
-    std::function<float()> defaultValue;
-    std::function<void(float)> set;
-    std::function<void()> reset;
-    std::function<bool()> enabled;
-    std::function<void(HWND)> action;
-    std::function<std::wstring()> detail;
-    // Switch drawn before the name, e.g. whether a setting belongs to a profile.
-    std::shared_ptr<D2DControl> include;
-    // Text controls; setText rejects invalid input.
-    std::function<std::wstring()> getText;
-    std::function<bool(const std::wstring&)> setText;
-    std::wstring placeholder, invalidText;
-    std::wstring actionLabel;
-    bool headerToggle = false;
-    bool logarithmic = false;
-
-    bool Enabled() const
-    {
-        return !enabled || enabled();
-    }
-
-    float Value() const
-    {
-        return get ? get() : 0;
-    }
-
-    float Default() const
-    {
-        return defaultValue ? defaultValue() : 0;
-    }
-};
-
-struct D2DCard
-{
-    std::wstring title;
-    std::wstring subtitle;
-    std::vector<D2DControl> controls;
-    std::wstring tab; // explicit tab, e.g. a profile name; otherwise TabGroup decides
-};
-
-struct D2DPage
-{
-    std::wstring name;
-    std::wstring icon;
-    std::wstring title;
-    std::wstring subtitle;
-    std::vector<D2DCard> cards;
-};
-
 #include "UI/Direct2DSettingsModel.h"
 #include "UI/ProfilePage.h"
+#include "UI/ShortcutsPage.h"
 
 // Menu texts outside the settings model, for the translation template.
-static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s Hz.",
+static std::wstring KeyText(const std::wstring& name);
+
+static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
+                                               L"Key name: Alt",
+                                               L"Key name: Shift",
+                                               L"Key name: Space",
+                                               L"Key name: Enter",
+                                               L"Key name: Tab",
+                                               L"Key name: Backspace",
+                                               L"Key name: Left",
+                                               L"Key name: Right",
+                                               L"Key name: Up",
+                                               L"Key name: Down",
+                                               L"Key name: Page Up",
+                                               L"Key name: Page Down",
+                                               L"Key name: Home",
+                                               L"Key name: End",
+                                               L"Key name: Insert",
+                                               L"Key name: Delete",
+                                               L"Next",
+                                               L"On/Off",
+                                               L"not available",
+                                               L"Press the keys…",
+                                               L"None",
+                                               L"%s is already used by \"%s\".",
+                                               L"On",
+                                               L"Off",
+                                               L"Shaders",
+                                               L"Quality",
+                                               L"Custom",
+                                               L"Automatic",
+                                               L"Picture Controls",
+                                               L"Reset",
+                                               L"Image Analysis",
+                                               L"Smooth Motion",
+                                               L"Debanding",
+                                               L"Adaptive Sharpen",
+                                               L"Black Bar Detection",
+                                               L"At %sp this display offers %s Hz.",
                                                L"No 23 or 24 Hz mode, so films cannot switch here.",
                                                L"Other resolutions: %s.",
                                                L"Delete profile?",
@@ -171,6 +131,8 @@ static constexpr const wchar_t* MenuTexts[] = {L"At %sp this display offers %s H
                                                L"Could not measure this display.",
                                                L"Measurement failed.",
                                                L"Reset All",
+                                               L"Reset Shortcuts",
+                                               L"Remove all shortcuts? Ctrl+J stays for the statistics.",
                                                L"Reset all settings for this display to their defaults? Theme and "
                                                L"language stay.",
                                                L"All settings reset to defaults."};
@@ -329,7 +291,9 @@ struct HitRegion
         ShaderToggle,
         TabClose,
         ChoiceTab,
-        CardTab
+        CardTab,
+        Shortcut,
+        ShortcutClear
     } type = None;
 
     D2D1_RECT_F rect = {};
@@ -392,6 +356,7 @@ class Direct2DHostWindow
     int m_paletteVersion = -1;
     int m_languageVersion = g_menuLanguageVersion;
     int m_profileVersion = ProfilePage::g_version;
+    int m_shortcutsVersion = ShortcutsPage::g_version;
     // When a profile was added or the delete dialog closed: the second click
     // of a double-click must not act on the tabs that moved meanwhile.
     ULONGLONG m_profileCreated = 0;
@@ -615,6 +580,15 @@ class Direct2DHostWindow
     void AdoptDisplayProfile(const std::wstring& id);
     void TransferIni(bool importing);
     HRESULT ApplyImported(const PlaceboSettings& candidate);
+    // Key field on the Shortcuts page waiting for keys (D2DControl::shortcut), or -1.
+    int m_shortcutCapture = -1;
+    HHOOK m_captureHook = nullptr;
+    static inline HWND s_captureWindow = nullptr;
+    static constexpr UINT CaptureKeyMessage = WM_APP + 0x5c1;
+    static LRESULT CALLBACK CaptureProc(int, WPARAM, LPARAM);
+    void StartShortcutCapture(int action);
+    void StopShortcutCapture();
+    void OnShortcutKey(UINT key, bool control, bool alt, bool shift);
     void BeginEdit(D2DControl*, const D2D1_RECT_F&, bool renameDisplay = false);
     void EndEdit(bool accept = true);
     void EditChanged();
@@ -720,6 +694,7 @@ class Direct2DHostWindow
     ~Direct2DHostWindow()
     {
         *m_alive = false;
+        StopShortcutCapture();
         // The playing video returns to the profile its folder gives it.
         if (m_previewing)
         {
@@ -861,6 +836,7 @@ static std::vector<D2DPage> PreviewPages(PlaceboSettings& settings)
         result[0].cards.push_back(std::move(look));
     }
     result.push_back(ProfilePage::Build(settings));
+    result.push_back(ShortcutsPage::Build());
     return result;
 }
 
@@ -1168,12 +1144,14 @@ void Direct2DHostWindow::Render()
         return;
     // A new theme or accent colour rebuilds all brushes.
     // A new menu language rebuilds the translated settings model.
-    if (m_languageVersion != g_menuLanguageVersion || m_profileVersion != ProfilePage::g_version)
+    if (m_languageVersion != g_menuLanguageVersion || m_profileVersion != ProfilePage::g_version ||
+        m_shortcutsVersion != ShortcutsPage::g_version)
     {
         if (m_languageVersion != g_menuLanguageVersion)
             CreateTextFormats();
         m_languageVersion = g_menuLanguageVersion;
         m_profileVersion = ProfilePage::g_version;
+        m_shortcutsVersion = ShortcutsPage::g_version;
         InitPages();
         SyncProfiles();
         // Controls and tabs may have moved: drop highlights left at old places.
@@ -1402,51 +1380,44 @@ void Direct2DHostWindow::Render()
     float headerActionsLeft = searchRight - searchWidth - 10;
     // Left edge of Reset All / Reset Page; the first row of tabs ends before it.
     float resetLeft = searchRight;
-    if (!isSearching && m_activePage >= 0 && m_activePage < int(m_pages.size()))
+    // Profiles have nothing to reset; Shortcuts reset only their keys.
+    const std::wstring activeName =
+        m_activePage >= 0 && m_activePage < int(m_pages.size()) ? m_pages[m_activePage].name : std::wstring();
+    if (!isSearching && !activeName.empty() && activeName != L"Profiles")
     {
+        // Buttons styled like the tabs and on their row, sized to the label.
+        const auto button = [&](const std::wstring& label, float right, HitRegion::Type type)
+        {
+            float labelWidth = 80.f;
+            ComPtr<IDWriteTextLayout> measured;
+            DWRITE_TEXT_METRICS metrics = {};
+            if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                    label.c_str(), UINT32(label.size()), m_fmtNav.Get(), 400, 40, measured.GetAddressOf())) &&
+                SUCCEEDED(measured->GetMetrics(&metrics)))
+                labelWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
+            const auto rect = D2D1::RectF(right - labelWidth - 32, currentY + 52, right, currentY + 82);
+            m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 8, 8), m_brushInputBg.Get());
+            const auto paragraph = m_fmtNav->GetParagraphAlignment();
+            m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+            m_pRenderTarget->DrawText(
+                label.c_str(), UINT32(label.size()), m_fmtNav.Get(), rect, m_brushTextMuted.Get());
+            m_fmtNav->SetParagraphAlignment(paragraph);
+            m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+            HitRegion hit;
+            hit.type = type;
+            hit.rect = rect;
+            m_hitRegions.push_back(hit);
+            return rect.left;
+        };
         // The shader page shows one shader at a time; reset only that one.
-        const auto resetText = Tr(m_pages[m_activePage].name == L"Shaders" ? L"Reset Shader" : L"Reset Page");
-        const wchar_t* resetLabel = resetText.c_str();
-        // Sized to its label so the hover highlight hugs the text.
-        float labelWidth = 80.f;
-        ComPtr<IDWriteTextLayout> measured;
-        DWRITE_TEXT_METRICS metrics = {};
-        if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
-                resetLabel, UINT32(wcslen(resetLabel)), m_fmtNav.Get(), 400, 40, measured.GetAddressOf())) &&
-            SUCCEEDED(measured->GetMetrics(&metrics)))
-            labelWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
-        // One row below the header controls, with room between the two rows.
-        const auto reset = D2D1::RectF(searchRight - labelWidth - 24, currentY + 48, searchRight, currentY + 76);
-        const auto paragraph = m_fmtNav->GetParagraphAlignment();
-        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-        m_pRenderTarget->DrawText(
-            resetLabel, UINT32(wcslen(resetLabel)), m_fmtNav.Get(), reset, m_brushTextMuted.Get());
-        m_fmtNav->SetParagraphAlignment(paragraph);
-        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        HitRegion resetHit;
-        resetHit.type = HitRegion::ResetBtn;
-        resetHit.rect = reset;
-        m_hitRegions.push_back(resetHit);
+        const auto resetText = Tr(activeName == L"Shaders"     ? L"Reset Shader"
+                                  : activeName == L"Shortcuts" ? L"Reset Shortcuts"
+                                                               : L"Reset Page");
+        resetLeft = button(resetText, searchRight, HitRegion::ResetBtn);
         // Everything for this display, e.g. to start over.
-        const auto allText = Tr(L"Reset All");
-        float allWidth = 80.f;
-        ComPtr<IDWriteTextLayout> allLayout;
-        if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
-                allText.c_str(), UINT32(allText.size()), m_fmtNav.Get(), 400, 40, allLayout.GetAddressOf())) &&
-            SUCCEEDED(allLayout->GetMetrics(&metrics)))
-            allWidth = std::ceil(metrics.widthIncludingTrailingWhitespace);
-        const auto all = D2D1::RectF(reset.left - allWidth - 28, reset.top, reset.left - 4, reset.bottom);
-        resetLeft = all.left;
-        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-        m_fmtNav->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-        m_pRenderTarget->DrawText(allText.c_str(), UINT32(allText.size()), m_fmtNav.Get(), all, m_brushTextMuted.Get());
-        m_fmtNav->SetParagraphAlignment(paragraph);
-        m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        HitRegion allHit;
-        allHit.type = HitRegion::ResetAllBtn;
-        allHit.rect = all;
-        m_hitRegions.push_back(allHit);
+        if (activeName != L"Shortcuts")
+            resetLeft = button(Tr(L"Reset All"), resetLeft - 7.f, HitRegion::ResetAllBtn);
     }
     // The standalone settings window edits a draft; Save keeps it and shows
     // how many settings differ from what was last saved.
@@ -1660,7 +1631,7 @@ void Direct2DHostWindow::Render()
                 currentY += 42.f;
             }
             else
-                currentY += 34.f;
+                currentY += 42.f; // the reset button's row, like a row of tabs
 
             for (const auto& card : page.cards)
             {
@@ -1674,7 +1645,8 @@ void Direct2DHostWindow::Render()
                 item.pCard = &card;
                 item.pageName = page.name;
                 for (const auto& c : card.controls)
-                    item.visibleControls.push_back(&c);
+                    if (!c.hidden)
+                        item.visibleControls.push_back(&c);
                 cardsToRender.push_back(item);
             }
         }
@@ -1706,7 +1678,7 @@ void Direct2DHostWindow::Render()
                 item.pageName = page.name;
                 for (const auto& c : card.controls)
                 {
-                    if (ControlMatches(c, card, page, m_searchQuery))
+                    if (!c.hidden && ControlMatches(c, card, page, m_searchQuery))
                     {
                         item.visibleControls.push_back(&c);
                     }
@@ -1911,7 +1883,9 @@ void Direct2DHostWindow::Render()
         std::vector<float> rowHeights, descriptionOffsets;
         const float titleHeight =
             textHeightFor(headerTitle, m_fmtCardTitle.Get(), contentW - (headerToggle ? 88.f : 32.f));
-        const float headerHeight = std::max(38.f, 18.f + titleHeight);
+        // A card without a title (the shortcut tree) has no header.
+        const bool noHeader = card.title.empty();
+        const float headerHeight = noHeader ? 0.f : std::max(38.f, 18.f + titleHeight);
         float cardHeight = headerHeight;
         for (const auto* control : visibleControls)
         {
@@ -1919,6 +1893,15 @@ void Direct2DHostWindow::Render()
             {
                 rowHeights.push_back(0);
                 descriptionOffsets.push_back(0);
+                continue;
+            }
+            if (control->treeLevel >= 0)
+            {
+                // Compact tree rows, main categories a little taller.
+                const float height = control->treeLevel == 0 ? 36.f : 30.f;
+                rowHeights.push_back(height);
+                descriptionOffsets.push_back(0);
+                cardHeight += height;
                 continue;
             }
             auto description = control->detail ? control->detail() : control->desc;
@@ -1951,30 +1934,35 @@ void Direct2DHostWindow::Render()
         m_pRenderTarget->FillRoundedRectangle(roundedCard, m_brushBgCard.Get());
 
         // Section headings contain only the title.
-        D2D1_RECT_F headerRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + headerHeight);
-        D2D1_ROUNDED_RECT roundedHeader = D2D1::RoundedRect(headerRect, 8.0f, 8.0f);
-        m_pRenderTarget->FillRoundedRectangle(roundedHeader, m_brushBgCardHeader.Get());
-        m_pRenderTarget->DrawLine(D2D1::Point2F(contentX, currentY + headerHeight),
-                                  D2D1::Point2F(contentX + contentW, currentY + headerHeight),
-                                  m_brushBorderCard.Get(),
-                                  1.0f);
-        m_pRenderTarget->DrawRoundedRectangle(roundedCard, m_brushBorderCard.Get(), 1.0f);
+        if (!noHeader)
+        {
+            D2D1_RECT_F headerRect = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + headerHeight);
+            D2D1_ROUNDED_RECT roundedHeader = D2D1::RoundedRect(headerRect, 8.0f, 8.0f);
+            m_pRenderTarget->FillRoundedRectangle(roundedHeader, m_brushBgCardHeader.Get());
+            m_pRenderTarget->DrawLine(D2D1::Point2F(contentX, currentY + headerHeight),
+                                      D2D1::Point2F(contentX + contentW, currentY + headerHeight),
+                                      m_brushBorderCard.Get(),
+                                      1.0f);
+            m_pRenderTarget->DrawRoundedRectangle(roundedCard, m_brushBorderCard.Get(), 1.0f);
 
-        m_pRenderTarget->FillRoundedRectangle(
-            D2D1::RoundedRect(
-                D2D1::RectF(contentX + 5, currentY + 10, contentX + 8, currentY + headerHeight - 10), 2, 2),
-            m_brushAccent.Get());
-        D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
-                                                currentY + 9.f,
-                                                contentX + contentW - (headerToggle ? 72.f : 16.f),
-                                                currentY + 9.f + titleHeight);
-        m_pRenderTarget->DrawText(headerTitle.c_str(),
-                                  (UINT32)headerTitle.length(),
-                                  m_fmtCardTitle.Get(),
-                                  cardTitleRect,
-                                  m_brushTextMain.Get());
-        if (headerToggle)
-            drawToggle(*headerToggle, contentX + contentW - 56.f, currentY + (headerHeight - 22.f) / 2.f);
+            m_pRenderTarget->FillRoundedRectangle(
+                D2D1::RoundedRect(
+                    D2D1::RectF(contentX + 5, currentY + 10, contentX + 8, currentY + headerHeight - 10), 2, 2),
+                m_brushAccent.Get());
+            D2D1_RECT_F cardTitleRect = D2D1::RectF(contentX + 16,
+                                                    currentY + 9.f,
+                                                    contentX + contentW - (headerToggle ? 72.f : 16.f),
+                                                    currentY + 9.f + titleHeight);
+            m_pRenderTarget->DrawText(headerTitle.c_str(),
+                                      (UINT32)headerTitle.length(),
+                                      m_fmtCardTitle.Get(),
+                                      cardTitleRect,
+                                      m_brushTextMain.Get());
+            if (headerToggle)
+                drawToggle(*headerToggle, contentX + contentW - 56.f, currentY + (headerHeight - 22.f) / 2.f);
+        }
+        else
+            m_pRenderTarget->DrawRoundedRectangle(roundedCard, m_brushBorderCard.Get(), 1.0f);
 
         // Controls in Card
         float rowY = currentY + headerHeight;
@@ -1997,6 +1985,168 @@ void Direct2DHostWindow::Render()
                                           D2D1::Point2F(contentX + contentW - 16, rowY),
                                           m_brushBorderSubtle.Get(),
                                           1.0f);
+            }
+
+            // A key field: the keys, or a hint; an x before it removes the keys.
+            const auto drawKeyField = [&](const D2D1_RECT_F& r)
+            {
+                const bool capturing = m_shortcutCapture == ctrl.shortcut;
+                const D2D1_ROUNDED_RECT rounded = D2D1::RoundedRect(r, 6, 6);
+                m_pRenderTarget->FillRoundedRectangle(rounded, m_brushInputBg.Get());
+                m_pRenderTarget->DrawRoundedRectangle(
+                    rounded, capturing ? m_brushAccent.Get() : m_brushBorderCard.Get(), capturing ? 1.5f : 1.0f);
+                const auto keys = Shortcuts::Format(DWORD(ctrl.Value()), KeyText);
+                // While waiting, the current keys stay visible: Delete removes
+                // them, another combination replaces them.
+                const auto shown = !keys.empty() ? keys : capturing ? Tr(L"Press the keys…") : Tr(L"None");
+                auto text = r;
+                text.left += 8;
+                text.right -= 6;
+                m_pRenderTarget->PushAxisAlignedClip(r, D2D1_ANTIALIAS_MODE_ALIASED);
+                m_pRenderTarget->DrawText(shown.c_str(),
+                                          (UINT32)shown.size(),
+                                          m_fmtTextField.Get(),
+                                          text,
+                                          keys.empty() ? m_brushTextMuted.Get() : m_brushTextMain.Get(),
+                                          D2D1_DRAW_TEXT_OPTIONS_CLIP,
+                                          DWRITE_MEASURING_MODE_GDI_CLASSIC);
+                m_pRenderTarget->PopAxisAlignedClip();
+                HitRegion h;
+                h.type = HitRegion::Shortcut;
+                h.rect = r;
+                h.pControl = &ctrl;
+                if (enabled)
+                    m_hitRegions.push_back(h);
+                // An x in front of an assigned field removes its keys.
+                if (!keys.empty() && enabled)
+                {
+                    const auto clear = D2D1::RectF(r.left - 34, r.top + 2, r.left - 10, r.bottom - 2);
+                    const auto center = D2D1::Point2F((clear.left + clear.right) / 2, (clear.top + clear.bottom) / 2);
+                    m_pRenderTarget->DrawLine(D2D1::Point2F(center.x - 4.5f, center.y - 4.5f),
+                                              D2D1::Point2F(center.x + 4.5f, center.y + 4.5f),
+                                              m_brushTextDim.Get(),
+                                              1.6f);
+                    m_pRenderTarget->DrawLine(D2D1::Point2F(center.x - 4.5f, center.y + 4.5f),
+                                              D2D1::Point2F(center.x + 4.5f, center.y - 4.5f),
+                                              m_brushTextDim.Get(),
+                                              1.6f);
+                    HitRegion x;
+                    x.type = HitRegion::ShortcutClear;
+                    x.rect = clear;
+                    x.pControl = &ctrl;
+                    m_hitRegions.push_back(x);
+                }
+            };
+
+            if (ctrl.treeLevel >= 0)
+            {
+                const bool branch = ctrl.kind == ControlKind::Action;
+                const float treeRight = contentX + contentW - 16.f;
+                const bool top = ctrl.treeLevel == 0;
+                const float x = contentX + 10.f + 20.f * float(ctrl.treeLevel);
+                const float midY = rowY + rowHeight / 2.f;
+                if (top)
+                {
+                    // Main categories stand out.
+                    const auto band =
+                        D2D1::RectF(contentX + 4, rowY + 3, contentX + contentW - 4, rowY + rowHeight - 3);
+                    m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(band, 6, 6), m_brushBgCardHeader.Get());
+                    m_pRenderTarget->FillRoundedRectangle(
+                        D2D1::RoundedRect(
+                            D2D1::RectF(band.left + 3, band.top + 7, band.left + 6, band.bottom - 7), 2, 2),
+                        m_brushAccent.Get());
+                }
+                if (branch)
+                {
+                    // Chevron: right when closed, down when open.
+                    const float cx = x + 8.f;
+                    auto brush = top ? m_brushTextMain.Get() : m_brushTextDim.Get();
+                    if (ctrl.treeOpen)
+                    {
+                        m_pRenderTarget->DrawLine(
+                            D2D1::Point2F(cx - 4, midY - 2), D2D1::Point2F(cx, midY + 2), brush, 1.6f);
+                        m_pRenderTarget->DrawLine(
+                            D2D1::Point2F(cx, midY + 2), D2D1::Point2F(cx + 4, midY - 2), brush, 1.6f);
+                    }
+                    else
+                    {
+                        m_pRenderTarget->DrawLine(
+                            D2D1::Point2F(cx - 2, midY - 4), D2D1::Point2F(cx + 2, midY), brush, 1.6f);
+                        m_pRenderTarget->DrawLine(
+                            D2D1::Point2F(cx + 2, midY), D2D1::Point2F(cx - 2, midY + 4), brush, 1.6f);
+                    }
+                }
+                auto* format = top ? m_fmtNav.Get() : m_fmtLabel.Get();
+                const float labelLeft = x + 22.f;
+                const float labelRight = branch ? contentX + contentW - 16.f : treeRight - 220.f;
+                const auto paragraph = format->GetParagraphAlignment();
+                const auto wrapping = format->GetWordWrapping();
+                format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+                const auto labelRect = D2D1::RectF(labelLeft, rowY, labelRight, rowY + rowHeight);
+                m_pRenderTarget->DrawText(ctrl.name.c_str(),
+                                          UINT32(ctrl.name.size()),
+                                          format,
+                                          labelRect,
+                                          enabled ? m_brushTextMain.Get() : m_brushTextDim.Get(),
+                                          D2D1_DRAW_TEXT_OPTIONS_CLIP);
+                const auto labelWidth = [&]
+                {
+                    float width = float(ctrl.name.size()) * 7.f;
+                    ComPtr<IDWriteTextLayout> measured;
+                    DWRITE_TEXT_METRICS metrics = {};
+                    if (SUCCEEDED(m_pDWriteFactory->CreateTextLayout(
+                            ctrl.name.c_str(), UINT32(ctrl.name.size()), format, 2000, 40, measured.GetAddressOf())) &&
+                        SUCCEEDED(measured->GetMetrics(&metrics)))
+                        width = metrics.widthIncludingTrailingWhitespace;
+                    return std::ceil(width);
+                };
+                // How many keys a closed group holds, so they can be found again.
+                if (branch && ctrl.treeCount > 0)
+                {
+                    const auto number = std::to_wstring(ctrl.treeCount);
+                    const float left = std::min(labelLeft + labelWidth() + 8.f, labelRight - 24.f);
+                    const auto pill =
+                        D2D1::RectF(left, midY - 9.f, left + 12.f + 7.f * float(number.size()), midY + 9.f);
+                    m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(pill, 9, 9), m_brushActiveBg.Get());
+                    m_pRenderTarget->DrawText(
+                        number.c_str(), UINT32(number.size()), m_fmtRange.Get(), pill, m_brushAccentHover.Get());
+                }
+                // What a key press does, beside the name.
+                const auto hint = branch ? std::wstring() : ctrl.detail ? ctrl.detail() : ctrl.desc;
+                if (!hint.empty())
+                {
+                    const float left = labelLeft + labelWidth() + 14.f;
+                    if (left < labelRight - 40.f)
+                    {
+                        const auto hintParagraph = m_fmtDesc->GetParagraphAlignment();
+                        const auto hintWrapping = m_fmtDesc->GetWordWrapping();
+                        m_fmtDesc->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                        m_fmtDesc->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+                        m_pRenderTarget->DrawText(hint.c_str(),
+                                                  UINT32(hint.size()),
+                                                  m_fmtDesc.Get(),
+                                                  D2D1::RectF(left, rowY, labelRight - 8.f, rowY + rowHeight),
+                                                  m_brushTextDim.Get(),
+                                                  D2D1_DRAW_TEXT_OPTIONS_CLIP);
+                        m_fmtDesc->SetParagraphAlignment(hintParagraph);
+                        m_fmtDesc->SetWordWrapping(hintWrapping);
+                    }
+                }
+                format->SetParagraphAlignment(paragraph);
+                format->SetWordWrapping(wrapping);
+                if (branch)
+                {
+                    HitRegion h;
+                    h.type = HitRegion::Action;
+                    h.rect = D2D1::RectF(contentX + 4, rowY + 2, contentX + contentW - 4, rowY + rowHeight - 2);
+                    h.pControl = &ctrl;
+                    m_hitRegions.push_back(h);
+                }
+                else
+                    drawKeyField(D2D1::RectF(treeRight - 180, rowY + 2, treeRight, rowY + rowHeight - 2));
+                rowY += rowHeight;
+                continue;
             }
 
             if (ctrl.kind == ControlKind::Tabs)
@@ -2514,8 +2664,8 @@ void Direct2DHostWindow::CountUnsaved()
                     continue; // menu-local, applies immediately
                 for (const auto& c : card.controls)
                 {
-                    if (c.kind == ControlKind::Action)
-                        continue;
+                    if (c.kind == ControlKind::Action || c.kind == ControlKind::Shortcut)
+                        continue; // shortcuts apply at once, outside OK/Cancel
                     if (c.kind == ControlKind::Text)
                         values.push_back(c.getText ? c.getText() : std::wstring());
                     else
@@ -3409,6 +3559,9 @@ LRESULT CALLBACK Direct2DHostWindow::EditProc(HWND h, UINT msg, WPARAM w, LPARAM
 void Direct2DHostWindow::OnLButtonDown(float x, float y)
 {
     StopNumberRepeat();
+    // Any click ends waiting for keys; a click on the same field only ends it.
+    const int capturing = m_shortcutCapture;
+    StopShortcutCapture();
     const auto alive = m_alive;
     EndEdit();
     SetFocus(m_hwnd);
@@ -3557,6 +3710,15 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         }
         else if (h.type == HitRegion::ResetBtn)
         {
+            // Every key at once: ask first.
+            if (m_pages[m_activePage].name == L"Shortcuts" &&
+                MessageBoxW(m_hwnd,
+                            Tr(L"Remove all shortcuts? Ctrl+J stays for the statistics.").c_str(),
+                            Tr(L"Reset Shortcuts").c_str(),
+                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+                return;
+            if (!*alive)
+                return;
             const bool shaders = m_pages[m_activePage].name == L"Shaders";
             for (auto& card : m_pages[m_activePage].cards)
             {
@@ -3656,6 +3818,24 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
                 r.top += 4;
                 r.bottom -= 4;
                 BeginEdit(c, r);
+            }
+            else if (h.type == HitRegion::ShortcutClear)
+            {
+                if (c->shortcut >= Shortcuts::Count)
+                {
+                    const size_t leaf = size_t(c->shortcut - Shortcuts::Count);
+                    if (leaf < ShortcutsPage::g_leaves.size())
+                        Shortcuts::AssignTarget(ShortcutsPage::g_leaves[leaf], 0);
+                    ++ShortcutsPage::g_version; // counts in the groups
+                }
+                else
+                    Shortcuts::Assign(Shortcuts::Action(c->shortcut), 0);
+                InvalidateRect(m_hwnd, nullptr, FALSE);
+            }
+            else if (h.type == HitRegion::Shortcut)
+            {
+                if (capturing != c->shortcut)
+                    StartShortcutCapture(c->shortcut);
             }
             else if (h.type == HitRegion::Number)
             {
@@ -3859,6 +4039,112 @@ void Direct2DHostWindow::OnChar(wchar_t ch)
     }
     m_scrollY = 0;
     InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+// While a key field waits, key presses for this window are taken before the
+// player's accelerators (Ctrl+O would open a file) and reach OnShortcutKey.
+LRESULT CALLBACK Direct2DHostWindow::CaptureProc(int code, WPARAM w, LPARAM l)
+{
+    auto& message = *reinterpret_cast<MSG*>(l);
+    if (code >= 0 && w == PM_REMOVE && s_captureWindow &&
+        (message.message == WM_KEYDOWN || message.message == WM_SYSKEYDOWN) &&
+        GetAncestor(message.hwnd, GA_ROOT) == GetAncestor(s_captureWindow, GA_ROOT))
+    {
+        const LPARAM modifiers = ((GetKeyState(VK_CONTROL) & 0x8000) ? 1 : 0) |
+                                 ((GetKeyState(VK_MENU) & 0x8000) ? 2 : 0) | ((GetKeyState(VK_SHIFT) & 0x8000) ? 4 : 0);
+        PostMessageW(s_captureWindow, CaptureKeyMessage, message.wParam, modifiers);
+        message.message = WM_NULL;
+        message.wParam = message.lParam = 0;
+    }
+    return CallNextHookEx(nullptr, code, w, l);
+}
+
+void Direct2DHostWindow::StartShortcutCapture(int action)
+{
+    StopShortcutCapture();
+    if (action < 0 || action >= Shortcuts::Count + int(ShortcutsPage::g_leaves.size()))
+        return;
+    HMODULE module = nullptr;
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                       reinterpret_cast<LPCWSTR>(&CaptureProc),
+                       &module);
+    m_captureHook = SetWindowsHookExW(WH_GETMESSAGE, CaptureProc, module, GetCurrentThreadId());
+    if (!m_captureHook)
+        return;
+    s_captureWindow = m_hwnd;
+    m_shortcutCapture = action;
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Direct2DHostWindow::StopShortcutCapture()
+{
+    if (m_captureHook)
+        UnhookWindowsHookEx(m_captureHook);
+    m_captureHook = nullptr;
+    if (s_captureWindow == m_hwnd)
+        s_captureWindow = nullptr;
+    if (m_shortcutCapture >= 0 && m_hwnd)
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+    m_shortcutCapture = -1;
+}
+
+// A key name as Windows shows it in the menu language ("Strg" in German);
+// English, and keys without a translation, keep their own name.
+static std::wstring KeyText(const std::wstring& name)
+{
+    const auto id = L"Key name: " + name;
+    const auto text = Tr(id);
+    return text == id ? name : text;
+}
+
+// The name of a fixed action or custom entry, for messages.
+static std::wstring ShortcutName(int index)
+{
+    if (index < Shortcuts::Count)
+        return Tr(Shortcuts::Actions[index].name);
+    const auto list = Shortcuts::LoadCustom();
+    const size_t custom = size_t(index - Shortcuts::Count);
+    return custom < list.size() ? ShortcutsPage::CustomLabel(list[custom]) : std::wstring();
+}
+
+void Direct2DHostWindow::OnShortcutKey(UINT key, bool control, bool alt, bool shift)
+{
+    const int action = m_shortcutCapture;
+    if (action < 0 || Shortcuts::ModifierKey(key))
+        return; // wait for the key that goes with the modifiers
+    if (key == VK_ESCAPE && !control && !alt && !shift)
+    {
+        StopShortcutCapture();
+        return;
+    }
+    const DWORD combo = (key == VK_DELETE || key == VK_BACK) && !control && !alt && !shift
+                            ? 0
+                            : Shortcuts::Combo(key, control, alt, shift);
+    const size_t leaf = size_t(action - Shortcuts::Count);
+    if (action >= Shortcuts::Count && leaf >= ShortcutsPage::g_leaves.size())
+        return;
+    const int other = action < Shortcuts::Count ? Shortcuts::Assign(Shortcuts::Action(action), combo)
+                                                : Shortcuts::AssignTarget(ShortcutsPage::g_leaves[leaf], combo);
+    if (other < 0)
+        ++ShortcutsPage::g_version; // counts in the groups
+    if (other < 0 && !combo)
+    {
+        // Removed: keep waiting, so new keys can follow right away.
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
+    else if (other >= 0)
+    {
+        // Keep waiting: another combination can be pressed right away.
+        wchar_t text[256];
+        swprintf_s(text,
+                   Tr(L"%s is already used by \"%s\".").c_str(),
+                   Shortcuts::Format(combo, KeyText).c_str(),
+                   ShortcutName(other).c_str());
+        ShowToast(text);
+        return;
+    }
+    StopShortcutCapture();
 }
 
 void Direct2DHostWindow::OnKeyDown(WPARAM key)
@@ -4166,10 +4452,17 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
         InvalidateRect(hwnd, nullptr, FALSE);
         return 0;
     }
+    case Direct2DHostWindow::CaptureKeyMessage:
+    {
+        if (pThis)
+            pThis->OnShortcutKey(UINT(wParam), lParam & 1, lParam & 2, lParam & 4);
+        return 0;
+    }
     case WM_KILLFOCUS:
     {
         if (pThis)
         {
+            pThis->StopShortcutCapture();
             pThis->StopNumberRepeat();
             pThis->m_searchFocused = false;
             InvalidateRect(hwnd, nullptr, FALSE);
