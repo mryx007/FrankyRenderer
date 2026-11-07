@@ -16,6 +16,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "General"
 msgstr ""
 
@@ -26,6 +27,7 @@ msgstr ""
 
 #. Tab (General)
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Output"
 msgstr ""
 
@@ -38,6 +40,7 @@ msgid "Themes"
 msgstr ""
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Output Texture Format"
 msgstr ""
 
@@ -48,22 +51,27 @@ msgid ""
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Auto (libplacebo)"
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "8-bit Integer (SDR)"
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Prefer 10-bit Integer"
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Prefer 16-bit Float"
 msgstr ""
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "RGB Output Levels"
 msgstr ""
 
@@ -72,18 +80,22 @@ msgid "Match the RGB range used by the display and GPU driver."
 msgstr ""
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "Auto (Output)"
 msgstr ""
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "PC Levels (0–255)"
 msgstr ""
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "TV Levels (16–235)"
 msgstr ""
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Dither Target Bit Depth"
 msgstr ""
 
@@ -92,38 +104,47 @@ msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "Auto (Output Texture)"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "4 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "5 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "6 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "8 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "10 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "12 Bit"
 msgstr ""
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "16 Bit"
 msgstr ""
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Max Frames in Flight"
 msgstr ""
 
@@ -133,6 +154,7 @@ msgstr ""
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
+#. Setting name (Shortcuts > )
 msgid "Image Analysis"
 msgstr ""
 
@@ -143,6 +165,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Image Analysis)
+#. Setting name (Shortcuts > )
 msgid "Statistics in Video Area"
 msgstr ""
 
@@ -152,6 +175,7 @@ msgid ""
 msgstr ""
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Display Mode"
 msgstr ""
 
@@ -162,6 +186,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Display Mode)
+#. Setting name (Shortcuts > )
 msgid "Switch Display Mode in Fullscreen"
 msgstr ""
 
@@ -192,6 +217,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Display Mode)
+#. Setting name (Shortcuts > )
 msgid "Pause After Switching (seconds)"
 msgstr ""
 
@@ -200,10 +226,12 @@ msgid "Pauses playback while the display resynchronises after a mode change."
 msgstr ""
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Background & Transparency"
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Red"
 msgstr ""
 
@@ -213,6 +241,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Green"
 msgstr ""
 
@@ -223,6 +252,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Blue"
 msgstr ""
 
@@ -232,6 +262,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Transparency"
 msgstr ""
 
@@ -242,6 +273,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Corner Rounding"
 msgstr ""
 
@@ -252,6 +284,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Skip Target Clearing"
 msgstr ""
 
@@ -280,6 +313,7 @@ msgid "On"
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Blend Against Tiles"
 msgstr ""
 
@@ -290,6 +324,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Red"
 msgstr ""
 
@@ -299,6 +334,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Green"
 msgstr ""
 
@@ -308,6 +344,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Blue"
 msgstr ""
 
@@ -317,6 +354,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Red"
 msgstr ""
 
@@ -326,6 +364,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Green"
 msgstr ""
 
@@ -335,6 +374,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Blue"
 msgstr ""
 
@@ -344,6 +384,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Tile Size (pixels)"
 msgstr ""
 
@@ -439,6 +480,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Processing"
 msgstr ""
 
@@ -460,6 +502,7 @@ msgstr ""
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Debanding"
 msgstr ""
 
@@ -470,6 +513,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Iterations"
 msgstr ""
 
@@ -478,6 +522,7 @@ msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Threshold"
 msgstr ""
 
@@ -496,6 +541,7 @@ msgid "Search radius in pixels."
 msgstr ""
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Grain"
 msgstr ""
 
@@ -504,10 +550,13 @@ msgid "Grain added after debanding."
 msgstr ""
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "Adaptive Sharpen"
 msgstr ""
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Shortcuts > )
 msgid "Enhance Edges and Details"
 msgstr ""
 
@@ -516,6 +565,7 @@ msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr ""
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Shortcuts > )
 msgid "Strength"
 msgstr ""
 
@@ -524,11 +574,13 @@ msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr ""
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Deinterlacing"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Shortcuts > )
 msgid "Algorithm"
 msgstr ""
 
@@ -538,14 +590,17 @@ msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Bwdif"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Yadif"
 msgstr ""
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Shortcuts > )
 msgid "Field Order"
 msgstr ""
 
@@ -556,34 +611,42 @@ msgid ""
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Auto (Source Flags)"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Top Field First"
 msgstr ""
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Bottom Field First"
 msgstr ""
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Blue Noise (recommended)"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Ordered Dithering"
 msgstr ""
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Random Dithering"
 msgstr ""
 
 #. Setting name (Processing > Dithering)
+#. Setting name (Shortcuts > )
 msgid "Change Dither for Every Frame"
 msgstr ""
 
@@ -592,10 +655,12 @@ msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr ""
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Detection & Zoom"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
 msgstr ""
 
@@ -604,6 +669,7 @@ msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Crop Black Bars"
 msgstr ""
 
@@ -613,6 +679,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Protect Burned-in Subtitles"
 msgstr ""
 
@@ -621,6 +688,7 @@ msgid "Temporarily restore bars if they contain visible content."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Keep a Stable Zoom"
 msgstr ""
 
@@ -631,6 +699,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Zoom Mode"
 msgstr ""
 
@@ -641,14 +710,17 @@ msgid ""
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Setting name (Shortcuts > )
 msgid "Fit (Keep All Content)"
 msgstr ""
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Setting name (Shortcuts > )
 msgid "Fill (May Crop Content)"
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Black Threshold"
 msgstr ""
 
@@ -657,6 +729,7 @@ msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detection Stability (seconds)"
 msgstr ""
 
@@ -666,6 +739,7 @@ msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Scaling"
 msgstr ""
 
@@ -676,6 +750,7 @@ msgstr ""
 
 #. Tab (Scaling)
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Filters"
 msgstr ""
 
@@ -685,6 +760,7 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Image Upscaler"
 msgstr ""
 
@@ -773,6 +849,7 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Image Downscaler"
 msgstr ""
 
@@ -813,6 +890,7 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
 msgstr ""
 
@@ -828,6 +906,7 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
 msgstr ""
 
@@ -837,6 +916,7 @@ msgstr ""
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Frame Mixer"
 msgstr ""
 
@@ -872,6 +952,7 @@ msgid "Cubic B-spline frame mixing"
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Global Anti-Ringing"
 msgstr ""
 
@@ -880,6 +961,7 @@ msgid "Suppress overshoot around edges."
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Enable Smooth Motion"
 msgstr ""
 
@@ -890,6 +972,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Present in Advance"
 msgstr ""
 
@@ -901,26 +984,33 @@ msgid ""
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "Automatic"
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "1 Refresh"
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "2 Refreshes"
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "3 Refreshes"
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "4 Refreshes"
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Oversample Threshold"
 msgstr ""
 
@@ -932,6 +1022,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Skip Downscale Anti-Aliasing"
 msgstr ""
 
@@ -942,6 +1033,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Preserve Frame Mixer Cache"
 msgstr ""
 
@@ -954,6 +1046,7 @@ msgstr ""
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
+#. Setting name (Shortcuts > )
 msgid "RTX Video Super Resolution"
 msgstr ""
 
@@ -984,6 +1077,7 @@ msgid "Scaler role whose custom filter is edited."
 msgstr ""
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Image Upscaler"
 msgstr ""
 
@@ -1175,23 +1269,28 @@ msgid "Inherit Starting Filter"
 msgstr ""
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Image Downscaler"
 msgstr ""
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
 msgstr ""
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Plane Downscaler (Chroma / Alpha)"
 msgstr ""
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Frame Mixer"
 msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Color"
 msgstr ""
 
@@ -1201,6 +1300,7 @@ msgstr ""
 
 #. Tab (Color)
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "Picture Controls"
 msgstr ""
 
@@ -1209,6 +1309,7 @@ msgid "Calibration"
 msgstr ""
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Enable Color Adjustment"
 msgstr ""
 
@@ -1219,6 +1320,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Brightness"
 msgstr ""
 
@@ -1249,6 +1351,7 @@ msgstr ""
 
 #. Setting name (Color > Picture Controls)
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Gamma"
 msgstr ""
 
@@ -1257,6 +1360,7 @@ msgid "Change the picture's tonal response. 1 preserves the original gamma."
 msgstr ""
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Hue (degrees)"
 msgstr ""
 
@@ -1265,6 +1369,7 @@ msgid "Rotate chroma hue. 0 preserves the original colors."
 msgstr ""
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Temperature (K)"
 msgstr ""
 
@@ -1281,6 +1386,7 @@ msgid "Display"
 msgstr ""
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Gamut"
 msgstr ""
 
@@ -1291,30 +1397,37 @@ msgid ""
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "BT.709"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "SMPTE C"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "EBU / PAL"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "BT.2020"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "DCI-P3 (DCI white)"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "P3-D65 (Display P3)"
 msgstr ""
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Gamma"
 msgstr ""
 
@@ -1325,14 +1438,17 @@ msgid ""
 msgstr ""
 
 #. Choice (Color > Display > Display Gamma)
+#. Setting name (Shortcuts > )
 msgid "Auto"
 msgstr ""
 
 #. Choice (Color > Display > Display Gamma)
+#. Setting name (Shortcuts > )
 msgid "BT.1886"
 msgstr ""
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Contrast"
 msgstr ""
 
@@ -1343,6 +1459,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "SDR Gamma Processing"
 msgstr ""
 
@@ -1352,6 +1469,7 @@ msgid ""
 msgstr ""
 
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "ICC Profile"
 msgstr ""
 
@@ -1370,6 +1488,7 @@ msgid "Browse…"
 msgstr ""
 
 #. Setting name (Color > ICC Profile)
+#. Setting name (Shortcuts > )
 msgid "Enable ICC Profile"
 msgstr ""
 
@@ -1378,6 +1497,7 @@ msgid "Apply color correction from the selected display profile."
 msgstr ""
 
 #. Setting name (Color > ICC Profile)
+#. Setting name (Shortcuts > )
 msgid "ICC Rendering Intent"
 msgstr ""
 
@@ -1387,15 +1507,18 @@ msgstr ""
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Relative Colorimetric"
 msgstr ""
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Perceptual"
 msgstr ""
 
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "3D LUT"
 msgstr ""
 
@@ -1408,6 +1531,7 @@ msgid "Select a .cube 3D LUT before enabling LUT processing."
 msgstr ""
 
 #. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "Enable 3D LUT"
 msgstr ""
 
@@ -1416,6 +1540,7 @@ msgid "Apply the selected 3D LUT at the stage selected by LUT Type."
 msgstr ""
 
 #. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "LUT Type"
 msgstr ""
 
@@ -1428,27 +1553,33 @@ msgid ""
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Default (SDR Calibration)"
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Unknown"
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Native"
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Normalized"
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Conversion"
 msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "HDR"
 msgstr ""
 
@@ -1473,10 +1604,12 @@ msgid "Tone Controls"
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "HDR Output"
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "HDR Mode"
 msgstr ""
 
@@ -1488,18 +1621,22 @@ msgid ""
 msgstr ""
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Passthrough HDR to Display"
 msgstr ""
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Tone Map HDR to Display Peak"
 msgstr ""
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Tone Map HDR to SDR"
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Clipping Protection"
 msgstr ""
 
@@ -1510,6 +1647,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr ""
 
@@ -1521,6 +1659,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "SDR Target Brightness (nits)"
 msgstr ""
 
@@ -1531,6 +1670,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Function"
 msgstr ""
 
@@ -1542,56 +1682,69 @@ msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "Auto (Metadata)"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Spline"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "BT.2390"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "BT.2446A"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Reinhard"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Mobius"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Hable"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "ST 2094-40 (HDR10+)"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "ST 2094-10"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Clip"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Linear"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Linear Light"
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Gamut Mapping Function"
 msgstr ""
 
@@ -1600,30 +1753,37 @@ msgid "Map source colors into the output display's supported color gamut."
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Default (libplacebo)"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Softclip"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Desaturate"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Darken"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Absolute Colorimetric"
 msgstr ""
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Highlight Out-of-Gamut"
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Show Clipping"
 msgstr ""
 
@@ -1633,6 +1793,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
 msgstr ""
 
@@ -1643,10 +1804,12 @@ msgid ""
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Enable Peak Detection"
 msgstr ""
 
@@ -1655,6 +1818,7 @@ msgid "Measure scene brightness to adapt HDR tone mapping to the video."
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Allow Delayed Peak Detection"
 msgstr ""
 
@@ -1664,6 +1828,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Smoothing Period"
 msgstr ""
 
@@ -1673,6 +1838,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Scene Threshold Low"
 msgstr ""
 
@@ -1683,6 +1849,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Scene Threshold High"
 msgstr ""
 
@@ -1691,6 +1858,7 @@ msgid "Upper scene-change threshold. Must not be below the Low threshold."
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Percentile"
 msgstr ""
 
@@ -1701,6 +1869,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Black Cutoff"
 msgstr ""
 
@@ -1709,10 +1878,12 @@ msgid "Exclude very dark pixels from HDR peak-detection statistics."
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Knee"
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Adaptation"
 msgstr ""
 
@@ -1721,6 +1892,7 @@ msgid "Adapt the knee to scene brightness. Used by ST 2094 and Spline."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Minimum"
 msgstr ""
 
@@ -1729,6 +1901,7 @@ msgid "Lower bound for the adaptive knee, in PQ-normalized space."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Maximum"
 msgstr ""
 
@@ -1737,6 +1910,7 @@ msgid "Upper bound for the adaptive knee, in PQ-normalized space."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Default"
 msgstr ""
 
@@ -1747,6 +1921,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "BT.2390 Knee Offset"
 msgstr ""
 
@@ -1757,10 +1932,12 @@ msgid ""
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Constants"
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Slope Tuning"
 msgstr ""
 
@@ -1769,6 +1946,7 @@ msgid "Strength of scene-dependent Spline slope adjustment."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Slope Offset"
 msgstr ""
 
@@ -1777,6 +1955,7 @@ msgid "Offset for Spline slope adjustment."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Contrast"
 msgstr ""
 
@@ -1785,6 +1964,7 @@ msgid "Spline contrast around the knee. Only affects the Spline function."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Reinhard Contrast"
 msgstr ""
 
@@ -1793,6 +1973,7 @@ msgid "Contrast for Reinhard. Larger values increase contrast."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Mobius / Gamma Knee"
 msgstr ""
 
@@ -1801,6 +1982,7 @@ msgid "Transition point for Mobius and Gamma tone mapping."
 msgstr ""
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Linear Exposure"
 msgstr ""
 
@@ -1811,6 +1993,7 @@ msgstr ""
 
 #. Section heading (HDR)
 #. Setting name (HDR > Contrast Recovery)
+#. Setting name (Shortcuts > )
 msgid "Contrast Recovery"
 msgstr ""
 
@@ -1819,6 +2002,7 @@ msgid "Recover local contrast lost in tone mapping. 0 disables recovery."
 msgstr ""
 
 #. Setting name (HDR > Contrast Recovery)
+#. Setting name (Shortcuts > )
 msgid "Contrast Smoothness"
 msgstr ""
 
@@ -1828,10 +2012,12 @@ msgid ""
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Gamut Mapping Constants"
 msgstr ""
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Perceptual Deadzone"
 msgstr ""
 
@@ -1841,6 +2027,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Perceptual Strength"
 msgstr ""
 
@@ -1849,6 +2036,7 @@ msgid "Balance perceptual gamut compression and colorimetric mapping."
 msgstr ""
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Colorimetric Gamma"
 msgstr ""
 
@@ -1858,6 +2046,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Softclip Knee"
 msgstr ""
 
@@ -1866,6 +2055,7 @@ msgid "Saturation threshold where soft clipping starts."
 msgstr ""
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Softclip Desaturation"
 msgstr ""
 
@@ -1874,10 +2064,12 @@ msgid "Desaturation near the gamut boundary when using Softclip."
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Mapping LUT Quality"
 msgstr ""
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Intensity Size"
 msgstr ""
 
@@ -1887,6 +2079,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Chroma Size"
 msgstr ""
 
@@ -1895,6 +2088,7 @@ msgid "Internal gamut LUT resolution along chroma. 0 selects the library size."
 msgstr ""
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Hue Size"
 msgstr ""
 
@@ -1903,6 +2097,7 @@ msgid "Internal gamut LUT resolution along hue. 0 selects the library size."
 msgstr ""
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Tricubic Gamut Interpolation"
 msgstr ""
 
@@ -1913,6 +2108,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping LUT Size"
 msgstr ""
 
@@ -1921,10 +2117,12 @@ msgid "Internal tone curve lookup resolution. 0 selects the library size."
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Mapping Visualization"
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Force Tone Mapping LUT"
 msgstr ""
 
@@ -1934,6 +2132,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualize Mapping LUT"
 msgstr ""
 
@@ -1942,6 +2141,7 @@ msgid "Draw a diagnostic visualization over the video."
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Left"
 msgstr ""
 
@@ -1951,6 +2151,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Top"
 msgstr ""
 
@@ -1960,6 +2161,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Right"
 msgstr ""
 
@@ -1969,6 +2171,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Bottom"
 msgstr ""
 
@@ -1978,6 +2181,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Hue (radians)"
 msgstr ""
 
@@ -1986,6 +2190,7 @@ msgid "Gamut visualization hue slice, from -pi to pi."
 msgstr ""
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Rotation (radians)"
 msgstr ""
 
@@ -1994,10 +2199,12 @@ msgid "Gamut visualization angle, from 0 to pi/2."
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Expansion & Metadata"
 msgstr ""
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Inverse Tone Mapping"
 msgstr ""
 
@@ -2007,6 +2214,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Gamut Expansion"
 msgstr ""
 
@@ -2015,6 +2223,7 @@ msgid "Allow expansion into a wider display gamut."
 msgstr ""
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Metadata"
 msgstr ""
 
@@ -2025,22 +2234,28 @@ msgid ""
 msgstr ""
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "None"
 msgstr ""
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "HDR10"
 msgstr ""
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "HDR10+"
 msgstr ""
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "CIE Y"
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Shadows"
 msgstr ""
 
@@ -2077,15 +2292,18 @@ msgid "Change color intensity within this HDR zone. 0 is neutral."
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Midtones"
 msgstr ""
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Highlights"
 msgstr ""
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Shaders"
 msgstr ""
 
@@ -2100,101 +2318,121 @@ msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "AMD CAS"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "FineDehalo"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "PixelClipper"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "KrigBilateral"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "CfL Prediction"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "NLMeans"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Bilateral Denoise"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Chroma Denoise"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Guided Detail Enhance"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Clarity"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "FSRCNNX 2x"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "AiUpscale Photo 2x"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R2"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom R3"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R3"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Anime4K CNN 2x M"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "ArtCNN C4F16"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "CuNNy 2x12 DS"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "SSimDownscaler"
 msgstr ""
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "DPID"
 msgstr ""
 
@@ -2214,6 +2452,18 @@ msgstr ""
 
 #. Section description (Shaders > AMD CAS)
 msgid "Contrast-adaptive sharpening after scaling."
+msgstr ""
+
+#. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
+msgid "On/Off"
+msgstr ""
+
+#. Setting description (Shaders > AMD CAS > On/Off)
+#. Setting description (Shaders > FineDehalo > On/Off)
+#. Setting description (Shaders > Anti-Ringing > On/Off)
+msgid "Switches this shader on or off."
 msgstr ""
 
 #. Setting name (Shaders > AMD CAS)
@@ -2249,6 +2499,7 @@ msgid "Reduce bright and dark halos around edges."
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Horizontal Radius (RX)"
 msgstr ""
 
@@ -2259,6 +2510,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Vertical Radius (RY)"
 msgstr ""
 
@@ -2269,6 +2521,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Strong Edge Low (THMI)"
 msgstr ""
 
@@ -2279,6 +2532,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Strong Edge High (THMA)"
 msgstr ""
 
@@ -2289,6 +2543,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Light Edge Low (THLIMI)"
 msgstr ""
 
@@ -2299,6 +2554,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Light Edge High (THLIMA)"
 msgstr ""
 
@@ -2309,6 +2565,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Dark Halo Strength (STR_D)"
 msgstr ""
 
@@ -2319,6 +2576,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Bright Halo Strength (STR_B)"
 msgstr ""
 
@@ -2329,6 +2587,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Low Sensitivity (SENS_L)"
 msgstr ""
 
@@ -2339,6 +2598,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "High Sensitivity (SENS_H)"
 msgstr ""
 
@@ -2368,6 +2628,7 @@ msgstr ""
 
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Bilateral Denoise)
+#. Setting name (Shortcuts > )
 msgid "Sample Taps (TAP)"
 msgstr ""
 
@@ -2383,6 +2644,7 @@ msgid "Limit overshoot during image and chroma scaling."
 msgstr ""
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Image Sampling Mode (TAPS_scale)"
 msgstr ""
 
@@ -2393,6 +2655,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Chroma Sampling Mode (TAPS_cscale)"
 msgstr ""
 
@@ -2403,6 +2666,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Upscaling Limit (CLIP_scale)"
 msgstr ""
 
@@ -2413,6 +2677,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Chroma Limit (CLIP_cscale)"
 msgstr ""
 
@@ -2423,6 +2688,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Downscaling Limit (CLIP_dscale)"
 msgstr ""
 
@@ -2441,6 +2707,7 @@ msgid "Predict chroma from luma. Requires subsampled YUV input."
 msgstr ""
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "chroma offset x (chroma_offset_x)"
 msgstr ""
 
@@ -2451,6 +2718,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "chroma offset y (chroma_offset_y)"
 msgstr ""
 
@@ -2461,6 +2729,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "distance coeff (distance_coeff)"
 msgstr ""
 
@@ -2471,6 +2740,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "intensity coeff (intensity_coeff)"
 msgstr ""
 
@@ -2485,6 +2755,7 @@ msgid "Reduce luma noise using similar image patches."
 msgstr ""
 
 #. Setting name (Shaders > NLMeans)
+#. Setting name (Shortcuts > )
 msgid "Reference Mode (REF)"
 msgstr ""
 
@@ -2499,6 +2770,7 @@ msgid "Edge-aware luma noise reduction."
 msgstr ""
 
 #. Setting name (Shaders > Bilateral Denoise)
+#. Setting name (Shortcuts > )
 msgid "SS (SS)"
 msgstr ""
 
@@ -2509,6 +2781,7 @@ msgstr ""
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SR (SR)"
 msgstr ""
 
@@ -2524,6 +2797,7 @@ msgstr ""
 
 #. Setting name (Shaders > Chroma Denoise)
 #. Setting name (Shaders > SSimDownscaler)
+#. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
 msgstr ""
 
@@ -2539,6 +2813,7 @@ msgid "Reduce banding in smooth gradients."
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "S (S)"
 msgstr ""
 
@@ -2548,6 +2823,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SI (SI)"
 msgstr ""
 
@@ -2557,6 +2833,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SW (SW)"
 msgstr ""
 
@@ -2566,6 +2843,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "Radius (RADIUS)"
 msgstr ""
 
@@ -2578,6 +2856,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SPARSITY (SPARSITY)"
 msgstr ""
 
@@ -2588,6 +2867,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "DIRECTIONS (DIRECTIONS)"
 msgstr ""
 
@@ -2598,6 +2878,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "RUN START (RUN_START)"
 msgstr ""
 
@@ -2608,6 +2889,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "TOLERANCE (TOLERANCE)"
 msgstr ""
 
@@ -2622,6 +2904,7 @@ msgid "Reduce gradient banding with adjustable thresholds and grain."
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "RANGE (RANGE)"
 msgstr ""
 
@@ -2632,6 +2915,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Grain (GRAIN)"
 msgstr ""
 
@@ -2642,6 +2926,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "GRAD (GRAD)"
 msgstr ""
 
@@ -2652,6 +2937,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Average Threshold (THR_AVG)"
 msgstr ""
 
@@ -2662,6 +2948,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Maximum Threshold (THR_MAX)"
 msgstr ""
 
@@ -2672,6 +2959,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Middle Threshold (THR_MID)"
 msgstr ""
 
@@ -2682,6 +2970,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Combined Threshold (THR_ALL)"
 msgstr ""
 
@@ -2692,6 +2981,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "AB (AB)"
 msgstr ""
 
@@ -2701,6 +2991,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "AM (AM)"
 msgstr ""
 
@@ -2715,10 +3006,12 @@ msgstr ""
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Radius (RAD)"
 msgstr ""
 
 #. Setting name (Shaders > Guided Detail Enhance)
+#. Setting name (Shortcuts > )
 msgid "Regularization (EPS)"
 msgstr ""
 
@@ -2729,6 +3022,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Guided Detail Enhance)
+#. Setting name (Shortcuts > )
 msgid "Subsampling (SUBSAM)"
 msgstr ""
 
@@ -2743,6 +3037,7 @@ msgid "Adjust local contrast in dark and bright areas."
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "SHIFT (SHIFT)"
 msgstr ""
 
@@ -2753,6 +3048,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Shadow Strength (STRD)"
 msgstr ""
 
@@ -2763,6 +3059,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Highlight Strength (STRL)"
 msgstr ""
 
@@ -2773,6 +3070,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "BM (BM)"
 msgstr ""
 
@@ -2782,6 +3080,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "CD (CD)"
 msgstr ""
 
@@ -2791,6 +3090,7 @@ msgid ""
 msgstr ""
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "CL (CL)"
 msgstr ""
 
@@ -2808,6 +3108,7 @@ msgid "Photo-oriented neural 2x upscaling."
 msgstr ""
 
 #. Setting name (Shaders > AiUpscale Photo 2x)
+#. Setting name (Shortcuts > )
 msgid "Sharpen (SHARP)"
 msgstr ""
 
@@ -2852,6 +3153,7 @@ msgid "Detail-preserving downscaling. Requires a smaller output size."
 msgstr ""
 
 #. Setting name (Shaders > DPID)
+#. Setting name (Shortcuts > )
 msgid "LBD (LBD)"
 msgstr ""
 
@@ -2964,6 +3266,209 @@ msgstr ""
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
+msgstr ""
+
+#. Category
+#. Category heading
+msgid "Shortcuts"
+msgstr ""
+
+#. Category description
+msgid ""
+"Keys for the playing video. Open a group, click a field and press the keys."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
+msgid "Reset Shortcuts"
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Renderer"
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Statistics"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Statistics)
+msgid "Shows or hides the statistics."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "All Shaders Off / Back On"
+msgstr ""
+
+#. Setting description (Shortcuts >  > All Shaders Off / Back On)
+msgid "Turns all shaders off; pressed again, back on."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Next Quality Preset"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Next Quality Preset)
+msgid "Switches to the next quality preset."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Next Profile"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Next Profile)
+msgid "Switches this file to the next profile."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Reset Picture Controls"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Reset Picture Controls)
+msgid "Sets brightness, contrast, saturation and gamma back to neutral."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Reset Statistics"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Reset Statistics)
+msgid "Counters, averages and peaks start from zero."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Next"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Next)
+msgid "Next value; after the last one, the first again."
+msgstr ""
+
+#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > 8-bit Integer (SDR))
+#. Setting description (Shortcuts >  > Prefer 10-bit Integer)
+msgid "Sets exactly this value."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Increase"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Increase)
+msgid "Raises the value by %s."
+msgstr ""
+
+#. Setting name (Shortcuts > )
+msgid "Decrease"
+msgstr ""
+
+#. Setting description (Shortcuts >  > Decrease)
+msgid "Lowers the value by %s."
+msgstr ""
+
+#. Setting description (Shortcuts >  > Image Analysis)
+#. Setting description (Shortcuts >  > Statistics in Video Area)
+#. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+msgid "Switches on or off; each press changes it."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Ctrl"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Alt"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Shift"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Space"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Enter"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Tab"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Backspace"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Left"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Right"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Up"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Down"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Up"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Down"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Home"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: End"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Insert"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Delete"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "not available"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Press the keys…"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "%s is already used by \"%s\"."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Quality"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Custom"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Smooth Motion"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Black Bar Detection"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
@@ -3123,14 +3628,6 @@ msgid "Enter a number within the supported range."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "Quality"
-msgstr ""
-
-#. Menu text; keep %d and %s placeholders
-msgid "Custom"
-msgstr ""
-
-#. Menu text; keep %d and %s placeholders
 msgid "Measured"
 msgstr ""
 
@@ -3164,6 +3661,10 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset All"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
