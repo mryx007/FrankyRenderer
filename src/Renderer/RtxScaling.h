@@ -272,9 +272,13 @@ class RtxScaling
                                                                   : RtxVideoProcessor::InputKind::Nv12;
         // A larger picture than the processor was made for needs a new one;
         // a smaller one fits into it.
+        // HDR10+ metadata belongs to each cached image and is used by the
+        // subsequent tone mapping. It does not change RTX's signal format.
+        // Comparing it here evicts both neighbours on every Smooth Motion
+        // refresh when their scene metadata differs.
         if (width != inW || height != inH || outputWidth < outW || outputHeight < outH || format != type ||
-            inputKind != kind || !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale ||
-            hdr != trueHdr)
+            inputKind != kind || sourceColor.primaries != source.color.primaries ||
+            sourceColor.transfer != source.color.transfer || upscaling != upscale || hdr != trueHdr)
         {
             ClearFrames();
             for (auto& plane : input)

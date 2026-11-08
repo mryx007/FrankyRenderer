@@ -343,6 +343,82 @@ int main()
             if (!processed)
                 wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
             Require(bool(processed), "decoder picture through RTX");
+            if (hdrSource)
+            {
+                // Smooth Motion alternates between adjacent pictures with their
+                // own HDR10+ metadata. These change tone mapping, not RTX's
+                // input format, and must not evict the other picture.
+                auto following = source;
+                source.color.hdr.scene_avg = 40;
+                source.color.hdr.scene_max[0] = 350;
+                following.color.hdr.scene_avg = 80;
+                following.color.hdr.scene_max[0] = 700;
+                scaling.Invalidate();
+                auto first = scaling.Get(d3d,
+                                         context.Get(),
+                                         source,
+                                         40,
+                                         1920,
+                                         1080,
+                                         pl_render_default_params,
+                                         true,
+                                         false,
+                                         nullptr,
+                                         0,
+                                         0,
+                                         decoded.Get());
+                auto second = scaling.Get(d3d,
+                                          context.Get(),
+                                          following,
+                                          41,
+                                          1920,
+                                          1080,
+                                          pl_render_default_params,
+                                          true,
+                                          false,
+                                          nullptr,
+                                          0,
+                                          0,
+                                          decoded.Get());
+                Require(first && second, "adjacent HDR10+ pictures");
+                const auto evaluations = scaling.Evaluations(), textures = scaling.TexturesCreated();
+                for (int tick = 0; tick < 20; ++tick)
+                {
+                    Require(scaling.Get(d3d,
+                                        context.Get(),
+                                        source,
+                                        40,
+                                        1920,
+                                        1080,
+                                        pl_render_default_params,
+                                        true,
+                                        false,
+                                        nullptr,
+                                        0,
+                                        0,
+                                        decoded.Get()) == first,
+                            "HDR10+ metadata does not evict the adjacent RTX picture");
+                    Require(scaling.Get(d3d,
+                                        context.Get(),
+                                        following,
+                                        41,
+                                        1920,
+                                        1080,
+                                        pl_render_default_params,
+                                        true,
+                                        false,
+                                        nullptr,
+                                        0,
+                                        0,
+                                        decoded.Get()) == second,
+                            "HDR10+ next picture stays cached");
+                }
+                Require(scaling.Evaluations() == evaluations && scaling.TexturesCreated() == textures,
+                        "HDR10+ refreshes neither resubmit nor allocate RTX pictures");
+                Require(first->image.color.hdr.scene_avg == 40 && second->image.color.hdr.scene_avg == 80,
+                        "each RTX picture keeps its own HDR10+ tone mapping metadata");
+                printf("RTX HDR10+ alternating metadata: 40 cache hits, no resubmissions or allocations\n");
+            }
             Require(scaling.DecoderPicture() && scaling.Status().find(L"decoder picture") != std::wstring::npos,
                     "decoder picture is read by the driver directly");
             D3D11_TEXTURE2D_DESC actual;
