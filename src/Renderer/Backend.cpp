@@ -84,6 +84,8 @@ struct PlaceboBackend::State
     RtxScaling rtx;
     // The picture being drawn was upscaled by RTX (statistics).
     bool rtxUpscaled = false;
+    // RTX read the decoder picture itself: the driver scaled its chroma.
+    bool rtxDirect = false;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -353,6 +355,11 @@ struct PlaceboBackend::State
     pl_tex felPlanes[3] = {};
     std::vector<uint8_t> unpacked;
     ComPtr<ID3D11Texture2D> copy;
+    // CPU memory NV12/P010 for RTX, written here and imported like a decoder texture.
+    // Several, used in turn: writing one never waits for the GPU's copy of the last.
+    ComPtr<ID3D11Texture2D> semiPlanarUploads[3];
+    int semiPlanarNext = 0;
+    bool semiPlanarUploadTraced = false;
     ComPtr<ID3D11DeviceContext> context;
     ComPtr<IDXGIDevice1> latencyDevice;
     UINT originalLatency = 0;
@@ -423,6 +430,51 @@ struct PlaceboBackend::State
         unpack422.ResetFrame();
         image = {};
         valid = false;
+    }
+
+    // Copies an NV12 or P010 picture from CPU memory into one texture with
+    // both planes, as a hardware decoder delivers it.
+    HRESULT StageSemiPlanar(const VideoFrame& frame, const uint8_t* data, int stride, ID3D11Texture2D*& staged)
+    {
+        auto& semiPlanarUpload = semiPlanarUploads[semiPlanarNext];
+        semiPlanarNext = (semiPlanarNext + 1) % int(std::size(semiPlanarUploads));
+        D3D11_TEXTURE2D_DESC have = {};
+        if (semiPlanarUpload)
+            semiPlanarUpload->GetDesc(&have);
+        HRESULT hr = S_OK;
+        const auto format = frame.format == PixelFormat::NV12 ? DXGI_FORMAT_NV12 : DXGI_FORMAT_P010;
+        if (!semiPlanarUpload || have.Width != UINT(frame.width) || have.Height != UINT(frame.height) ||
+            have.Format != format)
+        {
+            semiPlanarUpload.Reset();
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = frame.width;
+            desc.Height = frame.height;
+            desc.MipLevels = desc.ArraySize = 1;
+            desc.Format = format;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_STAGING;
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            hr = d3d->device->CreateTexture2D(&desc, nullptr, &semiPlanarUpload);
+            if (FAILED(hr))
+                return hr;
+        }
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        hr = context->Map(semiPlanarUpload.Get(), 0, D3D11_MAP_WRITE, 0, &mapped);
+        if (FAILED(hr))
+            return hr;
+        const auto out = static_cast<uint8_t*>(mapped.pData);
+        const size_t row = size_t(frame.width) * (frame.format == PixelFormat::NV12 ? 1 : 2);
+        for (int y = 0; y < frame.height; ++y)
+            memcpy(out + size_t(y) * mapped.RowPitch, data + size_t(y) * stride, row);
+        // The chroma plane follows the luma rows of the mapped texture.
+        const auto chroma = out + size_t(mapped.RowPitch) * frame.height;
+        const auto source = data + size_t(stride) * frame.height;
+        for (int y = 0; y < frame.height / 2; ++y)
+            memcpy(chroma + size_t(y) * mapped.RowPitch, source + size_t(y) * stride, row);
+        context->Unmap(semiPlanarUpload.Get(), 0);
+        staged = semiPlanarUpload.Get();
+        return S_OK;
     }
 
     void ClearOverlay()
@@ -536,6 +588,20 @@ struct PlaceboBackend::State
         pl_d3d11_destroy(&d3d);
         context.Reset();
         shaderCache.Save();
+    }
+
+    // The D3D11 texture behind a picture, when it is one decoder picture.
+    ID3D11Texture2D* NativePicture(const pl_frame& frame) const
+    {
+        const auto texture = frame.planes[0].texture;
+        if (!texture)
+            return nullptr;
+        if (copy && planes[0] == texture)
+            return copy.Get();
+        for (const auto& [id, stored] : history)
+            if (stored->copy && stored->image.planes[0].texture == texture)
+                return stored->copy.Get();
+        return nullptr;
     }
 
     bool DisplayReferences(const StoredFrame& stored) const
@@ -1112,7 +1178,10 @@ struct PlaceboBackend::State
         heading(L"Processing");
         const auto* chromaFilter =
             options->params.plane_upscaler ? options->params.plane_upscaler : options->params.upscaler;
-        row(L"Chroma") << L"upscale" << dot << wide(chromaFilter ? chromaFilter->name : "bilinear");
+        if (rtxDirect)
+            row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
+        else
+            row(L"Chroma") << L"upscale" << dot << wide(chromaFilter ? chromaFilter->name : "bilinear");
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
@@ -1526,7 +1595,7 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
-        rtxUpscaled = false;
+        rtxUpscaled = rtxDirect = false;
         probe.Next(RenderProbe::Rtx);
         // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
         const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
@@ -1554,7 +1623,8 @@ struct PlaceboBackend::State
                                    rtxHdr,
                                    &restore.main,
                                    targetW,
-                                   targetH);
+                                   targetH,
+                                   NativePicture(image));
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
@@ -1571,7 +1641,8 @@ struct PlaceboBackend::State
                                      rtxHdr,
                                      &restore.saved[i],
                                      targetW,
-                                     targetH);
+                                     targetH,
+                                     NativePicture(mixFrames[i]));
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));
@@ -1580,6 +1651,7 @@ struct PlaceboBackend::State
             {
                 processed.active = true;
                 rtxUpscaled = rtx.Upscaling();
+                rtxDirect = rtx.DecoderPicture();
                 processed.originals.assign(mixFrames, mixFrames + mixCount);
                 image = rtxFrames[0]->image;
                 if (mixing)
@@ -2269,6 +2341,21 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     HRESULT hr = s.Ensure();
     if (FAILED(hr))
         return hr;
+    // With RTX, an NV12 or P010 picture from CPU memory becomes one texture, as a
+    // hardware decoder delivers it, so the driver can read it as it is (see
+    // RtxScaling). Planes as before if that fails.
+    ID3D11Texture2D* staged = nullptr;
+    if ((frame.format == PixelFormat::P010 || frame.format == PixelFormat::NV12) && !frame.bottomUp &&
+        (s.settings.rtxSuperResolution || s.settings.rtxHdr) &&
+        SUCCEEDED(s.StageSemiPlanar(frame, data, stride, staged)) && SUCCEEDED(Import(frame, staged, 0)))
+    {
+        if (!s.semiPlanarUploadTraced)
+        {
+            s.semiPlanarUploadTraced = true;
+            Trace("NV12/P010 from CPU memory uploaded as one texture for RTX");
+        }
+        return S_OK;
+    }
     if (s.copy)
         s.ClearFrame();
     s.Describe(frame);
@@ -2444,7 +2531,9 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
         own.ArraySize = 1;
         own.MipLevels = 1;
         own.Usage = D3D11_USAGE_DEFAULT;
-        own.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        // The driver's video processor reads NV12/P010 copies directly for
+        // RTX; its input views need a render target or decoder texture.
+        own.BindFlags = D3D11_BIND_SHADER_RESOURCE | (semi ? D3D11_BIND_RENDER_TARGET : 0);
         own.CPUAccessFlags = 0;
         own.MiscFlags = 0;
         hr = s.d3d->device->CreateTexture2D(&own, nullptr, &s.copy);

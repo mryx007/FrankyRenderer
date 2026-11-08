@@ -80,6 +80,7 @@ class RtxScaling
     void ClearFrames()
     {
         frames.clear();
+        nativeViews.clear();
         for (auto& texture : spare)
             pl_tex_destroy(gpu, &texture.texture);
         spare.clear();
@@ -87,6 +88,18 @@ class RtxScaling
 
     int width = 0, height = 0, outputWidth = 0, outputHeight = 0;
     DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    RtxVideoProcessor::InputKind inputKind = RtxVideoProcessor::InputKind::Rgba8;
+    bool lastDirect = false;
+
+    // Driver input views on recent decoder pictures, newest last; a view is
+    // made once per picture, not once per evaluation.
+    struct NativeView
+    {
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> view;
+    };
+
+    std::vector<NativeView> nativeViews;
     bool upscaling = false, hdr = false;
     bool failed = false;
     uint64_t evaluations = 0, texturesCreated = 0;
@@ -135,6 +148,13 @@ class RtxScaling
     bool Upscaling() const
     {
         return upscaling;
+    }
+
+    // The last frame went to the driver as the decoder picture: the driver,
+    // not libplacebo, scaled its chroma.
+    bool DecoderPicture() const
+    {
+        return lastDirect;
     }
 
     uint64_t Evaluations() const
@@ -196,7 +216,8 @@ class RtxScaling
                                bool trueHdr = false,
                                const pl_rect2df* whole = nullptr,
                                int targetW = 0,
-                               int targetH = 0)
+                               int targetH = 0,
+                               ID3D11Texture2D* native = nullptr)
     {
         const int w = int(std::ceil(std::abs(source.crop.x1 - source.crop.x0)));
         const int h = int(std::ceil(std::abs(source.crop.y1 - source.crop.y0)));
@@ -212,10 +233,19 @@ class RtxScaling
             outW = w;
             outH = h;
         }
+        // A progressive NV12 or P010 decoder picture goes to the driver as it is; the
+        // picture texture is then the input and the crop is a rectangle in it.
+        D3D11_TEXTURE2D_DESC nativeDesc = {};
+        if (native)
+            native->GetDesc(&nativeDesc);
+        const bool direct = native &&
+                            (nativeDesc.Format == DXGI_FORMAT_P010 || nativeDesc.Format == DXGI_FORMAT_NV12) &&
+                            nativeDesc.ArraySize == 1 && source.field == PL_FIELD_NONE;
         const pl_rect2df full = whole ? *whole : source.crop;
-        const float fullX = std::min(full.x0, full.x1), fullY = std::min(full.y0, full.y1);
-        const int inW = std::max(w, int(std::ceil(std::abs(full.x1 - full.x0))));
-        const int inH = std::max(h, int(std::ceil(std::abs(full.y1 - full.y0))));
+        const float fullX = direct ? 0.f : std::min(full.x0, full.x1),
+                    fullY = direct ? 0.f : std::min(full.y0, full.y1);
+        const int inW = direct ? int(nativeDesc.Width) : std::max(w, int(std::ceil(std::abs(full.x1 - full.x0))));
+        const int inH = direct ? int(nativeDesc.Height) : std::max(h, int(std::ceil(std::abs(full.y1 - full.y0))));
         const int maxW = std::max(outW, targetW), maxH = std::max(outH, targetH);
         // The part of the full picture to process.
         const LONG left =
@@ -235,10 +265,16 @@ class RtxScaling
         // RTX Video HDR takes the 10-bit YCbCr input the driver path expects.
         const int bits = trueHdr || pl_color_space_is_hdr(&source.color) || source.repr.bits.color_depth > 8 ? 10 : 8;
         const auto type = bits == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+        const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
+        const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
+        const auto kind = !direct ? RtxVideoProcessor::PreparedInput(bits, pq, bt2020, trueHdr)
+                          : nativeDesc.Format == DXGI_FORMAT_P010 ? RtxVideoProcessor::InputKind::P010
+                                                                  : RtxVideoProcessor::InputKind::Nv12;
         // A larger picture than the processor was made for needs a new one;
         // a smaller one fits into it.
         if (width != inW || height != inH || outputWidth < outW || outputHeight < outH || format != type ||
-            !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale || hdr != trueHdr)
+            inputKind != kind || !pl_color_space_equal(&sourceColor, &source.color) || upscaling != upscale ||
+            hdr != trueHdr)
         {
             ClearFrames();
             for (auto& plane : input)
@@ -250,6 +286,7 @@ class RtxScaling
             outputHeight = maxH;
             sourceColor = source.color;
             format = type;
+            inputKind = kind;
             upscaling = upscale;
             hdr = trueHdr;
         }
@@ -263,102 +300,117 @@ class RtxScaling
             if (crop && size && saved->previous == source.prev && saved->next == source.next &&
                 saved->firstField == source.first_field)
             {
-                status = L"driver requested (cached)";
+                status = lastDirect ? L"driver requested (cached), decoder picture"
+                                    : L"driver requested (cached), prepared picture";
                 return saved;
             }
             index = saved->index;
         }
         gpu = d3d->gpu;
-        if (!converter)
-            converter = pl_renderer_create(nullptr, gpu);
-        if (!converter)
-        {
-            Fail(E_OUTOFMEMORY);
-            return {};
-        }
-        const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
-        const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
         HRESULT hr =
-            processor.Configure(d3d->device, inW, inH, outputWidth, outputHeight, bits, pq, bt2020, upscale, trueHdr);
+            processor.Configure(d3d->device, inW, inH, outputWidth, outputHeight, kind, pq, bt2020, upscale, trueHdr);
         if (FAILED(hr))
         {
             Fail(hr);
             return {};
         }
-        D3D11_TEXTURE2D_DESC inputDesc;
-        processor.Input()->GetDesc(&inputDesc);
-        for (int i = 0; i < (bits > 8 ? 2 : 1); ++i)
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> picture;
+        if (direct)
         {
-            if (input[i])
-                continue;
-            pl_d3d11_wrap_params wrap = {};
-            wrap.tex = processor.Input();
-            if (bits > 8)
+            for (const auto& known : nativeViews)
+                if (known.texture.Get() == native)
+                    picture = known.view;
+            if (!picture)
             {
-                wrap.fmt = i ? DXGI_FORMAT_R16G16_UNORM : DXGI_FORMAT_R16_UNORM;
-                wrap.w = inputDesc.Width / (i ? 2 : 1);
-                wrap.h = inputDesc.Height / (i ? 2 : 1);
+                hr = processor.InputView(native, picture);
+                if (FAILED(hr))
+                {
+                    Fail(hr);
+                    return {};
+                }
+                if (nativeViews.size() >= 8)
+                    nativeViews.erase(nativeViews.begin());
+                nativeViews.push_back({native, picture});
             }
-            input[i] = pl_d3d11_wrap(gpu, &wrap);
-            if (!input[i] || !input[i]->params.renderable)
+        }
+        else
+        {
+            if (!converter)
+                converter = pl_renderer_create(nullptr, gpu);
+            if (!converter)
+            {
+                Fail(E_OUTOFMEMORY);
+                return {};
+            }
+            D3D11_TEXTURE2D_DESC inputDesc;
+            processor.Input()->GetDesc(&inputDesc);
+            // One plane: RGBA for 8 bits, RGB or Y410 (written as R10G10B10A2) for 10.
+            if (!input[0])
+            {
+                pl_d3d11_wrap_params wrap = {};
+                wrap.tex = processor.Input();
+                if (kind != RtxVideoProcessor::InputKind::Rgba8)
+                {
+                    wrap.fmt = DXGI_FORMAT_R10G10B10A2_UNORM;
+                    wrap.w = inputDesc.Width;
+                    wrap.h = inputDesc.Height;
+                }
+                input[0] = pl_d3d11_wrap(gpu, &wrap);
+                if (!input[0] || !input[0]->params.renderable)
+                {
+                    Fail(E_FAIL);
+                    return {};
+                }
+            }
+            auto prepared = Describe(input[0], source.color, bits);
+            prepared.crop = {0, 0, float(inW), float(inH)};
+            pl_frame picture = source;
+            picture.crop = {fullX, fullY, fullX + float(inW), fullY + float(inH)};
+            if (kind == RtxVideoProcessor::InputKind::Y410)
+            {
+                // Y410 keeps Cb, Y and Cr in the red, green and blue bits.
+                prepared.planes[0].component_mapping[0] = 1;
+                prepared.planes[0].component_mapping[1] = 0;
+                prepared.planes[0].component_mapping[2] = 2;
+                prepared.repr.sys = bt2020 ? PL_COLOR_SYSTEM_BT_2020_NC : PL_COLOR_SYSTEM_BT_709;
+                prepared.repr.levels = PL_COLOR_LEVELS_LIMITED;
+                prepared.repr.bits = {10, 10, 0};
+            }
+            pl_render_params conversion = pl_render_fast_params;
+            conversion.upscaler = conversion.downscaler = &pl_filter_nearest;
+            conversion.plane_upscaler = options.plane_upscaler ? options.plane_upscaler
+                                        : options.upscaler     ? options.upscaler
+                                                               : &pl_filter_bilinear;
+            conversion.plane_downscaler = options.plane_downscaler ? options.plane_downscaler
+                                          : options.downscaler     ? options.downscaler
+                                                                   : &pl_filter_bilinear;
+            conversion.antiringing_strength = options.antiringing_strength;
+            conversion.deinterlace_params = options.deinterlace_params;
+            pl_color_map_params mapping = pl_color_map_default_params;
+            mapping.tone_mapping_function = &pl_tone_map_clip;
+            mapping.gamut_mapping = &pl_gamut_map_clip;
+            mapping.contrast_recovery = 0;
+            conversion.color_map_params = &mapping;
+            if (!pl_render_image(converter, &picture, &prepared, &conversion))
             {
                 Fail(E_FAIL);
                 return {};
             }
-        }
-        auto prepared = Describe(input[0], source.color, bits);
-        prepared.crop = {0, 0, float(inW), float(inH)};
-        pl_frame picture = source;
-        picture.crop = {fullX, fullY, fullX + float(inW), fullY + float(inH)};
-        if (bits > 8)
-        {
-            prepared.num_planes = 2;
-            prepared.planes[0].components = 1;
-            prepared.planes[0].component_mapping[1] = prepared.planes[0].component_mapping[2] = -1;
-            prepared.planes[1].texture = input[1];
-            prepared.planes[1].components = 2;
-            prepared.planes[1].component_mapping[0] = 1;
-            prepared.planes[1].component_mapping[1] = 2;
-            prepared.planes[1].component_mapping[2] = prepared.planes[1].component_mapping[3] = -1;
-            prepared.repr.sys = bt2020 ? PL_COLOR_SYSTEM_BT_2020_NC : PL_COLOR_SYSTEM_BT_709;
-            prepared.repr.levels = PL_COLOR_LEVELS_LIMITED;
-            prepared.repr.bits = {16, 10, 6};
-            pl_frame_set_chroma_location(&prepared, PL_CHROMA_LEFT);
-        }
-        pl_render_params conversion = pl_render_fast_params;
-        conversion.upscaler = conversion.downscaler = &pl_filter_nearest;
-        conversion.plane_upscaler = options.plane_upscaler ? options.plane_upscaler
-                                    : options.upscaler     ? options.upscaler
-                                                           : &pl_filter_bilinear;
-        conversion.plane_downscaler = options.plane_downscaler ? options.plane_downscaler
-                                      : options.downscaler     ? options.downscaler
-                                                               : &pl_filter_bilinear;
-        conversion.antiringing_strength = options.antiringing_strength;
-        conversion.deinterlace_params = options.deinterlace_params;
-        pl_color_map_params mapping = pl_color_map_default_params;
-        mapping.tone_mapping_function = &pl_tone_map_clip;
-        mapping.gamut_mapping = &pl_gamut_map_clip;
-        mapping.contrast_recovery = 0;
-        conversion.color_map_params = &mapping;
-        if (!pl_render_image(converter, &picture, &prepared, &conversion))
-        {
-            Fail(E_FAIL);
-            return {};
-        }
-        pl_gpu_flush(gpu);
-        // The driver's RTX work may run apart from libplacebo's rendering:
-        // start it only once the input texture is completely written.
-        if (!written)
-        {
-            D3D11_QUERY_DESC query = {D3D11_QUERY_EVENT, 0};
-            d3d->device->CreateQuery(&query, &written);
-        }
-        if (written)
-        {
-            context->End(written.Get());
-            const uint64_t deadline = GetTickCount64() + 100;
-            while (context->GetData(written.Get(), nullptr, 0, 0) == S_FALSE && GetTickCount64() < deadline)
-                SwitchToThread();
+            pl_gpu_flush(gpu);
+            // The driver's RTX work may run apart from libplacebo's rendering:
+            // start it only once the input texture is completely written.
+            if (!written)
+            {
+                D3D11_QUERY_DESC query = {D3D11_QUERY_EVENT, 0};
+                d3d->device->CreateQuery(&query, &written);
+            }
+            if (written)
+            {
+                context->End(written.Get());
+                const uint64_t deadline = GetTickCount64() + 100;
+                while (context->GetData(written.Get(), nullptr, 0, 0) == S_FALSE && GetTickCount64() < deadline)
+                    SwitchToThread();
+            }
         }
         inputIndex = std::max(inputIndex, index);
         auto saved = std::make_shared<Frame>();
@@ -417,11 +469,11 @@ class RtxScaling
         }
         // Like MPC Video Renderer: the driver writes into the frame's own
         // texture; no copy that could start before RTX finished.
-        hr = processor.Evaluate(index, saved->view.Get(), &sourceRect, &destinationRect);
+        hr = processor.Evaluate(index, saved->view.Get(), &sourceRect, &destinationRect, picture.Get());
         // A newly created processor can return broken lines once: process its
         // first frame twice and keep the second result.
         if (SUCCEEDED(hr) && processor.TakeFresh())
-            hr = processor.Evaluate(index, saved->view.Get());
+            hr = processor.Evaluate(index, saved->view.Get(), nullptr, nullptr, picture.Get());
         if (FAILED(hr))
         {
             Fail(hr);
@@ -435,6 +487,8 @@ class RtxScaling
         status = upscale && trueHdr ? L"driver requested (Super Resolution + HDR)"
                  : trueHdr          ? L"driver requested (HDR)"
                                     : L"driver requested";
+        status += direct ? L", decoder picture" : L", prepared picture";
+        lastDirect = direct;
         return saved;
     }
 };
