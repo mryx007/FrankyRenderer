@@ -104,6 +104,7 @@ class RtxScaling
     bool failed = false;
     // Why the driver refused RTX Video HDR; Super Resolution stays available.
     HRESULT hdrRefused = S_OK;
+    std::wstring hdrFailureDetail;
     uint64_t evaluations = 0, texturesCreated = 0;
     std::wstring status = L"off";
 
@@ -125,7 +126,7 @@ class RtxScaling
             return {};
         wchar_t text[64];
         swprintf_s(text, L"; RTX HDR unavailable (0x%08X)", unsigned(hdrRefused));
-        return text;
+        return std::wstring(text) + (hdrFailureDetail.empty() ? L"" : L" [" + hdrFailureDetail + L"]");
     }
 
     static pl_frame Describe(pl_tex texture, const pl_color_space& color, int bits)
@@ -183,6 +184,7 @@ class RtxScaling
         ClearFrames();
         failed = false;
         hdrRefused = S_OK;
+        hdrFailureDetail.clear();
         if (converter)
             pl_renderer_flush_cache(converter);
     }
@@ -194,9 +196,10 @@ class RtxScaling
     }
 
     // Stops requesting RTX Video HDR until the next Invalidate.
-    void RefuseHdr(HRESULT reason)
+    void RefuseHdr(HRESULT reason, std::wstring detail = {})
     {
         hdrRefused = reason;
+        hdrFailureDetail = std::move(detail);
     }
 
     void Reset()
@@ -329,10 +332,10 @@ class RtxScaling
         gpu = d3d->gpu;
         HRESULT hr =
             processor.Configure(d3d->device, inW, inH, outputWidth, outputHeight, kind, pq, bt2020, upscale, trueHdr);
-        if (hr == DXGI_ERROR_UNSUPPORTED && trueHdr)
+        if (FAILED(hr) && trueHdr)
         {
             // Only RTX Video HDR was refused: go on without it.
-            RefuseHdr(hr);
+            RefuseHdr(hr, processor.FailureDescription());
             return Get(d3d,
                        context,
                        source,

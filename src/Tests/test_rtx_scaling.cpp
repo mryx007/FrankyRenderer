@@ -487,12 +487,29 @@ int main()
                 // The same as for a prepared picture (10.7 nits on a GeForce
                 // RTX 4080 SUPER): RTX Video HDR keeps mid grey dark.
                 Require(nits > 3 && nits < 400, "RTX Video HDR grey at a plausible level");
+                for (bool vsr : {false, true})
+                {
+                    RtxVideoProcessor reporterSize;
+                    Require(SUCCEEDED(reporterSize.Configure(d3d->device,
+                                                             w,
+                                                             h,
+                                                             1797,
+                                                             1011,
+                                                             eightBit ? RtxVideoProcessor::InputKind::Nv12
+                                                                      : RtxVideoProcessor::InputKind::P010,
+                                                             false,
+                                                             false,
+                                                             vsr,
+                                                             true)),
+                            "RTX HDR at issue 21's odd output size, with and without VSR");
+                    Require(reporterSize.FailureDescription().empty(), "successful HDR has no failure detail");
+                }
             }
             if (variant == 0)
             {
                 // A refused RTX Video HDR leaves Super Resolution working.
                 RtxScaling refused;
-                refused.RefuseHdr(DXGI_ERROR_UNSUPPORTED);
+                refused.RefuseHdr(E_INVALIDARG, L"HDR extension");
                 Require(!refused.HdrUsable(), "refused RTX Video HDR is not usable");
                 auto upscaled = refused.Get(d3d,
                                             context.Get(),
@@ -511,6 +528,9 @@ int main()
                         "Super Resolution works without the refused RTX Video HDR");
                 Require(refused.Status().find(L"RTX HDR unavailable") != std::wstring::npos,
                         "statistics name the refused RTX Video HDR");
+                Require(refused.Status().find(L"HDR extension") != std::wstring::npos &&
+                            refused.Status().find(L"80070057") != std::wstring::npos,
+                        "statistics preserve the actual HDR error and failure stage");
                 upscaled.reset();
                 Require(!refused.Get(d3d,
                                      context.Get(),

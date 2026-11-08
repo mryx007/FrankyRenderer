@@ -4,6 +4,10 @@
 #include <dxgi1_2.h>
 #include <wrl/client.h>
 #include <utility>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdint>
 
 // The driver owns the model and quality setting. This is the D3D11 request
 // used by MPC Video Renderer and Chromium, not an NVIDIA SDK integration.
@@ -23,8 +27,20 @@ class RtxVideoProcessor
     bool superResolution = false, trueHdr = false;
     // A newly created processor: its first output is not trusted.
     bool fresh = false;
+    UINT probeFrames = 0, hdrAttempts = 0, hdrWhite = 0;
+    const wchar_t* operation = L"processor setup";
 
   public:
+    std::wstring FailureDescription() const
+    {
+        if (!operation)
+            return {};
+        std::wstring detail = operation;
+        if (hdrAttempts)
+            detail += L", attempts=" + std::to_wstring(hdrAttempts) + L", white=" + std::to_wstring(hdrWhite);
+        return detail;
+    }
+
     ID3D11Texture2D* Input() const
     {
         return input.Get();
@@ -51,6 +67,7 @@ class RtxVideoProcessor
         sourceSpace = DXGI_COLOR_SPACE_CUSTOM;
         superResolution = trueHdr = false;
         fresh = false;
+        probeFrames = 0;
     }
 
     // The format the driver reads. NV12 and P010 are decoder pictures handed
@@ -106,6 +123,8 @@ class RtxVideoProcessor
             inputFormat == type && sourceSpace == source && superResolution == upscale && trueHdr == hdr)
             return S_OK;
         Reset();
+        operation = L"processor setup";
+        hdrAttempts = hdrWhite = 0;
         if (w < 1 || h < 1 || ow < 1 || oh < 1 || w > 16384 || h > 16384 || ow > 16384 || oh > 16384)
             return E_INVALIDARG;
         Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
@@ -135,6 +154,7 @@ class RtxVideoProcessor
         content.OutputWidth = ow;
         content.OutputHeight = oh;
         content.Usage = D3D11_VIDEO_USAGE_PLAYBACK_NORMAL;
+        operation = L"format enumeration";
         hr = video->CreateVideoProcessorEnumerator(&content, &enumerator);
         Microsoft::WRL::ComPtr<ID3D11VideoProcessorEnumerator1> formats;
         if (SUCCEEDED(hr))
@@ -150,6 +170,7 @@ class RtxVideoProcessor
         // list it as a plain format conversion.
         if (!supported && !hdr)
             return DXGI_ERROR_UNSUPPORTED;
+        operation = L"processor creation";
         hr = video->CreateVideoProcessor(enumerator.Get(), 0, &processor);
         if (FAILED(hr))
             return hr;
@@ -163,6 +184,7 @@ class RtxVideoProcessor
         context->VideoProcessorSetOutputTargetRect(processor.Get(), TRUE, &dst);
         if (upscale)
         {
+            operation = L"VSR extension";
             constexpr GUID extension = {0xd43ce1b3, 0x1f4b, 0x48ac, {0xba, 0xee, 0xc3, 0xc2, 0x53, 0x75, 0xe6, 0xf7}};
 
             struct
@@ -176,6 +198,7 @@ class RtxVideoProcessor
         }
         if (hdr)
         {
+            operation = L"HDR extension";
             // TrueHDR request: interface version 4, method 3, as MPC Video
             // Renderer and Chromium send it.
             constexpr GUID extension = {0xfdd62bb4, 0x620b, 0x4fd7, {0x9a, 0xb3, 0x1e, 0x59, 0xd0, 0xd5, 0x44, 0xb3}};
@@ -189,6 +212,7 @@ class RtxVideoProcessor
             if (FAILED(hr))
                 return hr;
         }
+        operation = L"input/output creation";
         D3D11_TEXTURE2D_DESC desc = {};
         const bool planar = kind == InputKind::Nv12 || kind == InputKind::P010;
         desc.Width = planar ? (w + 1) & ~1 : w;
@@ -228,6 +252,7 @@ class RtxVideoProcessor
         superResolution = upscale;
         trueHdr = hdr;
         fresh = true;
+        operation = nullptr;
         return S_OK;
     }
 
@@ -238,6 +263,7 @@ class RtxVideoProcessor
     // is not a refusal yet.
     HRESULT CheckHdr(ID3D11Device* device, ID3D11DeviceContext* immediate)
     {
+        operation = L"HDR test input";
         D3D11_TEXTURE2D_DESC inputDesc;
         input->GetDesc(&inputDesc);
         D3D11_RENDER_TARGET_VIEW_DESC view = {};
@@ -246,21 +272,33 @@ class RtxVideoProcessor
         if (inputDesc.Format == DXGI_FORMAT_P010 || inputDesc.Format == DXGI_FORMAT_NV12)
         {
             const bool tenBit = inputDesc.Format == DXGI_FORMAT_P010;
-            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> luma, chroma;
-            view.Format = tenBit ? DXGI_FORMAT_R16_UNORM : DXGI_FORMAT_R8_UNORM;
-            hr = device->CreateRenderTargetView(input.Get(), &view, &luma);
-            view.Format = tenBit ? DXGI_FORMAT_R16G16_UNORM : DXGI_FORMAT_R8G8_UNORM;
-            if (SUCCEEDED(hr))
-                hr = device->CreateRenderTargetView(input.Get(), &view, &chroma);
+            // Upload both planes together, just like CPU video pictures. The
+            // capability check must not reintroduce separate planar writes.
+            const size_t count = size_t(inputDesc.Width) * inputDesc.Height;
+            std::vector<uint16_t> words;
+            std::vector<uint8_t> bytes;
+            if (tenBit)
+            {
+                words.resize(count * 3 / 2, uint16_t(512 << 6));
+                std::fill(words.begin(), words.begin() + count, uint16_t(940 << 6));
+            }
+            else
+            {
+                bytes.resize(count * 3 / 2, 128);
+                std::fill(bytes.begin(), bytes.begin() + count, uint8_t(235));
+            }
+            auto stagingDesc = inputDesc;
+            stagingDesc.Usage = D3D11_USAGE_STAGING;
+            stagingDesc.BindFlags = stagingDesc.MiscFlags = 0;
+            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            const D3D11_SUBRESOURCE_DATA data = {tenBit ? static_cast<const void*>(words.data()) : bytes.data(),
+                                                 inputDesc.Width * (tenBit ? 2u : 1u),
+                                                 0};
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
+            hr = device->CreateTexture2D(&stagingDesc, &data, &staging);
             if (FAILED(hr))
                 return hr;
-            // Limited range white and neutral chroma: 940 and 512 in P010,
-            // 235 and 128 in NV12. Only this check writes the planes.
-            const float white[4] = {tenBit ? 940 * 64 / 65535.f : 235 / 255.f, 0, 0, 0},
-                        neutral[4] = {
-                            tenBit ? 512 * 64 / 65535.f : 128 / 255.f, tenBit ? 512 * 64 / 65535.f : 128 / 255.f, 0, 0};
-            immediate->ClearRenderTargetView(luma.Get(), white);
-            immediate->ClearRenderTargetView(chroma.Get(), neutral);
+            immediate->CopyResource(input.Get(), staging.Get());
         }
         else
         {
@@ -282,29 +320,38 @@ class RtxVideoProcessor
         desc.BindFlags = desc.MiscFlags = 0;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> readback;
+        operation = L"HDR test readback creation";
         hr = device->CreateTexture2D(&desc, nullptr, &readback);
         if (FAILED(hr))
             return hr;
         const D3D11_BOX box = {x, y, 0, x + 1, y + 1, 1};
-        for (int attempt = 0; attempt < 8; ++attempt)
+        for (int attempt = 0; attempt < 16; ++attempt)
         {
             if (attempt)
-                Sleep(4);
+                Sleep(8);
+            // Every attempt is a new driver frame. Reserve these numbers so
+            // the first real video picture does not rewind the driver's clock.
+            ++probeFrames;
+            hdrAttempts = attempt + 1;
+            operation = L"HDR test processing";
             hr = Evaluate(0);
             if (FAILED(hr))
                 return hr;
             immediate->CopySubresourceRegion(readback.Get(), 0, 0, 0, 0, output.Get(), 0, &box);
             D3D11_MAPPED_SUBRESOURCE mapped = {};
+            operation = L"HDR test readback";
             hr = immediate->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped);
             if (FAILED(hr))
                 return hr;
             const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
+            hdrWhite = green;
             immediate->Unmap(readback.Get(), 0);
             // Unprocessed SDR white comes back at almost full PQ (code 1020, near
             // 10000 nits). TrueHDR stays far below that; 921 is about 4000 nits.
             if (green < 921)
                 return S_OK;
         }
+        operation = L"HDR white validation";
         return DXGI_ERROR_UNSUPPORTED;
     }
 
@@ -357,8 +404,9 @@ class RtxVideoProcessor
         }
         D3D11_VIDEO_PROCESSOR_STREAM stream = {};
         stream.Enable = TRUE;
-        stream.InputFrameOrField = index;
+        stream.InputFrameOrField = index + probeFrames;
         stream.pInputSurface = picture ? picture : inputView.Get();
-        return context->VideoProcessorBlt(processor.Get(), target ? target : outputView.Get(), index, 1, &stream);
+        return context->VideoProcessorBlt(
+            processor.Get(), target ? target : outputView.Get(), index + probeFrames, 1, &stream);
     }
 };
