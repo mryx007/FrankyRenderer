@@ -102,6 +102,8 @@ class RtxScaling
     std::vector<NativeView> nativeViews;
     bool upscaling = false, hdr = false;
     bool failed = false;
+    // Why the driver refused RTX Video HDR; Super Resolution stays available.
+    HRESULT hdrRefused = S_OK;
     uint64_t evaluations = 0, texturesCreated = 0;
     std::wstring status = L"off";
 
@@ -115,6 +117,15 @@ class RtxScaling
         swprintf_s(text, L"unavailable (0x%08X); normal scaling", unsigned(result));
         status = text;
         failed = true;
+    }
+
+    std::wstring HdrRefusal() const
+    {
+        if (SUCCEEDED(hdrRefused))
+            return {};
+        wchar_t text[64];
+        swprintf_s(text, L"; RTX HDR unavailable (0x%08X)", unsigned(hdrRefused));
+        return text;
     }
 
     static pl_frame Describe(pl_tex texture, const pl_color_space& color, int bits)
@@ -171,6 +182,7 @@ class RtxScaling
     {
         ClearFrames();
         failed = false;
+        hdrRefused = S_OK;
         if (converter)
             pl_renderer_flush_cache(converter);
     }
@@ -178,7 +190,13 @@ class RtxScaling
     // RTX Video HDR may be requested: the driver accepted it so far.
     bool HdrUsable() const
     {
-        return !failed;
+        return !failed && SUCCEEDED(hdrRefused);
+    }
+
+    // Stops requesting RTX Video HDR until the next Invalidate.
+    void RefuseHdr(HRESULT reason)
+    {
+        hdrRefused = reason;
     }
 
     void Reset()
@@ -219,11 +237,11 @@ class RtxScaling
     {
         const int w = int(std::ceil(std::abs(source.crop.x1 - source.crop.x0)));
         const int h = int(std::ceil(std::abs(source.crop.y1 - source.crop.y0)));
-        trueHdr = trueHdr && !pl_color_space_is_hdr(&source.color);
+        trueHdr = trueHdr && !pl_color_space_is_hdr(&source.color) && SUCCEEDED(hdrRefused);
         const bool upscale = superResolution && w >= 1 && h >= 1 && outW >= w && outH >= h && (outW > w || outH > h);
         if (w < 1 || h < 1 || (!upscale && !trueHdr))
         {
-            status = L"bypassed (no upscaling)";
+            status = L"bypassed (no upscaling)" + HdrRefusal();
             return {};
         }
         if (!upscale)
@@ -303,6 +321,7 @@ class RtxScaling
             {
                 status = lastDirect ? L"driver requested (cached), decoder picture"
                                     : L"driver requested (cached), prepared picture";
+                status += HdrRefusal();
                 return saved;
             }
             index = saved->index;
@@ -310,6 +329,24 @@ class RtxScaling
         gpu = d3d->gpu;
         HRESULT hr =
             processor.Configure(d3d->device, inW, inH, outputWidth, outputHeight, kind, pq, bt2020, upscale, trueHdr);
+        if (hr == DXGI_ERROR_UNSUPPORTED && trueHdr)
+        {
+            // Only RTX Video HDR was refused: go on without it.
+            RefuseHdr(hr);
+            return Get(d3d,
+                       context,
+                       source,
+                       key,
+                       outW,
+                       outH,
+                       options,
+                       superResolution,
+                       false,
+                       whole,
+                       targetW,
+                       targetH,
+                       native);
+        }
         if (FAILED(hr))
         {
             Fail(hr);
@@ -489,6 +526,7 @@ class RtxScaling
                  : trueHdr          ? L"driver requested (HDR)"
                                     : L"driver requested";
         status += direct ? L", decoder picture" : L", prepared picture";
+        status += HdrRefusal();
         lastDirect = direct;
         return saved;
     }

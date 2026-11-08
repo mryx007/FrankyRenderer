@@ -234,6 +234,8 @@ class RtxVideoProcessor
     // Without an active TrueHDR model the driver writes SDR codes straight
     // into PQ: SDR white turns into almost 10000 nits. Send one white picture
     // and keep RTX Video HDR only when it comes back at a plausible level.
+    // The model can take a moment to become active, so one bright result
+    // is not a refusal yet.
     HRESULT CheckHdr(ID3D11Device* device, ID3D11DeviceContext* immediate)
     {
         D3D11_TEXTURE2D_DESC inputDesc;
@@ -272,9 +274,6 @@ class RtxVideoProcessor
             const float yuvWhite[4] = {512 / 1023.f, 940 / 1023.f, 512 / 1023.f, 1}, rgbWhite[4] = {1, 1, 1, 1};
             immediate->ClearRenderTargetView(picture.Get(), inputDesc.Format == DXGI_FORMAT_Y410 ? yuvWhite : rgbWhite);
         }
-        hr = Evaluate(0);
-        if (FAILED(hr))
-            return hr;
         D3D11_TEXTURE2D_DESC desc;
         output->GetDesc(&desc);
         const UINT x = desc.Width / 2, y = desc.Height / 2;
@@ -287,15 +286,25 @@ class RtxVideoProcessor
         if (FAILED(hr))
             return hr;
         const D3D11_BOX box = {x, y, 0, x + 1, y + 1, 1};
-        immediate->CopySubresourceRegion(readback.Get(), 0, 0, 0, 0, output.Get(), 0, &box);
-        D3D11_MAPPED_SUBRESOURCE mapped = {};
-        hr = immediate->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-        if (FAILED(hr))
-            return hr;
-        const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
-        immediate->Unmap(readback.Get(), 0);
-        // PQ code 0.75 is about 1000 nits; TrueHDR places SDR white far below.
-        return green < 1023 * 3 / 4 ? S_OK : DXGI_ERROR_UNSUPPORTED;
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            if (attempt)
+                Sleep(4);
+            hr = Evaluate(0);
+            if (FAILED(hr))
+                return hr;
+            immediate->CopySubresourceRegion(readback.Get(), 0, 0, 0, 0, output.Get(), 0, &box);
+            D3D11_MAPPED_SUBRESOURCE mapped = {};
+            hr = immediate->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+            if (FAILED(hr))
+                return hr;
+            const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
+            immediate->Unmap(readback.Get(), 0);
+            // PQ code 0.75 is about 1000 nits; TrueHDR places SDR white far below.
+            if (green < 1023 * 3 / 4)
+                return S_OK;
+        }
+        return DXGI_ERROR_UNSUPPORTED;
     }
 
     // index counts video frames, as MPC Video Renderer passes them: the same

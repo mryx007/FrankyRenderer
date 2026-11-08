@@ -488,6 +488,48 @@ int main()
                 // RTX 4080 SUPER): RTX Video HDR keeps mid grey dark.
                 Require(nits > 3 && nits < 400, "RTX Video HDR grey at a plausible level");
             }
+            if (variant == 0)
+            {
+                // A refused RTX Video HDR leaves Super Resolution working.
+                RtxScaling refused;
+                refused.RefuseHdr(DXGI_ERROR_UNSUPPORTED);
+                Require(!refused.HdrUsable(), "refused RTX Video HDR is not usable");
+                auto upscaled = refused.Get(d3d,
+                                            context.Get(),
+                                            source,
+                                            3,
+                                            1920,
+                                            1080,
+                                            pl_render_default_params,
+                                            true,
+                                            true,
+                                            nullptr,
+                                            0,
+                                            0,
+                                            decoded.Get());
+                Require(bool(upscaled) && refused.Upscaling() && !pl_color_space_is_hdr(&upscaled->image.color),
+                        "Super Resolution works without the refused RTX Video HDR");
+                Require(refused.Status().find(L"RTX HDR unavailable") != std::wstring::npos,
+                        "statistics name the refused RTX Video HDR");
+                upscaled.reset();
+                Require(!refused.Get(d3d,
+                                     context.Get(),
+                                     source,
+                                     4,
+                                     w,
+                                     h,
+                                     pl_render_default_params,
+                                     true,
+                                     true,
+                                     nullptr,
+                                     0,
+                                     0,
+                                     decoded.Get()),
+                        "no upscaling and no RTX Video HDR leaves the picture to libplacebo");
+                refused.Reset();
+                Require(refused.HdrUsable(), "a new start tries RTX Video HDR again");
+                puts("PASS refused RTX Video HDR keeps Super Resolution and is retried after a reset");
+            }
             processed.reset();
             scaling.Reset();
             for (auto& plane : planes)
