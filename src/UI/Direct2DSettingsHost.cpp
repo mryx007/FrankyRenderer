@@ -3533,14 +3533,14 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
         SetWindowTextW(m_edit, m_searchQuery.c_str());
     if (m_editFont)
         DeleteObject(m_editFont);
-    const bool textControl = control && control->kind == ControlKind::Text;
-    // Text controls match the 14 DIP medium font they are drawn with. GDI
-    // renders Segoe UI medium as regular, so semibold matches it instead.
-    m_editFont = CreateFontW(-int((textControl ? 14 : 13) * scale + .5f),
+    // Text controls and the search box keep the 14 DIP font they are drawn
+    // with. GDI renders Segoe UI medium as regular, so semibold matches it.
+    const bool matchDrawn = (control && control->kind == ControlKind::Text) || (!control && !renameDisplay);
+    m_editFont = CreateFontW(-int((matchDrawn ? 14 : 13) * scale + .5f),
                              0,
                              0,
                              0,
-                             textControl ? FW_SEMIBOLD : FW_NORMAL,
+                             matchDrawn ? FW_SEMIBOLD : FW_NORMAL,
                              FALSE,
                              FALSE,
                              FALSE,
@@ -3551,7 +3551,7 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
                              0,
                              MenuGdiFont());
     SendMessageW(m_edit, WM_SETFONT, reinterpret_cast<WPARAM>(m_editFont), TRUE);
-    if (textControl)
+    if (matchDrawn)
         SendMessageW(m_edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
     SetWindowSubclass(m_edit, EditProc, 1, reinterpret_cast<DWORD_PTR>(this));
     SetFocus(m_edit);
