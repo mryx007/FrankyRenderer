@@ -300,8 +300,9 @@ class RtxVideoProcessor
                 return hr;
             const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
             immediate->Unmap(readback.Get(), 0);
-            // PQ code 0.75 is about 1000 nits; TrueHDR places SDR white far below.
-            if (green < 1023 * 3 / 4)
+            // Unprocessed SDR white comes back at almost full PQ (code 1020, near
+            // 10000 nits). TrueHDR stays far below that; 921 is about 4000 nits.
+            if (green < 921)
                 return S_OK;
         }
         return DXGI_ERROR_UNSUPPORTED;
