@@ -325,6 +325,13 @@ static bool MatchesFilter(const std::wstring& text, const std::wstring& query)
                         [](wchar_t a, wchar_t b) { return towlower(a) == towlower(b); }) == text.end())
             return false;
         start = end;
+static bool SearchShows(const D2DControl& control, const D2DCard& card, const D2DPage& page, const std::wstring& query)
+{
+    if (control.hidden)
+        return control.searchByCard && MatchesFilter(card.title + L" " + Tr(card.title), query);
+    return ControlMatches(control, card, page, query);
+}
+
     }
     return true;
 }
@@ -1230,7 +1237,7 @@ void Direct2DHostWindow::Render()
                 {
                     for (const auto& c : card.controls)
                     {
-                        if (ControlMatches(c, card, m_pages[i], m_searchQuery))
+                        if (SearchShows(c, card, m_pages[i], m_searchQuery))
                         {
                             hasMatches = true;
                             break;
@@ -1679,7 +1686,7 @@ void Direct2DHostWindow::Render()
                 item.pageName = page.name;
                 for (const auto& c : card.controls)
                 {
-                    if (!c.hidden && ControlMatches(c, card, page, m_searchQuery))
+                    if (SearchShows(c, card, page, m_searchQuery))
                     {
                         item.visibleControls.push_back(&c);
                     }

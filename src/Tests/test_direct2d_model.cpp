@@ -39,6 +39,18 @@ int wmain()
         Require(MatchesFilter(L"HDR Highlights Exposure", L"  exposure HDR "),
                 "search ignores case and outer spaces; all words match");
         Require(!MatchesFilter(L"HDR Highlights Exposure", L"exposure Gamma"), "search excludes missing terms");
+        bool shaderSwitch = false;
+        for (const auto& page : pages)
+            for (const auto& card : page.cards)
+                for (const auto& c : card.controls)
+                    if (page.name == L"Shaders" && card.title == L"Clarity" && c.name == L"On/Off")
+                    {
+                        Require(c.hidden, "shader switch stays off the shader page");
+                        Require(SearchShows(c, card, page, L"clar"), "search by shader name offers its switch");
+                        Require(!SearchShows(c, card, page, L"off"), "search for off does not list every shader");
+                        shaderSwitch = true;
+                    }
+        Require(shaderSwitch, "shader switch exists");
         Require(MatchesFilter(L"Anything", L" \t"), "empty search");
         auto& hdrControls = pages[5].cards[0].controls;
         bool hasProtection = false;

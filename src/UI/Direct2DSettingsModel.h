@@ -893,12 +893,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
             // Shaders are switched on in the list above; the card holds their
-            // parameters. The hidden switch serves keyboard shortcuts.
+            // parameters. The hidden switch serves keyboard shortcuts and the
+            // search, which does not show that list.
             D2DControl on;
             on.name = L"On/Off";
             on.desc = L"Switches this shader on or off.";
             on.kind = ControlKind::Toggle;
             on.hidden = true;
+            on.searchByCard = true;
             on.get = [&f] { return f.enabled ? 1.f : 0.f; };
             on.set = [&f](float v) { f.enabled = v != 0; };
             c.controls.push_back(std::move(on));

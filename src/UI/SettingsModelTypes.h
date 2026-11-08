@@ -54,8 +54,10 @@ struct D2DControl
     bool headerToggle = false;
     bool logarithmic = false;
     int shortcut = -1; // key field: a Shortcuts::Action, or Count + a tree row
-    // Not drawn in the menu; only keyboard shortcuts use it.
+    // Not drawn on its page; keyboard shortcuts use it.
     bool hidden = false;
+    // A hidden control the search still lists when its card's name matches.
+    bool searchByCard = false;
     // A key changes a number by this much; 0 picks a step from the range.
     float keyStep = 0;
     // A row of the shortcut tree: its depth, whether it is open, and how many
