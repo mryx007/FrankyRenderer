@@ -22,6 +22,7 @@
 - Fixed stutter and brief mixed pictures with RTX Video Super Resolution when black bar detection adjusts the picture.
 - Fixed coloured ghost images from older pictures with RTX Video Super Resolution and Smooth Motion on 10-bit video. Decoder pictures now go to the NVIDIA driver directly, and Ctrl+J shows the driver as the chroma scaler.
 - Fixed stutter with RTX Video Super Resolution and Smooth Motion on HDR10+ video: changing metadata no longer rebuilds the driver's processor.
+- Fixed the RTX Video switches acting while the feature is off in the NVIDIA app: the renderer now uses its own scaling then, and Ctrl+J shows "off in the NVIDIA app".
 - Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
 - Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).

@@ -22,6 +22,7 @@
 #include "Renderer/SharpenShader.h"
 #include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
+#include "Renderer/NvidiaAppSettings.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
@@ -82,6 +83,7 @@ struct PlaceboBackend::State
     uint64_t nextFrame = 1;
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
+    NvidiaAppSettings nvidiaApp;
     // The picture being drawn was upscaled by RTX (statistics).
     bool rtxUpscaled = false;
     // RTX read the decoder picture itself: the driver scaled its chroma.
@@ -1213,9 +1215,17 @@ struct PlaceboBackend::State
                                                    : L"off");
         {
             auto& value = row(L"RTX Video");
-            value << rtx.Status();
-            if (settings.rtxSuperResolution || settings.rtxHdr)
-                value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+            const bool appOff =
+                (!settings.rtxSuperResolution || nvidiaApp.SuperResolution() == NvidiaAppSettings::State::Off) &&
+                (!settings.rtxHdr || nvidiaApp.TrueHdr() == NvidiaAppSettings::State::Off);
+            if ((settings.rtxSuperResolution || settings.rtxHdr) && appOff)
+                value << L"off in the NVIDIA app";
+            else
+            {
+                value << rtx.Status();
+                if (settings.rtxSuperResolution || settings.rtxHdr)
+                    value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+            }
         }
         if (settings.blackBars.enabled)
         {
@@ -1597,9 +1607,14 @@ struct PlaceboBackend::State
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         rtxUpscaled = rtxDirect = false;
         probe.Next(RenderProbe::Rtx);
+        // The switches only take effect when the NVIDIA app has the feature on;
+        // otherwise the driver would just scale plainly instead of libplacebo.
+        const bool rtxUpscale =
+            settings.rtxSuperResolution && nvidiaApp.SuperResolution() != NvidiaAppSettings::State::Off;
         // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
-        const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
-        if (settings.rtxSuperResolution || rtxHdr)
+        const bool rtxHdr = settings.rtxHdr && nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off && hdrOutput &&
+                            !pl_color_space_is_hdr(&image.color);
+        if (rtxUpscale || rtxHdr)
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
@@ -1619,7 +1634,7 @@ struct PlaceboBackend::State
                                    outW,
                                    outH,
                                    options->params,
-                                   settings.rtxSuperResolution,
+                                   rtxUpscale,
                                    rtxHdr,
                                    &restore.main,
                                    targetW,
@@ -1637,7 +1652,7 @@ struct PlaceboBackend::State
                                      outW,
                                      outH,
                                      options->params,
-                                     settings.rtxSuperResolution,
+                                     rtxUpscale,
                                      rtxHdr,
                                      &restore.saved[i],
                                      targetW,
@@ -2712,8 +2727,8 @@ HRESULT PlaceboBackend::Present()
     if (!pl_swapchain_resize(s.swapchain, &width, &height))
         return E_FAIL;
     // RTX Video HDR outputs HDR10 for SDR sources while Windows HDR is on.
-    const bool rtxHdr = s.settings.rtxHdr && s.HdrActive() && !pl_color_space_is_hdr(&s.image.color) &&
-                        s.rtx.HdrUsable() && s.image.num_planes;
+    const bool rtxHdr = s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off && s.HdrActive() &&
+                        !pl_color_space_is_hdr(&s.image.color) && s.rtx.HdrUsable() && s.image.num_planes;
     const bool hdr = rtxHdr || (s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() &&
                                 pl_color_space_is_hdr(&s.image.color));
     // The swapchain hint selects the signal format, not the tone-map peak.
