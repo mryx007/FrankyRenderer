@@ -35,11 +35,6 @@ inline int Message(HWND h, LPCWSTR text, LPCWSTR title, UINT flags)
     return silent ? IDOK : MessageBoxW(h, text, title, flags);
 }
 
-inline HWND Focus(HWND h)
-{
-    return silent ? nullptr : SetFocus(h);
-}
-
 inline bool Enabled()
 {
     wchar_t root[2], defer[2];

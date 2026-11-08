@@ -370,23 +370,4 @@ inline SettingsIni::Entries Differences(const PlaceboSettings& base, const Place
     return out;
 }
 
-// After a reset in a profile: settings the reset changed take the normal
-// value instead of the built-in default, so the profile no longer differs.
-inline void RestoreChanged(PlaceboSettings& edited, const PlaceboSettings& before, const PlaceboSettings& base)
-{
-    const auto previous = Snapshot(before), normal = Snapshot(base);
-    try
-    {
-        SettingsIni::Visit(edited,
-                           [&](const std::string& section, const std::string& key, auto& value)
-                           {
-                               const auto id = std::make_pair(section, key);
-                               if (SettingsIni::Encode(value) != previous.at(id))
-                                   SettingsIni::Decode(normal.at(id), value);
-                           });
-    }
-    catch (const std::exception&)
-    {
-    }
-}
 } // namespace ContentProfiles

@@ -42,7 +42,7 @@ class RtxScaling
     RtxVideoProcessor processor;
     pl_gpu gpu = nullptr;
     pl_renderer converter = nullptr;
-    pl_tex input[2] = {};
+    pl_tex input = nullptr;
     pl_color_space sourceColor = {};
     std::map<uint64_t, std::shared_ptr<Frame>> frames;
 
@@ -108,9 +108,8 @@ class RtxScaling
     void Fail(HRESULT result)
     {
         ClearFrames();
-        for (auto& plane : input)
-            if (plane)
-                pl_tex_destroy(gpu, &plane);
+        if (input)
+            pl_tex_destroy(gpu, &input);
         processor.Reset();
         wchar_t text[128];
         swprintf_s(text, L"unavailable (0x%08X); normal scaling", unsigned(result));
@@ -185,9 +184,8 @@ class RtxScaling
     void Reset()
     {
         Invalidate();
-        for (auto& plane : input)
-            if (plane)
-                pl_tex_destroy(gpu, &plane);
+        if (input)
+            pl_tex_destroy(gpu, &input);
         pl_renderer_destroy(&converter);
         processor.Reset();
         gpu = nullptr;
@@ -281,9 +279,8 @@ class RtxScaling
             sourceColor.transfer != source.color.transfer || upscaling != upscale || hdr != trueHdr)
         {
             ClearFrames();
-            for (auto& plane : input)
-                if (plane)
-                    pl_tex_destroy(gpu, &plane);
+            if (input)
+                pl_tex_destroy(gpu, &input);
             width = inW;
             height = inH;
             outputWidth = maxW;
@@ -349,7 +346,7 @@ class RtxScaling
             D3D11_TEXTURE2D_DESC inputDesc;
             processor.Input()->GetDesc(&inputDesc);
             // One plane: RGBA for 8 bits, RGB or Y410 (written as R10G10B10A2) for 10.
-            if (!input[0])
+            if (!input)
             {
                 pl_d3d11_wrap_params wrap = {};
                 wrap.tex = processor.Input();
@@ -359,14 +356,14 @@ class RtxScaling
                     wrap.w = inputDesc.Width;
                     wrap.h = inputDesc.Height;
                 }
-                input[0] = pl_d3d11_wrap(gpu, &wrap);
-                if (!input[0] || !input[0]->params.renderable)
+                input = pl_d3d11_wrap(gpu, &wrap);
+                if (!input || !input->params.renderable)
                 {
                     Fail(E_FAIL);
                     return {};
                 }
             }
-            auto prepared = Describe(input[0], source.color, bits);
+            auto prepared = Describe(input, source.color, bits);
             prepared.crop = {0, 0, float(inW), float(inH)};
             pl_frame picture = source;
             picture.crop = {fullX, fullY, fullX + float(inW), fullY + float(inH)};

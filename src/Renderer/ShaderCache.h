@@ -202,11 +202,6 @@ class ShaderCache
         return pl_cache_objects(cache);
     }
 
-    size_t Bytes() const
-    {
-        return pl_cache_size(cache);
-    }
-
     pl_cache Handle() const
     {
         return cache;

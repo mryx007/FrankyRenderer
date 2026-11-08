@@ -33,14 +33,6 @@ inline constexpr RendererChoice ScalerChoices[] = {
     {"ewa_robidouxsharp", L"EWA Robidoux Sharp"},
 };
 
-inline bool ScalerHasWidth(size_t index)
-{
-    if (index >= std::size(ScalerChoices))
-        return false;
-    const std::string_view name = ScalerChoices[index].name;
-    return name != "bilinear" && name != "bicubic" && name != "nearest";
-}
-
 inline constexpr RendererChoice ToneChoices[] = {
     {"auto", L"Auto (Metadata)"},
     {"spline", L"Spline"},

@@ -68,16 +68,12 @@ int wmain()
                 "Overrides were not applied");
         Require(applied.saturation == 1.25f, "Other settings changed");
 
-        // A profile stores only what differs from Default; a reset returns to Default.
+        // A profile stores only what differs from Default.
         auto edited = applied;
         edited.saturation = 1.5f;
         const auto differences = Differences(base, edited);
         Require(differences.size() == 4 && differences.at({"Renderer", "saturation"}) == "1.5",
                 "Differences were not found");
-        const auto before = edited;
-        edited.sharpenStrength = 0; // as if a reset wrote the built-in value
-        RestoreChanged(edited, before, base);
-        Require(edited.sharpenStrength == .5f && edited.saturation == 1.5f, "Reset did not return to Default");
 
         const auto broken = Parse(L"Broken", "[Profile]\r\nfolders=\"D:\\X\"\r\n[Renderer]\r\nsharpenStrength=9\r\n");
         Require(Apply(base, broken).sharpenStrength == .5f, "Out-of-range profile was applied");

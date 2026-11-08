@@ -3151,13 +3151,6 @@ void PlaceboBackend::RestartDropMeasurement(int rawBeforeReset)
     s.drops.RestartSource();
 }
 
-std::wstring PlaceboBackend::StatisticsText() const
-{
-    auto& s = *state;
-    std::lock_guard guard(s.lock);
-    return s.statisticsText;
-}
-
 void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, int refreshLead)
 {
     auto& s = *state;

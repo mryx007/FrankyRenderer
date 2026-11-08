@@ -191,18 +191,6 @@ static int SliderDecimals(const D2DControl& c, bool editing = false)
     return editing ? step : std::min(step, 2);
 }
 
-// Slider value as shown: two decimals below 10 (0.40), none from 10 on
-// (100), one only when a larger value really has a fraction (12.5).
-static std::wstring SliderText(const D2DControl& c, float value)
-{
-    int decimals = SliderDecimals(c);
-    if (std::abs(value) >= 10.f)
-        decimals = std::min(decimals, std::abs(value - std::round(value)) >= .05f ? 1 : 0);
-    wchar_t text[32];
-    swprintf_s(text, L"%.*f", decimals, double(value));
-    return text;
-}
-
 static float SliderFraction(const D2DControl& c, float value)
 {
     const double low = c.minVal, high = c.maxVal;
@@ -325,13 +313,6 @@ static bool MatchesFilter(const std::wstring& text, const std::wstring& query)
                         [](wchar_t a, wchar_t b) { return towlower(a) == towlower(b); }) == text.end())
             return false;
         start = end;
-static bool SearchShows(const D2DControl& control, const D2DCard& card, const D2DPage& page, const std::wstring& query)
-{
-    if (control.hidden)
-        return control.searchByCard && MatchesFilter(card.title + L" " + Tr(card.title), query);
-    return ControlMatches(control, card, page, query);
-}
-
     }
     return true;
 }
@@ -342,6 +323,13 @@ ControlMatches(const D2DControl& control, const D2DCard& card, const D2DPage& pa
     return MatchesFilter(page.name + L" " + Tr(page.name) + L" " + card.title + L" " + Tr(card.title) + L" " +
                              control.id + L" " + control.name + L" " + control.desc,
                          query);
+}
+
+static bool SearchShows(const D2DControl& control, const D2DCard& card, const D2DPage& page, const std::wstring& query)
+{
+    if (control.hidden)
+        return control.searchByCard && MatchesFilter(card.title + L" " + Tr(card.title), query);
+    return ControlMatches(control, card, page, query);
 }
 
 class Direct2DHostWindow
@@ -933,96 +921,30 @@ HRESULT Direct2DHostWindow::CreateTextFormats()
 {
     const wchar_t* fontName = L"Segoe UI";
     const auto locale = MenuLocale();
+    const auto makeFormat = [&](DWRITE_FONT_WEIGHT weight, float size, ComPtr<IDWriteTextFormat>& out)
+    {
+        m_pDWriteFactory->CreateTextFormat(fontName,
+                                           nullptr,
+                                           weight,
+                                           DWRITE_FONT_STYLE_NORMAL,
+                                           DWRITE_FONT_STRETCH_NORMAL,
+                                           size,
+                                           locale.c_str(),
+                                           out.ReleaseAndGetAddressOf());
+    };
 
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_SEMI_BOLD,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       24.0f,
-                                       locale.c_str(),
-                                       m_fmtTitle.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       13.0f,
-                                       locale.c_str(),
-                                       m_fmtSubtitle.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_SEMI_BOLD,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       14.0f,
-                                       locale.c_str(),
-                                       m_fmtNav.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_SEMI_BOLD,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       16.0f,
-                                       locale.c_str(),
-                                       m_fmtCardTitle.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       12.0f,
-                                       locale.c_str(),
-                                       m_fmtCardSubtitle.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       14.0f,
-                                       locale.c_str(),
-                                       m_fmtLabel.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       12.0f,
-                                       locale.c_str(),
-                                       m_fmtDesc.ReleaseAndGetAddressOf());
+    makeFormat(DWRITE_FONT_WEIGHT_SEMI_BOLD, 24.0f, m_fmtTitle);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 13.0f, m_fmtSubtitle);
+    makeFormat(DWRITE_FONT_WEIGHT_SEMI_BOLD, 14.0f, m_fmtNav);
+    makeFormat(DWRITE_FONT_WEIGHT_SEMI_BOLD, 16.0f, m_fmtCardTitle);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 12.0f, m_fmtCardSubtitle);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 14.0f, m_fmtLabel);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 12.0f, m_fmtDesc);
     // Text fields match the choice boxes beside them.
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       14.0f,
-                                       locale.c_str(),
-                                       m_fmtTextField.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       13.0f,
-                                       locale.c_str(),
-                                       m_fmtValue.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       14.f,
-                                       locale.c_str(),
-                                       m_fmtChoice.ReleaseAndGetAddressOf());
-    m_pDWriteFactory->CreateTextFormat(fontName,
-                                       nullptr,
-                                       DWRITE_FONT_WEIGHT_MEDIUM,
-                                       DWRITE_FONT_STYLE_NORMAL,
-                                       DWRITE_FONT_STRETCH_NORMAL,
-                                       12.f,
-                                       locale.c_str(),
-                                       m_fmtRange.ReleaseAndGetAddressOf());
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 14.0f, m_fmtTextField);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 13.0f, m_fmtValue);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 14.f, m_fmtChoice);
+    makeFormat(DWRITE_FONT_WEIGHT_MEDIUM, 12.f, m_fmtRange);
     // Windows 11 icons where installed; Segoe MDL2 uses the same code points.
     const wchar_t* iconFont = L"Segoe MDL2 Assets";
     ComPtr<IDWriteFontCollection> fonts;
