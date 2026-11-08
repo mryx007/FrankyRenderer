@@ -159,8 +159,8 @@ msgstr ""
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
-"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
-"after color mapping; excludes subtitles. SDR nits are nominal."
+"Waveform, histogram, RGB parade, false color and gray ramp, before or after "
+"color mapping, without subtitles."
 msgstr ""
 
 #. Setting name (General > Image Analysis)
@@ -191,8 +191,8 @@ msgstr ""
 
 #. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
-"Uses the listed mode with the lowest refresh rate that is a whole multiple "
-"of the video frame rate. Applies to this display profile only."
+"Uses the listed mode whose refresh rate is the lowest whole multiple of the "
+"frame rate. Only for this display."
 msgstr ""
 
 #. Setting name (General > Display Mode)
@@ -289,8 +289,8 @@ msgstr ""
 
 #. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
-"Skip clearing uncovered output borders. May leave old or undefined pixels "
-"there; no benefit for full-frame video. Default is Off."
+"Skips clearing the borders around the picture. Old pixels may remain there. "
+"Default: Off."
 msgstr ""
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
@@ -977,9 +977,8 @@ msgstr ""
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
-"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-"render peaks on slower PCs but adds latency. Automatic starts at one and "
-"adds more only after late pictures."
+"Pictures handed to the display ahead of time. More absorbs render peaks but "
+"adds latency. Automatic adds more only after late pictures."
 msgstr ""
 
 #. Choice (Scaling > Filters > Present in Advance)
@@ -1015,9 +1014,8 @@ msgstr ""
 
 #. Setting description (Scaling > Filters > Oversample Threshold)
 msgid ""
-"Smooth Motion shows a whole picture instead of a blend when the other "
-"picture would cover less than this share of a refresh. Fewer double edges on "
-"motion; 0 always blends. Used with the oversample frame mixer."
+"Shows a whole picture instead of a blend when the other would cover less "
+"than this share of a refresh. Fewer double edges; 0 always blends."
 msgstr ""
 
 #. Setting name (Scaling > Filters)
@@ -1027,8 +1025,8 @@ msgstr ""
 
 #. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid ""
-"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
-"edges. Default: Off; leave Off for best quality."
+"Faster downscaling without anti-aliasing. Can cause moire and jagged edges. "
+"Default: Off."
 msgstr ""
 
 #. Setting name (Scaling > Filters)
@@ -1038,9 +1036,8 @@ msgstr ""
 
 #. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
 msgid ""
-"Reuse mixed frames after resizing or parameter changes. May make transitions "
-"smoother but briefly reuse lower-quality or older processing. Default: Off; "
-"used with Smooth Motion."
+"Reuses mixed frames after resizing or setting changes. Smoother transitions, "
+"but briefly older quality. Default: Off."
 msgstr ""
 
 #. Section heading (Scaling)
@@ -1545,10 +1542,9 @@ msgstr ""
 
 #. Setting description (Color > 3D LUT > LUT Type)
 msgid ""
-"Default keeps the existing SDR calibration LUT stage. Manual types use this "
-"file as a color-mapping LUT. Normalized uses linear-light RGB; Conversion "
-"replaces color conversion, tone mapping and ICC correction. Match the LUT's "
-"intended data representation."
+"Default keeps the SDR calibration LUT. Normalized uses linear-light RGB; "
+"Conversion replaces color conversion, tone mapping and ICC. Must match the "
+"LUT."
 msgstr ""
 
 #. Choice (Color > 3D LUT > LUT Type)
@@ -1614,9 +1610,8 @@ msgstr ""
 
 #. Setting description (HDR > HDR Output > HDR Mode)
 msgid ""
-"Pass HDR and its metadata to the display; keep HDR output but roll off "
-"highlights above the display's peak, for monitors and laptops that do not "
-"tone map themselves; or tone map HDR to SDR."
+"Pass HDR to the display; keep HDR but roll off highlights above the "
+"display's peak, for screens without own tone mapping; or tone map to SDR."
 msgstr ""
 
 #. Choice (HDR > HDR Output > HDR Mode)
@@ -1652,9 +1647,8 @@ msgstr ""
 
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid ""
-"Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak "
-"Windows reports for the display, which on some laptops follows the "
-"brightness setting."
+"Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
+"reports; on some laptops it follows brightness."
 msgstr ""
 
 #. Setting name (HDR > HDR Output)
@@ -1798,8 +1792,8 @@ msgstr ""
 
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
-"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
-"an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
+"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "
+"GPU and RTX Video HDR in the NVIDIA app."
 msgstr ""
 
 #. Section heading (HDR)
@@ -3660,6 +3654,10 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset All"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Range"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
