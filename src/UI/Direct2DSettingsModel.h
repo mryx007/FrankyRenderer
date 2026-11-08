@@ -667,6 +667,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             s.hdrPassthrough = int(v) != 2;
         };
         c.controls.push_back(std::move(mode));
+        c.controls.push_back(D2DChoice(s,
+                                       L"Switch Windows HDR",
+                                       &s.windowsHdrToggle,
+                                       {{0, L"Do Not Change"},
+                                        {1, L"Turn On in Fullscreen"},
+                                        {2, L"Turn On"},
+                                        {3, L"Turn On/Off in Fullscreen"},
+                                        {4, L"Turn On/Off"}},
+                                       L"Turns Windows HDR on or off for playback and restores it afterwards."));
         auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
         protection.enabled = [&s] { return s.hdrMode != 1; };
         c.controls.push_back(std::move(protection));

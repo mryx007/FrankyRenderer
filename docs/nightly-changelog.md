@@ -82,3 +82,4 @@
 - Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, even spacing between the buttons at the top, narrower choice lists, and the search box no longer shows the Ctrl+F hint.
 - Made the statistics colours subtler: normal values are white, yellow and red only mark problems and are softer.
 - Fixed RTX Video HDR being refused for small videos on some graphics cards. If the driver still refuses it, Ctrl+J shows where it failed.
+- Added "Switch Windows HDR" (HDR & Color Mapping > HDR Output), off by default: the renderer can turn Windows HDR on for HDR videos and off for SDR videos, always or only in fullscreen, and restores it afterwards. Colours then stay right in a window and under the player's controls. It stays on for SDR videos using RTX Video HDR.

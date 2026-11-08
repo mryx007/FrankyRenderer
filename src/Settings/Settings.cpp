@@ -179,6 +179,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(displayModeSwitch),
         COPY_TEXT(displayModes),
         FIELD(displayModeDelay),
+        FIELD(windowsHdrToggle),
     };
 #undef COPY_TEXT
 #undef FIELD
@@ -325,6 +326,13 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
     String(key, L"DisplayModes", settings.displayModes);
     Float(key, L"DisplayModeDelay", settings.displayModeDelay);
+    {
+        DWORD toggle = 0, type = 0, bytes = 4;
+        if (RegQueryValueExW(key, L"WindowsHdrToggle", nullptr, &type, reinterpret_cast<BYTE*>(&toggle), &bytes) ==
+                ERROR_SUCCESS &&
+            type == REG_DWORD && bytes == 4 && toggle <= 4)
+            settings.windowsHdrToggle = static_cast<int>(toggle);
+    }
     Float(key, L"SharpenStrength", settings.sharpenStrength);
     Float(key, L"MotionThreshold", settings.motionThreshold);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
@@ -531,7 +539,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (!ValidCombinedMapping(s))
         return E_INVALIDARG;
-    if (s.hdrMode < 1 || s.hdrMode > 3)
+    if (s.hdrMode < 1 || s.hdrMode > 3 || s.windowsHdrToggle < 0 || s.windowsHdrToggle > 4)
         return E_INVALIDARG;
     if (!ValidScaling(s.scaling))
         return E_INVALIDARG;
@@ -617,6 +625,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.extras = s.extras;
     out.colorMapping = s.colorMapping;
     out.hdrMode = s.hdrMode;
+    out.windowsHdrToggle = s.windowsHdrToggle;
     out.hue = s.hue;
     out.temperature = s.temperature;
     out.colorAdjustment = !!s.colorAdjustment;
@@ -736,6 +745,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
     save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
     save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);
+    save(L"WindowsHdrToggle", REG_DWORD, &s.windowsHdrToggle, 4);
     save(L"SharpenStrength", REG_BINARY, &s.sharpenStrength, 4);
     save(L"MotionThreshold", REG_BINARY, &s.motionThreshold, 4);
     save(L"PeakDetect", REG_DWORD, &s.peakDetect, 4);

@@ -248,6 +248,11 @@ struct PlaceboBackend::State
     NativeHdrSwapchain nativeSwapchain;
     HMONITOR failedNativeMonitor = nullptr;
 
+    // Windows HDR switch, shared with the window thread.
+    std::atomic<int> displayHdrInput = 0, displayHdrState = -1;
+    std::atomic_bool displayHdrRebuild = false;
+    std::function<void()> displayHdrListener;
+
     ComPtr<IDXGISwapChain> OutputSwapchain()
     {
         ComPtr<IDXGISwapChain> output;
@@ -1422,6 +1427,8 @@ struct PlaceboBackend::State
     {
         if (!swapchain)
             return false;
+        if (const int known = displayHdrState.load(); known >= 0)
+            return known != 0;
         ComPtr<IDXGIOutput> output;
         ComPtr<IDXGIOutput6> output6;
         // unwrap returns an owned reference. Retaining it prevents replacement
@@ -2669,8 +2676,16 @@ HRESULT PlaceboBackend::Present()
     if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
         return S_FALSE;
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
-    const bool nativeWanted =
-        s.settings.hdrMode == 1 && s.settings.hdrPassthrough && pl_color_space_is_hdr(&s.image.color);
+    const int hdrInput = 1 | (pl_color_space_is_hdr(&s.image.color) ? 2 : 0) |
+                         (s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off ? 4 : 0);
+    if (s.displayHdrInput.exchange(hdrInput) != hdrInput && s.displayHdrListener)
+        s.displayHdrListener();
+    if (s.displayHdrRebuild.exchange(false) && s.swapchain)
+        s.DestroySwapchain();
+    // Turning Windows HDR on replaces the driver session: Windows then knows
+    // about HDR and keeps the picture right under overlapping windows.
+    const bool nativeWanted = s.settings.hdrMode == 1 && s.settings.hdrPassthrough && !s.settings.windowsHdrToggle &&
+                              pl_color_space_is_hdr(&s.image.color);
     if (!nativeWanted || (s.nativeHdr.Monitor() && s.nativeHdr.Monitor() != monitor))
     {
         if (s.nativeHdr.Active())
@@ -3052,6 +3067,24 @@ void PlaceboBackend::SetFlip(bool mirror)
 {
     std::lock_guard guard(state->lock);
     state->flip = mirror;
+}
+
+PlaceboBackend::DisplayHdrInput PlaceboBackend::DisplayHdr() const
+{
+    const int input = state->displayHdrInput.load();
+    return {(input & 1) != 0, (input & 2) != 0, (input & 4) != 0};
+}
+
+void PlaceboBackend::SetDisplayHdrListener(std::function<void()> listener)
+{
+    state->displayHdrListener = std::move(listener);
+}
+
+void PlaceboBackend::SetDisplayHdrState(int enabled, bool rebuildOutput)
+{
+    state->displayHdrState = enabled;
+    if (rebuildOutput)
+        state->displayHdrRebuild = true;
 }
 
 bool PlaceboBackend::Flip() const

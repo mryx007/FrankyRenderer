@@ -3693,3 +3693,37 @@ msgstr ""
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr ""
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Switch Windows HDR"
+msgstr ""
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Do Not Change"
+msgstr ""
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On in Fullscreen"
+msgstr ""
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On"
+msgstr ""
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off in Fullscreen"
+msgstr ""
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > Switch Windows HDR)
+msgid "Turns Windows HDR on or off for playback and restores it afterwards."
+msgstr ""

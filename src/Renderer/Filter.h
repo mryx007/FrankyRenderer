@@ -18,6 +18,7 @@
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
 #include "Renderer/DisplayModes.h"
+#include "Renderer/WindowsHdrSwitch.h"
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -247,12 +248,15 @@ class Renderer final : public CBaseVideoRenderer,
         bool enabled = false;
         std::vector<DisplayModes::Mode> modes;
         float delay = 0;
+        int windowsHdrToggle = 0;
+        bool hdrPassthrough = false;
     };
 
     std::mutex modeLock;
     ModeConfig modeConfig;
     std::shared_ptr<ModePause> modePause; // guarded by modeLock
     DisplayModes::Switcher modeSwitcher;
+    WindowsHdr::Switcher hdrSwitcher;
     RECT modeWindow = {}; // fullscreen window rectangle when the mode was switched
     std::atomic<uint64_t> modeHoldUntil = 0;
     // The source's frame duration. frameDuration follows the presented samples,
@@ -261,6 +265,8 @@ class Renderer final : public CBaseVideoRenderer,
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
     void CheckDisplayMode();
+    void CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen);
+    void HoldForDisplayChange(float delay);
     void PausePlayback(DWORD milliseconds);
     bool ExternalStateChange();
 

@@ -83,6 +83,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(colorAdjustment);
     INI_FIELD(allowDelayedPeak);
     INI_FIELD(hdrMode);
+    INI_FIELD(windowsHdrToggle);
     INI_FIELD(maximumFramesInFlight);
     INI_FIELD(presentAhead);
     INI_FIELD(displayGammaCurve);

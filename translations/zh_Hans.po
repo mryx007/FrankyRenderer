@@ -3723,3 +3723,37 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Switch Windows HDR"
+msgstr "切换 Windows HDR"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Do Not Change"
+msgstr "不更改"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On in Fullscreen"
+msgstr "全屏时开启"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On"
+msgstr "开启"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off in Fullscreen"
+msgstr "全屏时开启/关闭"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off"
+msgstr "开启/关闭"
+
+#. Setting description (HDR > HDR Output > Switch Windows HDR)
+msgid "Turns Windows HDR on or off for playback and restores it afterwards."
+msgstr "在播放时开启或关闭 Windows HDR，并在结束后恢复。"

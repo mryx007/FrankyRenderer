@@ -77,6 +77,8 @@ struct PlaceboSettings
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};
     float displayModeDelay = 2; // seconds paused after a switch
+    // Windows HDR switching for playback (Renderer/WindowsHdrSwitch.h); 0 leaves it alone.
+    int windowsHdrToggle = 0;
     // Where the quality values came from (Settings/QualityPresets.h): 0 none,
     // MeasuredFlag | upgrades = measured, PresetSource + i = preset i.
     // qualityStamp fingerprints all settings at that moment.

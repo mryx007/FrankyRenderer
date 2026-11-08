@@ -656,6 +656,12 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         Trace("Display mode restored on window close");
         owner->modeSwitcher.Restore();
     }
+    if (msg == WM_DESTROY && owner->hdrSwitcher.Active())
+    {
+        Trace("Windows HDR restored on window close");
+        owner->hdrSwitcher.Restore();
+        owner->backend.SetDisplayHdrState(-1, false);
+    }
     if (msg == WM_CREATE)
     {
         MonitorChange::Attach(hwnd);
@@ -879,6 +885,7 @@ static PlaceboSettings InitialSettings()
 {
     SettingsJournal::Recover();
     DisplayModes::RecoverAbandoned();
+    WindowsHdr::RecoverAbandoned();
     return LoadSettings();
 }
 
@@ -925,6 +932,7 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     if (FAILED(*hr))
         return;
     PublishDisplayModes();
+    backend.SetDisplayHdrListener([this] { RequestModeCheck(); });
     window = std::make_unique<VideoWindow>(this, &m_InterfaceLock, GetOwner(), hr);
     if (FAILED(*hr))
         return;
@@ -2735,6 +2743,8 @@ void Renderer::PublishDisplayModes()
     next.enabled = !!effective.displayModeSwitch;
     DisplayModes::Parse(effective.displayModes, next.modes);
     next.delay = effective.displayModeDelay;
+    next.windowsHdrToggle = effective.windowsHdrToggle;
+    next.hdrPassthrough = effective.hdrMode != 2;
     {
         std::lock_guard lock(modeLock);
         modeConfig = std::move(next);
@@ -2772,6 +2782,7 @@ void Renderer::CheckDisplayMode()
     // After a resolution change the player may keep its fullscreen window at
     // the previous size; that window is still fullscreen.
     const bool fullscreen = covers || (visible && sameDisplay && EqualRect(&bounds, &modeWindow));
+    CheckWindowsHdr(config, monitor.szDevice, fullscreen);
     const auto state = windowState.load();
     const auto duration = contentDuration.load();
     double rate = duration > 0 ? 1e7 / double(duration) : 0;
@@ -2806,10 +2817,44 @@ void Renderer::CheckDisplayMode()
     modeWindow = bounds;
     refreshDirty = true;
     Trace("Display mode %ls on %ls for %.3f fps", DisplayModes::Name(mode).c_str(), monitor.szDevice, rate);
-    const auto milliseconds = static_cast<DWORD>(config.delay * 1000 + .5f);
+    HoldForDisplayChange(config.delay);
+}
+
+void Renderer::CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen)
+{
+    if (!config.windowsHdrToggle)
+    {
+        const bool restore = hdrSwitcher.Active();
+        hdrSwitcher.Restore();
+        backend.SetDisplayHdrState(-1, restore);
+        return;
+    }
+    const auto input = backend.DisplayHdr();
+    const auto result = hdrSwitcher.Update(device,
+                                           config.windowsHdrToggle,
+                                           input.known && windowState.load() != State_Stopped,
+                                           input.hdrSource && config.hdrPassthrough,
+                                           input.rtxHdr,
+                                           fullscreen);
+    if (!result.known)
+    {
+        backend.SetDisplayHdrState(-1, false);
+        return;
+    }
+    backend.SetDisplayHdrState(result.enabled, result.switched);
+    if (!result.switched)
+        return;
+    refreshDirty = true;
+    HoldForDisplayChange(config.delay);
+}
+
+// The display needs a moment to show a picture again after a change.
+void Renderer::HoldForDisplayChange(float delay)
+{
+    const auto milliseconds = static_cast<DWORD>(delay * 1000 + .5f);
     if (!milliseconds)
         return;
-    if (state == State_Running)
+    if (windowState.load() == State_Running)
         PausePlayback(milliseconds);
     else
         modeHoldUntil = GetTickCount64() + milliseconds;

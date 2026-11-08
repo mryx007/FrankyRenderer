@@ -74,6 +74,7 @@ struct RenderSettings
     int outputFormat = 0;
     int outputLevels = 0, displayDepth = 0; // levels: auto/full/limited; depth: 0=auto
     int hdrMode = 2;
+    int windowsHdrToggle = 0; // WindowsHdr::Toggle
     bool peakDetect = true, allowDelayedPeak = false;
     float peakSmoothing = 20, sceneLow = 1, sceneHigh = 3, peakPercentile = 100;
     float contrastRecovery = 0, contrastSmoothness = 3.5f;
@@ -181,6 +182,19 @@ class PlaceboBackend
     // Short text in the picture for about two seconds, e.g. after a shortcut.
     void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;
+
+    // What the window thread needs for the Windows HDR switch. The listener
+    // runs on the render thread when it changes.
+    struct DisplayHdrInput
+    {
+        bool known = false, hdrSource = false, rtxHdr = false;
+    };
+
+    DisplayHdrInput DisplayHdr() const;
+    void SetDisplayHdrListener(std::function<void()> listener);
+    // Windows HDR state found by the switch, as DXGI can report the old state
+    // after a switch; -1 asks DXGI. rebuildOutput recreates the swapchain.
+    void SetDisplayHdrState(int enabled, bool rebuildOutput);
     uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
     // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
