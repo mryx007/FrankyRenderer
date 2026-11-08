@@ -1802,6 +1802,42 @@ msgstr "HDR in SDR umrechnen"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
+msgid "Switch Windows HDR"
+msgstr "Windows-HDR umschalten"
+
+#. Setting description (HDR > HDR Output > Switch Windows HDR)
+msgid "Turns Windows HDR on or off for playback and restores it afterwards."
+msgstr ""
+"Schaltet Windows-HDR für die Wiedergabe ein oder aus und stellt es danach "
+"wieder her."
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Do Not Change"
+msgstr "Nicht ändern"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On in Fullscreen"
+msgstr "Im Vollbild einschalten"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On"
+msgstr "Einschalten"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off in Fullscreen"
+msgstr "Im Vollbild ein-/ausschalten"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off"
+msgstr "Ein-/ausschalten"
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Clipping Protection"
 msgstr "Schutz vor Übersteuerung"
 
@@ -4088,37 +4124,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
-msgid "Switch Windows HDR"
-msgstr "Windows-HDR umschalten"
-
-#. Choice (HDR > HDR Output > Switch Windows HDR)
-#. Setting name (Shortcuts > )
-msgid "Do Not Change"
-msgstr "Nicht ändern"
-
-#. Choice (HDR > HDR Output > Switch Windows HDR)
-#. Setting name (Shortcuts > )
-msgid "Turn On in Fullscreen"
-msgstr "Im Vollbild einschalten"
-
-#. Choice (HDR > HDR Output > Switch Windows HDR)
-#. Setting name (Shortcuts > )
-msgid "Turn On"
-msgstr "Einschalten"
-
-#. Choice (HDR > HDR Output > Switch Windows HDR)
-#. Setting name (Shortcuts > )
-msgid "Turn On/Off in Fullscreen"
-msgstr "Im Vollbild ein-/ausschalten"
-
-#. Choice (HDR > HDR Output > Switch Windows HDR)
-#. Setting name (Shortcuts > )
-msgid "Turn On/Off"
-msgstr "Ein-/ausschalten"
-
-#. Setting description (HDR > HDR Output > Switch Windows HDR)
-msgid "Turns Windows HDR on or off for playback and restores it afterwards."
-msgstr "Schaltet Windows-HDR für die Wiedergabe ein oder aus und stellt es danach wieder her."
