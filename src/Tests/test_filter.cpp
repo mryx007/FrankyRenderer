@@ -2110,6 +2110,68 @@ int wmain(int argc, wchar_t** argv)
             }
             Check(config->GetStatus(&status), "reconnect status");
         } while (status.rendered < beforeFrames + 5 && GetTickCount() - deadline < 5000);
+        if (phase == 0)
+        {
+            // VapourSynth Filter reconnects while playing and stops the video
+            // when the renderer refuses. The next picture brings the format.
+            AM_MEDIA_TYPE connected = {};
+            Check(input->ConnectionMediaType(&connected), "reconnect current type");
+            CMediaType p010(connected), nv12(connected);
+            FreeMediaType(connected);
+            const DWORD nv12Code = MAKEFOURCC('N', 'V', '1', '2');
+            nv12.subtype.Data1 = nv12Code;
+            auto nv12Info = reinterpret_cast<VIDEOINFOHEADER2*>(nv12.pbFormat);
+            nv12Info->bmiHeader.biCompression = nv12Code;
+            nv12Info->bmiHeader.biBitCount = 12;
+            nv12Info->bmiHeader.biSizeImage = 64 * 64 * 3 / 2;
+            nv12.lSampleSize = 64 * 64 * 3 / 2;
+            const auto waitForFormat = [&](const char* name)
+            {
+                const DWORD began = GetTickCount();
+                do
+                {
+                    Sleep(10);
+                    MSG msg;
+                    while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                    {
+                        TranslateMessage(&msg);
+                        DispatchMessageW(&msg);
+                    }
+                    actual = {};
+                    Check(diagnosticConfig->GetDiagnostics(&actual), "reconnect diagnostics");
+                } while (strcmp(actual.pixelFormat, name) && GetTickCount() - began < 3000);
+                return !strcmp(actual.pixelFormat, name);
+            };
+            if (input->ReceiveConnection(input.Get(), &p010) != VFW_E_ALREADY_CONNECTED)
+            {
+                puts("FAIL reconnect accepted from a pin that is not connected");
+                return 124;
+            }
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &p010), "reconnect with the same type");
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &nv12), "reconnect with a new type");
+            if (!waitForFormat("NV12"))
+            {
+                printf("FAIL reconnected type not applied: %s\n", actual.pixelFormat);
+                return 125;
+            }
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &p010), "reconnect back");
+            if (!waitForFormat("P010"))
+            {
+                printf("FAIL reconnect back not applied: %s\n", actual.pixelFormat);
+                return 126;
+            }
+            Check(config->GetStatus(&status), "status after playing reconnect");
+            const auto afterReconnect = status.rendered;
+            Sleep(250);
+            Check(config->GetStatus(&status), "status after playing reconnect wait");
+            if (status.rendered <= afterReconnect || FAILED(status.lastResult))
+            {
+                printf("FAIL playback stopped after reconnect, last result %08lX\n",
+                       static_cast<unsigned long>(status.lastResult));
+                return 127;
+            }
+            puts("PASS filter reconnect during playback: same and new type, next picture uses it, playback continues");
+        }
         Check(control->Pause(), "pause reconnected decoder");
         Check(control->GetState(3000, &paused), "reconnected paused state");
         if (status.rendered < beforeFrames + 5 || FAILED(status.lastResult) ||
@@ -2138,6 +2200,43 @@ int wmain(int argc, wchar_t** argv)
             strcmp(actual.pixelFormat, phase == 1 ? "NV12" : "P010"))
             exit(33);
         Check(control->Stop(), "stop reconnected decoder");
+        if (phase == 0)
+        {
+            ComPtr<IMemAllocator> allocator;
+            Check(mem->GetAllocator(&allocator), "reconnect allocator");
+            Check(allocator->Commit(), "reconnect allocator commit");
+            AM_MEDIA_TYPE connected = {};
+            Check(input->ConnectionMediaType(&connected), "reconnect larger type");
+            CMediaType larger(connected);
+            FreeMediaType(connected);
+            auto info = reinterpret_cast<VIDEOINFOHEADER2*>(larger.pbFormat);
+            const auto resize = [&](int size)
+            {
+                info->bmiHeader.biWidth = info->bmiHeader.biHeight = size;
+                info->bmiHeader.biSizeImage = size * size * 3;
+                larger.lSampleSize = size * size * 3;
+            };
+            resize(128);
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &larger), "reconnect with a larger picture");
+            ComPtr<IMediaSample> held;
+            Check(allocator->GetBuffer(&held, nullptr, nullptr, 0), "buffer after larger reconnect");
+            if (held->GetSize() < 128 * 128 * 3)
+            {
+                printf("FAIL reconnect kept small buffers: %ld bytes\n", held->GetSize());
+                return 128;
+            }
+            resize(256);
+            if (input->ReceiveConnection(rawSource->GetPin(0), &larger) != VFW_E_BUFFERS_OUTSTANDING)
+            {
+                puts("FAIL reconnect resized buffers that are still in use");
+                return 129;
+            }
+            held.Reset();
+            Check(allocator->GetBuffer(&held, nullptr, nullptr, 0), "allocator usable after refused reconnect");
+            held.Reset();
+            Check(allocator->Decommit(), "reconnect allocator decommit");
+            puts("PASS filter reconnect grows free buffers and refuses buffers in use");
+        }
         printf("PASS same renderer reconnect: %s %s, new frames and pixels verified\n",
                hardware ? "GPU" : "CPU",
                textureFormat == DXGI_FORMAT_NV12 ? "NV12" : "P010");

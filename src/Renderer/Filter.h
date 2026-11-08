@@ -36,6 +36,10 @@ class DecoderPin final : public CRendererInputPin,
     class SideDataAllocator* ownAllocator = nullptr;
     CMediaType topDown;
     bool wantTopDown = false;
+    // The type of a reconnect during playback, for the next picture.
+    std::mutex reconnectLock;
+    CMediaType reconnected;
+    bool hasReconnected = false;
 
   public:
     DecoderPin(Renderer*, HRESULT*);
@@ -43,6 +47,10 @@ class DecoderPin final : public CRendererInputPin,
     // Video Renderer does. Filters such as DirectVobSub otherwise disagree
     // with the renderer about the row order and the picture turns upside down.
     void RequestTopDown(IPin* upstream);
+    // Filters such as VapourSynth Filter reconnect while connected, for example
+    // after loading a new script, and give up playback if that is refused.
+    STDMETHODIMP ReceiveConnection(IPin*, const AM_MEDIA_TYPE*) override;
+    bool TakeReconnected(CMediaType& type);
     STDMETHODIMP NotifyAllocator(IMemAllocator*, BOOL) override;
     DECLARE_IUNKNOWN
     STDMETHODIMP NonDelegatingQueryInterface(REFIID, void**) override;

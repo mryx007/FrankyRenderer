@@ -236,6 +236,49 @@ void DecoderPin::RequestTopDown(IPin* upstream)
     wantTopDown = true;
 }
 
+STDMETHODIMP DecoderPin::ReceiveConnection(IPin* connector, const AM_MEDIA_TYPE* type)
+{
+    if (!connector || !type)
+        return E_POINTER;
+    CAutoLock guard(m_pLock);
+    if (!m_Connected || connector != m_Connected)
+        return CRendererInputPin::ReceiveConnection(connector, type);
+    CMediaType changed(*type);
+    MediaFormat candidate;
+    HRESULT hr = ParseFormat(changed, candidate);
+    if (SUCCEEDED(hr))
+        hr = CheckMediaType(&changed);
+    // A decoder's own allocator is its business; ours must fit the new picture.
+    if (hr == S_OK && !nativeDecoder && ownAllocator && m_pAllocator == static_cast<IMemAllocator*>(ownAllocator))
+    {
+        const size_t bytes = ImageBytes(candidate.frame.format, candidate.frame.stride, candidate.frame.height);
+        hr = bytes > size_t(LONG_MAX) ? VFW_E_TYPE_NOT_ACCEPTED : ownAllocator->Grow(static_cast<long>(bytes));
+    }
+    if (hr == S_OK)
+        hr = CBaseInputPin::SetMediaType(&changed);
+    if (hr == S_OK)
+    {
+        std::lock_guard lock(reconnectLock);
+        reconnected = changed;
+        hasReconnected = true;
+    }
+    Trace("Reconnect during connection %dx%d result=%08lX",
+          candidate.frame.width,
+          candidate.frame.height,
+          static_cast<unsigned long>(hr));
+    return hr == S_OK || FAILED(hr) ? hr : VFW_E_TYPE_NOT_ACCEPTED;
+}
+
+bool DecoderPin::TakeReconnected(CMediaType& type)
+{
+    std::lock_guard lock(reconnectLock);
+    if (!hasReconnected)
+        return false;
+    hasReconnected = false;
+    type = reconnected;
+    return true;
+}
+
 STDMETHODIMP DecoderPin::NotifyAllocator(IMemAllocator* allocator, BOOL readOnly)
 {
     HRESULT hr = CRendererInputPin::NotifyAllocator(allocator, readOnly);
@@ -256,6 +299,8 @@ HRESULT DecoderPin::BreakConnect()
     {
         nativeDecoder = false;
         wantTopDown = false;
+        std::lock_guard lock(reconnectLock);
+        hasReconnected = false;
     }
     Trace("Input disconnect completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
@@ -1299,11 +1344,21 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     if (FAILED(profileResult))
         return profileResult;
     AM_MEDIA_TYPE* changed = nullptr;
+    // The type of a reconnect applies from this picture on, unless the sample
+    // brings its own.
+    CMediaType reconnected;
+    const bool hasReconnected = static_cast<DecoderPin*>(m_pInputPin)->TakeReconnected(reconnected);
     if (sample->GetMediaType(&changed) == S_OK && changed)
     {
         CMediaType type(*changed);
         DeleteMediaType(changed);
         HRESULT hr = SetMediaType(&type);
+        if (FAILED(hr))
+            return hr;
+    }
+    else if (hasReconnected)
+    {
+        HRESULT hr = SetMediaType(&reconnected);
         if (FAILED(hr))
             return hr;
     }
