@@ -45,14 +45,13 @@ class StatisticsRasterizer
     uint64_t keptGeneration = 0;
 
     // Statistics text markup: a line "\x01Title" is a section heading, a line
-    // "label\tvalue" is a row with aligned columns, and "\x02g", "\x02y" or
-    // "\x02r" at the start of a value colours it green, yellow or red. Inside a
-    // value the same codes, and "\x02w" for white, colour the text after them.
+    // "label\tvalue" is a row with aligned columns, and "\x02y" or "\x02r" at
+    // the start of a value colours it yellow or red. Inside a value the same
+    // codes, and "\x02w" for white, colour the text after them.
     static COLORREF CodeColor(wchar_t code, COLORREF fallback)
     {
-        return code == L'g'   ? RGB(110, 220, 120)
-               : code == L'y' ? RGB(245, 200, 80)
-               : code == L'r' ? RGB(245, 95, 85)
+        return code == L'y'   ? RGB(225, 205, 155)
+               : code == L'r' ? RGB(235, 155, 145)
                : code == L'w' ? RGB(255, 255, 255)
                               : fallback;
     }

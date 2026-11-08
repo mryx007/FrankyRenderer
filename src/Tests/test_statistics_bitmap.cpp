@@ -93,20 +93,19 @@ int main()
         const auto fresh = Wait(raster, 1000);
         Check(fresh && fresh->width < wide->width, "box starts over after a reset");
         // Markup: headings and rows draw in their own colours, values can be
-        // green, yellow or red; the overlay texture is RGB.
-        Check(raster.Submit(L"\x01Performance\nDrops\t\x02g0 dropped\nRender\t\x02r120% of 8 ms", 1100, 600),
-              "markup text");
+        // white, yellow or red; the overlay texture is RGB.
+        Check(raster.Submit(L"\x01Performance\nDrops\t0 dropped\nRender\t\x02r120% of 8 ms", 1100, 600), "markup text");
         const auto colors = Wait(raster, 1100);
         Check(colors.has_value(), "markup rasterized");
-        bool green = false, red = false, blue = false;
+        bool white = false, red = false, blue = false;
         for (size_t i = 0; i < colors->pixels.size(); i += 4)
         {
             const int r = colors->pixels[i], g = colors->pixels[i + 1], b = colors->pixels[i + 2];
-            green |= g > 180 && g > r + 60 && g > b + 60;
-            red |= r > 180 && r > g + 80 && r > b + 80;
+            white |= r > 220 && g > 220 && b > 220;
+            red |= r > 180 && r > g + 50 && r > b + 50;
             blue |= b > 200 && b > r + 60;
         }
-        Check(green && red && blue, "green and red values and a blue heading in RGB order");
+        Check(white && red && blue, "white and red values and a blue heading in RGB order");
         raster.Stop();
         Check(!raster.Submit(L"stopped", 1280, 1080), "no work after shutdown");
     }

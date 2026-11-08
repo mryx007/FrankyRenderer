@@ -1129,7 +1129,7 @@ struct PlaceboBackend::State
                                                                         : L"unknown range");
         {
             // Dolby Vision status lines "Name: value" become rows; the
-            // processing state is green when active, yellow otherwise.
+            // processing state is yellow unless active.
             std::wostringstream dv;
             AppendDolbyVisionStatus(
                 dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
@@ -1141,11 +1141,10 @@ struct PlaceboBackend::State
                     continue;
                 const auto label = line.substr(0, colon), value = line.substr(colon + 2);
                 if (label == L"Dolby Vision")
-                    colored(L"Dolby Vision",
-                            value.find(L"processing active") != std::wstring::npos &&
-                                    value.find(L"not processed") == std::wstring::npos
-                                ? L'g'
-                                : L'y')
+                    (value.find(L"processing active") != std::wstring::npos &&
+                             value.find(L"not processed") == std::wstring::npos
+                         ? row(L"Dolby Vision")
+                         : colored(L"Dolby Vision", L'y'))
                         << value;
                 else
                     row(label == L"Source" ? L"Format" : label.c_str()) << value;
@@ -1261,7 +1260,7 @@ struct PlaceboBackend::State
                                                   : period / 1e4;
         // Pictures lost in the peak's window (dropped, repeated or late). A
         // slow picture the display queue absorbed is no visible problem, so
-        // the peak is coloured only when pictures were actually lost.
+        // the peak reads as over budget only when pictures were actually lost.
         const uint64_t lost = uint64_t(statisticsDropped >= 0 ? DropTotal() : 0) +
                               (presentation.haveCounters ? presentation.repeatedRefreshes + presentation.glitches : 0);
         if (!lostHistory.empty() && lost < lostHistory.back().second)
@@ -1295,7 +1294,7 @@ struct PlaceboBackend::State
             {
                 const double load = 100 * slowest / budget;
                 const bool absorbed = maximum && !lostRecently;
-                color = absorbed ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : L'g';
+                color = maximum ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : 0;
                 value << dot << std::setprecision(0) << load << L"% of " << std::setprecision(2) << budget << L" ms"
                       << (absorbed && load > 100 ? L", absorbed by queue"
                           : absorbed             ? L""

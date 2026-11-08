@@ -80,3 +80,4 @@
 - Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including newer HEVC decoding and fixes for Dolby Vision metadata and RPU parsing.
 - Updated libplacebo with fixes made after version 7.387.0: more accurate colour conversion for PQ, HLG and the black level, ICC profiles without a brightness value, and a Smooth Motion queue fix.
 - Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, even spacing between the buttons at the top, narrower choice lists, and the search box no longer shows the Ctrl+F hint.
+- Made the statistics colours subtler: normal values are white, yellow and red only mark problems and are softer.
