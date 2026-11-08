@@ -29,6 +29,7 @@
 - Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
 - Fixed the search box in the settings menu changing its font when typing ends.
 - Fixed shaders found in the settings search having no on/off switch.
+- Fixed shortcut messages using the Windows language instead of the menu language until the settings menu had been opened.
 - Fixed a brief white properties window when opening the settings menu in MPC-BE.
 - Fixed regular single frame drops during playback, most noticeable with Smooth Motion.
 - Fixed bursts of dropped frames when switching to fullscreen or another display, resizing the window or toggling statistics with Ctrl+J.

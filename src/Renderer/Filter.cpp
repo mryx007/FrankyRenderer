@@ -2097,6 +2097,8 @@ void Renderer::RunShortcut(int index)
         ToggleStatistics();
         return;
     }
+    // Only the settings menu loads the language otherwise; it may not have been open yet.
+    LoadMenuLanguage();
     std::wstring message;
     if (action == Action::Shaders)
     {
@@ -2155,7 +2157,7 @@ void Renderer::RunShortcut(int index)
             // Shader settings name their shader: "AMD CAS: On".
             const auto value = Tr(CustomShortcuts::ValueText(*control, control->Value()));
             message = entry.name == L"On/Off"    ? Tr(entry.card) + L": " + value
-                      : entry.page == L"Shaders" ? Tr(entry.card) + L"  3A " + Tr(control->name) + L": " + value
+                      : entry.page == L"Shaders" ? Tr(entry.card) + L" › " + Tr(control->name) + L": " + value
                                                  : Tr(control->name) + L": " + value;
         }
         else if (action == Action::Quality)
