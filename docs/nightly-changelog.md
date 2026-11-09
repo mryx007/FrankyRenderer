@@ -87,3 +87,9 @@
 - Built-in shaders you do not need can be deleted from shaders\PlayKit; they leave the list.
 - The shader list is now alphabetical, and Chain Position counts only the shaders that are switched on.
 - Long lists of active shaders now wrap in the Ctrl+J statistics.
+- Added Diagnostics (General & Presentation): switch on Diagnostic Log, restart the player and reproduce the problem. Save Report then puts a text file on the desktop to attach to a bug report. The log covers one start of the player and turns itself off; nothing is recorded otherwise.
+- Added ten error diffusion methods to Dithering > Algorithm. They need more GPU time, and large ones fall back to Blue Noise at high resolutions.
+- Added the Clamped Mitchell frame mixer for Smooth Motion. Oversample Threshold is now greyed out for mixers it does not apply to.
+- Removed "Keep a Stable Zoom": a logo without black bars at the start could keep the bars of the whole film from being detected.
+- The Ctrl+J statistics now sit directly at the left edge.
+- MPC-HC supports FrankyRenderer from version 2.8.5.14: choose it under Options > Playback > Output.

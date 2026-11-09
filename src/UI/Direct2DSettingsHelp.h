@@ -48,7 +48,6 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
         {L"Polar (EWA)", L"Use a two-dimensional EWA filter. Frame mixers always remain one-dimensional."},
         {L"Detect Hardcoded Black Bars", L"Analyze decoded pixels to find bars encoded into the video."},
         {L"Crop Black Bars", L"Remove detected bars from the active image before fitting or zooming it."},
-        {L"Keep a Stable Zoom", L"Prefer a common zoom that preserves content when the detected active area changes."},
         {L"Zoom Mode", L"Fit keeps all active content. Fill covers the output and can crop image content."},
         {L"Black Threshold", L"Maximum detected bar brightness, as a percentage of decoded SDR white."},
         {L"Detection Stability (seconds)", L"Time required for a new detected bar layout to become stable."},

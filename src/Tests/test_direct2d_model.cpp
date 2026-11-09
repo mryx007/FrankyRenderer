@@ -191,7 +191,7 @@ int wmain()
         rtx.reset();
         Require(!s.rtxSuperResolution && scaler.Enabled(), "RTX reset restores normal scaler");
         bool documentedSupported = true;
-        const int expectedCounts[] = {13, 11, 13, 11, 7};
+        const int expectedCounts[] = {13, 11, 13, 11, 8};
         for (int role = 0; role < 5; ++role)
         {
             const auto names = D2DScalerNames(role, true, "auto");
@@ -267,6 +267,18 @@ int wmain()
         auto& exposure = find(L"HDR & Color Mapping", L"Highlights", L"Exposure");
         exposure.set(-.001f);
         Require(s.tonal.exposure[2] == -.001f && exposure.stepVal == .001f, "fine highlight adjustment");
+        auto& temporal = find(L"Processing", L"Dithering", L"Change Dither for Every Frame");
+        Require(temporal.Enabled(), "a changing pattern applies to ordinary dithering");
+        s.ditherMethod = 4;
+        Require(!temporal.Enabled() && find(L"Processing", L"Dithering", L"Algorithm").choices.size() == 14,
+                "error diffusion has no changing pattern");
+        s.ditherMethod = 0;
+        auto& oversample = find(L"Scaling", L"Filters", L"Oversample Threshold");
+        strcpy_s(s.scaling.filters[4].filter, "mitchell_clamp");
+        Require(!oversample.Enabled(), "the threshold belongs to the oversample mixer");
+        strcpy_s(s.scaling.filters[4].filter, "oversample");
+        Require(oversample.Enabled(), "the threshold works with the oversample mixer");
+        s.scaling.filters[4] = {};
         auto& order = find(L"Shaders", L"AMD CAS", L"Chain Position");
         Require(!order.Enabled(), "no chain order to choose with no shader running");
         order.set(1);

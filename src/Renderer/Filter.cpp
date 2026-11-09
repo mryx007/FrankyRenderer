@@ -934,6 +934,8 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
         return;
     PublishDisplayModes();
     backend.SetDisplayHdrListener([this] { RequestModeCheck(); });
+    Diagnostics::SetLive([this]
+                         { return L"Filters in graph: " + GraphFilters() + L"\n" + backend.StatisticsSnapshot(); });
     window = std::make_unique<VideoWindow>(this, &m_InterfaceLock, GetOwner(), hr);
     if (FAILED(*hr))
         return;
@@ -952,6 +954,7 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
 
 Renderer::~Renderer()
 {
+    Diagnostics::SetLive(nullptr);
     {
         std::lock_guard guard(LiveRenderers::lock);
         LiveRenderers::all.erase(std::remove(LiveRenderers::all.begin(), LiveRenderers::all.end(), this),
@@ -2327,6 +2330,8 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
         windowState = State_Running;
+    if (TraceEnabled())
+        Trace("Filters in graph: %ls", GraphFilters().c_str());
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
     // Playback started while the display still resynchronises after a mode
@@ -2759,6 +2764,25 @@ void Renderer::RequestModeCheck(UINT delay)
         PostMessageW(window->GetWindowHWND(), ModeCheckMessage, delay, 0);
 }
 
+std::wstring Renderer::GraphFilters()
+{
+    std::wstring names;
+    ComPtr<IEnumFilters> filters;
+    if (!m_pGraph || FAILED(m_pGraph->EnumFilters(&filters)))
+        return names;
+    ComPtr<IBaseFilter> filter;
+    while (filters->Next(1, filter.ReleaseAndGetAddressOf(), nullptr) == S_OK)
+    {
+        FILTER_INFO info = {};
+        if (FAILED(filter->QueryFilterInfo(&info)))
+            continue;
+        if (info.pGraph)
+            info.pGraph->Release();
+        names += (names.empty() ? L"" : L", ") + std::wstring(info.achName);
+    }
+    return names;
+}
+
 // Runs on the window thread without renderer locks: a mode change notifies
 // every top-level window synchronously, including the player's.
 void Renderer::CheckDisplayMode()
@@ -3068,10 +3092,9 @@ void Renderer::UpdateContentProfile(IPin* peer)
         backend.SetSettings(BackendSettings(settings));
     }
     else
-        Trace("Content profile %ls (%zu settings) for %ls",
+        Trace("Content profile %ls (%zu settings)",
               contentProfile.name.empty() ? L"none" : contentProfile.name.c_str(),
-              contentProfile.overrides.size(),
-              path.c_str());
+              contentProfile.overrides.size());
     UpdateMotionSettings();
     PublishDisplayModes();
     refreshDirty = true;

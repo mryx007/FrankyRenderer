@@ -759,19 +759,6 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
-msgid "Keep a Stable Zoom"
-msgstr "Zoom stabil halten"
-
-#. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
-msgid ""
-"Prefer a common zoom that preserves content when the detected active area "
-"changes."
-msgstr ""
-"Bevorzugt einen einheitlichen Zoom, der den Inhalt erhält, wenn sich der "
-"erkannte aktive Bildbereich ändert."
-
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
 msgid "Zoom Mode"
 msgstr "Zoommodus"
 
@@ -4124,3 +4111,87 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#. Section heading (General)
+#. Setting name (Shortcuts > )
+msgid "Diagnostics"
+msgstr "Diagnose"
+
+#. Setting name (General > Diagnostics)
+msgid "Diagnostic Log"
+msgstr "Diagnoseprotokoll"
+
+#. Setting description (General > Diagnostics > Diagnostic Log)
+msgid "Records the next start of the player for a bug report, then turns itself off."
+msgstr "Zeichnet den nächsten Start des Players für einen Fehlerbericht auf und schaltet sich danach selbst aus."
+
+#. Setting name (General > Diagnostics)
+msgid "Save Report"
+msgstr "Bericht speichern"
+
+#. Button (General > Diagnostics > Save Report)
+msgid "Save"
+msgstr "Speichern"
+
+#. Setting description (General > Diagnostics > Save Report)
+msgid "Saves a report for a bug report on the desktop."
+msgstr "Speichert einen Bericht für eine Fehlermeldung auf dem Desktop."
+
+#. Setting description (Processing > Dithering > Algorithm)
+msgid "Error diffusion costs more GPU time. Large kernels fall back to Blue Noise at high resolutions."
+msgstr "Fehlerdiffusion kostet mehr GPU-Zeit. Große Verfahren fallen bei hohen Auflösungen auf Blue Noise zurück."
+
+#. Choice description (Scaling > Filters > Frame Mixer)
+#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
+msgid "Clamped Mitchell spline frame mixing"
+msgstr "Begrenzte Mitchell-Spline-Bildmischung"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Simple"
+msgstr "Fehlerdiffusion: Simple"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: False Floyd-Steinberg"
+msgstr "Fehlerdiffusion: False Floyd-Steinberg"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra Lite"
+msgstr "Fehlerdiffusion: Sierra Lite"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Floyd-Steinberg"
+msgstr "Fehlerdiffusion: Floyd-Steinberg"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Atkinson"
+msgstr "Fehlerdiffusion: Atkinson"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Jarvis-Judice-Ninke"
+msgstr "Fehlerdiffusion: Jarvis-Judice-Ninke"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Stucki"
+msgstr "Fehlerdiffusion: Stucki"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Burkes"
+msgstr "Fehlerdiffusion: Burkes"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 2"
+msgstr "Fehlerdiffusion: Sierra 2"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 3"
+msgstr "Fehlerdiffusion: Sierra 3"

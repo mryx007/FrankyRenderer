@@ -689,17 +689,6 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
-msgid "Keep a Stable Zoom"
-msgstr ""
-
-#. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
-msgid ""
-"Prefer a common zoom that preserves content when the detected active area "
-"changes."
-msgstr ""
-
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
 msgid "Zoom Mode"
 msgstr ""
 
@@ -3727,4 +3716,88 @@ msgstr ""
 
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
+msgstr ""
+
+#. Section heading (General)
+#. Setting name (Shortcuts > )
+msgid "Diagnostics"
+msgstr ""
+
+#. Setting name (General > Diagnostics)
+msgid "Diagnostic Log"
+msgstr ""
+
+#. Setting description (General > Diagnostics > Diagnostic Log)
+msgid "Records the next start of the player for a bug report, then turns itself off."
+msgstr ""
+
+#. Setting name (General > Diagnostics)
+msgid "Save Report"
+msgstr ""
+
+#. Button (General > Diagnostics > Save Report)
+msgid "Save"
+msgstr ""
+
+#. Setting description (General > Diagnostics > Save Report)
+msgid "Saves a report for a bug report on the desktop."
+msgstr ""
+
+#. Setting description (Processing > Dithering > Algorithm)
+msgid "Error diffusion costs more GPU time. Large kernels fall back to Blue Noise at high resolutions."
+msgstr ""
+
+#. Choice description (Scaling > Filters > Frame Mixer)
+#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
+msgid "Clamped Mitchell spline frame mixing"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Simple"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: False Floyd-Steinberg"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra Lite"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Floyd-Steinberg"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Atkinson"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Jarvis-Judice-Ninke"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Stucki"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Burkes"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 2"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 3"
 msgstr ""

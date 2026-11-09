@@ -266,6 +266,7 @@ class Renderer final : public CBaseVideoRenderer,
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
     void CheckDisplayMode();
+    std::wstring GraphFilters();
     void CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen);
     void HoldForDisplayChange(float delay);
     void PausePlayback(DWORD milliseconds);

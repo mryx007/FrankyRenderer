@@ -117,7 +117,7 @@ class StatisticsBitmap
     // Top left of the window, or of the picture (x0, y0, x1, y1) when given.
     void Describe(pl_overlay& overlay, pl_overlay_part& part, const pl_rect2df* picture = nullptr)
     {
-        const float x = picture ? std::max(0.f, picture->x0) + 16 : 16,
+        const float x = picture ? std::max(0.f, picture->x0) : 0,
                     y = picture ? OverlayTop(picture->y0, picture->y1, float(height)) : 0;
         part.src = {0, 0, float(width), float(height)};
         part.dst = {x, y, x + float(width), y + float(height)};

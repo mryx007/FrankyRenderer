@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/Trace.h"
 #include "Renderer/RtxVideoProcessor.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
@@ -110,6 +111,7 @@ class RtxScaling
 
     void Fail(HRESULT result)
     {
+        Trace("RTX Video failed: 0x%08X", unsigned(result));
         ClearFrames();
         if (input)
             pl_tex_destroy(gpu, &input);
@@ -198,6 +200,7 @@ class RtxScaling
     // Stops requesting RTX Video HDR until the next Invalidate.
     void RefuseHdr(HRESULT reason, std::wstring detail = {})
     {
+        Trace("RTX Video HDR refused: 0x%08X [%ls]", unsigned(reason), detail.c_str());
         hdrRefused = reason;
         hdrFailureDetail = std::move(detail);
     }

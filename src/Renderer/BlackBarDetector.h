@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/Trace.h"
 #include "Settings/BlackBarSettings.h"
 #include "Renderer/BlackBarPixels.h"
 #include <algorithm>
@@ -22,6 +23,7 @@ class BlackBarDetector
 
   public:
     bool measured = false, subtitleProtection = false;
+    uint64_t lastTrace = 0;
     uint64_t samples = 0;
 
     void Reset()
@@ -63,8 +65,50 @@ class BlackBarDetector
         const int limit = static_cast<int>(settings.threshold * 2.55f);
         std::vector<int> rows(h), cols(w);
         const int bright = CountBlackBarPixels(pixels, w, h, pitch, limit, rows.data(), cols.data());
+        const auto report = [&](const char* verdict, const RECT& found)
+        {
+            if (!TraceEnabled() || now - lastTrace < 1000)
+                return;
+            lastTrace = now;
+            int first = 0, last = h - 1;
+            while (first < h - 1 && !rows[first])
+                ++first;
+            while (last > 0 && !rows[last])
+                --last;
+            const auto pixel = [&](int x, int y) { return pixels + size_t(y) * pitch + size_t(x) * 4; };
+            const auto *top = pixel(w / 2, 1), *middle = pixel(w / 2, h / 2), *bottom = pixel(w / 2, h - 2);
+            Trace(
+                "Black bars %s: probe %dx%d limit %d bright %d, lit rows %d-%d, top row %d/%d, rgb top %d,%d,%d middle "
+                "%d,%d,%d bottom %d,%d,%d, found L%ld T%ld R%ld B%ld of %dx%d, keepSubtitles %d",
+                verdict,
+                w,
+                h,
+                limit,
+                bright,
+                first,
+                last,
+                rows[0],
+                w,
+                top[0],
+                top[1],
+                top[2],
+                middle[0],
+                middle[1],
+                middle[2],
+                bottom[0],
+                bottom[1],
+                bottom[2],
+                found.left,
+                found.top,
+                found.right,
+                found.bottom,
+                sourceW,
+                sourceH,
+                int(settings.keepSubtitles));
+        };
         if (bright < std::max(16, w * h / 100))
         {
+            report("too little picture", RECT{});
             confirmations = 0;
             return false;
         }
@@ -124,6 +168,7 @@ class BlackBarDetector
             sourceH - next.bottom > sourceH * .35 || next.right - next.left < sourceW / 3 ||
             next.bottom - next.top < sourceH / 3)
         {
+            report("implausible bounds", next);
             confirmations = 0;
             return false;
         }
@@ -135,6 +180,7 @@ class BlackBarDetector
         if (*std::max_element(rows.begin(), rows.end()) < contentW * .65 ||
             *std::max_element(cols.begin(), cols.end()) < contentH * .65)
         {
+            report("sparse picture", next);
             confirmations = 0;
             return false;
         }
@@ -151,6 +197,7 @@ class BlackBarDetector
             // bounds; end credits 0.15-0.25.
             if (lit < area * .4)
             {
+                report("low fill", next);
                 confirmations = 0;
                 return false;
             }
@@ -175,12 +222,14 @@ class BlackBarDetector
         }
         if (confirmations >= 3 && (!haveBase || now - since >= uint64_t(settings.delay * 1000.f)))
         {
-            if (!haveBase || !settings.stableZoom)
-                base = candidate;
+            base = candidate;
             haveBase = true;
         }
         if (!haveBase)
+        {
+            report("waiting for confirmation", next);
             return false;
+        }
         RECT wanted = base;
         bool text = false;
         if (settings.keepSubtitles)
@@ -199,6 +248,7 @@ class BlackBarDetector
         else if (now < subtitleUntil)
             wanted = subtitleBounds;
         subtitleProtection = text || now < subtitleUntil;
+        report(subtitleProtection ? "subtitle protection" : "bars", wanted);
         if (!measured || !Near(old, wanted))
         {
             active = wanted;

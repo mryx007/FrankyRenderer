@@ -182,6 +182,8 @@ class PlaceboBackend
     // Short text in the picture for about two seconds, e.g. after a shortcut.
     void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;
+    // Latest Ctrl+J text with its on-screen markup; empty while Ctrl+J is off.
+    std::wstring StatisticsSnapshot() const;
 
     // What the window thread needs for the Windows HDR switch. The listener
     // runs on the render thread when it changes.

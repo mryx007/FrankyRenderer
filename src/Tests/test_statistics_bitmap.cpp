@@ -135,7 +135,7 @@ int main()
         pl_overlay overlay = {};
         pl_overlay_part part = {};
         bitmap.Describe(overlay, part);
-        Check(overlay.tex && overlay.tex->params.w == int(part.src.x1) && part.dst.x0 == 16,
+        Check(overlay.tex && overlay.tex->params.w == int(part.src.x1) && part.dst.x0 == 0,
               "GPU texture dimensions and left margin");
         Check(!bitmap.Update(d3d->gpu, L"statistics", 640, 360), "old viewport is not displayed after resize");
         Check(update(640, 360), "replacement viewport uploaded");

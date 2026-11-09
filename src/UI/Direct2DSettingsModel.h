@@ -4,7 +4,9 @@
 #include <functional>
 #include <cstring>
 #include "UI/Direct2DSettingsHelp.h"
+#include "Renderer/DiagnosticReport.h"
 #include "Settings/CustomShaders.h"
+#include "Settings/SettingsIni.h"
 #include "Settings/ShaderParameterLabels.h"
 #include "Renderer/DisplayModes.h"
 #include "UI/Translation.h"
@@ -43,6 +45,7 @@ inline constexpr D2DScalerPreset D2DScalerPresets[] = {
     {"hermite", L"Hermite-weighted frame mixing", 4},
     {"linear", L"Linear frame mixing", 4},
     {"cubic", L"Cubic B-spline frame mixing", 4},
+    {"mitchell_clamp", L"Clamped Mitchell spline frame mixing", 4},
 };
 
 inline std::wstring D2DScalerDescription(int role, const char* name)
@@ -390,6 +393,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto& b = card(p, L"Background & Transparency");
         for (int i = 0; i < 14; i++)
             extra(b, i);
+        auto& diagnostics = card(p, L"Diagnostics");
+        D2DControl log;
+        log.name = L"Diagnostic Log";
+        log.desc = L"Records the next start of the player for a bug report, then turns itself off.";
+        log.kind = ControlKind::Toggle;
+        log.get = [] { return Diagnostics::Armed() || TraceEnabled() ? 1.f : 0.f; };
+        log.set = [](float v) { Diagnostics::SetArmed(v != 0); };
+        diagnostics.controls.push_back(std::move(log));
+        diagnostics.controls.push_back(D2DAction(
+            L"Save Report",
+            L"Save",
+            [&s](HWND owner) { Diagnostics::SaveReport(SettingsIni::Serialize(s), owner); },
+            L"Saves a report for a bug report on the desktop."));
     }
     {
         auto& p = page(L"Processing", L"Processing", L"Image cleanup, field processing and output dithering.");
@@ -433,8 +449,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                       &s.fieldOverride,
                       {{0, L"Auto (Source Flags)"}, {1, L"Top Field First"}, {2, L"Bottom Field First"}}));
         auto& t = card(p, L"Dithering");
-        t.controls.push_back(D2DChoice(s, L"Algorithm", &s.ditherMethod, D2DChoices(DitherChoices)));
-        t.controls.push_back(D2DBool(s, L"Change Dither for Every Frame", &s.ditherTemporal));
+        t.controls.push_back(D2DChoice(
+            s,
+            L"Algorithm",
+            &s.ditherMethod,
+            D2DChoices(DitherChoices),
+            L"Error diffusion costs more GPU time. Large kernels fall back to Blue Noise at high resolutions."));
+        auto temporal = D2DBool(s, L"Change Dither for Every Frame", &s.ditherTemporal);
+        temporal.enabled = [&s] { return s.ditherMethod < 3; };
+        t.controls.push_back(std::move(temporal));
     }
     {
         auto& p = page(
@@ -487,14 +510,22 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             &s.presentAhead,
             {{0, L"Automatic"}, {1, L"1 Refresh"}, {2, L"2 Refreshes"}, {3, L"3 Refreshes"}, {4, L"4 Refreshes"}},
             L"Pictures handed to the display ahead of time. More absorbs render peaks but adds latency. Automatic adds more only after late pictures."));
-        c.controls.push_back(D2DNumber(
+        auto threshold = D2DNumber(
             s,
             L"Oversample Threshold",
             &s.motionThreshold,
             0,
             .5f,
             .01f,
-            L"Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends."));
+            L"Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends.");
+        // Only the oversample mixer drops short frames.
+        threshold.enabled = [&s]
+        {
+            const char* mixer = s.scaling.filters[4].filter;
+            return strcmp(mixer, "none") && strcmp(mixer, "linear") && strcmp(mixer, "hermite") &&
+                   strcmp(mixer, "cubic") && strcmp(mixer, "mitchell_clamp");
+        };
+        c.controls.push_back(std::move(threshold));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,
@@ -618,7 +649,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                      L"Protect Burned-in Subtitles",
                                      &s.blackBars.keepSubtitles,
                                      L"Temporarily restore bars if they contain visible content."));
-        c.controls.push_back(D2DBool(s, L"Keep a Stable Zoom", &s.blackBars.stableZoom));
         c.controls.push_back(D2DChoice(
             s, L"Zoom Mode", &s.blackBars.zoom, {{0, L"Fit (Keep All Content)"}, {1, L"Fill (May Crop Content)"}}));
         c.controls.push_back(D2DNumber(s, L"Black Threshold", &s.blackBars.threshold, 0, 10, .01f));

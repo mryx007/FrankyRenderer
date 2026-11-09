@@ -127,6 +127,7 @@ struct PlaceboBackend::State
         const pl_hook* hook = ParseUserShader(d3d->gpu, id, c);
         if (!hook)
         {
+            Trace("Shader failed to load: %s", ShaderCatalog[id].file);
             userFailed[id] = true;
             userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
             return false;
@@ -404,6 +405,7 @@ struct PlaceboBackend::State
             self->error = message;
         OutputDebugStringA(message);
         OutputDebugStringA("\n");
+        Trace("libplacebo: %s", message);
     }
 
     State()
@@ -1382,6 +1384,15 @@ struct PlaceboBackend::State
     {
         rtxKey = (uint64_t(1) << 63) | (++rtxSerial << 2);
         const auto layout = Layout(frame.format);
+        if (frame.width != description.width || frame.height != description.height ||
+            frame.format != description.format || frame.color.transfer != description.color.transfer)
+            Trace("Video %dx%d %s %d bit, transfer %d, primaries %d",
+                  frame.width,
+                  frame.height,
+                  layout.name,
+                  layout.depth,
+                  int(frame.color.transfer),
+                  int(frame.color.primaries));
         description = frame;
         image = {};
         image.num_planes = layout.planes;
@@ -2339,7 +2350,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     if ((settings.hdrNits != 0 && !range(settings.hdrNits, 80, 10000)) || !range(settings.antiringing, 0, 1))
         return E_INVALIDARG;
     if (settings.debandIterations < 0 || settings.debandIterations > 16 || settings.ditherMethod < 0 ||
-        settings.ditherMethod > 3 || !range(settings.debandThreshold, 0, 1000) ||
+        settings.ditherMethod >= int(std::size(DitherChoices)) || !range(settings.debandThreshold, 0, 1000) ||
         !range(settings.debandRadius, 0, 1000) || !range(settings.debandGrain, 0, 1000))
         return E_INVALIDARG;
     for (float width : {settings.upscalerBlur, settings.downscalerBlur})
@@ -3106,6 +3117,12 @@ void PlaceboBackend::SetDisplayHdrState(int enabled, bool rebuildOutput)
     state->displayHdrState = enabled;
     if (rebuildOutput)
         state->displayHdrRebuild = true;
+}
+
+std::wstring PlaceboBackend::StatisticsSnapshot() const
+{
+    std::lock_guard guard(state->lock);
+    return state->statisticsText;
 }
 
 bool PlaceboBackend::Flip() const
