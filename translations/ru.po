@@ -395,6 +395,32 @@ msgid ""
 msgstr ""
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
+msgid "Diagnostics"
+msgstr ""
+
+#. Setting name (General > Diagnostics)
+msgid "Diagnostic Log"
+msgstr ""
+
+#. Setting description (General > Diagnostics > Diagnostic Log)
+msgid ""
+"Records the next start of the player for a bug report, then turns itself off."
+msgstr ""
+
+#. Setting name (General > Diagnostics)
+msgid "Save Report"
+msgstr ""
+
+#. Setting description (General > Diagnostics > Save Report)
+msgid "Saves a report for a bug report on the desktop."
+msgstr ""
+
+#. Button (General > Diagnostics > Save Report)
+msgid "Save"
+msgstr ""
+
+#. Section heading (General)
 msgid "Menu Appearance"
 msgstr ""
 
@@ -585,7 +611,6 @@ msgid "Algorithm"
 msgstr ""
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
-#. Setting description (Processing > Dithering > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr ""
 
@@ -630,6 +655,12 @@ msgstr ""
 msgid "Dithering"
 msgstr ""
 
+#. Setting description (Processing > Dithering > Algorithm)
+msgid ""
+"Error diffusion costs more GPU time. Large kernels fall back to Blue Noise "
+"at high resolutions."
+msgstr ""
+
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Blue Noise (recommended)"
@@ -643,6 +674,56 @@ msgstr ""
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Random Dithering"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Simple"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: False Floyd-Steinberg"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra Lite"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Floyd-Steinberg"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Atkinson"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Jarvis-Judice-Ninke"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Stucki"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Burkes"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 2"
+msgstr ""
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 3"
 msgstr ""
 
 #. Setting name (Processing > Dithering)
@@ -938,6 +1019,11 @@ msgstr ""
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Cubic B-spline frame mixing"
+msgstr ""
+
+#. Choice description (Scaling > Filters > Frame Mixer)
+#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
+msgid "Clamped Mitchell spline frame mixing"
 msgstr ""
 
 #. Setting name (Scaling > Filters)
@@ -3716,88 +3802,4 @@ msgstr ""
 
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
-msgstr ""
-
-#. Section heading (General)
-#. Setting name (Shortcuts > )
-msgid "Diagnostics"
-msgstr ""
-
-#. Setting name (General > Diagnostics)
-msgid "Diagnostic Log"
-msgstr ""
-
-#. Setting description (General > Diagnostics > Diagnostic Log)
-msgid "Records the next start of the player for a bug report, then turns itself off."
-msgstr ""
-
-#. Setting name (General > Diagnostics)
-msgid "Save Report"
-msgstr ""
-
-#. Button (General > Diagnostics > Save Report)
-msgid "Save"
-msgstr ""
-
-#. Setting description (General > Diagnostics > Save Report)
-msgid "Saves a report for a bug report on the desktop."
-msgstr ""
-
-#. Setting description (Processing > Dithering > Algorithm)
-msgid "Error diffusion costs more GPU time. Large kernels fall back to Blue Noise at high resolutions."
-msgstr ""
-
-#. Choice description (Scaling > Filters > Frame Mixer)
-#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
-msgid "Clamped Mitchell spline frame mixing"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Simple"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: False Floyd-Steinberg"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Sierra Lite"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Floyd-Steinberg"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Atkinson"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Jarvis-Judice-Ninke"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Stucki"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Burkes"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Sierra 2"
-msgstr ""
-
-#. Choice (Processing > Dithering > Algorithm)
-#. Setting name (Shortcuts > )
-msgid "Error Diffusion: Sierra 3"
 msgstr ""
