@@ -209,7 +209,20 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     {
         DWORD t = 0, n = sizeof(UserShaderSettings);
         UserShaderSettings saved;
-        const auto result = RegQueryValueExW(key, L"UserShadersV3", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n);
+        const auto result = RegQueryValueExW(key, L"UserShadersV4", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n);
+
+        // V3 held the built-in shaders only; custom slots start disabled.
+        struct V3Shaders
+        {
+            ShaderConfig shaders[ShaderBuiltinCount];
+            int order[ShaderBuiltinCount];
+        } v3;
+
+        DWORD v3Size = sizeof(v3);
+        const auto resultV3 =
+            result == ERROR_FILE_NOT_FOUND
+                ? RegQueryValueExW(key, L"UserShadersV3", nullptr, &t, reinterpret_cast<BYTE*>(&v3), &v3Size)
+                : result;
 
         // V2 held the first 21 shaders; the added ones start disabled.
         struct V2Shaders
@@ -221,6 +234,15 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         DWORD v2Size = sizeof(v2);
         if (result == ERROR_SUCCESS && t == REG_BINARY && n == sizeof(saved) && ValidUserShaders(saved))
             settings.userShaders = saved;
+        else if (result == ERROR_FILE_NOT_FOUND && resultV3 == ERROR_SUCCESS)
+        {
+            UserShaderSettings migrated;
+            std::copy(std::begin(v3.shaders), std::end(v3.shaders), migrated.shaders);
+            std::copy(std::begin(v3.order), std::end(v3.order), migrated.order);
+            CompleteShaderOrder(migrated.order, ShaderBuiltinCount);
+            if (t == REG_BINARY && v3Size == sizeof(v3) && ValidUserShaders(migrated))
+                settings.userShaders = migrated;
+        }
         else if (result == ERROR_FILE_NOT_FOUND &&
                  RegQueryValueExW(key, L"UserShadersV2", nullptr, &t, reinterpret_cast<BYTE*>(&v2), &v2Size) ==
                      ERROR_SUCCESS)
@@ -719,7 +741,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
             result = RegSetValueExW(key, name, 0, type, static_cast<const BYTE*>(data), bytes);
     };
     save(L"HdrTonalV1", REG_BINARY, &s.tonal, sizeof(s.tonal));
-    save(L"UserShadersV3", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
+    save(L"UserShadersV4", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
     save(L"BlackBarsV1", REG_BINARY, &s.blackBars, sizeof(s.blackBars));
     save(L"RendererExtrasV1", REG_BINARY, &s.extras, sizeof(s.extras));
     save(L"ColorMappingV1", REG_BINARY, &s.colorMapping, sizeof(s.colorMapping));

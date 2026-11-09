@@ -83,3 +83,7 @@
 - Made the statistics colours subtler: normal values are white, yellow and red only mark problems and are softer.
 - Fixed RTX Video HDR being refused for small videos on some graphics cards. If the driver still refuses it, Ctrl+J shows where it failed.
 - Added "Switch Windows HDR" (HDR & Color Mapping > HDR Output), off by default: the renderer can turn Windows HDR on for HDR videos and off for SDR videos, always or only in fullscreen, and restores it afterwards. Colours then stay right in a window and under the player's controls. It stays on for SDR videos using RTX Video HDR.
+- Added your own shaders: mpv-format files (.glsl, .hook) placed in shaders\Custom beside the renderer appear on the Shaders page, with their settings. Shader packs with an mpv input.conf, such as Anime4K, show one entry per mode: unpack the whole archive there.
+- Built-in shaders you do not need can be deleted from shaders\PlayKit; they leave the list.
+- The shader list is now alphabetical, and Chain Position counts only the shaders that are switched on.
+- Long lists of active shaders now wrap in the Ctrl+J statistics.

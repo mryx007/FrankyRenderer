@@ -20,7 +20,7 @@ int wmain()
         PlaceboSettings s;
         auto pages = BuildD2DPages(s);
         int controls = 0, parameters = 0;
-        for (const auto& info : ShaderCatalog)
+        for (const auto& info : BuiltinShaderCatalog)
             parameters += info.count;
         Require(pages.size() == 8, "all sections");
         bool analysis = false;
@@ -268,8 +268,21 @@ int wmain()
         exposure.set(-.001f);
         Require(s.tonal.exposure[2] == -.001f && exposure.stepVal == .001f, "fine highlight adjustment");
         auto& order = find(L"Shaders", L"AMD CAS", L"Chain Position");
-        order.set(20);
-        Require(s.userShaders.order[20] == 0 && ValidUserShaders(s.userShaders), "shader reorder permutation");
+        Require(!order.Enabled(), "no chain order to choose with no shader running");
+        order.set(1);
+        Require(s.userShaders.order[0] == 0, "a shader that is off keeps its place");
+        for (int running : {s.userShaders.order[0], s.userShaders.order[1], s.userShaders.order[2]})
+            s.userShaders.shaders[running].enabled = 1;
+        const int first = s.userShaders.order[0], second = s.userShaders.order[1], third = s.userShaders.order[2];
+        Require(order.Enabled() && order.refreshChoices().size() == 3, "positions count the running shaders");
+        order.set(2);
+        Require(s.userShaders.order[0] == second && s.userShaders.order[1] == third &&
+                    s.userShaders.order[2] == first && order.get() == 2 && ValidUserShaders(s.userShaders),
+                "shader reorder among the running shaders");
+        order.set(0);
+        Require(s.userShaders.order[0] == first && ValidUserShaders(s.userShaders), "shader moves back to the front");
+        for (int running : {first, second, third})
+            s.userShaders.shaders[running].enabled = 0;
         order.reset();
         auto& recovery = find(L"HDR & Color Mapping", L"Contrast Recovery", L"Contrast Recovery");
         s.contrastRecovery = .5f;
@@ -664,7 +677,7 @@ int wmain()
         }
         Require(shaderRows == 7 && enabledSwitches == 0 && shaderScrollbar,
                 "compact shader list switches shaders; the editor holds only parameters");
-        host->m_shaderOffset = ShaderCount - 7;
+        host->m_shaderOffset = ShaderListedCount() - 7;
         host->m_selectedShader = 20;
         host->Render();
         Require(host->m_shaderList.right > host->m_shaderList.left, "last shader reachable");

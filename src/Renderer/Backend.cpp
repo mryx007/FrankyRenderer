@@ -1245,12 +1245,29 @@ struct PlaceboBackend::State
                       << (settings.blackBars.crop ? L"crop on" : L"detect only");
         }
         {
+            // A long chain continues on further rows so the box fits the picture.
             std::wstring shaders;
+            const wchar_t* label = L"Shaders";
+            const auto finishRow = [&]
+            {
+                row(label) << shaders;
+                label = L"";
+                shaders.clear();
+            };
             for (int id : settings.userShaders.order)
-                if (settings.userShaders.shaders[id].enabled)
-                    shaders += (shaders.empty() ? L"" : L", ") + std::wstring(ShaderCatalog[id].label);
+            {
+                if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
+                    continue;
+                const std::wstring name = ShaderCatalog[id].label;
+                if (!shaders.empty() && shaders.size() + name.size() > 70)
+                {
+                    shaders += L",";
+                    finishRow();
+                }
+                shaders += (shaders.empty() ? L"" : L", ") + name;
+            }
             if (!shaders.empty())
-                row(L"Shaders") << shaders;
+                finishRow();
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
         }
@@ -1799,7 +1816,8 @@ struct PlaceboBackend::State
         userShaderMessage.clear();
         for (int id : settings.userShaders.order)
         {
-            if (!settings.userShaders.shaders[id].enabled)
+            // A custom shader whose file was deleted simply drops out.
+            if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
             {
                 pl_mpv_user_shader_destroy(&userHooks[id]);
                 userCached[id] = {};
@@ -1820,6 +1838,12 @@ struct PlaceboBackend::State
             else
                 userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
         }
+        // libplacebo turns off a shader that does not compile on this GPU.
+        const auto renderErrors = pl_renderer_get_errors(renderer);
+        for (int i = 0; i < renderErrors.num_disabled_hooks; i++)
+            for (int n = 0; n < users; n++)
+                if (userHooks[hookIds[n]]->signature == renderErrors.disabled_hooks[i])
+                    userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[hookIds[n]].label;
         // Observe after user filters; inject the test ramp last, immediately
         // before libplacebo's output dithering and target overlays.
         for (int i = 0; i < analysisCount; ++i)
@@ -2262,9 +2286,6 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (!ValidUserShaders(settings.userShaders))
         return E_INVALIDARG;
-    for (int i = 0; i < ShaderCount; i++)
-        if (settings.userShaders.shaders[i].enabled && LoadUserShaderSource(i).empty())
-            return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
     if (!ValidExtras(settings.extras))
         return E_INVALIDARG;
     if (!ValidCombinedMapping(settings))

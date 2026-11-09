@@ -130,13 +130,16 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     }
     for (int i = 0; i < ShaderCount; ++i)
     {
+        field("ShaderOrder", "slot" + std::to_string(i), s.userShaders.order[i]);
+        // A deleted built-in shader keeps its section; only empty custom slots have none.
+        if (i >= ShaderBuiltinCount && !ShaderListed(i))
+            continue;
         auto& shader = s.userShaders.shaders[i];
-        const auto section = std::string("Shader.") + ShaderCatalog[i].file;
+        const auto section = std::string(i < ShaderBuiltinCount ? "Shader." : "CustomShader.") + ShaderCatalog[i].file;
         field(section, "enabled", shader.enabled);
         field(section, "overrides", shader.overrides);
         for (int j = 0; j < ShaderParameterLimit; ++j)
             field(section, "parameter" + std::to_string(j), shader.values[j]);
-        field("ShaderOrder", "slot" + std::to_string(i), s.userShaders.order[i]);
     }
 }
 
@@ -334,6 +337,9 @@ inline PlaceboSettings Parse(const std::string& text)
                   entries.erase(found);
               }
           });
+    // Custom shaders that are not installed here are skipped.
+    for (auto entry = entries.begin(); entry != entries.end();)
+        entry = entry->first.first.rfind("CustomShader.", 0) == 0 ? entries.erase(entry) : std::next(entry);
     if (!entries.empty())
         throw std::runtime_error("Unknown INI setting.");
     for (BOOL flag : {candidate.deband,

@@ -4,6 +4,7 @@
 #include <functional>
 #include <cstring>
 #include "UI/Direct2DSettingsHelp.h"
+#include "Settings/CustomShaders.h"
 #include "Settings/ShaderParameterLabels.h"
 #include "Renderer/DisplayModes.h"
 #include "UI/Translation.h"
@@ -265,6 +266,8 @@ inline float D2DScalingDefault(const PlaceboSettings& s, int role, int i)
 
 inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
 {
+    CustomShaders::Refresh();
+    MoveEmptyShaderSlotsLast(s.userShaders.order);
     std::vector<D2DPage> pages;
     auto page = [&](const wchar_t* name, const wchar_t* title, const wchar_t* help) -> D2DPage&
     {
@@ -896,8 +899,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                                for (auto& c : s.userShaders.shaders)
                                                    c.enabled = 0;
                                            }));
+        // The shaders that run, in the order they run.
+        const auto activeChain = [&s]
+        {
+            std::vector<int> active;
+            for (int id : s.userShaders.order)
+                if (s.userShaders.shaders[id].enabled && ShaderListed(id))
+                    active.push_back(id);
+            return active;
+        };
         for (int id : s.userShaders.order)
         {
+            if (!ShaderListed(id))
+                continue;
             const auto& info = ShaderCatalog[id];
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
@@ -911,7 +925,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             on.hidden = true;
             on.searchByCard = true;
             on.get = [&f] { return f.enabled ? 1.f : 0.f; };
-            on.set = [&f](float v) { f.enabled = v != 0; };
+            on.set = [&f, usable = info.usable](float v) { f.enabled = usable && v != 0; };
             c.controls.push_back(std::move(on));
             for (int i = 0; i < info.count; i++)
             {
@@ -928,6 +942,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 n.minVal = param.minimum;
                 n.maxVal = param.maximum;
                 n.stepVal = param.integer ? 1 : .001f;
+                // A parameter the shader defines as a list of names.
+                if (info.choices)
+                    if (const auto& names = info.choices[i]; !names.empty())
+                    {
+                        n.kind = ControlKind::Choice;
+                        for (size_t k = 0; k < names.size(); k++)
+                            n.choices.push_back({int(k), names[k]});
+                    }
                 n.defaultValue = [initial = param.initial] { return initial; };
                 n.get = [&f, i, initial = param.initial] { return f.overrides & (1u << i) ? f.values[i] : initial; };
                 n.set = [&f, i](float v)
@@ -945,31 +967,47 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             auto position = D2DControl{};
             position.name = L"Chain Position";
             position.kind = ControlKind::Choice;
-            for (int j = 0; j < ShaderCount; j++)
-                position.choices.push_back({j, std::to_wstring(j + 1)});
-            position.defaultValue = [id] { return float(id); };
-            position.get = [&s, id]
+            position.refreshChoices = [activeChain]
             {
-                for (int j = 0; j < ShaderCount; j++)
-                    if (s.userShaders.order[j] == id)
-                        return float(j);
-                return 0.f;
+                std::vector<ChoiceItem> items;
+                const int count = std::max(1, int(activeChain().size()));
+                for (int j = 0; j < count; j++)
+                    items.push_back({j, std::to_wstring(j + 1)});
+                return items;
             };
-            position.set = [&s, id](float v)
+            position.choices = position.refreshChoices();
+            // Only two or more running shaders have an order to choose.
+            position.enabled = [&f, activeChain] { return f.enabled && activeChain().size() > 1; };
+            position.get = [id, activeChain]
             {
-                int at = 0;
-                while (s.userShaders.order[at] != id)
-                    at++;
-                int to = int(v);
-                if (at < to)
-                    std::rotate(s.userShaders.order + at, s.userShaders.order + at + 1, s.userShaders.order + to + 1);
-                else
-                    std::rotate(s.userShaders.order + to, s.userShaders.order + at, s.userShaders.order + at + 1);
+                const auto active = activeChain();
+                const auto found = std::find(active.begin(), active.end(), id);
+                return found == active.end() ? 0.f : float(found - active.begin());
+            };
+            position.defaultValue = position.get;
+            position.set = [&s, id, activeChain](float v)
+            {
+                auto active = activeChain();
+                const auto self = std::find(active.begin(), active.end(), id);
+                if (self == active.end())
+                    return;
+                active.erase(self);
+                std::vector<int> order(std::begin(s.userShaders.order), std::end(s.userShaders.order));
+                order.erase(std::find(order.begin(), order.end(), id));
+                const size_t to = size_t(v);
+                auto at = order.begin();
+                if (to < active.size())
+                    at = std::find(order.begin(), order.end(), active[to]);
+                else if (!active.empty())
+                    at = std::find(order.begin(), order.end(), active.back()) + 1;
+                order.insert(at, id);
+                std::copy(order.begin(), order.end(), s.userShaders.order);
             };
             position.reset = [&s]
             {
                 for (int j = 0; j < ShaderCount; j++)
                     s.userShaders.order[j] = j;
+                MoveEmptyShaderSlotsLast(s.userShaders.order);
             };
             c.controls.push_back(std::move(position));
         }

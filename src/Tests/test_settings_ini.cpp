@@ -167,6 +167,7 @@ int wmain()
                                     &key,
                                     nullptr) == ERROR_SUCCESS,
                     "Test settings key");
+            RegDeleteValueW(key, L"UserShadersV4");
             RegDeleteValueW(key, L"UserShadersV3");
             Require(
                 RegSetValueExW(key, L"UserShadersV2", 0, REG_BINARY, reinterpret_cast<const BYTE*>(&v2), sizeof(v2)) ==

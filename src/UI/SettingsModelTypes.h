@@ -36,6 +36,8 @@ struct D2DControl
     float maxVal = 100.0f;
     float stepVal = 1.0f;
     std::vector<ChoiceItem> choices;
+    // For a list that depends on other settings; the menu asks before drawing.
+    std::function<std::vector<ChoiceItem>()> refreshChoices;
 
     std::function<float()> get;
     std::function<float()> defaultValue;

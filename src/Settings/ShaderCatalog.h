@@ -1,9 +1,15 @@
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <cwchar>
 #include <iterator>
-inline constexpr int ShaderCount = 23, ShaderParameterLimit = 12;
+#include <string>
+#include <vector>
+// Built-in shaders come first; files from shaders\Custom use the slots after them.
+inline constexpr int ShaderBuiltinCount = 23, ShaderCustomCount = 32,
+                     ShaderCount = ShaderBuiltinCount + ShaderCustomCount, ShaderParameterLimit = 12;
 
 struct ShaderParameterInfo
 {
@@ -20,9 +26,13 @@ struct ShaderInfo
     const wchar_t* help;
     int count;
     ShaderParameterInfo parameters[ShaderParameterLimit];
+    // Custom shaders only: the files to run in order, and names for list parameters.
+    const std::vector<std::wstring>* parts = nullptr;
+    const std::vector<std::wstring>* choices = nullptr;
+    bool usable = true;
 };
 
-inline constexpr ShaderInfo ShaderCatalog[] = {
+inline constexpr ShaderInfo BuiltinShaderCatalog[] = {
     {"AMD_CAS_scl_RT.glsl",
      L"AMD CAS",
      L"Sharpening",
@@ -204,6 +214,55 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      {}},
 };
 
+inline constexpr ShaderInfo EmptyShaderSlot{"", L"", L"", L"", 0, {}, nullptr, nullptr, false};
+// Current table of custom shaders (Settings/CustomShaders.h).
+inline std::atomic<const ShaderInfo*> CustomShaderSlots{nullptr};
+
+struct ShaderCatalogView
+{
+    const ShaderInfo& operator[](int id) const
+    {
+        if (id < ShaderBuiltinCount)
+            return BuiltinShaderCatalog[id];
+        const auto* custom = CustomShaderSlots.load();
+        return custom ? custom[id - ShaderBuiltinCount] : EmptyShaderSlot;
+    }
+};
+
+inline constexpr ShaderCatalogView ShaderCatalog;
+
+// Built-in shaders whose file the user deleted (Settings/CustomShaders.h).
+inline std::atomic<uint32_t> BuiltinShadersMissing{0};
+
+inline bool ShaderListed(int id)
+{
+    if (id < ShaderBuiltinCount)
+        return !(BuiltinShadersMissing.load() & (1u << id));
+    return ShaderCatalog[id].file[0] != 0;
+}
+
+// What the menu's list shows: all shaders by name.
+// The chain order is separate and only follows UserShaderSettings::order.
+inline std::vector<int> ShaderListOrder()
+{
+    std::vector<int> ids;
+    for (int id = 0; id < ShaderCount; id++)
+        if (ShaderListed(id))
+            ids.push_back(id);
+    std::sort(ids.begin(),
+              ids.end(),
+              [](int a, int b) { return _wcsicmp(ShaderCatalog[a].label, ShaderCatalog[b].label) < 0; });
+    return ids;
+}
+
+inline int ShaderListedCount()
+{
+    int count = 0;
+    for (int id = 0; id < ShaderCount; id++)
+        count += ShaderListed(id);
+    return count;
+}
+
 struct ShaderConfig
 {
     uint32_t enabled = 0, overrides = 0;
@@ -213,8 +272,16 @@ struct ShaderConfig
 struct UserShaderSettings
 {
     ShaderConfig shaders[ShaderCount];
-    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20};
+    int order[ShaderCount] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 21, 22, 16,
+                              17, 18, 19, 20, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
+                              38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54};
 };
+
+// The menu numbers chain positions, so shaders with a file come first.
+inline void MoveEmptyShaderSlotsLast(int (&order)[ShaderCount])
+{
+    std::stable_partition(std::begin(order), std::end(order), ShaderListed);
+}
 
 // Index of RAVU Zoom AR R2; shaders added later join the chain after it.
 inline constexpr int ShaderRavuR2 = 15, ShaderAddedFirst = 21;
@@ -225,11 +292,11 @@ inline constexpr int ShaderRavuR2 = 15, ShaderAddedFirst = 21;
 inline void CompleteShaderOrder(int (&order)[ShaderCount], int savedCount = ShaderCount)
 {
     int kept[ShaderCount] = {}, count = 0;
-    uint32_t seen = 0;
+    uint64_t seen = 0;
     for (int i = 0; i < savedCount; i++)
-        if (order[i] >= 0 && order[i] < ShaderCount && !(seen & (1u << order[i])))
+        if (order[i] >= 0 && order[i] < ShaderCount && !(seen & (1ull << order[i])))
         {
-            seen |= 1u << order[i];
+            seen |= 1ull << order[i];
             kept[count++] = order[i];
         }
     if (count == ShaderCount)
@@ -244,38 +311,40 @@ inline void CompleteShaderOrder(int (&order)[ShaderCount], int savedCount = Shad
     int merged[ShaderCount] = {}, n = 0;
     for (int i = 0; i < at; i++)
         merged[n++] = kept[i];
-    for (int id = ShaderAddedFirst; id < ShaderCount; id++)
-        if (!(seen & (1u << id)))
-            merged[n++] = id, seen |= 1u << id;
+    for (int id = ShaderAddedFirst; id < ShaderBuiltinCount; id++)
+        if (!(seen & (1ull << id)))
+            merged[n++] = id, seen |= 1ull << id;
     for (int i = at; i < count; i++)
         merged[n++] = kept[i];
     for (int id = 0; id < ShaderCount; id++)
-        if (!(seen & (1u << id)))
+        if (!(seen & (1ull << id)))
             merged[n++] = id;
     std::copy(merged, merged + ShaderCount, order);
 }
 
 inline bool ValidUserShaders(const UserShaderSettings& s)
 {
-    uint32_t seen = 0;
+    uint64_t seen = 0;
     for (int id : s.order)
     {
-        if (id < 0 || id >= ShaderCount || (seen & (1u << id)))
+        if (id < 0 || id >= ShaderCount || (seen & (1ull << id)))
             return false;
-        seen |= 1u << id;
+        seen |= 1ull << id;
     }
     for (int i = 0; i < ShaderCount; i++)
     {
         const auto& c = s.shaders[i];
-        const auto& meta = ShaderCatalog[i];
-        if (c.enabled > 1 || c.overrides & ~((1u << meta.count) - 1))
+        // A custom file can change or vanish; its saved values are limited when used.
+        const bool custom = i >= ShaderBuiltinCount;
+        const auto& meta = custom ? EmptyShaderSlot : BuiltinShaderCatalog[i];
+        if (c.enabled > 1 || c.overrides & ~((1u << (custom ? ShaderParameterLimit : meta.count)) - 1))
             return false;
         for (int p = 0; p < ShaderParameterLimit; p++)
         {
             const float v = c.values[p];
             if (!std::isfinite(v))
                 return false;
-            if (c.overrides & (1u << p))
+            if (!custom && c.overrides & (1u << p))
             {
                 const auto& range = meta.parameters[p];
                 if (v < range.minimum || v > range.maximum || (range.integer && std::floor(v) != v))

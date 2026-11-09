@@ -19,6 +19,7 @@
 #include "DolbyVision/Processor.h"
 #include "Renderer/DisplayModes.h"
 #include "Renderer/WindowsHdrSwitch.h"
+#include "Settings/CustomShaders.h"
 #include <atomic>
 #include <map>
 #include <mutex>

@@ -1563,6 +1563,15 @@ void Direct2DHostWindow::Render()
             else
                 currentY += 42.f; // the reset button's row, like a row of tabs
 
+            if (page.name == L"Shaders")
+                for (auto& shaderCard : m_pages[size_t(m_activePage)].cards)
+                    for (auto& control : shaderCard.controls)
+                        if (control.refreshChoices)
+                            control.choices = control.refreshChoices();
+            // The shader that was selected can have been deleted from its folder.
+            if (page.name == L"Shaders" && !ShaderListed(m_selectedShader))
+                if (const auto list = ShaderListOrder(); !list.empty())
+                    m_selectedShader = list.front();
             for (const auto& card : page.cards)
             {
                 if (page.name == L"Shaders" && card.title != ShaderCatalog[m_selectedShader].label)
@@ -1649,12 +1658,13 @@ void Direct2DHostWindow::Render()
     {
         m_shaderList = D2D1::RectF(contentX, currentY, contentX + contentW, currentY + 278);
         m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(m_shaderList, 8, 8), m_brushBgCard.Get());
+        const auto shaderList = ShaderListOrder();
         for (int row = 0; row < 7; row++)
         {
             int pos = m_shaderOffset + row;
-            if (pos >= ShaderCount)
+            if (pos >= int(shaderList.size()))
                 break;
-            int id = m_pSettings->userShaders.order[pos];
+            int id = shaderList[size_t(pos)];
             auto r =
                 D2D1::RectF(contentX + 6, currentY + 6 + row * 32, contentX + contentW - 20, currentY + 38 + row * 32);
             if (id == m_selectedShader)
@@ -1690,7 +1700,7 @@ void Direct2DHostWindow::Render()
         }
         DrawScrollbar(D2D1::RectF(contentX + contentW - 14, currentY + 6, contentX + contentW - 4, currentY + 230),
                       float(m_shaderOffset),
-                      float(ShaderCount),
+                      float(ShaderListedCount()),
                       7,
                       -2);
         auto button = D2D1::RectF(contentX + contentW - 110, currentY + 238, contentX + contentW - 16, currentY + 268);
@@ -3711,7 +3721,8 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
         else if (h.type == HitRegion::ShaderToggle)
         {
             auto& shader = m_pSettings->userShaders.shaders[h.pageIndex];
-            shader.enabled = !shader.enabled;
+            if (ShaderCatalog[h.pageIndex].usable)
+                shader.enabled = !shader.enabled;
             Changed();
         }
         else if (h.type == HitRegion::ShaderItem)
@@ -3963,7 +3974,7 @@ void Direct2DHostWindow::OnMouseMove(float x, float y, WPARAM flags)
         float f = travel > 0 ? std::clamp((y - m_scrollTrack.top - m_scrollGrab) / travel, 0.f, 1.f) : 0;
         EndEdit();
         if (m_scrollDrag == -2)
-            m_shaderOffset = int(std::round(f * (ShaderCount - 7)));
+            m_shaderOffset = int(std::round(f * std::max(0, ShaderListedCount() - 7)));
         else
             m_scrollY = f * m_maxScrollY;
         InvalidateRect(m_hwnd, nullptr, FALSE);
@@ -4010,7 +4021,7 @@ void Direct2DHostWindow::OnMouseWheel(short delta, float x, float y)
     if (m_shaderList.right > m_shaderList.left && x >= m_shaderList.left && x <= m_shaderList.right &&
         y >= m_shaderList.top && y <= m_shaderList.bottom)
     {
-        m_shaderOffset = std::clamp(m_shaderOffset - int(delta / 120) * 3, 0, ShaderCount - 7);
+        m_shaderOffset = std::clamp(m_shaderOffset - int(delta / 120) * 3, 0, std::max(0, ShaderListedCount() - 7));
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
@@ -4336,7 +4347,8 @@ LRESULT CALLBACK Direct2DHostWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam,
                     y <= h.rect.bottom)
                 {
                     auto& shader = pThis->m_pSettings->userShaders.shaders[h.pageIndex];
-                    shader.enabled = !shader.enabled;
+                    if (ShaderCatalog[h.pageIndex].usable)
+                        shader.enabled = !shader.enabled;
                     pThis->Changed();
                     toggled = true;
                     break;

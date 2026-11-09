@@ -886,6 +886,7 @@ static PlaceboSettings InitialSettings()
     SettingsJournal::Recover();
     DisplayModes::RecoverAbandoned();
     WindowsHdr::RecoverAbandoned();
+    CustomShaders::Refresh();
     return LoadSettings();
 }
 
