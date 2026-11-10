@@ -15,6 +15,7 @@
 #include "Renderer/RenderProbe.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/ShaderCache.h"
+#include "Renderer/ShaderWarmup.h"
 #include <deque>
 #include <sstream>
 #include <iomanip>
@@ -108,6 +109,72 @@ struct PlaceboBackend::State
     const pl_hook* userHooks[ShaderCount] = {};
     ShaderConfig userCached[ShaderCount];
     bool userFailed[ShaderCount] = {};
+    // Shaders compiled on a worker device, once per session; see ShaderWarmup.h.
+    std::shared_ptr<ShaderWarmupJob> warmups[ShaderCount];
+    bool warmupMerged[ShaderCount] = {}, warmupReported[ShaderCount] = {};
+    uint64_t warmupStarted[ShaderCount] = {};
+
+    LUID AdapterLuid() const
+    {
+        ComPtr<IDXGIDevice> dxgi;
+        ComPtr<IDXGIAdapter> adapter;
+        DXGI_ADAPTER_DESC desc = {};
+        if (d3d && SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&desc)))
+            return desc.AdapterLuid;
+        return {};
+    }
+
+    // False while the worker still compiles: this frame runs without the shader.
+    bool ShaderReady(int id)
+    {
+        auto& job = warmups[id];
+        if (!job)
+        {
+            const auto layout = Layout(description.format);
+            job = std::make_shared<ShaderWarmupJob>();
+            job->source = LoadUserShaderSource(id);
+            job->cache = shaderCache.Snapshot();
+            job->adapter = AdapterLuid();
+            job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
+            job->width = description.width;
+            job->height = description.height;
+            job->deep = layout.depth > 8;
+            job->rgb = layout.rgb;
+            job->notify = window;
+            warmupMerged[id] = warmupReported[id] = false;
+            warmupStarted[id] = GetTickCount64();
+            Trace("Shader warm-up start: %s, feature level %x, video %dx%d deep=%d rgb=%d, cache %zu bytes",
+                  ShaderCatalog[id].file,
+                  unsigned(job->featureLevel),
+                  job->width,
+                  job->height,
+                  int(job->deep),
+                  int(job->rgb),
+                  job->cache.size());
+            StartShaderWarmup(job);
+        }
+        const int state = job->state.load();
+        // The statistics show the shader as preparing meanwhile.
+        if (state == 0)
+            return false;
+        if (!warmupReported[id])
+        {
+            warmupReported[id] = true;
+            Trace("Shader warm-up %s: %s after %llu ms",
+                  state == 1 ? "done" : "FAILED, compiling during playback",
+                  ShaderCatalog[id].file,
+                  GetTickCount64() - warmupStarted[id]);
+        }
+        if (state == 1 && !warmupMerged[id])
+        {
+            warmupMerged[id] = true;
+            shaderCache.Import(job->cache);
+            std::vector<uint8_t>().swap(job->cache);
+        }
+        return true;
+    }
+
     std::wstring userShaderMessage;
     // Content profile in use, or why none applies; shown in the statistics.
     std::wstring contentProfile;
@@ -592,6 +659,7 @@ struct PlaceboBackend::State
             pl_mpv_user_shader_destroy(&userHooks[i]);
             userFailed[i] = false;
             userCached[i] = {};
+            warmups[i].reset();
         }
         userShaderMessage.clear();
         pl_d3d11_destroy(&d3d);
@@ -1260,7 +1328,9 @@ struct PlaceboBackend::State
             {
                 if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
                     continue;
-                const std::wstring name = ShaderCatalog[id].label;
+                std::wstring name = ShaderCatalog[id].label;
+                if (warmups[id] && !warmups[id]->state.load())
+                    name += L" (preparing)";
                 if (!shaders.empty() && shaders.size() + name.size() > 70)
                 {
                     shaders += L",";
@@ -1599,6 +1669,19 @@ struct PlaceboBackend::State
         float aspect = cropBars ? originalAspect * ((image.crop.x1 - image.crop.x0) / description.width) /
                                       ((image.crop.y1 - image.crop.y0) / description.height)
                                 : originalAspect;
+        // With automatic crop the renderer chooses the frame, but an aspect ratio
+        // the player set (an override in MPC-HC or MPC-BE) still applies: its
+        // rectangle then has another shape than the video. A player that only
+        // reports the whole window sets no aspect ratio.
+        if (autoZoom && windowGeometry && !IsRectEmpty(&targetRect) && rotation % 180 == 0)
+        {
+            const auto* texture = target.planes[0].texture;
+            const bool wholeWindow = texture && targetRect.left == 0 && targetRect.top == 0 &&
+                                     targetRect.right == texture->params.w && targetRect.bottom == texture->params.h;
+            if (!wholeWindow)
+                aspect *= float(targetRect.right - targetRect.left) / float(targetRect.bottom - targetRect.top) /
+                          originalAspect;
+        }
         if (rotation % 180)
             aspect = 1.f / aspect;
         // With automatic crop, fit the active image into the complete output;
@@ -1607,7 +1690,17 @@ struct PlaceboBackend::State
             target.crop = {0, 0, float(target.planes[0].texture->params.w), float(target.planes[0].texture->params.h)};
         float width = target.crop.x1 - target.crop.x0, height = target.crop.y1 - target.crop.y0;
         const bool fill = autoZoom && settings.blackBars.zoom == 1 && !blackBars.detector.subtitleProtection;
-        if ((width / height > aspect) != fill)
+        // MPC-HC and MPC-BE compute the video rectangle themselves, with the
+        // aspect ratio, an override, stretching and zoom, like for MPC Video
+        // Renderer; draw exactly into it. The renderer fits the picture itself
+        // only when it decides the frame: automatic crop, its own rotation, or
+        // no rectangle from the player. libplacebo clips a zoomed rectangle
+        // that reaches past the window.
+        const bool playerRectangle = windowGeometry && !IsRectEmpty(&targetRect) && !autoZoom && rotation % 180 == 0;
+        if (playerRectangle)
+        {
+        }
+        else if ((width / height > aspect) != fill)
         {
             float pad = (width - height * aspect) * .5f;
             target.crop.x0 += pad;
@@ -1656,6 +1749,10 @@ struct PlaceboBackend::State
             // bars or a zoom then only moves the driver's rectangles.
             int targetW = target.planes[0].texture ? target.planes[0].texture->params.w : outW;
             int targetH = target.planes[0].texture ? target.planes[0].texture->params.h : outH;
+            // A player zoom can make the rectangle larger than the window; the
+            // driver need not produce more than twice the window.
+            outW = std::min(outW, 2 * targetW);
+            outH = std::min(outH, 2 * targetH);
             if (rotation % 180)
             {
                 std::swap(outW, outH);
@@ -1837,6 +1934,8 @@ struct PlaceboBackend::State
             }
             if (PrepareUserShader(id))
             {
+                if (!ShaderReady(id))
+                    continue;
                 hooks[count++] = userHooks[id];
                 hookIds[users++] = id;
                 // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
@@ -1861,9 +1960,29 @@ struct PlaceboBackend::State
             hooks[count++] = analysisHooks[i];
         params.hooks = hooks;
         params.num_hooks = count;
+        auto timedDraw = [&](auto&& draw)
+        {
+            // A render that compiles a shader stops playback; say which.
+            const uint64_t begin = GetTickCount64();
+            const size_t cached = pl_cache_size(shaderCache.Handle());
+            const bool drawn = draw();
+            const uint64_t took = GetTickCount64() - begin;
+            if (took > 500)
+            {
+                std::string names;
+                for (int n = 0; n < users; n++)
+                    names += std::string(n ? ", " : "") + ShaderCatalog[hookIds[n]].file;
+                Trace("Slow render %llu ms, shader cache %zu -> %zu bytes, shaders: %s",
+                      took,
+                      cached,
+                      pl_cache_size(shaderCache.Handle()),
+                      names.empty() ? "none" : names.c_str());
+            }
+            return drawn;
+        };
         auto renderWithRecovery = [&](auto&& draw)
         {
-            if (draw())
+            if (timedDraw(draw))
                 return true;
             if (!users)
                 return false;
@@ -1879,15 +1998,6 @@ struct PlaceboBackend::State
         };
         pl_color_map_params dynamicMap =
             params.color_map_params ? *params.color_map_params : pl_color_map_default_params;
-        const bool protectHighlights =
-            settings.clippingProtection && settings.hdrMode != 1 && pl_color_space_is_hdr(&image.color);
-        if (protectHighlights)
-        {
-            dynamicMap.tone_mapping_function = &pl_tone_map_spline;
-            dynamicMap.inverse_tone_mapping = false;
-            params.peak_detect_params = &options->peak_detect_params;
-            params.color_map_params = &dynamicMap;
-        }
         const bool explicitMetadata = settings.colorMapping.values[MappingIndex("tone_map_metadata")][0] != 0;
         if (image.repr.dovi && !explicitMetadata)
         {
@@ -1901,7 +2011,7 @@ struct PlaceboBackend::State
         {
             // Prefer authored scene metadata to libplacebo's measured peak.
             dynamicMap.metadata = PL_HDR_METADATA_HDR10PLUS;
-            if ((settings.toneMapping == "auto" || protectHighlights) && image.color.hdr.ootf.target_luma > 0)
+            if (settings.toneMapping == "auto" && image.color.hdr.ootf.target_luma > 0)
                 dynamicMap.tone_mapping_function = &pl_tone_map_st2094_40;
             params.color_map_params = &dynamicMap;
         }

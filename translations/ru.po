@@ -1655,17 +1655,6 @@ msgstr ""
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Clipping Protection"
-msgstr ""
-
-#. Setting description (HDR > HDR Output > Clipping Protection)
-msgid ""
-"Automatically compress HDR highlights to the target peak. Bypassed during "
-"HDR passthrough."
-msgstr ""
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr ""
 
@@ -3801,3 +3790,4 @@ msgstr ""
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra 3"
 msgstr ""
+

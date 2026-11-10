@@ -93,3 +93,7 @@
 - Removed "Keep a Stable Zoom": a logo without black bars at the start could keep the bars of the whole film from being detected.
 - The Ctrl+J statistics now sit directly at the left edge.
 - MPC-HC supports FrankyRenderer from version 2.8.5.14: choose it under Options > Playback > Output.
+- Shaders that take long to compile no longer freeze the picture: the video keeps playing without them while they are prepared in the background, and they switch on when ready. The statistics show them as preparing meanwhile.
+- The shaders folder of the package now only holds PlayKit and Custom.
+- Removed "Clipping Protection": it silently replaced the chosen tone mapping function with Spline. For the same result, switch on Enable Peak Detection and choose Spline, or Auto for HDR10+ videos.
+- Fixed the aspect ratio override, stretching and zoom of MPC-HC and MPC-BE having no effect: the renderer now draws into the video area the player sets.

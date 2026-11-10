@@ -27,7 +27,20 @@ inline D2DControl* Find(std::vector<D2DPage>& pages, const Shortcuts::Custom& en
                     for (auto& control : card.controls)
                         if (control.name == entry.name && Usable(control))
                             return &control;
-    return nullptr;
+    // A setting moved to another card of the same page keeps its key, as long
+    // as its name is unique on that page.
+    D2DControl* moved = nullptr;
+    for (auto& page : pages)
+        if (page.name == entry.page)
+            for (auto& card : page.cards)
+                for (auto& control : card.controls)
+                    if (control.name == entry.name && Usable(control))
+                    {
+                        if (moved)
+                            return nullptr;
+                        moved = &control;
+                    }
+    return moved;
 }
 
 inline const ChoiceItem* Choice(const D2DControl& c, float value)

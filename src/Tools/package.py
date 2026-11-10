@@ -102,10 +102,21 @@ def main(out=OUT, source=SOURCE):
         "See LICENSE, THIRD_PARTY.md and licenses for notices.\n"
         "Source: https://github.com/mryx007/FrankyRenderer\n", encoding="utf-8",
     )
-    shutil.copytree(ROOT / "Shaders", out / "shaders", dirs_exist_ok=True)
+    # The other files in Shaders are compiled into the renderer when it is built.
+    shutil.rmtree(out / "shaders", ignore_errors=True)
+    for folder in ("PlayKit", "Custom"):
+        shutil.copytree(ROOT / "Shaders" / folder, out / "shaders" / folder)
 
     licenses = out / "licenses"
     licenses.mkdir(exist_ok=True)
+    (licenses / "adaptive-sharpen").mkdir(exist_ok=True)
+    notice = []
+    for line in (ROOT / "Shaders/adaptive-sharpen.glsl").read_text(encoding="utf-8").splitlines():
+        if not line.startswith("//"):
+            break
+        notice.append(line[2:].strip())
+    (licenses / "adaptive-sharpen/LICENSE.txt").write_text("\n".join(notice).strip() + "\n", encoding="utf-8")
+    shutil.copy2(ROOT / "Shaders/source.json", licenses / "adaptive-sharpen/source.json")
     (licenses / "runtime-names.json").write_text(json.dumps(runtime_manifest, indent=2) + "\n")
     shutil.copytree(
         ROOT / "deps/msys/ucrt64/share/licenses",

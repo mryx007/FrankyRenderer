@@ -117,32 +117,31 @@ int main()
         }
     Check(SUCCEEDED(backend.Upload(f, reinterpret_cast<uint8_t*>(input.data()), input.size() * 2)),
           "HDR highlight ramp");
-    auto hdrDraw = [&](int mode, bool protection = false)
+    auto hdrDraw = [&](int mode, const char* tone = "clip")
     {
         render.hdrMode = mode;
-        render.clippingProtection = protection;
-        Check(SUCCEEDED(backend.SetSettings(render)), "HDR protection settings");
+        render.toneMapping = tone;
+        Check(SUCCEEDED(backend.SetSettings(render)), "HDR tone mapping settings");
         std::vector<uint8_t> pixels;
         Check(SUCCEEDED(backend.RenderOffscreen(64, 64, pixels, true, 16)), "HDR highlight pixels");
         return pixels;
     };
-    const auto pass = hdrDraw(1), protectedHdr = hdrDraw(2, true);
+    const auto pass = hdrDraw(1), protectedHdr = hdrDraw(2, "spline");
     auto red = [](const std::vector<uint8_t>& pixels, int x)
     {
         uint16_t value = 0;
         memcpy(&value, pixels.data() + x * 8, sizeof(value));
         return float(value) / 65535.f;
     };
-    const auto clippedSdr = hdrDraw(2, false);
-    Check(Delta(clippedSdr, protectedHdr) > 100, "switch changes clipped HDR-to-SDR highlights");
+    const auto clippedSdr = hdrDraw(2);
+    Check(Delta(clippedSdr, protectedHdr) > 100, "a compressing curve differs from clipping");
     Check(red(protectedHdr, 63) <= 1.f, "protected SDR remains in range");
     Check(red(protectedHdr, 15) + .001f < red(protectedHdr, 31) &&
               red(protectedHdr, 31) + .001f < red(protectedHdr, 63),
           "highlight detail survives soft compression");
-    const auto passAgain = hdrDraw(1, true);
-    Check(Delta(pass, passAgain) < 100, "protection does not leak into passthrough");
-    puts(
-        "PASS HDR highlight protection: 4000-nit source to SDR, detail retained, explicit clip overridden only with protection enabled; passthrough unchanged");
+    const auto passAgain = hdrDraw(1, "spline");
+    Check(Delta(pass, passAgain) < 100, "the curve does not leak into passthrough");
+    puts("PASS HDR highlights: 4000-nit source to SDR, the chosen curve compresses, clip clips, passthrough unchanged");
     pl_options_free(&o);
     printf(
         "PASS %d native Color Mapping options; all tone/gamut functions; defaults, validation, persistence; live GPU exposure and tricubic LUT rendering\n",

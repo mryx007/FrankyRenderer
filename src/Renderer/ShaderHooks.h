@@ -2,6 +2,7 @@
 // Parsing of the user shader chain and Adaptive Sharpen, shared by playback
 // and the quality measurement so both run the same hooks.
 #include "Renderer/SharpenShader.h"
+#include "Renderer/Trace.h"
 #include "Renderer/UserShaderSource.h"
 #include <libplacebo/shaders/custom.h>
 #include <algorithm>

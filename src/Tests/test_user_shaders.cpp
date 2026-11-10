@@ -2,6 +2,9 @@
 // RAVU Zoom variants must also render a 2x upscale of a YCbCr frame.
 #define NOMINMAX
 #include "Renderer/ShaderHooks.h"
+#include "Renderer/ShaderWarmup.h"
+#include <dxgi.h>
+#include <wrl/client.h>
 #include "Settings/CustomShaders.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
@@ -161,6 +164,25 @@ int main()
             Require(custom->num_parameters == 1 && custom->parameters[0].data->f == 2.f,
                     "saved value reaches the shader within the file's limits");
             pl_mpv_user_shader_destroy(&custom);
+            {
+                // A worker device compiles the shader; its cache reaches this device.
+                ShaderWarmupJob job;
+                job.source = LoadUserShaderSource(id);
+                Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
+                Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+                DXGI_ADAPTER_DESC adapterDesc = {};
+                Require(SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+                            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&adapterDesc)),
+                        "adapter of the playing device");
+                job.adapter = adapterDesc.AdapterLuid;
+                job.width = 320;
+                job.height = 180;
+                Require(WarmUpShader(job) && !job.cache.empty(), "a worker device compiles the shader");
+                auto cacheParams = pl_cache_default_params;
+                pl_cache cache = pl_cache_create(&cacheParams);
+                Require(pl_cache_load(cache, job.cache.data(), job.cache.size()) > 0, "its cache can be loaded");
+                pl_cache_destroy(&cache);
+            }
             // A chain from a package runs as one shader.
             std::filesystem::create_directories(folder / L"shaders");
             for (const wchar_t* part : {L"one.glsl", L"two.glsl"})

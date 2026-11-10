@@ -69,8 +69,6 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
         {L"Tone Mapping Function",
          L"Compress source luminance into the output range. Algorithm-specific controls appear below."},
         {L"Gamut Mapping Function", L"Map source colors into the output display's supported color gamut."},
-        {L"Clipping Protection",
-         L"Automatically compress HDR highlights to the target peak. Bypassed during HDR passthrough."},
         {L"Show Clipping", L"Highlight values outside the target range to help evaluate mapping settings."},
         {L"Enable Peak Detection", L"Measure scene brightness to adapt HDR tone mapping to the video."},
         {L"Allow Delayed Peak Detection", L"Use a delayed brightness measurement to reduce synchronization overhead."},

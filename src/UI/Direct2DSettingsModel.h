@@ -709,9 +709,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                         {3, L"Turn On/Off in Fullscreen"},
                                         {4, L"Turn On/Off"}},
                                        L"Turns Windows HDR on or off for playback and restores it afterwards."));
-        auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
-        protection.enabled = [&s] { return s.hdrMode != 1; };
-        c.controls.push_back(std::move(protection));
         auto peak = D2DNumber(s, L"HDR Target Peak (0 = Auto)", &s.hdrNits, 0, 10000, 1);
         // Values between 0 and 80 nits are not valid peaks; skip them.
         peak.set = [&s](float v) { s.hdrNits = v > 0 && v < 80 ? (v < s.hdrNits ? 0.f : 80.f) : v; };
@@ -720,7 +717,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DNumber(s, L"SDR Target Brightness (nits)", &s.sdrNits, 40, 1000, 1));
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
-        c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
         c.controls.push_back(D2DBool(
             s,
             L"RTX Video HDR",
@@ -729,6 +725,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));
+        d.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
         d.controls.push_back(D2DNumber(s, L"Smoothing Period", &s.peakSmoothing, 0, 1000, .01f));
         d.controls.push_back(D2DNumber(s, L"Scene Threshold Low", &s.sceneLow, 0, 100, .001f));
         d.controls.push_back(D2DNumber(s, L"Scene Threshold High", &s.sceneHigh, 0, 100, .001f));

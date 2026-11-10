@@ -21,7 +21,7 @@ struct PlaceboSettings
     float saturation = 1, contrast = 1, brightness = 0, gamma = 1, sdrNits = 203;
     // Debanding numeric -1 means Default; explicit zero remains a manual value.
     BOOL deband = FALSE, hdrPassthrough = FALSE, autoHdr = FALSE;
-    BOOL clippingProtection = FALSE;
+    BOOL clippingProtection = FALSE; // no longer used; kept so saved settings and INI files still load
     wchar_t upscaler[64] = L"ewa_lanczos", downscaler[64] = L"mitchell";
     int deinterlacing = 1;
     int fieldOverride = 0; // 0=sample flags, 1=force TFF, 2=force BFF

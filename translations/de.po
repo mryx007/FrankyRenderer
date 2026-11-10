@@ -1825,19 +1825,6 @@ msgstr "Ein-/ausschalten"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Clipping Protection"
-msgstr "Schutz vor Übersteuerung"
-
-#. Setting description (HDR > HDR Output > Clipping Protection)
-msgid ""
-"Automatically compress HDR highlights to the target peak. Bypassed during "
-"HDR passthrough."
-msgstr ""
-"Komprimiert Spitzlichter in HDR automatisch auf die Zielspitzenhelligkeit. "
-"Wird bei der Durchleitung von HDR umgangen."
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr "Zielspitzenhelligkeit für HDR (0 = automatisch)"
 
@@ -4195,3 +4182,4 @@ msgstr "Fehlerdiffusion: Sierra 2"
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra 3"
 msgstr "Fehlerdiffusion: Sierra 3"
+

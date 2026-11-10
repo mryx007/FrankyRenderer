@@ -53,7 +53,6 @@ int wmain()
         Require(shaderSwitch, "shader switch exists");
         Require(MatchesFilter(L"Anything", L" \t"), "empty search");
         auto& hdrControls = pages[5].cards[0].controls;
-        bool hasProtection = false;
         for (auto& control : hdrControls)
         {
             if (control.name == L"HDR Mode")
@@ -62,18 +61,7 @@ int wmain()
                 for (const auto& choice : control.choices)
                     Require(choice.label.find(L"Protection") == std::wstring::npos, "protection is not an HDR mode");
             }
-            if (control.name == L"Clipping Protection")
-            {
-                hasProtection = true;
-                control.set(1);
-                Require(s.clippingProtection && s.hdrMode == 2, "switch does not change HDR mode");
-                s.hdrMode = 1;
-                Require(!control.enabled(), "pure passthrough bypasses protection");
-                s.hdrMode = 2;
-                control.set(0);
-            }
         }
-        Require(hasProtection, "independent protection switch exists");
         int exposureHits = 0, combinedHits = 0;
         for (const auto& p : pages)
             for (const auto& card : p.cards)

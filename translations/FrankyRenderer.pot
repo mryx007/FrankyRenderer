@@ -1634,15 +1634,6 @@ msgstr ""
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Clipping Protection"
-msgstr ""
-
-#. Setting description (HDR > HDR Output > Clipping Protection)
-msgid "Automatically compress HDR highlights to the target peak. Bypassed during HDR passthrough."
-msgstr ""
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr ""
 
@@ -1772,15 +1763,6 @@ msgstr ""
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Show Clipping"
-msgstr ""
-
-#. Setting description (HDR > HDR Output > Show Clipping)
-msgid "Highlight values outside the target range to help evaluate mapping settings."
-msgstr ""
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
 msgstr ""
 
@@ -1809,6 +1791,15 @@ msgstr ""
 
 #. Setting description (HDR > HDR Peak Detection > Allow Delayed Peak Detection)
 msgid "Use a delayed brightness measurement to reduce synchronization overhead."
+msgstr ""
+
+#. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
+msgid "Show Clipping"
+msgstr ""
+
+#. Setting description (HDR > HDR Peak Detection > Show Clipping)
+msgid "Highlight values outside the target range to help evaluate mapping settings."
 msgstr ""
 
 #. Setting name (HDR > HDR Peak Detection)

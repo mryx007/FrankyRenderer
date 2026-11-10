@@ -67,8 +67,8 @@ struct RenderSettings
     float debandThreshold = 3, debandRadius = 16, debandGrain = 4;
     bool ditherTemporal = false;
     bool deband = false, hdrPassthrough = false, autoHdr = false;
-    bool clippingProtection = false;
-    int deinterlacing = 1; // 0=off, 1=Bwdif, 2=Yadif
+    bool clippingProtection = false; // no longer used
+    int deinterlacing = 1;           // 0=off, 1=Bwdif, 2=Yadif
     std::string upscaler = "ewa_lanczos", downscaler = "mitchell";
     std::string chromaUpscaler = "auto";
     int outputFormat = 0;

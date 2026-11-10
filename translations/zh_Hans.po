@@ -1678,17 +1678,6 @@ msgstr "开启/关闭"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Clipping Protection"
-msgstr "削波保护"
-
-#. Setting description (HDR > HDR Output > Clipping Protection)
-msgid ""
-"Automatically compress HDR highlights to the target peak. Bypassed during "
-"HDR passthrough."
-msgstr "自动将 HDR 高光压缩至目标峰值。HDR 直通时绕过此处理。"
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr "HDR 目标峰值（0 = 自动）"
 
@@ -3830,3 +3819,4 @@ msgstr "误差扩散：Sierra 2"
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra 3"
 msgstr "误差扩散：Sierra 3"
+
