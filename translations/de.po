@@ -2058,18 +2058,6 @@ msgstr "Farben außerhalb des Farbumfangs hervorheben"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Show Clipping"
-msgstr "Übersteuerung anzeigen"
-
-#. Setting description (HDR > HDR Output > Show Clipping)
-msgid ""
-"Highlight values outside the target range to help evaluate mapping settings."
-msgstr ""
-"Hebt Werte außerhalb des Zielbereichs hervor, um die "
-"Umrechnungseinstellungen zu beurteilen."
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
 msgstr "RTX Video HDR"
 
@@ -2108,6 +2096,18 @@ msgid ""
 msgstr ""
 "Verwendet eine verzögerte Helligkeitsmessung, um den "
 "Synchronisierungsaufwand zu verringern."
+
+#. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
+msgid "Show Clipping"
+msgstr "Übersteuerung anzeigen"
+
+#. Setting description (HDR > HDR Peak Detection > Show Clipping)
+msgid ""
+"Highlight values outside the target range to help evaluate mapping settings."
+msgstr ""
+"Hebt Werte außerhalb des Zielbereichs hervor, um die "
+"Umrechnungseinstellungen zu beurteilen."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )

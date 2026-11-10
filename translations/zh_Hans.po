@@ -1901,16 +1901,6 @@ msgstr "高亮超出色域"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
-msgid "Show Clipping"
-msgstr "显示削波"
-
-#. Setting description (HDR > HDR Output > Show Clipping)
-msgid ""
-"Highlight values outside the target range to help evaluate mapping settings."
-msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
-
-#. Setting name (HDR > HDR Output)
-#. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
 msgstr "RTX 视频 HDR"
 
@@ -1945,6 +1935,16 @@ msgstr "启用延迟峰值检测"
 msgid ""
 "Use a delayed brightness measurement to reduce synchronization overhead."
 msgstr "使用延迟的亮度测量以减少同步开销。"
+
+#. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
+msgid "Show Clipping"
+msgstr "显示削波"
+
+#. Setting description (HDR > HDR Peak Detection > Show Clipping)
+msgid ""
+"Highlight values outside the target range to help evaluate mapping settings."
+msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
