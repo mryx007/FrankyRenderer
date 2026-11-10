@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 15:19+0000\n"
-"Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-10 12:50+0000\n"
+"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -14,7 +14,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.11.1.dev0\n"
+"X-Generator: Weblate 2026.11.2.dev0\n"
 
 #. Category
 #. Category heading
@@ -148,7 +148,7 @@ msgstr "16 位"
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Max Frames in Flight"
-msgstr "最大在途帧"
+msgstr "最大在途帧数"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
@@ -277,7 +277,7 @@ msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
-"0 表示不透明；1 表示透明。仅影响渲染时的透明度，不影响操作系统和窗口的透明"
+"0 表示不透明；1 表示透明。仅影响渲染时的透明度，不影响 Windows 桌面/窗口透明"
 "度。"
 
 #. Setting name (General > Background & Transparency)
@@ -941,7 +941,7 @@ msgstr "缩小视频时对图像进行滤波。\"自定义\"将复制所选滤�
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
-msgstr "使用与升频器相同的滤镜"
+msgstr "使用与放大器相同的滤镜"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -971,7 +971,7 @@ msgstr "Mitchell-Netravali 三次样条"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr "平面升频器 (色度/透明)"
+msgstr "平面放大器（色度 / Alpha）"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
@@ -987,7 +987,7 @@ msgstr "使用对应的图像缩放滤镜。"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr "平面降频器 (色度/透明)"
+msgstr "平面缩小器（色度 / Alpha）"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
@@ -1364,12 +1364,12 @@ msgstr "自定义：图像缩小器"
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
-msgstr "自定义：平面升频器 (色度/透明)"
+msgstr "自定义：平面放大器（色度 / Alpha）"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Downscaler (Chroma / Alpha)"
-msgstr "自定义：平面降频器 (色度/透明)"
+msgstr "自定义：平面缩小器（色度 / Alpha）"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
@@ -1459,13 +1459,13 @@ msgstr "旋转色度色相。0 保留原始颜色。"
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Temperature (K)"
-msgstr "色温（开）"
+msgstr "色温（K）"
 
 #. Setting description (Color > Picture Controls > Temperature (K))
 msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
-msgstr "调节白平衡（偏暖至中性）。6500 保留原始白平衡。"
+msgstr "调节白平衡（偏暖至中性）。6500 K 保留原始白平衡。"
 
 #. Section heading (Color)
 #. Section heading (Profiles)
@@ -1847,7 +1847,7 @@ msgstr "ST 2094-10"
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Clip"
-msgstr "剪切"
+msgstr "削波"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
@@ -1877,7 +1877,7 @@ msgstr "默认（libplacebo）"
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Softclip"
-msgstr "软剪切"
+msgstr "软削波"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
@@ -1902,7 +1902,7 @@ msgstr "高亮超出色域"
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "Show Clipping"
-msgstr "显示剪切"
+msgstr "显示削波"
 
 #. Setting description (HDR > HDR Output > Show Clipping)
 msgid ""
@@ -2162,25 +2162,25 @@ msgstr "色度伽马"
 #. Setting description (HDR > Gamut Mapping Constants > Colorimetric Gamma)
 msgid ""
 "Gamma used for colorimetric clipping; affects Relative and related mapping."
-msgstr "用于色度剪切的伽马；影响相对色度及相关映射。"
+msgstr "用于色度削波的伽马；影响相对色度及相关映射。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Softclip Knee"
-msgstr "软剪切膝点"
+msgstr "软削波膝点"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Knee)
 msgid "Saturation threshold where soft clipping starts."
-msgstr "开始软剪切的饱和度阈值。"
+msgstr "开始软削波的饱和度阈值。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Softclip Desaturation"
-msgstr "软剪切去饱和"
+msgstr "软削波去饱和"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Desaturation)
 msgid "Desaturation near the gamut boundary when using Softclip."
-msgstr "使用软剪切时在色域边界附近的去饱和程度。"
+msgstr "使用软削波时在色域边界附近的去饱和程度。"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -3442,7 +3442,7 @@ msgstr "为此文件切换到下一个配置文件。"
 
 #. Setting name (Shortcuts > )
 msgid "Reset Picture Controls"
-msgstr "重置画面调节"
+msgstr "重置画面控制"
 
 #. Setting description (Shortcuts >  > Reset Picture Controls)
 msgid "Sets brightness, contrast, saturation and gamma back to neutral."
@@ -3582,7 +3582,7 @@ msgstr "自定义"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset"
-msgstr "已重置"
+msgstr "重置"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Smooth Motion"
