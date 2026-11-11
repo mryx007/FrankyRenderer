@@ -183,7 +183,7 @@ three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
 also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
 PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
-`1F1A4B7D8B6618DEFD53975BF76CBF3E1B241583815D3EB92397F4843BCBD570`.
+`0A72183EBBEC178C057FB2B24C8BDAEE54DC41A9B4EB1776BAFCB171956B1CAB`.
 
 The complete captured 720p 4x post-network path is now stage-exact. The
 captured `f36` tail is A16B16G16R16 UNORM rather than RGBA16F, and PS_536,
