@@ -1790,22 +1790,6 @@ msgstr ""
 "Nutzt eine .cube-Datei neben dem Video: zuerst eine mit dem Namen des "
 "Videos, sonst die einzige im Ordner. Andernfalls die LUT oben."
 
-#. Menu text; keep %d and %s placeholders
-msgid "LUT"
-msgstr "LUT"
-
-#. Menu text; keep %d and %s placeholders
-msgid "No LUT in the video folder"
-msgstr "Keine LUT im Videoordner"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Several LUTs in the video folder"
-msgstr "Mehrere LUTs im Videoordner"
-
-#. Menu text; keep %d and %s placeholders
-msgid "LUT in the video folder unreadable"
-msgstr "LUT im Videoordner nicht lesbar"
-
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
 msgid "LUT Type"
@@ -2852,6 +2836,21 @@ msgid ""
 msgstr ""
 "Stärke für diesen Shader anpassen. Der Standardwert entspricht der Vorgabe "
 "des Shaderautors."
+
+#. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
+msgid "Automatic Order"
+msgstr "Automatische Reihenfolge"
+
+#. Setting description (Shaders > AMD CAS > Automatic Order)
+#. Setting description (Shaders > FineDehalo > Automatic Order)
+#. Setting description (Shaders > Anti-Ringing > Automatic Order)
+msgid ""
+"Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr ""
+"Erst reinigen, dann skalieren, dann schärfen. Zum Festlegen der Positionen "
+"ausschalten."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
@@ -3982,6 +3981,22 @@ msgid "Black Bar Detection"
 msgstr "Schwarze-Balken-Erkennung"
 
 #. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr "LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr "Keine LUT im Videoordner"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr "Mehrere LUTs im Videoordner"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr "LUT im Videoordner nicht lesbar"
+
+#. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr "Bei %sp bietet dieser Bildschirm %s Hz."
 
@@ -4058,6 +4073,30 @@ msgstr "Seite zurücksetzen"
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
 msgstr "Shader zurücksetzen"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr "Eingang"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr "Luma"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr "Chroma"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr "Bild"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr "Vor Skalierung"
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr "Nach Skalierung"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Saved"
@@ -4217,35 +4256,3 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
-
-#. Setting name (Shaders > Chain Controls)
-msgid "Automatic Order"
-msgstr "Automatische Reihenfolge"
-
-#. Setting description (Shaders > Chain Controls > Automatic Order)
-msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
-msgstr "Erst reinigen, dann skalieren, dann schärfen. Zum Festlegen der Positionen ausschalten."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Input"
-msgstr "Eingang"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Luma"
-msgstr "Luma"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Chroma"
-msgstr "Chroma"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Image"
-msgstr "Bild"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Before Scaling"
-msgstr "Vor Skalierung"
-
-#. Menu text; keep %d and %s placeholders
-msgid "After Scaling"
-msgstr "Nach Skalierung"
