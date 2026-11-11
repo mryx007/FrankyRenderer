@@ -137,6 +137,22 @@ int main(int argc, char** argv)
                     storedDifferent, storedMaximum, storedOverOne);
         Require(storedMaximum <= 1 && storedOverOne == 0,
                 "NGU stored-frame RGB acceptance");
+
+        std::vector<uint8_t> pattern(rgb48.size());
+        for (size_t i = 0; i < size_t(1280) * 720; ++i)
+        {
+            const uint16_t red = uint16_t(30000 + (i % 1280) * 20);
+            const uint16_t green = uint16_t(40000 + ((i / 1280) % 720) * 20);
+            std::memcpy(pattern.data() + i * 6, &red, sizeof(red));
+            std::memcpy(pattern.data() + i * 6 + 2, &green, sizeof(green));
+        }
+        Require(SUCCEEDED(backend.Upload(frame, pattern.data(), pattern.size())),
+                "NGU pattern upload");
+        std::vector<uint8_t> patternPixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, patternPixels)),
+                "NGU pattern render");
+        Require(patternPixels[0] || patternPixels[1] || patternPixels[2],
+                "NGU pattern output is not black");
         std::printf("PASS_PRODUCT ngu_sharp backend RGB48 -> 4K\n");
         return 0;
     }
