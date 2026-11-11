@@ -226,7 +226,6 @@ int main(int argc, char** argv)
             xActual,
             ReadBytes(root / "draw_31724_PS_1284_386cc8d7_rt0_3840x1080_f36.bin", size_t(3840) * 1080 * 8),
             xMaximum);
-
         auto yOutput = CreateTexture(
             device, 3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM,
             D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
@@ -334,6 +333,113 @@ int main(int argc, char** argv)
             ownedFinalMaximum,
             ownedFinalOverOne);
 
+        const auto schedulerSourceCapture =
+            ReadBytes(root / "input_31706_PS_1412_aad01c2f_s0.bin", size_t(1920) * 1080 * 8);
+        std::vector<uint16_t> schedulerSource(size_t(1920) * 1080);
+        for (size_t i = 0; i < schedulerSource.size(); ++i)
+            std::memcpy(
+                &schedulerSource[i], schedulerSourceCapture.data() + i * 8, sizeof(uint16_t));
+        auto schedulerSourceTexture = CreateTexture(
+            device,
+            1920,
+            1080,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE,
+            schedulerSource.data());
+        ComPtr<ID3D11ShaderResourceView> schedulerSourceView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    schedulerSourceTexture.Get(), nullptr, &schedulerSourceView)),
+                "scheduler source SRV");
+        Require(ngu.PrepareNativeLumaVeryHigh1080(d3d->gpu), ngu.LastError());
+        const bool schedulerRan = ngu.RunNativeLumaVeryHigh1080(
+            schedulerSourceView.Get(), xInputView.Get(), 1920, 1080, finalView.Get(), false);
+        Require(schedulerRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerFinalActual = Download(device, context.Get(), finalOutput.Get());
+        int schedulerFinalMaximum = 0, schedulerFinalOverOne = 0;
+        const int schedulerFinalDifferent = CountPixelDifferences(
+            schedulerFinalActual,
+            ReadBytes(root / "draw_31727_PS_1352_6992f6f0_rt0_3840x2160_f21.bin", size_t(3840) * 2160 * 4),
+            schedulerFinalMaximum,
+            schedulerFinalOverOne);
+        auto schedulerAddTexture = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerAddView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerAddTexture.Get(), nullptr, &schedulerAddView)),
+                "scheduler add RTV");
+        Require(ngu.CopyNativeLumaVeryHighAdd(schedulerAddView.Get()), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerAddActual = Download(device, context.Get(), schedulerAddTexture.Get());
+        int schedulerAddMaximum = 0;
+        const auto schedulerAddCapture =
+            ReadBytes(root / "draw_31723_PS_564_500335c8_rt0_3840x2160_f81.bin", size_t(3840) * 2160 * 8);
+        std::vector<uint8_t> schedulerAddExpected(size_t(3840) * 2160 * 2);
+        for (size_t i = 0; i < size_t(3840) * 2160; ++i)
+            std::memcpy(schedulerAddExpected.data() + i * 2, schedulerAddCapture.data() + i * 8, 2);
+        const int schedulerAddDifferent = CountComponents(
+            schedulerAddActual,
+            schedulerAddExpected,
+            schedulerAddMaximum);
+        auto schedulerUpXTexture = CreateTexture(
+            device,
+            3840,
+            1080,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerUpXView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerUpXTexture.Get(), nullptr, &schedulerUpXView)),
+                "scheduler UpX RTV");
+        Require(ngu.CopyNativeLumaVeryHighUpX(schedulerUpXView.Get()), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerUpXActual = Download(device, context.Get(), schedulerUpXTexture.Get());
+        int schedulerUpXMaximum = 0;
+        const int schedulerUpXDifferent = CountComponents(
+            schedulerUpXActual,
+            ReadBytes(root / "draw_31724_PS_1284_386cc8d7_rt0_3840x1080_f36.bin", size_t(3840) * 1080 * 8),
+            schedulerUpXMaximum);
+        auto schedulerUpYTexture = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerUpYView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerUpYTexture.Get(), nullptr, &schedulerUpYView)),
+                "scheduler UpY RTV");
+        Require(ngu.CopyNativeLumaVeryHighUpY(schedulerUpYView.Get()), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerUpYActual = Download(device, context.Get(), schedulerUpYTexture.Get());
+        int schedulerUpYMaximum = 0;
+        const int schedulerUpYDifferent = CountComponents(
+            schedulerUpYActual,
+            ReadBytes(root / "draw_31725_PS_1284_dc97a0d0_rt0_3840x2160_f36.bin", size_t(3840) * 2160 * 8),
+            schedulerUpYMaximum);
+        auto schedulerMergeTexture = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerMergeView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerMergeTexture.Get(), nullptr, &schedulerMergeView)),
+                "scheduler merge RTV");
+        Require(ngu.CopyNativeLumaVeryHighMerge(schedulerMergeView.Get()), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerMergeActual = Download(device, context.Get(), schedulerMergeTexture.Get());
+        int schedulerMergeMaximum = 0;
+        const int schedulerMergeDifferent = CountComponents(
+            schedulerMergeActual,
+            ReadBytes(root / "draw_31726_PS_548_d6670d4b_rt0_3840x2160_f36.bin", size_t(3840) * 2160 * 8),
+            schedulerMergeMaximum);
+
         std::printf("UpX different=%d maximum=%d\n", xDifferent, xMaximum);
         std::printf("UpY different=%d maximum=%d\n", yDifferent, yMaximum);
         std::printf("Merge different=%d maximum=%d\n", mergeDifferent, mergeMaximum);
@@ -343,15 +449,34 @@ int main(int argc, char** argv)
                     dynamicFinalDifferent, dynamicFinalMaximum, dynamicFinalOverOne);
         std::printf("FinalOwned different=%d maximum=%d diff_gt_1_pixels=%d\n",
                     ownedFinalDifferent, ownedFinalMaximum, ownedFinalOverOne);
+        std::printf("SchedulerFinal different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    schedulerFinalDifferent, schedulerFinalMaximum, schedulerFinalOverOne);
+        std::printf("SchedulerAdd different=%d maximum=%d\n",
+                    schedulerAddDifferent, schedulerAddMaximum);
+        std::printf("SchedulerUpX different=%d maximum=%d\n",
+                    schedulerUpXDifferent, schedulerUpXMaximum);
+        std::printf("SchedulerUpY different=%d maximum=%d\n",
+                    schedulerUpYDifferent, schedulerUpYMaximum);
+        std::printf("SchedulerMerge different=%d maximum=%d\n",
+                    schedulerMergeDifferent, schedulerMergeMaximum);
         const bool pass = xDifferent == 0 && yDifferent == 0 && mergeDifferent == 0 &&
                           finalMaximum <= 1 && finalOverOne == 0 &&
                           dynamicFinalMaximum <= 1 && dynamicFinalOverOne == 0 &&
-                          ownedFinalMaximum <= 1 && ownedFinalOverOne == 0;
+                          ownedFinalMaximum <= 1 && ownedFinalOverOne == 0 &&
+                          schedulerFinalMaximum <= 1 && schedulerFinalOverOne == 0 &&
+                          schedulerAddDifferent == 0 && schedulerAddMaximum == 0 &&
+                          schedulerUpXDifferent == 0 && schedulerUpXMaximum == 0 &&
+                          schedulerUpYDifferent == 0 && schedulerUpYMaximum == 0 &&
+                          schedulerMergeDifferent == 0 && schedulerMergeMaximum == 0;
         for (const auto& [name, bytes] :
              {std::pair{L"upx", xActual}, std::pair{L"upy", yActual},
               std::pair{L"merge", mergeActual}, std::pair{L"final", finalActual},
               std::pair{L"final_dynamic", dynamicFinalActual},
-              std::pair{L"final_owned", ownedFinalActual}})
+              std::pair{L"final_owned", ownedFinalActual},
+              std::pair{L"final_scheduler", schedulerFinalActual},
+              std::pair{L"final_scheduler_upx", schedulerUpXActual},
+              std::pair{L"final_scheduler_upy", schedulerUpYActual},
+              std::pair{L"final_scheduler_merge", schedulerMergeActual}})
         {
             std::ofstream file(actualPrefix + name + L".bin", std::ios::binary);
             file.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));

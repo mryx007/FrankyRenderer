@@ -338,6 +338,37 @@ struct NguScaler::NativeLumaFinal
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeLumaVeryHigh1080
+{
+    std::array<ComPtr<ID3D11Texture2D>, 3> initialTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 3> initialViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 3> initialShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 3>, 2> layerTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 3>, 2> layerViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 3>, 2> layerShaderViews;
+    ComPtr<ID3D11Texture2D> denseTexture;
+    ComPtr<ID3D11RenderTargetView> denseView;
+    ComPtr<ID3D11ShaderResourceView> denseShaderView;
+    ComPtr<ID3D11Texture2D> scaleXTexture;
+    ComPtr<ID3D11RenderTargetView> scaleXView;
+    ComPtr<ID3D11ShaderResourceView> scaleXShaderView;
+    ComPtr<ID3D11Texture2D> scaleYTexture;
+    ComPtr<ID3D11RenderTargetView> scaleYView;
+    ComPtr<ID3D11ShaderResourceView> scaleYShaderView;
+    ComPtr<ID3D11Texture2D> addTexture;
+    ComPtr<ID3D11RenderTargetView> addView;
+    ComPtr<ID3D11ShaderResourceView> addShaderView;
+    ComPtr<ID3D11Texture2D> upXTexture;
+    ComPtr<ID3D11RenderTargetView> upXView;
+    ComPtr<ID3D11ShaderResourceView> upXShaderView;
+    ComPtr<ID3D11Texture2D> upYTexture;
+    ComPtr<ID3D11RenderTargetView> upYView;
+    ComPtr<ID3D11ShaderResourceView> upYShaderView;
+    ComPtr<ID3D11Texture2D> mergeTexture;
+    ComPtr<ID3D11RenderTargetView> mergeView;
+    ComPtr<ID3D11ShaderResourceView> mergeShaderView;
+};
+
 struct NguScaler::NativeSuperResPrimitives
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -454,7 +485,8 @@ bool NguScaler::PrepareNativeLumaInitial(pl_gpu gpu)
     }
     if (nativeLumaInitial_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -690,7 +722,8 @@ bool NguScaler::PrepareNativeLumaLayers(pl_gpu gpu)
     }
     if (nativeLumaLayers_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -888,7 +921,8 @@ bool NguScaler::PrepareNativeLumaDense(pl_gpu gpu)
     }
     if (nativeLumaDense_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -1071,7 +1105,8 @@ bool NguScaler::PrepareNativeLumaScaleAdd(pl_gpu gpu)
     }
     if (nativeLumaScaleAdd_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -1259,7 +1294,8 @@ bool NguScaler::PrepareNativeLumaFinish(pl_gpu gpu)
     }
     if (nativeLumaFinish_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -1482,7 +1518,8 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
     }
     if (nativeLumaFinal_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -1567,29 +1604,6 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
         return false;
     }
 
-    std::vector<uint32_t> ditherWords(size_t(3840) * 2160);
-    dither_.SeedColorFromClock();
-    dither_.FillColor(ditherWords);
-    D3D11_TEXTURE2D_DESC ditherDesc = {};
-    ditherDesc.Width = 3840;
-    ditherDesc.Height = 2160;
-    ditherDesc.MipLevels = 1;
-    ditherDesc.ArraySize = 1;
-    ditherDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    ditherDesc.SampleDesc.Count = 1;
-    ditherDesc.Usage = D3D11_USAGE_IMMUTABLE;
-    ditherDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    D3D11_SUBRESOURCE_DATA ditherData = {};
-    ditherData.pSysMem = ditherWords.data();
-    ditherData.SysMemPitch = 3840 * sizeof(uint32_t);
-    if (FAILED(device->CreateTexture2D(&ditherDesc, &ditherData, &state->ditherTexture)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->ditherTexture.Get(), nullptr, &state->ditherView)))
-    {
-        error_ = "NGU native final dither texture could not be created";
-        return false;
-    }
-
     D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -1628,6 +1642,44 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
     cached_.sourceWidth = 3840;
     cached_.sourceHeight = 2160;
     hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareOwnedDither()
+{
+    if (!nativeLumaFinal_ || !gpu_)
+    {
+        error_ = "NGU native final dither state is unavailable";
+        return false;
+    }
+    if (nativeLumaFinal_->ditherView)
+        return true;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    std::vector<uint32_t> ditherWords(size_t(3840) * 2160);
+    dither_.SeedColorFromClock();
+    dither_.FillColor(ditherWords);
+    D3D11_TEXTURE2D_DESC ditherDesc = {};
+    ditherDesc.Width = 3840;
+    ditherDesc.Height = 2160;
+    ditherDesc.MipLevels = 1;
+    ditherDesc.ArraySize = 1;
+    ditherDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ditherDesc.SampleDesc.Count = 1;
+    ditherDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    ditherDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA ditherData = {};
+    ditherData.pSysMem = ditherWords.data();
+    ditherData.SysMemPitch = 3840 * sizeof(uint32_t);
+    if (FAILED(device->CreateTexture2D(
+            &ditherDesc, &ditherData, &nativeLumaFinal_->ditherTexture)) ||
+        FAILED(device->CreateShaderResourceView(nativeLumaFinal_->ditherTexture.Get(),
+                                               nullptr,
+                                               &nativeLumaFinal_->ditherView)))
+    {
+        error_ = "NGU native final dither texture could not be created";
+        return false;
+    }
     error_ = "";
     return true;
 }
@@ -1708,12 +1760,285 @@ bool NguScaler::RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
 bool NguScaler::RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
                                               ID3D11RenderTargetView* output)
 {
-    if (!nativeLumaFinal_ || !nativeLumaFinal_->ditherView || !input || !output)
+    if (!nativeLumaFinal_ || !input || !output || !PrepareOwnedDither())
     {
         error_ = "NGU native final request is invalid";
         return false;
     }
     return RunNativeLumaFinalNextPhase(input, nativeLumaFinal_->ditherView.Get(), output);
+}
+
+bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU VeryHigh luma requires a GPU";
+        return false;
+    }
+    if (nativeLumaVeryHigh1080_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU VeryHigh luma requires the D3D11 backend";
+        return false;
+    }
+    if (!PrepareNativeLumaInitial(gpu) ||
+        !PrepareNativeLumaLayers(gpu) ||
+        !PrepareNativeLumaDense(gpu) ||
+        !PrepareNativeLumaScaleAdd(gpu) ||
+        !PrepareNativeLumaFinish(gpu) ||
+        !PrepareNativeLumaFinal(gpu))
+    {
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLumaVeryHigh1080>();
+    ID3D11Device* device = d3d->device;
+    auto create = [&](UINT width,
+                      UINT height,
+                      DXGI_FORMAT format,
+                      ComPtr<ID3D11Texture2D>& texture,
+                      ComPtr<ID3D11RenderTargetView>& view,
+                      ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
+    };
+
+    for (size_t i = 0; i < state->initialTextures.size(); ++i)
+    {
+        if (!create(1920,
+                    1080,
+                    DXGI_FORMAT_R16G16B16A16_FLOAT,
+                    state->initialTextures[i],
+                    state->initialViews[i],
+                    state->initialShaderViews[i]))
+        {
+            error_ = "NGU VeryHigh luma initial textures could not be created";
+            return false;
+        }
+    }
+    for (size_t setIndex = 0; setIndex < state->layerTextures.size(); ++setIndex)
+    {
+        auto& set = state->layerTextures[setIndex];
+        for (size_t feature = 0; feature < set.size(); ++feature)
+        {
+            if (!create(1920,
+                        1080,
+                        DXGI_FORMAT_R16G16B16A16_FLOAT,
+                        set[feature],
+                        state->layerViews[setIndex][feature],
+                        state->layerShaderViews[setIndex][feature]))
+            {
+                error_ = "NGU VeryHigh luma layer textures could not be created";
+                return false;
+            }
+        }
+    }
+    if (!create(1922,
+                1082,
+                DXGI_FORMAT_R16G16B16A16_FLOAT,
+                state->denseTexture,
+                state->denseView,
+                state->denseShaderView) ||
+        !create(3840,
+                1080,
+                DXGI_FORMAT_R16_UNORM,
+                state->scaleXTexture,
+                state->scaleXView,
+                state->scaleXShaderView) ||
+        !create(3840,
+                2160,
+                DXGI_FORMAT_R16_UNORM,
+                state->scaleYTexture,
+                state->scaleYView,
+                state->scaleYShaderView) ||
+        !create(3840,
+                2160,
+                DXGI_FORMAT_R16_UNORM,
+                state->addTexture,
+                state->addView,
+                state->addShaderView) ||
+        !create(3840,
+                1080,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->upXTexture,
+                state->upXView,
+                state->upXShaderView) ||
+        !create(3840,
+                2160,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->upYTexture,
+                state->upYView,
+                state->upYShaderView) ||
+        !create(3840,
+                2160,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->mergeTexture,
+                state->mergeView,
+                state->mergeShaderView))
+    {
+        error_ = "NGU VeryHigh luma reconstruction textures could not be created";
+        return false;
+    }
+
+    nativeLumaVeryHigh1080_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* source,
+                                          ID3D11ShaderResourceView* reconstructionSource,
+                                          int sourceWidth,
+                                          int sourceHeight,
+                                          ID3D11RenderTargetView* finalOutput,
+                                          bool advanceDither)
+{
+    if (!nativeLumaVeryHigh1080_ || !source || !reconstructionSource || !finalOutput ||
+        sourceWidth != 1920 || sourceHeight != 1080)
+    {
+        error_ = "NGU VeryHigh luma request is outside the verified 1080p path";
+        return false;
+    }
+
+    std::array<ID3D11RenderTargetView*, 3> initialViews = {};
+    for (size_t i = 0; i < initialViews.size(); ++i)
+        initialViews[i] = nativeLumaVeryHigh1080_->initialViews[i].Get();
+    if (!RunNativeLumaInitial(source, sourceWidth, sourceHeight, initialViews.data()))
+        return false;
+
+    std::array<ID3D11ShaderResourceView*, 3> current = {};
+    for (size_t i = 0; i < current.size(); ++i)
+        current[i] = nativeLumaVeryHigh1080_->initialShaderViews[i].Get();
+    for (int layer = 0; layer < 15; ++layer)
+    {
+        const size_t set = size_t((layer / 3) % 2);
+        const size_t feature = size_t(layer % 3);
+        if (!RunNativeLumaLayer(current.data(),
+                                layer,
+                                nativeLumaVeryHigh1080_->layerViews[set][feature].Get()))
+        {
+            return false;
+        }
+        if (feature == 2)
+            for (size_t i = 0; i < current.size(); ++i)
+                current[i] = nativeLumaVeryHigh1080_->layerShaderViews[set][i].Get();
+    }
+    if (!RunNativeLumaDense(current.data(), nativeLumaVeryHigh1080_->denseView.Get()) ||
+        !RunNativeLumaScaleX(source, nativeLumaVeryHigh1080_->scaleXView.Get()) ||
+        !RunNativeLumaScaleY(nativeLumaVeryHigh1080_->scaleXShaderView.Get(),
+                             nativeLumaVeryHigh1080_->scaleYView.Get()) ||
+        !RunNativeLumaAdd(nativeLumaVeryHigh1080_->scaleYShaderView.Get(),
+                          nativeLumaVeryHigh1080_->denseShaderView.Get(),
+                          nativeLumaVeryHigh1080_->addView.Get()) ||
+        !RunNativeLumaUpX(reconstructionSource,
+                          nativeLumaVeryHigh1080_->upXView.Get()) ||
+        !RunNativeLumaUpY(nativeLumaVeryHigh1080_->upXShaderView.Get(),
+                          nativeLumaVeryHigh1080_->upYView.Get()) ||
+        !RunNativeLumaMerge(nativeLumaVeryHigh1080_->addShaderView.Get(),
+                            nativeLumaVeryHigh1080_->upYShaderView.Get(),
+                            nativeLumaVeryHigh1080_->mergeView.Get()))
+    {
+        return false;
+    }
+    if (!PrepareOwnedDither())
+        return false;
+    if (advanceDither)
+    {
+        if (!RunNativeLumaFinalOwnedDither(
+                nativeLumaVeryHigh1080_->mergeShaderView.Get(), finalOutput))
+            return false;
+    }
+    else if (!RunNativeLumaFinal(nativeLumaVeryHigh1080_->mergeShaderView.Get(),
+                                 nativeLumaFinal_->ditherView.Get(),
+                                 finalOutput))
+    {
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLumaVeryHighAdd(ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaVeryHigh1080_ || !nativeLumaVeryHigh1080_->addTexture || !output)
+    {
+        error_ = "NGU VeryHigh luma add output is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11Resource> destination;
+    output->GetResource(&destination);
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->CopyResource(destination.Get(), nativeLumaVeryHigh1080_->addTexture.Get());
+    context->Release();
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLumaVeryHighUpX(ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaVeryHigh1080_ || !nativeLumaVeryHigh1080_->upXTexture || !output)
+    {
+        error_ = "NGU VeryHigh luma UpX output is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11Resource> destination;
+    output->GetResource(&destination);
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->CopyResource(destination.Get(), nativeLumaVeryHigh1080_->upXTexture.Get());
+    context->Release();
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLumaVeryHighUpY(ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaVeryHigh1080_ || !nativeLumaVeryHigh1080_->upYTexture || !output)
+    {
+        error_ = "NGU VeryHigh luma UpY output is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11Resource> destination;
+    output->GetResource(&destination);
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->CopyResource(destination.Get(), nativeLumaVeryHigh1080_->upYTexture.Get());
+    context->Release();
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLumaVeryHighMerge(ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaVeryHigh1080_ || !nativeLumaVeryHigh1080_->mergeTexture || !output)
+    {
+        error_ = "NGU VeryHigh luma merge output is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11Resource> destination;
+    output->GetResource(&destination);
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->CopyResource(destination.Get(), nativeLumaVeryHigh1080_->mergeTexture.Get());
+    context->Release();
+    error_ = "";
+    return true;
 }
 
 bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
@@ -1725,7 +2050,8 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     }
     if (nativeSuperRes_ && gpu == gpu_)
         return true;
-    Reset();
+    if (gpu_ && gpu_ != gpu)
+        Reset();
     pl_d3d11 d3d = pl_d3d11_get(gpu);
     if (!d3d || !d3d->device)
     {
@@ -2091,6 +2417,7 @@ void NguScaler::Reset()
     nativeLumaScaleAdd_.reset();
     nativeLumaFinish_.reset();
     nativeLumaFinal_.reset();
+    nativeLumaVeryHigh1080_.reset();
     nativeSuperRes_.reset();
     gpu_ = nullptr;
     hasCached_ = false;

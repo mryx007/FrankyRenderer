@@ -107,6 +107,17 @@ class NguScaler
                                      ID3D11RenderTargetView* output);
     bool RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
                                        ID3D11RenderTargetView* output);
+    bool PrepareNativeLumaVeryHigh1080(pl_gpu gpu);
+    bool RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* source,
+                                   ID3D11ShaderResourceView* reconstructionSource,
+                                   int sourceWidth,
+                                   int sourceHeight,
+                                   ID3D11RenderTargetView* finalOutput,
+                                   bool advanceDither = true);
+    bool CopyNativeLumaVeryHighAdd(ID3D11RenderTargetView* output);
+    bool CopyNativeLumaVeryHighUpX(ID3D11RenderTargetView* output);
+    bool CopyNativeLumaVeryHighUpY(ID3D11RenderTargetView* output);
+    bool CopyNativeLumaVeryHighMerge(ID3D11RenderTargetView* output);
     bool PrepareNativeSuperResPrimitives(pl_gpu gpu);
     bool RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
                                 ID3D11RenderTargetView* output);
@@ -130,12 +141,14 @@ class NguScaler
     const char* LastError() const;
 
   private:
+    bool PrepareOwnedDither();
     struct NativeLumaInitial;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
     struct NativeLumaFinish;
     struct NativeLumaFinal;
+    struct NativeLumaVeryHigh1080;
     struct NativeSuperResPrimitives;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
@@ -149,5 +162,6 @@ class NguScaler
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;
     std::unique_ptr<NativeLumaFinish> nativeLumaFinish_;
     std::unique_ptr<NativeLumaFinal> nativeLumaFinal_;
+    std::unique_ptr<NativeLumaVeryHigh1080> nativeLumaVeryHigh1080_;
     std::unique_ptr<NativeSuperResPrimitives> nativeSuperRes_;
 };
