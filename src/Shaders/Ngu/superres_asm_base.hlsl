@@ -1,3 +1,10 @@
+#ifndef NGU_SUPERRES_FULL_WIDTH
+#define NGU_SUPERRES_FULL_WIDTH 1280
+#endif
+#ifndef NGU_SUPERRES_FULL_HEIGHT
+#define NGU_SUPERRES_FULL_HEIGHT 720
+#endif
+
 Texture2D<float4> SourceTex : register(t0);
 Texture2D<float4> WorkTex : register(t1);
 Texture2D<float4> DifferenceTex : register(t2);
@@ -48,7 +55,7 @@ float4 SampleLinear(Texture2D<float4> tex, float2 uv)
 float2 LoadExactUv(int2 pixel)
 {
     float2 horizontal = UvLut.Load(int3(pixel.x, 0, 0));
-    float2 vertical = UvLut.Load(int3(1280 + pixel.y, 0, 0));
+    float2 vertical = UvLut.Load(int3(NGU_SUPERRES_FULL_WIDTH + pixel.y, 0, 0));
     return float2(horizontal.x, vertical.y);
 }
 

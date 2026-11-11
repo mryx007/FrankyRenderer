@@ -47,6 +47,7 @@ enum class NguScalerStage
     VeryHighLuma4x720Full,
     VeryHighLuma4x720SuperResFull,
     VeryHighLuma1080Core,
+    VeryHighLuma1080SuperResFull,
 };
 
 enum class NguScalerSupport
@@ -154,6 +155,27 @@ class NguScaler
                                     ID3D11ShaderResourceView* mainOriginal,
                                     ID3D11ShaderResourceView* baseOriginal,
                                     ID3D11RenderTargetView* output);
+    bool PrepareNativeSuperResStrength3_1080(pl_gpu gpu);
+    bool RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source,
+                                         ID3D11ShaderResourceView* diffOriginal,
+                                         ID3D11ShaderResourceView* mainOriginal,
+                                         ID3D11ShaderResourceView* baseOriginal,
+                                         ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDownX1080(ID3D11ShaderResourceView* input,
+                                    ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDownY1080(ID3D11ShaderResourceView* input,
+                                    ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDiff1080(ID3D11ShaderResourceView* original,
+                                   ID3D11ShaderResourceView* downsample,
+                                   ID3D11RenderTargetView* output);
+    bool RunNativeSuperResToRgbMain1080(ID3D11ShaderResourceView* original,
+                                        ID3D11ShaderResourceView* work,
+                                        ID3D11ShaderResourceView* difference,
+                                        ID3D11RenderTargetView* output);
+    bool RunNativeSuperResToRgbBase1080(ID3D11ShaderResourceView* original,
+                                        ID3D11ShaderResourceView* work,
+                                        ID3D11ShaderResourceView* difference,
+                                        ID3D11RenderTargetView* output);
     bool PrepareNativeLuma4x720Low(pl_gpu gpu);
     bool RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                                int sourceWidth,
@@ -211,6 +233,12 @@ class NguScaler
                                         ID3D11ShaderResourceView* mainOriginal,
                                         ID3D11ShaderResourceView* baseOriginal,
                                         ID3D11RenderTargetView* finalOutput);
+    bool PrepareNativeLumaVeryHigh1080SuperResFull(pl_gpu gpu);
+    bool RunNativeLumaVeryHigh1080SuperResFull(ID3D11ShaderResourceView* source,
+                                               ID3D11ShaderResourceView* diffOriginal,
+                                               ID3D11ShaderResourceView* mainOriginal,
+                                               ID3D11ShaderResourceView* baseOriginal,
+                                               ID3D11RenderTargetView* finalOutput);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -229,6 +257,7 @@ class NguScaler
     struct NativeLumaVeryHigh1080;
     struct NativeSuperResPrimitives;
     struct NativeSuperResStrength3;
+    struct NativeSuperResStrength3_1080;
     struct NativeLuma4x720Low;
     struct NativeLuma4x720High;
     struct NativeLuma4x720DenseAdd;
@@ -249,6 +278,7 @@ class NguScaler
     std::unique_ptr<NativeLumaVeryHigh1080> nativeLumaVeryHigh1080_;
     std::unique_ptr<NativeSuperResPrimitives> nativeSuperRes_;
     std::unique_ptr<NativeSuperResStrength3> nativeSuperResStrength3_;
+    std::unique_ptr<NativeSuperResStrength3_1080> nativeSuperResStrength3_1080_;
     std::unique_ptr<NativeLuma4x720Low> nativeLuma4x720Low_;
     std::unique_ptr<NativeLuma4x720High> nativeLuma4x720High_;
     std::unique_ptr<NativeLuma4x720DenseAdd> nativeLuma4x720DenseAdd_;

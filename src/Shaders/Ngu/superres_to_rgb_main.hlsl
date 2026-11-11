@@ -1,3 +1,10 @@
+#ifndef NGU_SUPERRES_FULL_WIDTH
+#define NGU_SUPERRES_FULL_WIDTH 1280
+#endif
+#ifndef NGU_SUPERRES_FULL_HEIGHT
+#define NGU_SUPERRES_FULL_HEIGHT 720
+#endif
+
 uniform sampler2D sOrg : register(s0);
 uniform sampler2D sWip : register(s2);
 uniform sampler2D sDif : register(s3);
@@ -15,11 +22,12 @@ VSOut VSMain(uint vertex : SV_VertexID) {
 
 float4 PS(VSOut input) : COLOR {
     float2 pixel = floor(input.position.xy);
-    const float2 uv0 = float2(0.5 / 1280.0, 0.5 / 720.0);
-    const float2 uv2 = float2(2.0 + 0.5 / 1280.0, 2.0 + 0.5 / 720.0);
+    const float2 uv0 = float2(0.5 / NGU_SUPERRES_FULL_WIDTH, 0.5 / NGU_SUPERRES_FULL_HEIGHT);
+    const float2 uv2 = float2(2.0 + 0.5 / NGU_SUPERRES_FULL_WIDTH,
+                              2.0 + 0.5 / NGU_SUPERRES_FULL_HEIGHT);
     float2 t = pixel / float2(2560.0, 1440.0);
     float4 v0 = float4(uv0 * (1.0 - t) + uv2 * t, 0.0, 1.0);
-    v0.y = (pixel.y + 0.5) / 720.0;
+    v0.y = (pixel.y + 0.5) / NGU_SUPERRES_FULL_HEIGHT;
     float4 DL2 = float4(-1,0,1.44269502,1);
     float4 DL3 = float4(-1,1,2,0);
     float4 DL4 = float4(-0.5,0.5,6,0);

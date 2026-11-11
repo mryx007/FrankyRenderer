@@ -59,4 +59,14 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Fo "build\bin\shaders\Ngu\superres_asm
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Fo "build\bin\shaders\Ngu\superres_asm_base.cso" "Shaders\Ngu\superres_asm_base.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SUPERRES_DOWN_WIDTH=960 /Fo "build\bin\shaders\Ngu\superres_down_x_1080.cso" "Shaders\Ngu\superres_down_x.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SUPERRES_DOWN_WIDTH=960 /Fo "build\bin\shaders\Ngu\superres_down_y_1080.cso" "Shaders\Ngu\superres_down_y.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SUPERRES_DOWN_WIDTH=960 /Fo "build\bin\shaders\Ngu\superres_diff_1080.cso" "Shaders\Ngu\superres_diff.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /DNGU_SUPERRES_FULL_WIDTH=1920 /DNGU_SUPERRES_FULL_HEIGHT=1080 /Fo "build\bin\shaders\Ngu\superres_asm_main_1080.cso" "Shaders\Ngu\superres_asm_main.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /DNGU_SUPERRES_FULL_WIDTH=1920 /DNGU_SUPERRES_FULL_HEIGHT=1080 /Fo "build\bin\shaders\Ngu\superres_asm_base_1080.cso" "Shaders\Ngu\superres_asm_base.hlsl"
+if errorlevel 1 exit /b 1
 exit /b %errorlevel%

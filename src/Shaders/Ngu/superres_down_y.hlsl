@@ -1,3 +1,7 @@
+#ifndef NGU_SUPERRES_DOWN_WIDTH
+#define NGU_SUPERRES_DOWN_WIDTH 640
+#endif
+
 Texture2D<float4> SourceTex : register(t0);
 Texture2D<float2> ScaleTex : register(t1);
 Texture2D<float2> UvLut : register(t2);
@@ -9,7 +13,7 @@ struct VSOut { float4 position : SV_Position; };
 float2 LoadExactUv(int2 pixel)
 {
     float2 horizontal = UvLut.Load(int3(pixel.x, 0, 0));
-    float2 vertical = UvLut.Load(int3(640 + pixel.y, 0, 0));
+    float2 vertical = UvLut.Load(int3(NGU_SUPERRES_DOWN_WIDTH + pixel.y, 0, 0));
     return float2(horizontal.x, vertical.y);
 }
 

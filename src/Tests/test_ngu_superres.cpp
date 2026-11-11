@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -375,6 +376,220 @@ int main(int argc, char** argv)
             std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - benchmarkStart).count() / benchmarkFrames;
 
+        int scheduler1080Differences = 0;
+        int scheduler1080Maximum = 0;
+        bool scheduler1080Ran = false;
+        std::vector<uint8_t> scheduler1080Actual;
+        if (const char* root1080Env = std::getenv("NGU_1080_CAPTURE_ROOT"))
+        {
+            NguScalerRequest probe1080;
+            probe1080.sourceWidth = 1920;
+            probe1080.sourceHeight = 1080;
+            probe1080.stage = NguScalerStage::VeryHighLuma1080SuperResFull;
+            Require(ProbeNguScaler(probe1080) == NguScalerSupport::Ready,
+                    "1080p strength-3 capability");
+
+            const auto root1080 = std::filesystem::path(root1080Env);
+            const auto source1080Bytes =
+                ReadBytes(root1080 / "input_00146_PS_520_4a9505a4_s0.bin",
+                          size_t(1920) * 1080 * 8);
+            auto source1080 = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE, source1080Bytes.data());
+            ComPtr<ID3D11ShaderResourceView> source1080Srv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        source1080.Get(), nullptr, &source1080Srv)),
+                    "1080p source SRV");
+
+            const auto original1080Bytes =
+                ReadBytes(root1080 / "input_00148_PS_284_e8e2a8eb_s0.bin",
+                          size_t(960) * 540 * 4);
+            auto original1080 = CreateTexture(
+                device, 960, 540, DXGI_FORMAT_B8G8R8A8_UNORM,
+                D3D11_BIND_SHADER_RESOURCE, original1080Bytes.data());
+            ComPtr<ID3D11ShaderResourceView> original1080Srv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        original1080.Get(), nullptr, &original1080Srv)),
+                    "1080p original SRV");
+
+            const auto main1080Bytes =
+                ReadBytes(root1080 / "input_00149_PS_4412_c39b49cf_s0.bin",
+                          size_t(1920) * 1080 * 8);
+            auto main1080 = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE, main1080Bytes.data());
+            ComPtr<ID3D11ShaderResourceView> main1080Srv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        main1080.Get(), nullptr, &main1080Srv)),
+                    "1080p main original SRV");
+
+            const auto base1080Bytes =
+                ReadBytes(root1080 / "input_00153_PS_4576_b7830945_s0.bin",
+                          size_t(1920) * 1080 * 8);
+            auto base1080 = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE, base1080Bytes.data());
+            ComPtr<ID3D11ShaderResourceView> base1080Srv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        base1080.Get(), nullptr, &base1080Srv)),
+                    "1080p base original SRV");
+
+            auto downX1080Texture = CreateTexture(
+                device, 960, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            auto downY1080Texture = CreateTexture(
+                device, 960, 540, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            auto diff1080Texture = CreateTexture(
+                device, 960, 540, DXGI_FORMAT_R16G16_FLOAT,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            auto main1080Texture = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            auto baseOutput1080Texture = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            ComPtr<ID3D11RenderTargetView> downX1080View;
+            ComPtr<ID3D11RenderTargetView> downY1080View;
+            ComPtr<ID3D11RenderTargetView> diff1080View;
+            ComPtr<ID3D11RenderTargetView> main1080View;
+            ComPtr<ID3D11RenderTargetView> baseOutput1080View;
+            ComPtr<ID3D11ShaderResourceView> downX1080Srv;
+            ComPtr<ID3D11ShaderResourceView> downY1080Srv;
+            ComPtr<ID3D11ShaderResourceView> diff1080Srv;
+            ComPtr<ID3D11ShaderResourceView> main1080OutputSrv;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        downX1080Texture.Get(), nullptr, &downX1080View)) &&
+                        SUCCEEDED(device->CreateRenderTargetView(
+                            downY1080Texture.Get(), nullptr, &downY1080View)) &&
+                        SUCCEEDED(device->CreateRenderTargetView(
+                            diff1080Texture.Get(), nullptr, &diff1080View)) &&
+                        SUCCEEDED(device->CreateRenderTargetView(
+                            main1080Texture.Get(), nullptr, &main1080View)) &&
+                        SUCCEEDED(device->CreateRenderTargetView(
+                            baseOutput1080Texture.Get(), nullptr, &baseOutput1080View)),
+                    "1080p stage RTVs");
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        downX1080Texture.Get(), nullptr, &downX1080Srv)) &&
+                        SUCCEEDED(device->CreateShaderResourceView(
+                            downY1080Texture.Get(), nullptr, &downY1080Srv)) &&
+                        SUCCEEDED(device->CreateShaderResourceView(
+                            diff1080Texture.Get(), nullptr, &diff1080Srv)) &&
+                        SUCCEEDED(device->CreateShaderResourceView(
+                            main1080Texture.Get(), nullptr, &main1080OutputSrv)),
+                    "1080p stage SRVs");
+            Require(ngu.RunNativeSuperResDownX1080(source1080Srv.Get(), downX1080View.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto downX1080Actual =
+                Download(device, context.Get(), downX1080Texture.Get());
+            if (!actualPrefix.empty())
+                WriteBytes(actualPrefix + L"1080_downx.bin", downX1080Actual);
+            int downX1080Maximum = 0;
+            const int downX1080Differences = CountWords(
+                downX1080Actual,
+                ReadBytes(root1080 / "draw_00146_PS_520_4a9505a4_rt0_960x1080_f36.bin",
+                          size_t(960) * 1080 * 8),
+                downX1080Maximum);
+            Require(ngu.RunNativeSuperResDownY1080(
+                        downX1080Srv.Get(), downY1080View.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto downY1080Actual =
+                Download(device, context.Get(), downY1080Texture.Get());
+            if (!actualPrefix.empty())
+                WriteBytes(actualPrefix + L"1080_downy.bin", downY1080Actual);
+            int downY1080Maximum = 0;
+            const int downY1080Differences = CountWords(
+                downY1080Actual,
+                ReadBytes(root1080 / "draw_00147_PS_520_4ee2414c_rt0_960x540_f36.bin",
+                          size_t(960) * 540 * 8),
+                downY1080Maximum);
+            Require(ngu.RunNativeSuperResDiff1080(
+                        original1080Srv.Get(), downY1080Srv.Get(), diff1080View.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto diff1080Actual =
+                Download(device, context.Get(), diff1080Texture.Get());
+            if (!actualPrefix.empty())
+                WriteBytes(actualPrefix + L"1080_diff.bin", diff1080Actual);
+            int diff1080Maximum = 0;
+            const int diff1080Differences = CountWords(
+                diff1080Actual,
+                ReadBytes(root1080 / "draw_00148_PS_284_e8e2a8eb_rt0_960x540_f112.bin",
+                          size_t(960) * 540 * 4),
+                diff1080Maximum);
+            Require(ngu.RunNativeSuperResToRgbMain1080(
+                        main1080Srv.Get(), source1080Srv.Get(),
+                        diff1080Srv.Get(), main1080View.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto main1080Actual =
+                Download(device, context.Get(), main1080Texture.Get());
+            if (!actualPrefix.empty())
+                WriteBytes(actualPrefix + L"1080_main.bin", main1080Actual);
+            int main1080Maximum = 0;
+            const int main1080Differences = CountWords(
+                main1080Actual,
+                ReadBytes(root1080 / "draw_00149_PS_4412_c39b49cf_rt0_1920x1080_f36.bin",
+                          size_t(1920) * 1080 * 8),
+                main1080Maximum);
+            Require(ngu.RunNativeSuperResToRgbBase1080(
+                        base1080Srv.Get(), main1080OutputSrv.Get(),
+                        diff1080Srv.Get(), baseOutput1080View.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto base1080Actual =
+                Download(device, context.Get(), baseOutput1080Texture.Get());
+            if (!actualPrefix.empty())
+                WriteBytes(actualPrefix + L"1080_base.bin", base1080Actual);
+            int base1080Maximum = 0;
+            const int base1080Differences = CountWords(
+                base1080Actual,
+                ReadBytes(root1080 / "draw_00153_PS_4576_b7830945_rt0_1920x1080_f36.bin",
+                          size_t(1920) * 1080 * 8),
+                base1080Maximum);
+            std::printf("1080 DownX different=%d maximum=%d\n",
+                        downX1080Differences, downX1080Maximum);
+            std::printf("1080 DownY different=%d maximum=%d\n",
+                        downY1080Differences, downY1080Maximum);
+            std::printf("1080 Diff different=%d maximum=%d\n",
+                        diff1080Differences, diff1080Maximum);
+            std::printf("1080 Main different=%d maximum=%d\n",
+                        main1080Differences, main1080Maximum);
+            std::printf("1080 Base different=%d maximum=%d\n",
+                        base1080Differences, base1080Maximum);
+            Require(downX1080Differences == 0 && downY1080Differences == 0 &&
+                        diff1080Differences == 0 && main1080Differences == 0 &&
+                        base1080Differences == 0,
+                    "1080p SuperChromaRes stage comparison");
+
+            Require(ngu.PrepareNativeSuperResStrength3_1080(d3d->gpu), ngu.LastError());
+            auto scheduler1080Output = CreateTexture(
+                device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            ComPtr<ID3D11RenderTargetView> scheduler1080OutputView;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        scheduler1080Output.Get(), nullptr, &scheduler1080OutputView)),
+                    "1080p scheduler output RTV");
+            Require(ngu.RunNativeSuperResStrength3_1080(
+                        source1080Srv.Get(),
+                        original1080Srv.Get(),
+                        main1080Srv.Get(),
+                        base1080Srv.Get(),
+                        scheduler1080OutputView.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            scheduler1080Actual =
+                Download(device, context.Get(), scheduler1080Output.Get());
+            scheduler1080Differences = CountWords(
+                scheduler1080Actual,
+                ReadBytes(root1080 / "draw_00153_PS_4576_b7830945_rt0_1920x1080_f36.bin",
+                          size_t(1920) * 1080 * 8),
+                scheduler1080Maximum);
+            scheduler1080Ran = true;
+        }
+
         auto unsupportedOutput = CreateTexture(
             device, 1280, 720, DXGI_FORMAT_B8G8R8A8_UNORM,
             D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
@@ -398,6 +613,11 @@ int main(int argc, char** argv)
         std::printf("Chain different=%d maximum=%d\n", chainDifferences, chainMaximum);
         std::printf("Scheduler different=%d maximum=%d %.3f ms/frame\n",
                     schedulerDifferences, schedulerMaximum, schedulerMilliseconds);
+        if (scheduler1080Ran)
+            std::printf("Scheduler1080 different=%d maximum=%d\n",
+                        scheduler1080Differences, scheduler1080Maximum);
+        else
+            std::printf("Scheduler1080 skipped (NGU_1080_CAPTURE_ROOT unset)\n");
         std::printf("SchedulerUnsupported rejected=%d\n", unsupportedRejected);
         if (!actualPrefix.empty())
         {
@@ -409,12 +629,18 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"base.bin", baseActual);
             WriteBytes(actualPrefix + L"chain.bin", chainActual);
             WriteBytes(actualPrefix + L"scheduler.bin", schedulerActual);
+            if (scheduler1080Ran)
+                WriteBytes(actualPrefix + L"scheduler_1080.bin", scheduler1080Actual);
         }
         const bool pass = downXDifferences == 0 && downYDifferences == 0 && diffDifferences == 0 &&
                           mainDifferences == 0 && baseDifferences == 0 &&
                           chainMaximum <= 1 && schedulerDifferences == 0 && schedulerMaximum == 0 &&
                           unsupportedRejected;
-        std::printf("%s native SuperChromaRes primitives\n", pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
+        const bool scheduler1080Pass =
+            !scheduler1080Ran ||
+            (scheduler1080Differences == 0 && scheduler1080Maximum == 0);
+        std::printf("%s native SuperChromaRes primitives\n",
+                    pass && scheduler1080Pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
         ngu.Reset();
         unsupportedOutputView.Reset();
         unsupportedOutput.Reset();
@@ -454,7 +680,7 @@ int main(int argc, char** argv)
         source.Reset();
         context.Reset();
         pl_d3d11_destroy(&d3d);
-        return pass ? 0 : 1;
+        return pass && scheduler1080Pass ? 0 : 1;
     }
     catch (const std::exception& error)
     {
