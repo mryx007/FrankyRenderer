@@ -19,6 +19,14 @@ NGU is therefore an implementation peer of the existing `ewa_lanczos`,
 `ewa_lanczossharp`, `ewa_jinc`, and related algorithm identifiers, not a
 user-shader-only extension.
 
+This authorization is a change to the implementation route, not to the
+behavioral oracle. The product-level identifier is `ngu_sharp`, but the current
+branch still keeps that identifier out of the exposed scaler lists until there
+is a complete, evidence-backed image path. The user-authorized selection-list
+integration is therefore implemented as a staged capability: the generic list
+path is prepared first; the name is published only when the native path can
+execute without a silent fallback.
+
 This decision is required by observed madVR behavior. The SuperChromaRes
 strength-3 chain carries independent 16-bit RGB results that cannot be
 represented exactly by one public RGBA16F user-shader `SAVE` target. A native
@@ -82,6 +90,62 @@ transport. In particular, the observed SuperChromaRes strength-3 chain uses
 three 16-bit RGB surfaces downstream of Realign; a single RGBA16F user-shader
 `SAVE` cannot preserve them exactly without extra producers or recomputation.
 
+## Source-level peer contract
+
+The upstreamable shape is a generic native-scaler boundary, not an NGU branch
+spread through libplacebo or the presentation code:
+
+1. Settings persist only the ordinary scaler identifier string. They do not
+   grow NGU-specific fields or bypass the existing scaling-role model.
+2. Scaler resolution first asks the native-scaler adapter whether it owns the
+   requested identifier. If it does, the request is handled by `NguScaler`
+   using explicit resources and formats.
+3. If the native adapter does not own an identifier, resolution falls through
+   to the existing `pl_options_set_str` filter path unchanged. `ngu_sharp` is
+   never passed to `pl_options_set_str` as if it were a libplacebo kernel.
+4. A native request that is known but unsupported (quality, geometry, format,
+   missing resource, or incomplete graph) fails explicitly. It must never be
+   converted into bilinear, a user-shader approximation, or a different NGU
+   quality level.
+5. The native module owns NGU-specific shader selection, samplers, textures,
+   MRTs and scheduling. `Backend.cpp` only supplies source/frame state and
+   receives the result; colour management and presentation remain generic.
+
+This boundary is intentionally narrow enough to be reviewed as an additional
+host capability. If the adapter is not accepted upstream, the NGU module and
+its generated assets can be dropped without changing EWA, colour management,
+or existing playback paths.
+
+## Upstream merge slicing
+
+Keep the merge request and local commits separable in this order:
+
+1. Generic native-scaler capability/resolution plumbing with no NGU behavior.
+2. `NguScaler` lifecycle, resource cache and explicit format contracts.
+3. Target-derived shaders, immutable tables and reproducible asset manifests.
+4. Target-ordered graph execution and Backend source/output binding.
+5. `ngu_sharp` settings/UI exposure after the final-image and playback gates.
+6. Regression, performance and documentation updates.
+
+Do not combine an NGU arithmetic change with an EWA change, a libplacebo fork,
+or a presentation-path rewrite. A reviewer must be able to see that ordinary
+filters behave identically when the native adapter is absent.
+
+## Performance change rules
+
+Source-level optimization is allowed when it changes representation or
+scheduling rather than target-visible arithmetic:
+
+- choose explicit L16/G16R16/A16B16G16R16 UNORM or other evidence-required
+  formats instead of packing independent RGB codes through RGBA16F;
+- preserve observed native MRT topology where the target establishes it;
+- use dedicated sampler state, especially for point-sampled LUT and UV inputs;
+- allocate immutable resources once and reuse textures, views and samplers;
+- avoid avoidable readbacks, uploads, copies and format conversions;
+- fuse or batch passes only when the fused arithmetic and resource values are
+  proved identical to the target pass-by-pass; optimization is not evidence
+  for a changed arithmetic expression.
+
 ## Implementation order
 
 1. Add an isolated `NguScaler` lifecycle and capability boundary.
@@ -91,7 +155,8 @@ three 16-bit RGB surfaces downstream of Realign; a single RGBA16F user-shader
    tail in target order.
 4. Integrate image upscaling, merge and FinalStep for the primary 720p/1080p
    to 4K path.
-5. Register `ngu_sharp` in settings/UI only after the native path renders.
+5. Register `ngu_sharp` in settings/UI through the generic native-scaler
+   resolution path only after the native path renders.
 6. Verify final image and DirectShow playback before enabling Low/Medium/High
    beyond experimental status.
 
@@ -134,8 +199,17 @@ PS_5868 is the target `SharpenAR[1,1,1]` pass and has 4,770 halfwords differing
 by one LSB. Consequently the complete 720p luma tail currently matches at
 `maximum=1` with no differences greater than one.
 
+The CbCr tail is not yet admitted to the product chain. The captured 720p-to-4K
+path requires target shaders `PS_1284_386cc8d7` and `PS_1284_dc97a0d0`; the
+existing generic 2160p X/Y shaders do not represent that path. The current
+probe results are `different=5,362,340 maximum=40,329` for X and
+`different=16,248,210 maximum=41,311` for Y. `PS_548_d6670d4b` is exact only
+when supplied the captured target luma and CbCr inputs. These are
+evidence-boundary failures, not tunable tolerances.
+
 This is not yet a selectable complete scaler. Backend/source-surface binding,
-real DirectShow playback, sub-LSB-exact PS_1208/PS_5868 arithmetic, the
-combined chroma-plus-SuperRes-plus-luma chain, other geometries/formats,
-lifecycle coverage, and the performance matrix remain open. `ngu_sharp` must
-stay unexposed until the final-image and playback gates pass.
+real DirectShow playback, exact CbCr X/Y, sub-LSB-exact PS_1208/PS_5868
+arithmetic, the combined chroma-plus-SuperRes-plus-luma chain, other
+geometries/formats, lifecycle coverage, and the performance matrix remain open.
+The source-level peer decision is recorded; `ngu_sharp` remains unexposed until
+the final-image and playback gates pass.
