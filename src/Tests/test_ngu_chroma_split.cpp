@@ -4,6 +4,10 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -59,6 +63,37 @@ ComPtr<ID3D11Texture2D> CreateInput(ID3D11Device* device,
     return texture;
 }
 
+ComPtr<ID3D11Texture2D> CreateL16Input(ID3D11Device* device,
+                                       const std::vector<uint8_t>& bytes,
+                                       UINT width,
+                                       UINT height,
+                                       ComPtr<ID3D11ShaderResourceView>& view)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width * 2;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create L16 input");
+    D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+    viewDesc.Format = DXGI_FORMAT_R16_UNORM;
+    viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    viewDesc.Texture2D.MipLevels = 1;
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), &viewDesc, &view)),
+            "create L16 SRV");
+    return texture;
+}
+
 ComPtr<ID3D11Texture2D> CreateOutput(ID3D11Device* device,
                                      UINT width,
                                      UINT height,
@@ -78,6 +113,61 @@ ComPtr<ID3D11Texture2D> CreateOutput(ID3D11Device* device,
             "create output");
     Require(SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)),
             "create output RTV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateRgbaOutput(
+    ID3D11Device* device,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11RenderTargetView>& view,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)),
+            "create RGBA output");
+    Require(SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)),
+            "create RGBA output RTV");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create RGBA output SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateRgbaFloatInput(
+    ID3D11Device* device,
+    const std::vector<uint8_t>& bytes,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width * 8;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create RGBA float input");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create RGBA float input SRV");
     return texture;
 }
 
@@ -178,13 +268,89 @@ void DumpIfRequested(const std::vector<uint8_t>& bytes, const char* name)
     Require(bool(file), "write chroma dump");
 }
 
+float HalfToFloat(uint16_t bits)
+{
+    const uint32_t sign = uint32_t(bits & 0x8000) << 16;
+    const uint32_t exponent = (bits >> 10) & 0x1f;
+    const uint32_t mantissa = bits & 0x3ff;
+    uint32_t result = 0;
+    if (exponent == 0)
+    {
+        if (mantissa)
+        {
+            uint32_t value = mantissa;
+            uint32_t shift = 0;
+            while ((value & 0x400) == 0)
+            {
+                value <<= 1;
+                ++shift;
+            }
+            result = sign | ((127 - 15 - shift) << 23) |
+                     ((value & 0x3ff) << 13);
+        }
+        else
+            result = sign;
+    }
+    else if (exponent == 0x1f)
+        result = sign | 0x7f800000 | (mantissa << 13);
+    else
+        result = sign | ((exponent + 112) << 23) | (mantissa << 13);
+    return std::bit_cast<float>(result);
+}
+
+void CompareFloatStage(const std::vector<uint8_t>& actual,
+                       const std::vector<uint8_t>& expected,
+                       float maximumAllowedAbsolute,
+                       const char* name)
+{
+    Require(actual.size() == expected.size(), "chroma network size");
+    int different = 0;
+    float maximumAbsolute = 0.0f;
+    bool reported = false;
+    const size_t componentCount = actual.size() / 2;
+    for (size_t componentIndex = 0; componentIndex < componentCount;
+         ++componentIndex)
+    {
+        const size_t offset = componentIndex * 2;
+        const uint16_t aBits = uint16_t(actual[offset]) |
+                               (uint16_t(actual[offset + 1]) << 8);
+        const uint16_t eBits = uint16_t(expected[offset]) |
+                               (uint16_t(expected[offset + 1]) << 8);
+        const float a = HalfToFloat(aBits);
+        const float e = HalfToFloat(eBits);
+        const float difference = std::abs(a - e);
+        different += aBits != eBits;
+        maximumAbsolute = std::max(maximumAbsolute, difference);
+        if (difference > maximumAllowedAbsolute && !reported)
+        {
+            reported = true;
+            std::printf(
+                "%s first component=%zu actual=%g expected=%g diff=%g\n",
+                name,
+                componentIndex,
+                a,
+                e,
+                difference);
+        }
+    }
+    std::printf("%s different=%d maximum_abs=%g allowed=%g\n",
+                name,
+                different,
+                maximumAbsolute,
+                maximumAllowedAbsolute);
+    Require(maximumAbsolute <= maximumAllowedAbsolute,
+            "chroma network comparison");
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
     try
     {
-        Require(argc == 2, "usage: test_ngu_chroma_split <capture-root>");
+        Require(argc >= 2 && argc <= 4,
+                "usage: test_ngu_chroma_split <capture-root> [network-root "
+                "[network-draw-base]]");
         const std::filesystem::path root(argv[1]);
         constexpr UINT width = 640;
         constexpr UINT height = 360;
@@ -281,7 +447,307 @@ int main(int argc, char** argv)
             false,
             1,
             "PS_748 Y");
-        std::puts("PASS_PRODUCT native PS_260/PS_748 chroma front end");
+
+        if (argc >= 3)
+        {
+            const std::filesystem::path networkRoot(argv[2]);
+            const int networkDrawBase = argc == 4 ? std::stoi(argv[3]) : 9;
+            const auto networkInputExpanded =
+                ReadBytes(networkRoot /
+                              ("input_" +
+                               [&] {
+                                   char fileName[32] = {};
+                                   std::snprintf(fileName,
+                                                 sizeof(fileName),
+                                                 "%05d",
+                                                 networkDrawBase);
+                                   return std::string(fileName);
+                               }() +
+                               "_PS_1672_b083dfa8_s0.bin"),
+                          size_t(640) * 360 * 8);
+            const auto networkInput = ExtractL16(networkInputExpanded);
+            ComPtr<ID3D11ShaderResourceView> networkInputView;
+            auto networkInputTexture =
+                CreateL16Input(d3d->device,
+                               networkInput,
+                               640,
+                               360,
+                               networkInputView);
+
+            std::array<ComPtr<ID3D11Texture2D>, 4> initialTextures;
+            std::array<ComPtr<ID3D11RenderTargetView>, 4> initialViews;
+            std::array<ComPtr<ID3D11ShaderResourceView>, 4> initialShaderViews;
+            for (size_t index = 0; index < initialTextures.size(); ++index)
+            {
+                initialTextures[index] =
+                    CreateRgbaOutput(d3d->device,
+                                     640,
+                                     360,
+                                     initialViews[index],
+                                     initialShaderViews[index]);
+            }
+
+            if (!ngu.PrepareNativeChromaNetwork(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            std::array<ID3D11RenderTargetView*, 4> initialTargets = {};
+            for (size_t index = 0; index < initialTargets.size(); ++index)
+                initialTargets[index] = initialViews[index].Get();
+            if (!ngu.RunNativeChromaCubici2(networkInputView.Get(),
+                                            initialTargets.data()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            for (size_t index = 0; index < initialTextures.size(); ++index)
+            {
+                const auto actual = Download(d3d->device,
+                                             context.Get(),
+                                             initialTextures[index].Get(),
+                                             8);
+                const std::string dumpName =
+                    "ps1672_rt" + std::to_string(index) + ".bin";
+                DumpIfRequested(actual, dumpName.c_str());
+                const auto path =
+                    networkRoot /
+                    ([&] {
+                        char fileName[128] = {};
+                        std::snprintf(
+                            fileName,
+                            sizeof(fileName),
+                            "draw_%05d_PS_1672_b083dfa8_rt%zu_640x360_f113.bin",
+                            networkDrawBase,
+                            index);
+                        return std::string(fileName);
+                    })();
+                const std::string name =
+                    "PS_1672 rt" + std::to_string(index);
+                CompareFloatStage(
+                    actual,
+                    ReadBytes(path, size_t(640) * 360 * 8),
+                    0.0f,
+                    name.c_str());
+            }
+
+            std::array<ComPtr<ID3D11Texture2D>, 28> layerTextures;
+            std::array<ComPtr<ID3D11RenderTargetView>, 28> layerViews;
+            std::array<ComPtr<ID3D11ShaderResourceView>, 28> layerShaderViews;
+            std::array<ComPtr<ID3D11Texture2D>, 4> capturedTextures;
+            std::array<ComPtr<ID3D11ShaderResourceView>, 4> capturedViews;
+            std::array<ID3D11ShaderResourceView*, 4> current = {};
+            constexpr int inputStages[4] = {0, 2, 3, 4};
+            for (int layer = 0; layer < 28; ++layer)
+            {
+                const int draw = networkDrawBase + 1 + layer;
+                for (int feature = 0; feature < 4; ++feature)
+                {
+                    char fileName[128] = {};
+                    std::snprintf(
+                        fileName,
+                        sizeof(fileName),
+                        "input_%05d_PS_4620_342cc74b_s%d.bin",
+                        draw,
+                        inputStages[feature]);
+                    capturedTextures[feature] =
+                        CreateRgbaFloatInput(
+                            d3d->device,
+                            ReadBytes(networkRoot / fileName,
+                                      size_t(640) * 360 * 8),
+                            640,
+                            360,
+                            capturedViews[feature]);
+                    current[feature] = capturedViews[feature].Get();
+                }
+                layerTextures[layer] =
+                    CreateRgbaOutput(d3d->device,
+                                     640,
+                                     360,
+                                     layerViews[layer],
+                                     layerShaderViews[layer]);
+                if (!ngu.RunNativeChromaLayer(current.data(),
+                                              layer,
+                                              layerViews[layer].Get()))
+                    throw std::runtime_error(ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto actual =
+                    Download(d3d->device,
+                             context.Get(),
+                             layerTextures[layer].Get(),
+                             8);
+                const std::string dumpName =
+                    "ps4620_layer_" + std::to_string(layer) + ".bin";
+                DumpIfRequested(actual, dumpName.c_str());
+                char fileName[128] = {};
+                std::snprintf(
+                    fileName,
+                    sizeof(fileName),
+                    "draw_%05d_PS_4620_342cc74b_rt0_640x360_f113.bin",
+                    draw);
+                const auto path = networkRoot / fileName;
+                const std::string name =
+                    "PS_4620 layer " + std::to_string(layer);
+                CompareFloatStage(
+                    actual,
+                    ReadBytes(path, size_t(640) * 360 * 8),
+                    0.00004f,
+                    name.c_str());
+            }
+
+            ComPtr<ID3D11RenderTargetView> denseView;
+            ComPtr<ID3D11ShaderResourceView> denseShaderView;
+            const int denseDraw = networkDrawBase + 29;
+            for (int feature = 0; feature < 4; ++feature)
+            {
+                char fileName[128] = {};
+                std::snprintf(
+                    fileName,
+                    sizeof(fileName),
+                    "input_%05d_PS_2672_9e6139d1_s%d.bin",
+                    denseDraw,
+                    inputStages[feature]);
+                capturedTextures[feature] =
+                    CreateRgbaFloatInput(
+                        d3d->device,
+                        ReadBytes(networkRoot / fileName,
+                                  size_t(640) * 360 * 8),
+                        640,
+                        360,
+                        capturedViews[feature]);
+                current[feature] = capturedViews[feature].Get();
+            }
+            auto denseTexture =
+                CreateRgbaOutput(d3d->device,
+                                 642,
+                                 362,
+                                 denseView,
+                                 denseShaderView);
+            if (!ngu.RunNativeChromaDense(current.data(), denseView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto dense = Download(d3d->device,
+                                        context.Get(),
+                                        denseTexture.Get(),
+                                        8);
+            DumpIfRequested(dense, "ps2672_dense.bin");
+            CompareFloatStage(
+                dense,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_2672_9e6139d1_"
+                                      "rt0_642x362_f113.bin",
+                                      denseDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(642) * 362 * 8),
+                0.0f,
+                "PS_2672 dense");
+
+            std::array<ComPtr<ID3D11Texture2D>, 28> cascadeTextures;
+            std::array<ComPtr<ID3D11RenderTargetView>, 28> cascadeViews;
+            std::array<ComPtr<ID3D11ShaderResourceView>, 28>
+                cascadeShaderViews;
+            for (size_t index = 0; index < current.size(); ++index)
+                current[index] = initialShaderViews[index].Get();
+            for (int layer = 0; layer < 28; ++layer)
+            {
+                cascadeTextures[layer] =
+                    CreateRgbaOutput(d3d->device,
+                                     640,
+                                     360,
+                                     cascadeViews[layer],
+                                     cascadeShaderViews[layer]);
+                if (!ngu.RunNativeChromaLayer(current.data(),
+                                              layer,
+                                              cascadeViews[layer].Get()))
+                    throw std::runtime_error(ngu.LastError());
+                if (layer % 4 == 3)
+                {
+                    for (int feature = 0; feature < 4; ++feature)
+                        current[feature] =
+                            cascadeShaderViews[layer - 3 + feature].Get();
+                }
+            }
+            ComPtr<ID3D11RenderTargetView> cascadeDenseView;
+            ComPtr<ID3D11ShaderResourceView> cascadeDenseShaderView;
+            auto cascadeDenseTexture =
+                CreateRgbaOutput(d3d->device,
+                                 642,
+                                 362,
+                                 cascadeDenseView,
+                                 cascadeDenseShaderView);
+            if (!ngu.RunNativeChromaDense(current.data(),
+                                          cascadeDenseView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto cascadeDense =
+                Download(d3d->device,
+                         context.Get(),
+                         cascadeDenseTexture.Get(),
+                         8);
+            DumpIfRequested(cascadeDense, "ps2672_cascade_dense.bin");
+            CompareFloatStage(
+                cascadeDense,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_2672_9e6139d1_"
+                                      "rt0_642x362_f113.bin",
+                                      denseDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(642) * 362 * 8),
+                0.00004f,
+                "PS_2672 cascade dense");
+
+            if (!ngu.PrepareNativeChromaVeryHigh720(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            ComPtr<ID3D11RenderTargetView> schedulerView;
+            ComPtr<ID3D11ShaderResourceView> schedulerShaderView;
+            auto schedulerTexture =
+                CreateRgbaOutput(d3d->device,
+                                 642,
+                                 362,
+                                 schedulerView,
+                                 schedulerShaderView);
+            const auto schedulerStart = std::chrono::steady_clock::now();
+            if (!ngu.RunNativeChromaVeryHigh720(networkInputView.Get(),
+                                                schedulerView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto schedulerEnd = std::chrono::steady_clock::now();
+            const double schedulerMs =
+                std::chrono::duration<double, std::milli>(
+                    schedulerEnd - schedulerStart)
+                    .count();
+            std::printf("PS_2672 scheduler elapsed=%.3f ms/frame\n", schedulerMs);
+            const auto schedulerDense =
+                Download(d3d->device,
+                         context.Get(),
+                         schedulerTexture.Get(),
+                         8);
+            CompareFloatStage(
+                schedulerDense,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_2672_9e6139d1_"
+                                      "rt0_642x362_f113.bin",
+                                      denseDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(642) * 362 * 8),
+                0.00004f,
+                "PS_2672 scheduler dense");
+        }
+
+        std::puts("PASS_PRODUCT native PS_260/PS_748/PS_1672...PS_2672 chroma");
         return 0;
     }
     catch (const std::exception& error)

@@ -120,5 +120,42 @@
     "geometry": [3840, 2160],
     "output_format": "R16G16B16A16_UNORM",
     "constants_sha256": "CD52816B1BF8EB8912973323D61CE407CA78E6F22D823A8F0E27B26400FDB0D5"
+  },
+  "ngu_chroma_cubici2.hlsl": {
+    "sha256": "0CE3B96EC6FFFC8FA6B4DD754EDAC269BF43AD05B88B5A0DC8AB9597D4B79B4C",
+    "evidence": "OpenMadVR E-085",
+    "target_shader": "PS_1672_b083dfa8",
+    "input_geometry": [640, 360],
+    "input_format": "R16_UNORM",
+    "output_geometry": [640, 360],
+    "output_format": "R16G16B16A16_FLOAT",
+    "outputs": 4,
+    "constants": "ngu_chroma_cubici2_constants.bin",
+    "constants_sha256": "A8EDE66F82B0192D4531B728B8E3481F93D4ABF7416CA35139BA82A202B59D18"
+  },
+  "ngu_chroma_layer.hlsl": {
+    "sha256": "DD4379C3542AEB9677267E2838417C7996811EAF327B04D0E481F3384C8CE434",
+    "evidence": "OpenMadVR E-085",
+    "target_shader": "PS_4620_342cc74b",
+    "input_geometry": [640, 360],
+    "input_format": "R16G16B16A16_FLOAT",
+    "inputs": 4,
+    "layers": 28,
+    "output_geometry": [640, 360],
+    "output_format": "R16G16B16A16_FLOAT",
+    "constants": "ngu_chroma_layer_constants.bin",
+    "constants_sha256": "A4ABF30D6FC660A334B6007BA8D15A245158AD9966A39CA03250D509221E7767"
+  },
+  "ngu_chroma_dense.hlsl": {
+    "sha256": "7F5E91AE8619025BF732871FEBF6049D4D0B4A76AB7A7FE2AB4EFA855234A562",
+    "evidence": "OpenMadVR E-085",
+    "target_shader": "PS_2672_9e6139d1",
+    "input_geometry": [640, 360],
+    "input_format": "R16G16B16A16_FLOAT",
+    "inputs": 4,
+    "output_geometry": [642, 362],
+    "output_format": "R16G16B16A16_FLOAT",
+    "constants": "ngu_chroma_dense_constants.bin",
+    "constants_sha256": "B7DA45C4AAC95861C1650BAC4BD9F3553157D67D4EFB1A178E60F8BEFEB75370"
   }
 }

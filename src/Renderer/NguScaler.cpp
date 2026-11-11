@@ -300,7 +300,36 @@ bool ViewMatchesTexture(ID3D11View* view, DXGI_FORMAT format, UINT width, UINT h
         return false;
     D3D11_TEXTURE2D_DESC desc = {};
     texture->GetDesc(&desc);
-    return desc.Format == format && desc.Width == width && desc.Height == height &&
+    DXGI_FORMAT viewFormat = DXGI_FORMAT_UNKNOWN;
+    ComPtr<ID3D11ShaderResourceView> shaderView;
+    if (SUCCEEDED(view->QueryInterface(IID_PPV_ARGS(&shaderView))))
+    {
+        D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+        shaderView->GetDesc(&viewDesc);
+        if (viewDesc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D)
+            viewFormat = viewDesc.Format;
+    }
+    else
+    {
+        ComPtr<ID3D11RenderTargetView> renderTargetView;
+        if (SUCCEEDED(view->QueryInterface(IID_PPV_ARGS(&renderTargetView))))
+        {
+            D3D11_RENDER_TARGET_VIEW_DESC viewDesc = {};
+            renderTargetView->GetDesc(&viewDesc);
+            if (viewDesc.ViewDimension == D3D11_RTV_DIMENSION_TEXTURE2D)
+                viewFormat = viewDesc.Format;
+        }
+    }
+    const bool formatMatches =
+        desc.Format == format ||
+        (desc.Format == DXGI_FORMAT_R16_TYPELESS &&
+         viewFormat == format &&
+         (format == DXGI_FORMAT_R16_UNORM || format == DXGI_FORMAT_R16_FLOAT)) ||
+        (desc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS &&
+         viewFormat == format &&
+         (format == DXGI_FORMAT_R16G16B16A16_UNORM ||
+          format == DXGI_FORMAT_R16G16B16A16_FLOAT));
+    return formatMatches && desc.Width == width && desc.Height == height &&
            desc.ArraySize == 1 && desc.MipLevels == 1 && desc.SampleDesc.Count == 1;
 }
 
@@ -374,6 +403,29 @@ struct NguScaler::NativeChromaScale
     ComPtr<ID3D11Buffer> scaleYConstants;
     ComPtr<ID3D11SamplerState> sampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeChromaNetwork
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> cubici2;
+    ComPtr<ID3D11PixelShader> layer;
+    ComPtr<ID3D11PixelShader> dense;
+    ComPtr<ID3D11Buffer> cubici2Constants;
+    std::array<ComPtr<ID3D11Buffer>, 28> layerConstants;
+    ComPtr<ID3D11Buffer> denseConstants;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeChromaVeryHigh720
+{
+    std::array<ComPtr<ID3D11Texture2D>, 4> initialTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 4> initialViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 4> initialShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 2> groupTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 2> groupViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 2>
+        groupShaderViews;
 };
 
 struct NguScaler::NativeLumaLayers
@@ -1366,6 +1418,406 @@ bool NguScaler::RunNativeChromaScaleY(ID3D11ShaderResourceView* input,
                   1280,
                   720,
                   nativeChromaScale_->sampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma network requires a GPU";
+        return false;
+    }
+    if (nativeChromaNetwork_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma network requires the D3D11 backend";
+        return false;
+    }
+
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_cubici2.hlsl", 64 * 1024);
+    const auto cubici2Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2.cso", 0);
+    const auto layerBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer.cso", 0);
+    const auto denseBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense.cso", 0);
+    const auto cubici2Constants =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2_constants.bin",
+                         42 * sizeof(float) * 4);
+    const auto layerConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer_constants.bin",
+                         28 * 147 * sizeof(float) * 4);
+    const auto denseConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense_constants.bin",
+                         67 * sizeof(float) * 4);
+    if (shaderText.empty() || cubici2Bytecode.empty() || layerBytecode.empty() ||
+        denseBytecode.empty() || cubici2Constants.empty() ||
+        layerConstants.empty() || denseConstants.empty())
+    {
+        error_ = "NGU chroma network assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaNetwork",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma network vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaNetwork>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(cubici2Bytecode.data(),
+                                         static_cast<SIZE_T>(cubici2Bytecode.size()),
+                                         nullptr,
+                                         &state->cubici2)) ||
+        FAILED(device->CreatePixelShader(layerBytecode.data(),
+                                         static_cast<SIZE_T>(layerBytecode.size()),
+                                         nullptr,
+                                         &state->layer)) ||
+        FAILED(device->CreatePixelShader(denseBytecode.data(),
+                                         static_cast<SIZE_T>(denseBytecode.size()),
+                                         nullptr,
+                                         &state->dense)))
+    {
+        error_ = "NGU chroma network shader objects could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes,
+                               size_t offset,
+                               UINT size,
+                               ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = size;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA initial = {};
+        initial.pSysMem = bytes.data() + offset;
+        return SUCCEEDED(device->CreateBuffer(&desc, &initial, &buffer));
+    };
+    if (!createConstants(cubici2Constants,
+                         0,
+                         UINT(cubici2Constants.size()),
+                         state->cubici2Constants))
+    {
+        error_ = "NGU chroma Cubici2 constants could not be created";
+        return false;
+    }
+    constexpr size_t layerConstantBytes = 147 * sizeof(float) * 4;
+    for (size_t layer = 0; layer < state->layerConstants.size(); ++layer)
+    {
+        if (!createConstants(layerConstants,
+                             layer * layerConstantBytes,
+                             UINT(layerConstantBytes),
+                             state->layerConstants[layer]))
+        {
+            error_ = "NGU chroma layer constants could not be created";
+            return false;
+        }
+    }
+    if (!createConstants(denseConstants,
+                         0,
+                         UINT(denseConstants.size()),
+                         state->denseConstants))
+    {
+        error_ = "NGU chroma dense constants could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
+                                              &state->rasterizer)))
+    {
+        error_ = "NGU chroma network rasterizer could not be created";
+        return false;
+    }
+
+    nativeChromaNetwork_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaCubici2(
+    ID3D11ShaderResourceView* input,
+    ID3D11RenderTargetView* const outputs[4])
+{
+    if (!nativeChromaNetwork_ || !input || !outputs || !outputs[0] ||
+        !outputs[1] || !outputs[2] || !outputs[3] ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360))
+    {
+        error_ = "NGU chroma Cubici2 request is invalid";
+        return false;
+    }
+    for (int index = 0; index < 4; ++index)
+    {
+        if (!ViewMatchesTexture(outputs[index],
+                                DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                640,
+                                360))
+        {
+            error_ = "NGU chroma Cubici2 output is invalid";
+            return false;
+        }
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaNetwork_->vertex.Get(),
+                  nativeChromaNetwork_->cubici2.Get(),
+                  nativeChromaNetwork_->cubici2Constants.Get(),
+                  nativeChromaNetwork_->rasterizer.Get(),
+                  &input,
+                  1,
+                  outputs,
+                  4,
+                  640,
+                  360);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaLayer(
+    ID3D11ShaderResourceView* const inputs[4],
+    int layer,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] ||
+        !inputs[2] || !inputs[3] || !output || layer < 0 ||
+        layer >= int(nativeChromaNetwork_->layerConstants.size()))
+    {
+        error_ = "NGU chroma layer request is invalid";
+        return false;
+    }
+    for (int index = 0; index < 4; ++index)
+    {
+        if (!ViewMatchesTexture(inputs[index],
+                                DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                640,
+                                360))
+        {
+            error_ = "NGU chroma layer input is invalid";
+            return false;
+        }
+    }
+    if (!ViewMatchesTexture(output,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            640,
+                            360))
+    {
+        error_ = "NGU chroma layer output is invalid";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaNetwork_->vertex.Get(),
+                  nativeChromaNetwork_->layer.Get(),
+                  nativeChromaNetwork_->layerConstants[layer].Get(),
+                  nativeChromaNetwork_->rasterizer.Get(),
+                  inputs,
+                  4,
+                  &output,
+                  1,
+                  640,
+                  360);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaDense(
+    ID3D11ShaderResourceView* const inputs[4],
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] ||
+        !inputs[2] || !inputs[3] || !output)
+    {
+        error_ = "NGU chroma dense request is invalid";
+        return false;
+    }
+    for (int index = 0; index < 4; ++index)
+    {
+        if (!ViewMatchesTexture(inputs[index],
+                                DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                640,
+                                360))
+        {
+            error_ = "NGU chroma dense input is invalid";
+            return false;
+        }
+    }
+    if (!ViewMatchesTexture(output,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            642,
+                            362))
+    {
+        error_ = "NGU chroma dense output is invalid";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaNetwork_->vertex.Get(),
+                  nativeChromaNetwork_->dense.Get(),
+                  nativeChromaNetwork_->denseConstants.Get(),
+                  nativeChromaNetwork_->rasterizer.Get(),
+                  inputs,
+                  4,
+                  &output,
+                  1,
+                  642,
+                  362);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaVeryHigh720(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU VeryHigh chroma requires a GPU";
+        return false;
+    }
+    if (nativeChromaVeryHigh720_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device || !PrepareNativeChromaNetwork(gpu))
+    {
+        if (error_.empty())
+            error_ = "NGU VeryHigh chroma requires the D3D11 backend";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeChromaVeryHigh720>();
+    ID3D11Device* device = d3d->device;
+    auto create = [&](UINT width,
+                      UINT height,
+                      ComPtr<ID3D11Texture2D>& texture,
+                      ComPtr<ID3D11RenderTargetView>& view,
+                      ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    for (size_t index = 0; index < state->initialTextures.size(); ++index)
+    {
+        if (!create(640,
+                    360,
+                    state->initialTextures[index],
+                    state->initialViews[index],
+                    state->initialShaderViews[index]))
+        {
+            error_ = "NGU VeryHigh chroma initializer surfaces failed";
+            return false;
+        }
+    }
+    for (size_t set = 0; set < state->groupTextures.size(); ++set)
+    {
+        for (size_t feature = 0; feature < state->groupTextures[set].size();
+             ++feature)
+        {
+            if (!create(640,
+                        360,
+                        state->groupTextures[set][feature],
+                        state->groupViews[set][feature],
+                        state->groupShaderViews[set][feature]))
+            {
+                error_ = "NGU VeryHigh chroma layer surfaces failed";
+                return false;
+            }
+        }
+    }
+
+    nativeChromaVeryHigh720_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaVeryHigh720(
+    ID3D11ShaderResourceView* cb,
+    ID3D11RenderTargetView* denseOutput)
+{
+    if (!nativeChromaVeryHigh720_ || !cb || !denseOutput ||
+        !ViewMatchesTexture(cb, DXGI_FORMAT_R16_UNORM, 640, 360) ||
+        !ViewMatchesTexture(denseOutput,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            642,
+                            362))
+    {
+        error_ = "NGU VeryHigh chroma request is invalid";
+        return false;
+    }
+
+    std::array<ID3D11RenderTargetView*, 4> initialTargets = {};
+    for (size_t index = 0; index < initialTargets.size(); ++index)
+        initialTargets[index] =
+            nativeChromaVeryHigh720_->initialViews[index].Get();
+    if (!RunNativeChromaCubici2(cb, initialTargets.data()))
+        return false;
+
+    std::array<ID3D11ShaderResourceView*, 4> current = {};
+    for (size_t index = 0; index < current.size(); ++index)
+        current[index] =
+            nativeChromaVeryHigh720_->initialShaderViews[index].Get();
+
+    for (int layer = 0; layer < 28; ++layer)
+    {
+        const size_t set = size_t((layer / 4) % 2);
+        const size_t feature = size_t(layer % 4);
+        if (!RunNativeChromaLayer(
+                current.data(),
+                layer,
+                nativeChromaVeryHigh720_->groupViews[set][feature].Get()))
+            return false;
+        if (feature == 3)
+        {
+            for (size_t index = 0; index < current.size(); ++index)
+                current[index] =
+                    nativeChromaVeryHigh720_->groupShaderViews[set][index].Get();
+        }
+    }
+    if (!RunNativeChromaDense(current.data(), denseOutput))
+        return false;
     error_ = "";
     return true;
 }
@@ -5511,6 +5963,8 @@ void NguScaler::Reset()
     nativeDecoderSource_.reset();
     nativeChromaSplit_.reset();
     nativeChromaScale_.reset();
+    nativeChromaNetwork_.reset();
+    nativeChromaVeryHigh720_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

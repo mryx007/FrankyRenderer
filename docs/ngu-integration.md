@@ -267,6 +267,15 @@ Y reports `274/921600` changed samples, `maximum=1`, and
 worse, so this remains a cross-API L16 rounding boundary rather than a
 substituted coordinate formula.
 
+The native chroma core now continues through PS_1672, all 28 PS_4620 layers and
+PS_2672 dense. PS_1672 matches all four 640x360 RGBA16_FLOAT outputs exactly.
+Each layer, tested with its captured inputs, stays within `3.052e-5`; the dense
+stage is exact from captured inputs. The one-call
+`RunNativeChromaVeryHigh720` scheduler reuses two four-texture groups and
+produces a complete cascade within `3.29614e-5` of the captured dense surface
+at `2.849 ms/frame` on this host. Canonical run3 L16 words are read as
+R16_UNORM; the half-encoded capture variant is not interchangeable.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -298,7 +307,7 @@ product integration, not another transport redesign:
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: native PS_1672...PS_4576 chroma core,
+The shortest critical path is therefore: native Cr and PS_564...PS_4576 chroma,
 P010 bridge wiring into Backend/DirectShow, then full
 format/lifecycle/performance acceptance. No missing mapping may be replaced by
 a guessed fallback while those gates are open.
