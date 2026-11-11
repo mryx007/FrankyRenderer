@@ -14,9 +14,9 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
     if (!settings.scaling)
     {
         const char* upscaler =
-            IsNativeNguFilter(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
+            IsNativeScalerIdentifier(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
         const char* chroma =
-            IsNativeNguFilter(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
+            IsNativeScalerIdentifier(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
         if (!pl_options_set_str(options, "upscaler", upscaler) ||
             !pl_options_set_str(options, "downscaler", settings.downscaler.c_str()))
             return E_INVALIDARG;

@@ -475,7 +475,7 @@ struct PlaceboBackend::State
 
     bool RunNgu(int targetWidth, int targetHeight)
     {
-        if (!settings.nativeNguSharp)
+        if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
         if (targetWidth != 3840 || targetHeight != 2160)
         {
@@ -1680,7 +1680,7 @@ struct PlaceboBackend::State
             }
         } descriptionRestore{description, description};
 
-        if (settings.nativeNguSharp)
+        if (settings.nativeScaler == NativeScalerKind::NguSharp)
         {
             const int targetWidth = target.planes[0].texture->params.w;
             const int targetHeight = target.planes[0].texture->params.h;
@@ -2423,7 +2423,8 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
         stride = frame.width * 4 * c;
         layout.channels = 4;
     }
-    if (s.settings.nativeNguSharp && frame.format == PixelFormat::RGB48)
+    if (s.settings.nativeScaler == NativeScalerKind::NguSharp &&
+        frame.format == PixelFormat::RGB48)
     {
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = frame.width;

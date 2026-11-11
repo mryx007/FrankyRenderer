@@ -1,5 +1,6 @@
 #pragma once
 #include <libplacebo/options.h>
+#include "Settings/NativeScaler.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -44,7 +45,7 @@ inline constexpr const wchar_t* ScalingFieldLabels[] = {L"Radius",
 
 inline bool IsNativeNguFilter(const char* name)
 {
-    return name && !std::strcmp(name, "ngu_sharp");
+    return ResolveNativeScaler(name) == NativeScalerKind::NguSharp;
 }
 
 inline bool NativeNguRequested(const ScalerSettings& settings)
@@ -122,7 +123,7 @@ inline bool ApplyScaling(pl_options o, const ScalingSettings& settings)
         const std::string key = ScalingRoles[role];
         if (!strcmp(s.filter, "auto"))
             continue;
-        if (IsNativeNguFilter(s.filter))
+        if (IsNativeScalerIdentifier(s.filter))
         {
             if (role != 0 && role != 2)
                 return false;

@@ -12,12 +12,31 @@ On 2026-11-11 the user explicitly authorized direct source changes for this
 work. The preferred product form is a dedicated native scaling module selected
 as `ngu_sharp`, peer to `ewa_lanczos` and the other normal scaler choices.
 
-## Architecture decision (2026-11-12)
+## Architecture decision: native scaler peer (accepted 2026-11-12)
 
 The user accepted performance-first changes to FrankyRenderer's scaling source.
 NGU is therefore an implementation peer of the existing `ewa_lanczos`,
 `ewa_lanczossharp`, `ewa_jinc`, and related algorithm identifiers, not a
 user-shader-only extension.
+
+This is a deliberate route change. The public mpv-compatible shader-pack
+transport remains valuable for isolated arithmetic validation, but it is no
+longer the required product pipeline. The product pipeline is:
+
+```text
+persisted scaler id "ngu_sharp"
+  -> generic native-scaler resolution
+  -> NguScaler-owned D3D11 resources and pass schedule
+  -> existing FrankyRenderer colour management and presentation
+```
+
+The immediate reason is E-094 [observed]: the SuperChromaRes strength-3 path
+needs three independent 16-bit RGB codes, while one RGBA16F user-shader `SAVE`
+surface can carry only two exact 16-bit codes via high/low halves. A native
+module can use the target-required integer/UNORM/F16 surfaces and, where
+observed, native MRT topology without lossy packing or producer recomputation.
+This changes transport and scheduling only; it does not change arithmetic,
+resource selection, pass order, or fallback behavior.
 
 This authorization is a change to the implementation route, not to the
 behavioral oracle. The product-level identifier is `ngu_sharp`; it is currently
@@ -118,6 +137,14 @@ spread through libplacebo or the presentation code:
 5. The native module owns NGU-specific shader selection, samplers, textures,
    MRTs and scheduling. `Backend.cpp` only supplies source/frame state and
    receives the result; colour management and presentation remain generic.
+
+The first generic resolver implementation is
+`src/Settings/NativeScaler.h`: persisted identifiers resolve to a
+`NativeScalerKind`, and the renderer stores that route instead of an
+NGU-specific boolean. `ngu_sharp` resolves to the native NGU module; unknown or
+ordinary identifiers resolve to `None` and continue through the existing
+libplacebo path. Adding another native algorithm later should extend this
+resolver rather than add another flag and selection branch.
 
 This boundary is intentionally narrow enough to be reviewed as an additional
 host capability. If the adapter is not accepted upstream, the NGU module and
@@ -232,3 +259,23 @@ SDR; the earlier black frame was a test-source 1:1 aspect error that introduced
 Real decoder/YUV source binding, production of the combined SuperChromaRes
 strength-3 inputs, 1080p composition, other geometries/formats, full lifecycle
 coverage, and the performance matrix remain open.
+
+## Distance to the first product milestone
+
+The architecture decision is complete. The remaining distance is evidence and
+product integration, not another transport redesign:
+
+| Gate | Current evidence | Still required |
+|---|---|---|
+| Build | Full FrankyRenderer build passes with the generic native-scaler resolver | Repeat release packaging for the selected distribution |
+| VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
+| VeryHigh 1080p luma | Captured-input scheduler and Backend RGB48 path pass | Same-frame 1080p PS_1352 oracle; the available post3/fresh captures are rejected |
+| SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
+| `ngu_sharp` peer | Generic resolver, experimental Image/Plane Upscaler choice and fail-closed Backend contract pass | Production YUV source binding and final playback acceptance |
+| DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
+| Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
+
+The shortest critical path is therefore: real decoder/YUV binding, production
+SuperChromaRes strength-3 input generation, the missing same-frame 1080p oracle,
+then full DirectShow/format/lifecycle/performance acceptance. No missing mapping
+may be replaced by a guessed fallback while those gates are open.

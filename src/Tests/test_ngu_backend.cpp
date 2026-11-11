@@ -65,6 +65,10 @@ int main(int argc, char** argv)
     try
     {
         Require(argc == 2, "usage: test_ngu_backend <capture-root>");
+        Require(ResolveNativeScaler("ngu_sharp") == NativeScalerKind::NguSharp,
+                "native scaler resolver NGU");
+        Require(ResolveNativeScaler("ewa_lanczos") == NativeScalerKind::None,
+                "native scaler resolver ordinary filter");
         const auto root = std::filesystem::path(argv[1]);
         const auto rgba16 =
             ReadBytes(root / "input_00224_PS_460_bfe50921_s0.bin",
@@ -78,7 +82,7 @@ int main(int argc, char** argv)
         settings.ditherMethod = 3;
         settings.peakDetect = false;
         settings.colorAdjustment = false;
-        settings.nativeNguSharp = true;
+        settings.nativeScaler = NativeScalerKind::NguSharp;
         settings.upscaler = "ngu_sharp";
         settings.chromaUpscaler = "ngu_sharp";
         settings.downscaler = "mitchell";
