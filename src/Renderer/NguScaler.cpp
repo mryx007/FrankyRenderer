@@ -1,6 +1,7 @@
 #include "Renderer/NguScaler.h"
 #include "Renderer/UserShaderSource.h"
 #include <d3d11.h>
+#include <d3d11_3.h>
 #include <d3dcompiler.h>
 #include <libplacebo/d3d11.h>
 #include <wrl/client.h>
@@ -341,6 +342,15 @@ struct NguScaler::NativeLumaInitial
 
 struct NguScaler::NativeLumaSplit
 {
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeDecoderSource
+{
+    ComPtr<ID3D11Device3> device3;
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11SamplerState> pointSampler;
@@ -856,6 +866,194 @@ bool NguScaler::RunNativeLumaSplit(ID3D11ShaderResourceView* source,
                   static_cast<UINT>(width),
                   static_cast<UINT>(height),
                   nativeLumaSplit_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeDecoderSource(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU decoder source import requires a GPU";
+        return false;
+    }
+    if (nativeDecoderSource_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU decoder source import requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_source_copy.hlsl", 16 * 1024);
+    const auto pixelCso =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_source_copy.cso", 0);
+    if (shaderText.empty() || pixelCso.empty())
+    {
+        error_ = "NGU decoder source import assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_DecoderSourceCopy",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU decoder source vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeDecoderSource>();
+    if (FAILED(device->QueryInterface(
+            __uuidof(ID3D11Device3),
+            reinterpret_cast<void**>(state->device3.GetAddressOf()))))
+    {
+        error_ = "NGU decoder source import requires D3D11.3 plane views";
+        return false;
+    }
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    {
+        error_ = "NGU decoder source shader objects could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU decoder source sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU decoder source rasterizer could not be created";
+        return false;
+    }
+
+    nativeDecoderSource_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeDecoderSourceCopy(ID3D11Texture2D* source,
+                                           unsigned int arraySlice,
+                                           int width,
+                                           int height,
+                                           ID3D11RenderTargetView* luma,
+                                           ID3D11RenderTargetView* chroma)
+{
+    if (!nativeDecoderSource_ || !source || width <= 0 || height <= 0 ||
+        (width & 1) || (height & 1) || !luma || !chroma)
+    {
+        error_ = "NGU decoder source request is invalid";
+        return false;
+    }
+    D3D11_TEXTURE2D_DESC sourceDesc = {};
+    source->GetDesc(&sourceDesc);
+    if ((sourceDesc.Format != DXGI_FORMAT_P010 && sourceDesc.Format != DXGI_FORMAT_P016) ||
+        sourceDesc.MipLevels != 1 || sourceDesc.SampleDesc.Count != 1 ||
+        arraySlice >= sourceDesc.ArraySize ||
+        static_cast<UINT>(width) > sourceDesc.Width ||
+        static_cast<UINT>(height) > sourceDesc.Height)
+    {
+        error_ = "NGU decoder source format or geometry is unsupported";
+        return false;
+    }
+    if (!ViewMatchesTexture(luma, DXGI_FORMAT_R16_UNORM, width, height) ||
+        !ViewMatchesTexture(
+            chroma, DXGI_FORMAT_R16G16B16A16_UNORM, width / 2, height / 2))
+    {
+        error_ = "NGU decoder source output format or geometry is unsupported";
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC1 lumaViewDesc = {};
+    lumaViewDesc.Format = DXGI_FORMAT_R16_UNORM;
+    lumaViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+    lumaViewDesc.Texture2DArray.MipLevels = 1;
+    lumaViewDesc.Texture2DArray.FirstArraySlice = arraySlice;
+    lumaViewDesc.Texture2DArray.ArraySize = 1;
+    lumaViewDesc.Texture2DArray.PlaneSlice = 0;
+    ComPtr<ID3D11ShaderResourceView1> lumaView;
+    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(
+            source, &lumaViewDesc, &lumaView)))
+    {
+        error_ = "NGU decoder luma plane view could not be created";
+        return false;
+    }
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC1 chromaViewDesc = {};
+    chromaViewDesc.Format = DXGI_FORMAT_R16G16_UNORM;
+    chromaViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+    chromaViewDesc.Texture2DArray.MipLevels = 1;
+    chromaViewDesc.Texture2DArray.FirstArraySlice = arraySlice;
+    chromaViewDesc.Texture2DArray.ArraySize = 1;
+    chromaViewDesc.Texture2DArray.PlaneSlice = 1;
+    ComPtr<ID3D11ShaderResourceView1> chromaView;
+    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(
+            source, &chromaViewDesc, &chromaView)))
+    {
+        error_ = "NGU decoder chroma plane view could not be created";
+        return false;
+    }
+
+    ID3D11ShaderResourceView* input = lumaView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeDecoderSource_->vertex.Get(),
+                  nativeDecoderSource_->pixel.Get(),
+                  nullptr,
+                  nativeDecoderSource_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &luma,
+                  1,
+                  static_cast<UINT>(width),
+                  static_cast<UINT>(height),
+                  nativeDecoderSource_->pointSampler.Get());
+    input = chromaView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeDecoderSource_->vertex.Get(),
+                  nativeDecoderSource_->pixel.Get(),
+                  nullptr,
+                  nativeDecoderSource_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &chroma,
+                  1,
+                  static_cast<UINT>(width / 2),
+                  static_cast<UINT>(height / 2),
+                  nativeDecoderSource_->pointSampler.Get());
     error_ = "";
     return true;
 }
@@ -4998,6 +5196,7 @@ void NguScaler::Reset()
         pl_mpv_user_shader_destroy(&hook_);
     nativeLumaInitial_.reset();
     nativeLumaSplit_.reset();
+    nativeDecoderSource_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

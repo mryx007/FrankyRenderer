@@ -6,6 +6,7 @@
 
 struct ID3D11ShaderResourceView;
 struct ID3D11RenderTargetView;
+struct ID3D11Texture2D;
 
 // NGU quality names mirror the target settings. Only VeryHigh has
 // evidence-backed validation stages; the other levels stay fail-closed until
@@ -90,6 +91,13 @@ class NguScaler
                             int height,
                             ID3D11RenderTargetView* luma,
                             ID3D11RenderTargetView* cbcr);
+    bool PrepareNativeDecoderSource(pl_gpu gpu);
+    bool RunNativeDecoderSourceCopy(ID3D11Texture2D* source,
+                                    unsigned int arraySlice,
+                                    int width,
+                                    int height,
+                                    ID3D11RenderTargetView* luma,
+                                    ID3D11RenderTargetView* chroma);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -249,6 +257,7 @@ class NguScaler
     bool PrepareOwnedDither();
     struct NativeLumaInitial;
     struct NativeLumaSplit;
+    struct NativeDecoderSource;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -270,6 +279,7 @@ class NguScaler
     NguDither dither_;
     std::unique_ptr<NativeLumaInitial> nativeLumaInitial_;
     std::unique_ptr<NativeLumaSplit> nativeLumaSplit_;
+    std::unique_ptr<NativeDecoderSource> nativeDecoderSource_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;
