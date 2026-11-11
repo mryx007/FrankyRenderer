@@ -119,6 +119,33 @@ int CountWords(const std::vector<uint8_t>& actual, const std::vector<uint8_t>& e
     return different;
 }
 
+int CompareRgb8(const std::vector<uint8_t>& actual,
+                const std::vector<uint8_t>& expected,
+                int& maximum,
+                int& overOne)
+{
+    Require(actual.size() == expected.size() && actual.size() % 4 == 0,
+            "RGB8 comparison size");
+    int different = 0;
+    maximum = 0;
+    overOne = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (int channel = 0; channel < 3; ++channel)
+        {
+            const int delta = std::abs(int(actual[offset + channel]) -
+                                       int(expected[offset + channel]));
+            if (delta)
+                ++different;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
+    }
+    return different;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -597,6 +624,20 @@ int main(int argc, char** argv)
                 [](uint8_t value) { return value != 0; });
             Require(composed1080NonBlack, "1080p composed output is black");
             std::printf("1080 Composed nonblack=1\n");
+            if (const char* finalOraclePath = std::getenv("NGU_1080_FINAL_ORACLE"))
+            {
+                const auto finalOracle = ReadBytes(finalOraclePath, size_t(3840) * 2160 * 4);
+                int finalMaximum = 0;
+                int finalOverOne = 0;
+                const int finalDifferent =
+                    CompareRgb8(composed1080Actual, finalOracle, finalMaximum, finalOverOne);
+                std::printf("1080 Final different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                            finalDifferent, finalMaximum, finalOverOne);
+                Require(finalMaximum <= 1 && finalOverOne == 0,
+                        "1080p final composition comparison");
+            }
+            else
+                std::printf("1080 Final skipped (NGU_1080_FINAL_ORACLE unset)\n");
 
             Require(ngu.PrepareNativeSuperResStrength3_1080(d3d->gpu), ngu.LastError());
             auto scheduler1080Output = CreateTexture(
