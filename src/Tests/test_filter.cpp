@@ -19,6 +19,9 @@
 #include <initguid.h>
 #include "DirectShow/Include/IMediaSideData.h"
 #include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -43,6 +46,46 @@ static bool measureTest = false;
 static bool startupTest = false;
 static bool mpcbeOwnerTest = false;
 static bool nguTest = false;
+static std::wstring nguCaptureRoot;
+
+static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
+{
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file || size_t(file.tellg()) != expected)
+        return {};
+    file.seekg(0);
+    std::vector<BYTE> bytes(expected);
+    if (!file.read(reinterpret_cast<char*>(bytes.data()), std::streamsize(expected)))
+        return {};
+    return bytes;
+}
+
+static bool CompareNguRgb(const std::vector<BYTE>& actual,
+                          const std::vector<BYTE>& expected,
+                          int& different,
+                          int& maximum,
+                          int& overOne)
+{
+    if (actual.size() != expected.size() || actual.size() % 4)
+        return false;
+    different = maximum = overOne = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (int channel = 0; channel < 3; ++channel)
+        {
+            const int delta =
+                std::abs(int(actual[offset + channel]) -
+                         int(expected[offset + channel]));
+            if (delta)
+                ++different;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
+    }
+    return true;
+}
 
 // MPC-BE's allocator presenter aggregates the renderer and forwards interface
 // requests to its non-delegating IUnknown. Exercise that ownership as well as
@@ -1094,6 +1137,8 @@ int wmain(int argc, wchar_t** argv)
     {
         if (wcscmp(argv[i], L"--ngu") == 0)
             nguTest = true;
+        if (wcscmp(argv[i], L"--ngu-root") == 0 && i + 1 < argc)
+            nguCaptureRoot = argv[++i];
         if (wcscmp(argv[i], L"--nv12") == 0)
             textureFormat = DXGI_FORMAT_NV12;
         if (wcscmp(argv[i], L"--p016") == 0)
@@ -1472,9 +1517,30 @@ int wmain(int argc, wchar_t** argv)
                    static_cast<unsigned long>(sourceFailure.load()));
             return 1;
         }
+        int different = 0, maximum = 0, overOne = 0;
+        if (!nguCaptureRoot.empty())
+        {
+            std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
+            Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()),
+                  "NGU DirectShow pixels");
+            const auto expected = ReadFile(
+                nguCaptureRoot +
+                    L"\\draw_00266_PS_1352_6992f6f0_rt0_3840x2160_f21.bin",
+                size_t(3840) * 2160 * 4);
+            if (expected.empty() ||
+                !CompareNguRgb(pixels, expected, different, maximum, overOne) ||
+                maximum > 1 || overOne != 0)
+            {
+                printf("FAIL_PRODUCT ngu_sharp DirectShow RGB different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                       different, maximum, overOne);
+                return 1;
+            }
+        }
         Check(control->Stop(), "stop NGU graph");
-        printf("PASS_PRODUCT ngu_sharp DirectShow RGB48 graph rendered=%llu\n",
-               static_cast<unsigned long long>(status.rendered));
+        printf("PASS_PRODUCT ngu_sharp DirectShow RGB48 graph rendered=%llu different=%d maximum=%d\n",
+               static_cast<unsigned long long>(status.rendered),
+               different,
+               maximum);
         return 0;
     }
     if (rtxTest)

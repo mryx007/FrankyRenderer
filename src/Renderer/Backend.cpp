@@ -483,13 +483,13 @@ struct PlaceboBackend::State
             error = "ngu_sharp currently requires a 1280x720 top-down RGB48 source";
             return false;
         }
-        if (!copy)
+        if (!nguSource)
         {
             error = "ngu_sharp source texture is unavailable";
             return false;
         }
         D3D11_TEXTURE2D_DESC sourceDesc = {};
-        copy->GetDesc(&sourceDesc);
+        nguSource->GetDesc(&sourceDesc);
         if (sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
         {
             error = "ngu_sharp source format is unsupported";
@@ -497,10 +497,15 @@ struct PlaceboBackend::State
         }
         if (!PrepareNgu())
             return false;
-        if (nguSource.Get() != copy.Get())
+        if (nguSourceView)
         {
-            nguSourceView.Reset();
-            nguSource = copy;
+            ComPtr<ID3D11Resource> sourceResource;
+            nguSourceView->GetResource(&sourceResource);
+            if (sourceResource.Get() != nguSource.Get())
+                nguSourceView.Reset();
+        }
+        if (!nguSourceView)
+        {
             if (FAILED(d3d->device->CreateShaderResourceView(
                     nguSource.Get(), nullptr, &nguSourceView)))
             {
@@ -2404,6 +2409,7 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
             s.valid = false;
             return hr;
         }
+        s.nguSource = s.copy;
     }
     size_t offset = 0;
     for (int i = 0; i < layout.planes; i++)
@@ -2530,6 +2536,8 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
         if (FAILED(hr))
             return hr;
     }
+    if (rgb16)
+        s.nguSource = s.copy;
     bool held = false;
     if (s.decoderMutex)
     {
