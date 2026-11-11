@@ -39,6 +39,7 @@ enum class NguScalerStage
     VeryHighSuperResToRgbBase,
     VeryHighSuperResStrength3,
     VeryHighLuma4x720LowCore,
+    VeryHighLuma4x720HighCore,
     VeryHighLuma1080Core,
 };
 
@@ -156,6 +157,15 @@ class NguScaler
     bool CopyNativeLuma4x720ScaleY(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720Initial(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720LowLayer(ID3D11RenderTargetView* output);
+    bool PrepareNativeLuma4x720High(pl_gpu gpu);
+    bool RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
+                                int sourceWidth,
+                                int sourceHeight);
+    bool CopyNativeLuma4x720Upsample(int feature,
+                                     int part,
+                                     ID3D11RenderTargetView* output);
+    bool CopyNativeLuma4x720Convert(int feature, ID3D11RenderTargetView* output);
+    bool CopyNativeLuma4x720HighLayer(int feature, ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -175,6 +185,7 @@ class NguScaler
     struct NativeSuperResPrimitives;
     struct NativeSuperResStrength3;
     struct NativeLuma4x720Low;
+    struct NativeLuma4x720High;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -192,4 +203,5 @@ class NguScaler
     std::unique_ptr<NativeSuperResPrimitives> nativeSuperRes_;
     std::unique_ptr<NativeSuperResStrength3> nativeSuperResStrength3_;
     std::unique_ptr<NativeLuma4x720Low> nativeLuma4x720Low_;
+    std::unique_ptr<NativeLuma4x720High> nativeLuma4x720High_;
 };

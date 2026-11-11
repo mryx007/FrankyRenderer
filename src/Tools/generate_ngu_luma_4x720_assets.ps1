@@ -63,6 +63,21 @@ $layers = 222..236 | ForEach-Object {
 }
 Join-Capture $layers 'luma_4x720_low_layer_constants.bin' 1776
 
+$upsampleLayers = 237..239 | ForEach-Object {
+    'const_snapshot_draw_{0:D5}_PS_4920_9257dfe6.f32' -f $_
+}
+Join-Capture $upsampleLayers 'luma_4x720_upsample_constants.bin' 3136
+
+$convertLayers = 240..242 | ForEach-Object {
+    'const_snapshot_draw_{0:D5}_PS_912_86f81c64.f32' -f $_
+}
+Join-Capture $convertLayers 'luma_4x720_convert_constants.bin' 32
+
+$highLayers = 243..248 | ForEach-Object {
+    'const_snapshot_draw_{0:D5}_PS_3588_80fb311e.f32' -f $_
+}
+Join-Capture $highLayers 'luma_4x720_high_layer_constants.bin' 1776
+
 Get-ChildItem $output -File |
     Where-Object Name -Like 'luma_4x720_*' |
     Sort-Object Name |

@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -163,6 +164,10 @@ int main(int argc, char** argv)
         request.quality = NguQuality::High;
         Require(ProbeNguScaler(request) == NguScalerSupport::ExperimentalUnimplemented,
                 "720p 4x luma quality gate");
+        request.quality = NguQuality::VeryHigh;
+        request.stage = NguScalerStage::VeryHighLuma4x720HighCore;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x high-core capability");
 
         const auto sourceBytes =
             ReadBytes(root / "input_00224_PS_460_bfe50921_s0.bin", size_t(1280) * 720 * 8);
@@ -272,12 +277,146 @@ int main(int argc, char** argv)
             std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - start).count() / frames;
 
+        Require(ngu.PrepareNativeLuma4x720High(d3d->gpu), ngu.LastError());
+        Require(ngu.RunNativeLuma4x720High(sourceView.Get(), 1280, 720), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+
+        std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 3> upTextures;
+        std::array<ComPtr<ID3D11Texture2D>, 3> convertTextures;
+        std::array<ComPtr<ID3D11Texture2D>, 3> highTextures;
+        std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 3> upViews;
+        std::array<ComPtr<ID3D11RenderTargetView>, 3> convertViews;
+        std::array<ComPtr<ID3D11RenderTargetView>, 3> highViews;
+        for (size_t feature = 0; feature < 3; ++feature)
+        {
+            for (size_t part = 0; part < 4; ++part)
+            {
+                upTextures[feature][part] =
+                    CreateTexture(device,
+                                  1282,
+                                  722,
+                                  DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                  D3D11_BIND_RENDER_TARGET);
+                Require(SUCCEEDED(device->CreateRenderTargetView(
+                            upTextures[feature][part].Get(),
+                            nullptr,
+                            &upViews[feature][part])),
+                        "upsample RTV");
+                Require(ngu.CopyNativeLuma4x720Upsample(
+                            int(feature), int(part), upViews[feature][part].Get()),
+                        ngu.LastError());
+            }
+            convertTextures[feature] = CreateTexture(device,
+                                                     2560,
+                                                     1440,
+                                                     DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                                     D3D11_BIND_RENDER_TARGET);
+            highTextures[feature] = CreateTexture(device,
+                                                  2560,
+                                                  1440,
+                                                  DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                                  D3D11_BIND_RENDER_TARGET);
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        convertTextures[feature].Get(), nullptr, &convertViews[feature])),
+                    "convert RTV");
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        highTextures[feature].Get(), nullptr, &highViews[feature])),
+                    "high layer RTV");
+            Require(ngu.CopyNativeLuma4x720HighLayer(
+                        int(feature), highViews[feature].Get()),
+                    ngu.LastError());
+            Require(ngu.CopyNativeLuma4x720Convert(
+                        int(feature), convertViews[feature].Get()),
+                    ngu.LastError());
+        }
+        pl_gpu_finish(d3d->gpu);
+
+        const char* upNames[3][4] = {
+            {
+                "input_00246_PS_912_86f81c64_s0.bin",
+                "input_00246_PS_912_86f81c64_s2.bin",
+                "input_00246_PS_912_86f81c64_s3.bin",
+                "input_00246_PS_912_86f81c64_s4.bin",
+            },
+            {
+                "input_00247_PS_912_86f81c64_s0.bin",
+                "input_00247_PS_912_86f81c64_s2.bin",
+                "input_00247_PS_912_86f81c64_s3.bin",
+                "input_00247_PS_912_86f81c64_s4.bin",
+            },
+            {
+                "input_00248_PS_912_86f81c64_s0.bin",
+                "input_00248_PS_912_86f81c64_s2.bin",
+                "input_00248_PS_912_86f81c64_s3.bin",
+                "input_00248_PS_912_86f81c64_s4.bin",
+            },
+        };
+        const char* convertNames[3] = {
+            "draw_00246_PS_912_86f81c64_rt0_2560x1440_f113.bin",
+            "draw_00247_PS_912_86f81c64_rt0_2560x1440_f113.bin",
+            "draw_00248_PS_912_86f81c64_rt0_2560x1440_f113.bin",
+        };
+        const char* highNames[3] = {
+            "draw_00252_PS_3588_80fb311e_rt0_2560x1440_f113.bin",
+            "draw_00253_PS_3588_80fb311e_rt0_2560x1440_f113.bin",
+            "draw_00254_PS_3588_80fb311e_rt0_2560x1440_f113.bin",
+        };
+        std::array<std::array<std::vector<uint8_t>, 4>, 3> upActual;
+        std::array<std::vector<uint8_t>, 3> convertActual;
+        std::array<std::vector<uint8_t>, 3> highActual;
+        bool highPass = true;
+        for (size_t feature = 0; feature < 3; ++feature)
+        {
+            convertActual[feature] =
+                Download(device, context.Get(), convertTextures[feature].Get());
+            highActual[feature] = Download(device, context.Get(), highTextures[feature].Get());
+            bool upExact = true;
+            for (size_t part = 0; part < 4; ++part)
+            {
+                upActual[feature][part] =
+                    Download(device, context.Get(), upTextures[feature][part].Get());
+                int upMax = 0;
+                const int upDifferent = CountWords(
+                    upActual[feature][part],
+                    ReadBytes(root / upNames[feature][part], size_t(1282) * 722 * 8),
+                    upMax);
+                std::printf("Upsample%d.%d different=%d maximum=%d\n",
+                            int(feature), int(part), upDifferent, upMax);
+                upExact = upExact && upDifferent == 0 && upMax == 0;
+            }
+            int convertMax = 0, highMax = 0;
+            const int convertDifferent = CountWords(
+                convertActual[feature],
+                ReadBytes(root / convertNames[feature], size_t(2560) * 1440 * 8),
+                convertMax);
+            const int highDifferent = CountWords(
+                highActual[feature],
+                ReadBytes(root / highNames[feature], size_t(2560) * 1440 * 8),
+                highMax);
+            std::printf("Convert%d different=%d maximum=%d\n",
+                        int(feature), convertDifferent, convertMax);
+            std::printf("HighLayer%d different=%d maximum=%d\n",
+                        int(feature), highDifferent, highMax);
+            highPass = highPass && upExact &&
+                       convertDifferent == 0 && convertMax == 0 &&
+                       highDifferent == 0 && highMax == 0;
+        }
+        const auto highStart = std::chrono::steady_clock::now();
+        for (int frame = 0; frame < frames; ++frame)
+            Require(ngu.RunNativeLuma4x720High(sourceView.Get(), 1280, 720),
+                    ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const double highMilliseconds =
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - highStart).count() / frames;
+
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
         std::printf("Initial different=%d maximum=%d\n", initialDifferent, initialMaximum);
         std::printf("LowLayer different=%d maximum=%d\n", lowLayerDifferent, lowLayerMaximum);
         std::printf("Core %.3f ms/frame\n", milliseconds);
+        std::printf("HighCore %.3f ms/frame\n", highMilliseconds);
 
         if (!actualPrefix.empty())
         {
@@ -286,16 +425,43 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"scale_y.bin", scaleYActual);
             WriteBytes(actualPrefix + L"initial.bin", initialActual);
             WriteBytes(actualPrefix + L"low_layer.bin", lowLayerActual);
+            for (size_t feature = 0; feature < 3; ++feature)
+            {
+                for (size_t part = 0; part < 4; ++part)
+                    WriteBytes(actualPrefix + L"upsample_" +
+                                   std::to_wstring(feature) + L"_" +
+                                   std::to_wstring(part) + L".bin",
+                               upActual[feature][part]);
+                WriteBytes(actualPrefix + L"convert_" +
+                               std::to_wstring(feature) + L".bin",
+                           convertActual[feature]);
+                WriteBytes(actualPrefix + L"high_layer_" +
+                               std::to_wstring(feature) + L".bin",
+                           highActual[feature]);
+            }
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
                           scaleYDifferent == 0 && scaleYMaximum == 0 &&
                           initialDifferent == 0 && initialMaximum == 0 &&
-                          lowLayerDifferent == 0 && lowLayerMaximum == 0;
-        std::printf("%s native NGU 720p VeryHigh 4x luma low core\n",
+                          lowLayerDifferent == 0 && lowLayerMaximum == 0 &&
+                          highPass;
+        std::printf("%s native NGU 720p VeryHigh 4x luma core\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        for (size_t feature = 0; feature < 3; ++feature)
+        {
+            highViews[feature].Reset();
+            highTextures[feature].Reset();
+            convertViews[feature].Reset();
+            convertTextures[feature].Reset();
+            for (size_t part = 0; part < 4; ++part)
+            {
+                upViews[feature][part].Reset();
+                upTextures[feature][part].Reset();
+            }
+        }
         lowLayerView.Reset();
         lowLayer.Reset();
         initialView.Reset();
