@@ -573,6 +573,31 @@ int main(int argc, char** argv)
                         base1080Differences == 0,
                     "1080p SuperChromaRes stage comparison");
 
+            Require(ngu.PrepareNativeLumaVeryHigh1080SuperResFull(d3d->gpu),
+                    ngu.LastError());
+            auto composed1080Output = CreateTexture(
+                device, 3840, 2160, DXGI_FORMAT_B8G8R8A8_UNORM,
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+            ComPtr<ID3D11RenderTargetView> composed1080OutputView;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        composed1080Output.Get(), nullptr, &composed1080OutputView)),
+                    "1080p composed output RTV");
+            Require(ngu.RunNativeLumaVeryHigh1080SuperResFull(
+                        source1080Srv.Get(),
+                        original1080Srv.Get(),
+                        main1080Srv.Get(),
+                        base1080Srv.Get(),
+                        composed1080OutputView.Get()),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto composed1080Actual =
+                Download(device, context.Get(), composed1080Output.Get());
+            const bool composed1080NonBlack = std::any_of(
+                composed1080Actual.begin(), composed1080Actual.end(),
+                [](uint8_t value) { return value != 0; });
+            Require(composed1080NonBlack, "1080p composed output is black");
+            std::printf("1080 Composed nonblack=1\n");
+
             Require(ngu.PrepareNativeSuperResStrength3_1080(d3d->gpu), ngu.LastError());
             auto scheduler1080Output = CreateTexture(
                 device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
