@@ -26,7 +26,7 @@ LIVE_APPLY = {'test_display_profiles', 'test_direct2d_page'}
 FILTER_FLAGS = (
     'flush-race', 'gpu', 'nv12', 'p016', 'srv', 'interlaced', 'bff', 'weave',
     'eos', 'yadif', 'force-bff', 'motion', 'sharpen', 'measure', 'startup',
-    'mpcbe-owner', 'rtx', 'rtx-hdr', 'focus',
+    'mpcbe-owner', 'rtx', 'rtx-hdr', 'focus', 'mixed-weave', 'mixed-order',
 )
 
 

@@ -1284,7 +1284,7 @@ try
         future = motionQueue.size() > 1 ? motionQueue[1].id : 0;
         later = motionQueue.size() > 2 ? motionQueue[2].id : 0;
         if (motionQueue.size() > 1)
-            frame.stop = MotionIntervalEnd(frame.start, frame.stop, motionQueue[1].start);
+            frame.stop = MotionIntervalEnd(frame.start, frame.stop, motionQueue[1].start, frame.nominalDuration);
         for (const auto& f : motionPast)
             temporal->push_back({f.id, f.start, f.stop, f.first});
         for (const auto& f : motionQueue)
@@ -1292,7 +1292,7 @@ try
         for (size_t i = 0; i + 1 < temporal->size(); i++)
         {
             auto& f = (*temporal)[i];
-            f.stop = MotionIntervalEnd(f.start, f.stop, (*temporal)[i + 1].start);
+            f.stop = MotionIntervalEnd(f.start, f.stop, (*temporal)[i + 1].start, frame.nominalDuration);
         }
     }
     HRESULT hr = DeliverMotion(frame, past, future, later, temporal);
@@ -1467,6 +1467,26 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         }
         return CBaseVideoRenderer::Receive(sample);
     }
+    // Broadcast TV can switch between field and woven pictures, or its field
+    // order, from one picture to the next. Show the buffered pictures before
+    // starting over: discarding them on every switch never fills the queue,
+    // and the video stops (GitHub issue 24).
+    bool structureChanged = false;
+    {
+        CAutoLock render(&m_RendererLock);
+        const auto bufferedFirst = !motionQueue.empty() ? motionQueue.back().first : pending.first;
+        structureChanged = buffering && (bool(deinterlacingActive) != fields ||
+                                         (fields && (!motionQueue.empty() || pending.id) &&
+                                          bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)));
+    }
+    if (structureChanged)
+    {
+        HRESULT hr = DrainFields();
+        if (FAILED(hr))
+            return hr;
+        CAutoLock render(&m_RendererLock);
+        ResetFields(true, true);
+    }
     QueuedVideoFrame output, input, past;
     uint64_t future = 0;
     {
@@ -1475,9 +1495,16 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                               : followingQueued.id ? followingQueued.stop
                                                    : pending.stop;
         const auto bufferedFirst = !motionQueue.empty() ? motionQueue.back().first : pending.first;
+        const bool buffered = !motionQueue.empty() || followingQueued.id || pending.id;
+        const auto previousStart = !motionQueue.empty() ? motionQueue.back().start
+                                   : followingQueued.id ? followingQueued.start
+                                                        : pending.start;
+        // Smooth Motion keeps its queue across irregular timestamps; emptying
+        // it means rendering several frames at once, a visible stutter.
         const bool timelineReset =
             sample->IsDiscontinuity() == S_OK ||
-            ((!motionQueue.empty() || followingQueued.id || pending.id) && std::abs(start - expected) > 20000);
+            (buffered && (smooth ? !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration)
+                                 : std::abs(start - expected) > 20000));
         if (timelineReset || !buffering || bool(deinterlacingActive) != fields ||
             (fields && (!motionQueue.empty() || pending.id) && bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)))
             ResetFields(true, !timelineReset);
@@ -2723,6 +2750,20 @@ HRESULT Renderer::ApplySettings(const PlaceboSettings* next)
     Trace("Settings requested: HDR=%d AutoHDR=%d", next->hdrPassthrough, next->autoHdr);
     SelectContentProfile(next->displayProfile);
     hr = backend.SetSettings(BackendSettings(Effective(*next)));
+    if (FAILED(hr) && Effective(*next).lutFromFolder && !folderLut.path.empty())
+    {
+        // The LUT next to the video is not usable; the settings still are.
+        Trace("LUT from the video folder rejected: %ls", folderLut.path.c_str());
+        folderLutFailed = folderLut.path;
+        folderLut.path.clear();
+        hr = backend.SetSettings(BackendSettings(Effective(*next)));
+        if (SUCCEEDED(hr))
+        {
+            backend.ShowMessage(Tr(L"LUT in the video folder unreadable"));
+            if (window && window->WindowExists())
+                SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
+        }
+    }
     if (FAILED(hr))
         return hr;
     hr = SaveSettings(*next);
@@ -3063,9 +3104,20 @@ void Renderer::UpdateContentProfile(IPin* peer)
     if (path.empty())
         path = SourcePath(m_pGraph, nullptr);
     // A profile chosen by shortcut belongs to the file it was chosen for.
-    if (path != contentPath)
+    const bool newFile = path != contentPath;
+    if (newFile)
+    {
         forcedProfile.clear();
+        folderLutFailed.clear();
+    }
     contentPath = path;
+    // The folder is looked at again each time, so a LUT copied there applies
+    // on the next start. One the renderer could not read stays unused.
+    auto lut = FolderLut::Find(path);
+    if (!lut.path.empty() && lut.path == folderLutFailed)
+        lut.path.clear();
+    const bool lutChanged = lut.result != folderLut.result || lut.path != folderLut.path;
+    folderLut = std::move(lut);
     if (path.empty() && TraceEnabled() && m_pGraph)
     {
         ComPtr<IEnumFilters> filters;
@@ -3083,21 +3135,58 @@ void Renderer::UpdateContentProfile(IPin* peer)
                 filter.Reset();
             }
     }
-    if (!SelectContentProfile(settings.displayProfile))
+    const bool profileChanged = SelectContentProfile(settings.displayProfile);
+    if (!profileChanged && !lutChanged)
+    {
+        if (newFile)
+            AnnounceFolderLut(false);
         return;
-    if (FAILED(backend.SetSettings(BackendSettings(Effective(settings)))))
+    }
+    bool unreadable = false;
+    HRESULT applied = backend.SetSettings(BackendSettings(Effective(settings)));
+    if (FAILED(applied) && Effective(settings).lutFromFolder && !folderLut.path.empty())
+    {
+        // Not a usable .cube file: keep the configured LUT for this video.
+        Trace("LUT from the video folder rejected: %ls", folderLut.path.c_str());
+        folderLutFailed = folderLut.path;
+        folderLut.path.clear();
+        unreadable = true;
+        applied = backend.SetSettings(BackendSettings(Effective(settings)));
+    }
+    if (FAILED(applied))
     {
         Trace("Content profile %ls rejected by the renderer", contentProfile.name.c_str());
         contentProfile = {};
         backend.SetSettings(BackendSettings(settings));
     }
     else
-        Trace("Content profile %ls (%zu settings)",
+        Trace("Content profile %ls (%zu settings), LUT from folder: %ls",
               contentProfile.name.empty() ? L"none" : contentProfile.name.c_str(),
-              contentProfile.overrides.size());
+              contentProfile.overrides.size(),
+              folderLut.path.empty() ? L"none" : folderLut.path.c_str());
+    if (newFile || unreadable)
+        AnnounceFolderLut(unreadable);
     UpdateMotionSettings();
     PublishDisplayModes();
     refreshDirty = true;
+}
+
+void Renderer::AnnounceFolderLut(bool unreadable)
+{
+    if (!Effective(settings).lutFromFolder || folderLut.result == FolderLut::Result::NoPath)
+        return;
+    std::wstring message;
+    if (unreadable)
+        message = Tr(L"LUT in the video folder unreadable");
+    else if (!folderLut.path.empty())
+        message = Tr(L"LUT") + L": " + std::filesystem::path(folderLut.path).filename().wstring();
+    else if (folderLut.result == FolderLut::Result::Several)
+        message = Tr(L"Several LUTs in the video folder");
+    else
+        message = Tr(L"No LUT in the video folder");
+    backend.ShowMessage(message);
+    if (window && window->WindowExists())
+        SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
 }
 
 STDMETHODIMP Renderer::GetStatus(PlaceboStatus* out)

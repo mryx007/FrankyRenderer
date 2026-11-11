@@ -274,6 +274,8 @@ int wmain()
         for (int running : {s.userShaders.order[0], s.userShaders.order[1], s.userShaders.order[2]})
             s.userShaders.shaders[running].enabled = 1;
         const int first = s.userShaders.order[0], second = s.userShaders.order[1], third = s.userShaders.order[2];
+        Require(s.shaderAutoOrder && !order.Enabled(), "automatic order is the default and sets the positions");
+        s.shaderAutoOrder = FALSE;
         Require(order.Enabled() && order.refreshChoices().size() == 3, "positions count the running shaders");
         order.set(2);
         Require(s.userShaders.order[0] == second && s.userShaders.order[1] == third &&

@@ -76,6 +76,7 @@ struct RenderSettings
     int hdrMode = 2;
     int windowsHdrToggle = 0; // WindowsHdr::Toggle
     bool peakDetect = true, allowDelayedPeak = false;
+    bool shaderAutoOrder = true;
     float peakSmoothing = 20, sceneLow = 1, sceneHigh = 3, peakPercentile = 100;
     float contrastRecovery = 0, contrastSmoothness = 3.5f;
     int gamutMapping = 0;

@@ -119,15 +119,46 @@ inline std::vector<Profile> Load(const std::wstring& directory = Directory())
     std::error_code error;
     if (directory.empty() || !std::filesystem::is_directory(directory, error))
         return profiles;
+
+    // Every settings change reads the profiles, in the menu and in each
+    // renderer. Read and parse the files again only when one was added,
+    // removed or written since: name, time and size come with the listing.
+    struct Stamp
+    {
+        std::wstring name;
+        long long written;
+        uintmax_t size;
+        bool operator==(const Stamp&) const = default;
+    };
+
+    std::vector<Stamp> stamps;
+    std::vector<std::filesystem::path> files;
     for (const auto& entry : std::filesystem::directory_iterator(directory, error))
     {
-        if (!entry.is_regular_file() || _wcsicmp(entry.path().extension().c_str(), L".ini"))
+        std::error_code itemError;
+        if (!entry.is_regular_file(itemError) || _wcsicmp(entry.path().extension().c_str(), L".ini"))
             continue;
+        stamps.push_back({entry.path().filename().wstring(),
+                          entry.last_write_time(itemError).time_since_epoch().count(),
+                          entry.file_size(itemError)});
+        files.push_back(entry.path());
+    }
+    static std::mutex cacheLock;
+    static std::wstring cachedDirectory;
+    static std::vector<Stamp> cachedStamps;
+    static std::vector<Profile> cachedProfiles;
+    {
+        std::lock_guard guard(cacheLock);
+        if (!error && cachedDirectory == directory && cachedStamps == stamps)
+            return cachedProfiles;
+    }
+    for (const auto& path : files)
+    {
         try
         {
-            std::ifstream file(entry.path(), std::ios::binary);
+            std::ifstream file(path, std::ios::binary);
             std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            profiles.push_back(Parse(entry.path().stem().wstring(), text));
+            profiles.push_back(Parse(path.stem().wstring(), text));
         }
         catch (const std::exception&)
         {
@@ -136,6 +167,15 @@ inline std::vector<Profile> Load(const std::wstring& directory = Directory())
     std::sort(profiles.begin(),
               profiles.end(),
               [](const auto& a, const auto& b) { return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0; });
+    if (!error)
+    {
+        // A file written while it was read has a newer time by now and is
+        // read again next time.
+        std::lock_guard cache(cacheLock);
+        cachedDirectory = directory;
+        cachedStamps = std::move(stamps);
+        cachedProfiles = profiles;
+    }
     return profiles;
 }
 

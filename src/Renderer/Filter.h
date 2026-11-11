@@ -14,6 +14,7 @@
 #include "Renderer/MotionTiming.h"
 #include "Settings/Settings.h"
 #include "Settings/ContentProfiles.h"
+#include "Settings/FolderLut.h"
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
@@ -225,6 +226,12 @@ class Renderer final : public CBaseVideoRenderer,
     PlaceboSettings Effective(const PlaceboSettings& base) const
     {
         auto result = ContentProfiles::Apply(base, contentProfile);
+        // A LUT next to the video replaces the configured one, also when that is off.
+        if (result.lutFromFolder && !folderLut.path.empty() && folderLut.path.size() < std::size(result.lutPath))
+        {
+            wcscpy_s(result.lutPath, folderLut.path.c_str());
+            result.lutEnabled = TRUE;
+        }
         // Shortcut comparison: all shaders off for this playback, never saved.
         if (shadersBypassed)
             for (auto& shader : result.userShaders.shaders)
@@ -238,6 +245,12 @@ class Renderer final : public CBaseVideoRenderer,
     std::wstring forcedProfile;
 
     std::wstring contentPath;
+    // The LUT found next to contentPath (Settings/FolderLut.h); its path is
+    // cleared when the renderer could not use the file.
+    FolderLut::Found folderLut;
+    std::wstring folderLutFailed;
+    // Shows which LUT the folder gave, once per video.
+    void AnnounceFolderLut(bool unreadable);
     void UpdateMotionSettings();
     void UpdateContentProfile(IPin* peer);
     bool SelectContentProfile(const wchar_t* display);

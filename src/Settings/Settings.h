@@ -49,6 +49,8 @@ struct PlaceboSettings
     float hue = 0, temperature = 0;
     BOOL colorAdjustment = TRUE;
     BOOL allowDelayedPeak = FALSE;
+    // Shader chain sorted by stage and purpose; off follows userShaders.order.
+    BOOL shaderAutoOrder = TRUE;
     // 1=HDR passthrough, 2=GPU tone mapping to SDR, 3=HDR output with highlights
     // rolled off to the display peak; legacy 0 is migrated
     int hdrMode = 2;
@@ -84,6 +86,9 @@ struct PlaceboSettings
     // qualityStamp fingerprints all settings at that moment.
     int measuredQuality = 0;
     uint32_t qualityStamp = 0;
+    // A .cube file in the video's folder replaces the 3D LUT for that video
+    // (Settings/FolderLut.h); without one the LUT above applies.
+    BOOL lutFromFolder = FALSE;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.

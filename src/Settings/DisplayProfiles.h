@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <bcrypt.h>
 #include <algorithm>
+#include <atomic>
 #include <cwctype>
 #include <string>
 #include <vector>
@@ -273,12 +274,16 @@ inline Metadata ReadMetadata(const std::wstring& id)
     return metadata;
 }
 
+// Counts deleted profile keys; settings written before no longer match the registry.
+inline std::atomic<unsigned> KeysDeleted{0};
+
 inline HRESULT WriteMetadata(const std::wstring& id, const Metadata& metadata)
 {
     if (!ValidId(id))
         return E_INVALIDARG;
     if (!metadata.exists)
     {
+        ++KeysDeleted;
         const auto result = RegDeleteTreeW(HKEY_CURRENT_USER, Key(id).c_str());
         return result == ERROR_FILE_NOT_FOUND ? S_OK : HRESULT_FROM_WIN32(result);
     }

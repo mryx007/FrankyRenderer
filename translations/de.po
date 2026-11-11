@@ -1779,6 +1779,35 @@ msgstr ""
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
+msgid "LUT from Video Folder"
+msgstr "LUT aus dem Videoordner"
+
+#. Setting description (Color > 3D LUT > LUT from Video Folder)
+msgid ""
+"Uses a .cube file next to the video: first one named like the video, else "
+"the folder's only one. Otherwise the LUT above."
+msgstr ""
+"Nutzt eine .cube-Datei neben dem Video: zuerst eine mit dem Namen des "
+"Videos, sonst die einzige im Ordner. Andernfalls die LUT oben."
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr "LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr "Keine LUT im Videoordner"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr "Mehrere LUTs im Videoordner"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr "LUT im Videoordner nicht lesbar"
+
+#. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "LUT Type"
 msgstr "LUT-Typ"
 
@@ -4188,3 +4217,35 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#. Setting name (Shaders > Chain Controls)
+msgid "Automatic Order"
+msgstr "Automatische Reihenfolge"
+
+#. Setting description (Shaders > Chain Controls > Automatic Order)
+msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr "Erst reinigen, dann skalieren, dann schärfen. Zum Festlegen der Positionen ausschalten."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr "Eingang"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr "Luma"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr "Chroma"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr "Bild"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr "Vor Skalierung"
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr "Nach Skalierung"

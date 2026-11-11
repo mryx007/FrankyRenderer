@@ -3,9 +3,11 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cwchar>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <vector>
 // Built-in shaders come first; files from shaders\Custom use the slots after them.
 inline constexpr int ShaderBuiltinCount = 23, ShaderCustomCount = 32,
@@ -253,6 +255,149 @@ inline std::vector<int> ShaderListOrder()
               ids.end(),
               [](int a, int b) { return _wcsicmp(ShaderCatalog[a].label, ShaderCatalog[b].label) < 0; });
     return ids;
+}
+
+// libplacebo runs hooks by stage in this order, whatever the chain order says;
+// the chain order only decides between shaders of the same stage. MAINPRESUB
+// and MAIN are the same stage.
+inline constexpr const char* ShaderStageNames[] = {"RGB",
+                                                   "LUMA",
+                                                   "CHROMA",
+                                                   "ALPHA",
+                                                   "XYZ",
+                                                   "CHROMA_SCALED",
+                                                   "ALPHA_SCALED",
+                                                   "NATIVE",
+                                                   "MAIN",
+                                                   "LINEAR",
+                                                   "SIGMOID",
+                                                   "PREKERNEL",
+                                                   "POSTKERNEL",
+                                                   "SCALED",
+                                                   "PREOUTPUT",
+                                                   "OUTPUT"};
+inline constexpr int ShaderStageUnknown = 99;
+
+// The earliest stage a shader hooks, from its //!HOOK lines.
+inline int ShaderStageOfSource(std::string_view source)
+{
+    int stage = ShaderStageUnknown;
+    for (size_t at = 0; at < source.size();)
+    {
+        size_t end = source.find('\n', at);
+        if (end == std::string_view::npos)
+            end = source.size();
+        auto line = source.substr(at, end - at);
+        at = end + 1;
+        if (line.substr(0, 7) != "//!HOOK")
+            continue;
+        line.remove_prefix(7);
+        while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+            line.remove_prefix(1);
+        size_t length = 0;
+        while (length < line.size() && line[length] != ' ' && line[length] != '\t' && line[length] != '\r')
+            length++;
+        auto name = line.substr(0, length);
+        if (name == "MAINPRESUB")
+            name = "MAIN";
+        for (int i = 0; i < int(std::size(ShaderStageNames)); i++)
+            if (name == ShaderStageNames[i])
+                stage = std::min(stage, i);
+    }
+    return stage;
+}
+
+// Whether a pass resizes the picture to the output or enlarges it by a
+// constant (//!WIDTH or //!HEIGHT "OUTPUT.w" or "LUMA.w 2 *"): a scaler.
+// Passes that only shrink for an intermediate step do not count.
+inline bool ShaderScalesOfSource(std::string_view source)
+{
+    for (size_t at = 0; at < source.size();)
+    {
+        size_t end = source.find('\n', at);
+        if (end == std::string_view::npos)
+            end = source.size();
+        auto line = source.substr(at, end - at);
+        at = end + 1;
+        if (line.substr(0, 8) != "//!WIDTH" && line.substr(0, 9) != "//!HEIGHT")
+            continue;
+        line.remove_prefix(line.find(' ') == std::string_view::npos ? line.size() : line.find(' '));
+        std::vector<std::string_view> tokens;
+        while (!line.empty())
+        {
+            while (!line.empty() && (line.front() == ' ' || line.front() == '\t' || line.front() == '\r'))
+                line.remove_prefix(1);
+            size_t length = 0;
+            while (length < line.size() && line[length] != ' ' && line[length] != '\t' && line[length] != '\r')
+                length++;
+            if (length)
+                tokens.push_back(line.substr(0, length));
+            line.remove_prefix(length);
+        }
+        for (size_t i = 0; i < tokens.size(); i++)
+        {
+            if (tokens[i].substr(0, 7) == "OUTPUT.")
+                return true;
+            if (i + 1 < tokens.size() && tokens[i + 1] == "*")
+            {
+                const std::string number(tokens[i]);
+                char* rest = nullptr;
+                const double factor = std::strtod(number.c_str(), &rest);
+                if (rest && *rest == 0 && factor > 1)
+                    return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Short name of a stage for the shader list.
+inline const wchar_t* ShaderStageLabel(int stage)
+{
+    switch (stage)
+    {
+    case 1:
+        return L"Luma";
+    case 2:
+    case 5:
+    case 6:
+        return L"Chroma";
+    case 0:
+    case 3:
+    case 4:
+        return L"Input";
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+        return L"Image";
+    case 11:
+        return L"Before Scaling";
+    case 12:
+        return L"After Scaling";
+    case 13:
+    case 14:
+    case 15:
+        return L"Output";
+    }
+    return L"";
+}
+
+// Within one stage: cleanup first, then scaling, then sharpening and contrast.
+// Shaders from shaders\Custom only take part as scalers (ShaderAutoSorted).
+inline int ShaderRole(int id)
+{
+    if (id < 0 || id >= ShaderBuiltinCount)
+        return 1;
+    const auto& info = BuiltinShaderCatalog[id];
+    const std::wstring_view category = info.category;
+    if (category == L"Denoising" || category == L"Debanding")
+        return 0;
+    if (category == L"Edge Cleanup")
+        return std::string_view(info.file) == "FineDehalo_lite_RT.glsl" ? 0 : 2;
+    if (category == L"Detail / Contrast" || category == L"Sharpening")
+        return 2;
+    return 1;
 }
 
 inline int ShaderListedCount()

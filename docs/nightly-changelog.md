@@ -97,3 +97,11 @@
 - The shaders folder of the package now only holds PlayKit and Custom.
 - Removed "Clipping Protection": it silently replaced the chosen tone mapping function with Spline. For the same result, switch on Enable Peak Detection and choose Spline, or Auto for HDR10+ videos.
 - Fixed the aspect ratio override, stretching and zoom of MPC-HC and MPC-BE having no effect: the renderer now draws into the video area the player sets.
+- Fixed the statistics changing their text size when pausing, playing or seeking.
+- Fixed a short stutter after seeking with Smooth Motion.
+- Shaders now run in an automatic order (cleanup, scaling, sharpening). Turn off Automatic Order to set it yourself.
+- Settings menu: wider scroll bars; the shader list no longer highlights the selected shader.
+- Fixed no picture and no sound with Smooth Motion on some TV streams such as multicast IPTV ([#24](https://github.com/mryx007/FrankyRenderer/issues/24)).
+- Added "LUT from Video Folder" (Color > 3D LUT): uses a .cube file next to the video ([#25](https://github.com/mryx007/FrankyRenderer/issues/25)).
+- Ctrl+J shows custom scalers in detail instead of only "custom".
+- Better performance: less CPU work per frame (RTX Video, HDR displays, software decoding) and a smoother settings menu.

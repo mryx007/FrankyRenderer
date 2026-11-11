@@ -239,6 +239,15 @@ class ImageAnalysis
         capture = failed = false;
     }
 
+    // Another setting changes the output: sample the current picture again at
+    // the next render, also when paused, but keep the textures and the plot.
+    void Refresh()
+    {
+        for (auto& s : stages)
+            s.captured = 0;
+        last = 0;
+    }
+
     void Begin(pl_d3d11 device, ID3D11DeviceContext* ctx, HWND hwnd, uint64_t frameKey, bool mixing = false)
     {
         if (d3d && d3d != device)

@@ -73,7 +73,23 @@ int main()
               !MotionIntervalValid(0, 10000001, 1e7 / 60),
           "invalid intervals are rejected");
     Check(MotionIntervalEnd(100000, 517083, 0) == 517083, "EOS retains nominal stop");
-    Check(MotionIntervalEnd(100000, 517083, 800000) == 517083, "large discontinuity is not bridged");
+    Check(MotionIntervalEnd(100000, 517083, 1300000) == 517083, "large discontinuity is not bridged");
+    Check(MotionIntervalEnd(100000, 517083, 934166) == 934166, "one missing frame is bridged");
+    // PotPlayer with VC-1 after a seek: stops miss the next start by 31 ms.
+    Check(MotionTimelineContinuous(0, 417083, 730000, 417083) && MotionTimelineContinuous(0, 417083, 104000, 417083),
+          "irregular stops after a seek keep the timeline");
+    Check(!MotionTimelineContinuous(0, 417083, 0, 417083) && !MotionTimelineContinuous(417083, 834166, 0, 417083),
+          "duplicate and backward starts are discontinuities");
+    Check(MotionTimelineContinuous(0, 417083, 417083, 166833) && MotionTimelineContinuous(0, 417083, 730000, 166833),
+          "a wrong nominal duration does not matter while pictures carry their own");
+    Check(MotionTimelineContinuous(0, 0, 417083, 417083) && !MotionTimelineContinuous(0, 0, 417083, 0),
+          "the nominal duration stands in for a picture without one");
+    // The previous rule: a next start within 2 ms of the previous stop.
+    for (LONGLONG length : {166833LL, 333667LL, 400000LL, 417083LL, 1000000LL})
+        for (LONGLONG offset : {-20000LL, -1LL, 0LL, 1LL, 20000LL})
+            Check(MotionTimelineContinuous(5000000, 5000000 + length, 5000000 + length + offset),
+                  "every start the previous rule accepted still continues");
+    Check(!MotionTimelineContinuous(0, 417083, 2000000, 417083), "a gap of several frames is a discontinuity");
     Check(MotionIntervalEnd(100000, 517083, 90000) == 517083, "backward seek is not bridged");
     Check(MotionIntervalEnd(100000, 90000, 520000) == 90000, "invalid interval remains invalid");
 

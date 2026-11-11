@@ -5,6 +5,7 @@
 #include <cstring>
 #include "UI/Direct2DSettingsHelp.h"
 #include "Renderer/DiagnosticReport.h"
+#include "Renderer/UserShaderSource.h"
 #include "Settings/CustomShaders.h"
 #include "Settings/SettingsIni.h"
 #include "Settings/ShaderParameterLabels.h"
@@ -911,13 +912,17 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         n.reset = [&s] { s.lutPath[0] = 0; };
         l.controls.push_back(std::move(n));
         l.controls.push_back(D2DBool(s, L"Enable 3D LUT", &s.lutEnabled));
+        l.controls.push_back(D2DBool(s,
+                                     L"LUT from Video Folder",
+                                     &s.lutFromFolder,
+                                     L"Uses a .cube file next to the video: first one named like the video, else "
+                                     L"the folder's only one. Otherwise the LUT above."));
         extra(l, 14);
     }
     {
-        auto& p = page(
-            L"Shaders",
-            L"Shader Chain",
-            L"Enable shaders individually. Chain position follows the stored order; separate input and output stages are retained.");
+        auto& p = page(L"Shaders",
+                       L"Shader Chain",
+                       L"Enable shaders individually. They run by stage; Automatic Order sorts shaders of one stage.");
         auto& chain = card(p, L"Chain Controls");
         chain.controls.push_back(D2DAction(L"Disable All Shaders",
                                            L"All Off",
@@ -930,7 +935,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         const auto activeChain = [&s]
         {
             std::vector<int> active;
-            for (int id : s.userShaders.order)
+            for (int id : ShaderChainOrder(s.userShaders, s.shaderAutoOrder != FALSE))
                 if (s.userShaders.shaders[id].enabled && ShaderListed(id))
                     active.push_back(id);
             return active;
@@ -991,6 +996,12 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 };
                 c.controls.push_back(std::move(n));
             }
+            // One switch for the whole chain, in the card of every shader it
+            // places; a custom shader that does not clearly scale is always
+            // placed by hand.
+            const bool autoSorted = ShaderAutoSorted(id);
+            if (autoSorted)
+                c.controls.push_back(D2DBool(s, L"Automatic Order", &s.shaderAutoOrder));
             auto position = D2DControl{};
             position.name = L"Chain Position";
             position.kind = ControlKind::Choice;
@@ -1004,7 +1015,9 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             };
             position.choices = position.refreshChoices();
             // Only two or more running shaders have an order to choose.
-            position.enabled = [&f, activeChain] { return f.enabled && activeChain().size() > 1; };
+            // Automatic Order sets the positions; turn it off to choose them.
+            position.enabled = [&s, &f, activeChain, autoSorted]
+            { return (!s.shaderAutoOrder || !autoSorted) && f.enabled && activeChain().size() > 1; };
             position.get = [id, activeChain]
             {
                 const auto active = activeChain();
@@ -1012,9 +1025,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 return found == active.end() ? 0.f : float(found - active.begin());
             };
             position.defaultValue = position.get;
-            position.set = [&s, id, activeChain](float v)
+            // The stored order of the running shaders: Automatic Order keeps the
+            // place a hand-placed shader has among them.
+            position.set = [&s, id](float v)
             {
-                auto active = activeChain();
+                std::vector<int> active;
+                for (int other : s.userShaders.order)
+                    if (s.userShaders.shaders[other].enabled && ShaderListed(other))
+                        active.push_back(other);
                 const auto self = std::find(active.begin(), active.end(), id);
                 if (self == active.end())
                     return;

@@ -3916,3 +3916,35 @@ msgstr ""
 #~| msgid "Display Mode"
 #~ msgid "SDR Display Gamma"
 #~ msgstr "Mode d'affichage"
+
+#. Setting name (Shaders > Chain Controls)
+msgid "Automatic Order"
+msgstr ""
+
+#. Setting description (Shaders > Chain Controls > Automatic Order)
+msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr ""

@@ -1511,6 +1511,15 @@ msgstr ""
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
+msgid "LUT from Video Folder"
+msgstr ""
+
+#. Setting description (Color > 3D LUT > LUT from Video Folder)
+msgid "Uses a .cube file next to the video: first one named like the video, else the folder's only one. Otherwise the LUT above."
+msgstr ""
+
+#. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "LUT Type"
 msgstr ""
 
@@ -2429,6 +2438,18 @@ msgstr ""
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shaders > Anti-Ringing)
+msgid "Automatic Order"
+msgstr ""
+
+#. Setting description (Shaders > AMD CAS > Automatic Order)
+#. Setting description (Shaders > FineDehalo > Automatic Order)
+#. Setting description (Shaders > Anti-Ringing > Automatic Order)
+msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr ""
+
+#. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
 msgid "Chain Position"
 msgstr ""
 
@@ -3314,6 +3335,22 @@ msgid "Black Bar Detection"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr ""
 
@@ -3387,6 +3424,30 @@ msgstr ""
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders

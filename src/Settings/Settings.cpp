@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <mutex>
 
 static std::wstring Key(const std::wstring& display = {})
 {
@@ -149,6 +150,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(iccIntent),
         GROUP(memcpy(d.lutPath, s.lutPath, sizeof(d.lutPath)); d.lutEnabled = s.lutEnabled),
         COPY_TEXT(lutPath),
+        FIELD(lutFromFolder),
         FIELD(adaptiveSharpen),
         FIELD(sharpenStrength),
         FIELD(smoothMotion),
@@ -180,6 +182,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         COPY_TEXT(displayModes),
         FIELD(displayModeDelay),
         FIELD(windowsHdrToggle),
+        FIELD(shaderAutoOrder),
     };
 #undef COPY_TEXT
 #undef FIELD
@@ -358,6 +361,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Float(key, L"SharpenStrength", settings.sharpenStrength);
     Float(key, L"MotionThreshold", settings.motionThreshold);
     Bool(key, L"AllowDelayedPeak", settings.allowDelayedPeak);
+    Bool(key, L"ShaderAutoOrder", settings.shaderAutoOrder);
     Bool(key, L"PeakDetect", settings.peakDetect);
     Float(key, L"PeakSmoothing", settings.peakSmoothing);
     Float(key, L"SceneLow", settings.sceneLow);
@@ -376,6 +380,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"SmoothMotion", settings.smoothMotion);
     Bool(key, L"ICCEnabled", settings.iccEnabled);
     Bool(key, L"LUTEnabled", settings.lutEnabled);
+    Bool(key, L"LUTFromFolder", settings.lutFromFolder);
     Path(key, L"ICCPath", settings.iccPath);
     Path(key, L"LUTPath", settings.lutPath);
     {
@@ -608,7 +613,8 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (s.outputFormat < 0 || s.outputFormat >= static_cast<int>(std::size(OutputChoices)))
         return E_INVALIDARG;
     if (s.iccIntent < 0 || s.iccIntent > 1 || wcsnlen_s(s.iccPath, 1024) >= 1024 ||
-        wcsnlen_s(s.lutPath, 1024) >= 1024 || (s.iccEnabled && !s.iccPath[0]) || (s.lutEnabled && !s.lutPath[0]))
+        wcsnlen_s(s.lutPath, 1024) >= 1024 || (s.iccEnabled && !s.iccPath[0]) || (s.lutEnabled && !s.lutPath[0]) ||
+        s.lutFromFolder < 0 || s.lutFromFolder > 1)
         return E_INVALIDARG;
     if (s.toneMapping < 0 || s.toneMapping >= static_cast<int>(std::size(ToneChoices)))
         return E_INVALIDARG;
@@ -676,6 +682,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.sharpenStrength = s.sharpenStrength;
     out.peakDetect = !!s.peakDetect;
     out.allowDelayedPeak = !!s.allowDelayedPeak;
+    out.shaderAutoOrder = !!s.shaderAutoOrder;
     out.peakSmoothing = s.peakSmoothing;
     out.sceneLow = s.sceneLow;
     out.sceneHigh = s.sceneHigh;
@@ -725,18 +732,53 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     return out;
 }
 
+// The settings this process last wrote for each profile. A menu slider
+// writes on every movement; values that did not change since then are not
+// written again. Trusted for 2 s after all values were last written, so a
+// change from another process or a deleted profile key is hidden for at most
+// that long.
+namespace
+{
+struct WrittenSettings
+{
+    PlaceboSettings values;
+    ULONGLONG at = 0;
+    unsigned deleted = 0;
+};
+
+std::mutex writtenLock;
+std::vector<std::pair<std::wstring, WrittenSettings>> written;
+} // namespace
+
 static HRESULT WriteSettings(const PlaceboSettings& s)
 {
     HRESULT valid = ValidateSettings(s);
     if (FAILED(valid))
         return valid;
-    HKEY key;
-    LONG result = RegCreateKeyExW(
-        HKEY_CURRENT_USER, Key(s.displayProfile).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
-    if (result)
-        return HRESULT_FROM_WIN32(result);
+    std::lock_guard writing(writtenLock);
+    const auto now = GetTickCount64();
+    auto entry =
+        std::find_if(written.begin(), written.end(), [&](const auto& w) { return w.first == s.displayProfile; });
+    const PlaceboSettings* before = nullptr;
+    if (entry != written.end() && now - entry->second.at < 2000 &&
+        entry->second.deleted == DisplayProfiles::KeysDeleted.load())
+        before = &entry->second.values;
+    HKEY key = nullptr;
+    LONG result = ERROR_SUCCESS;
     auto save = [&](const wchar_t* name, DWORD type, const void* data, DWORD bytes)
     {
+        if (result)
+            return;
+        if (before)
+        {
+            // Every value lies inside the settings; compare it at the same place.
+            const auto offset = static_cast<const BYTE*>(data) - reinterpret_cast<const BYTE*>(&s);
+            if (!memcmp(reinterpret_cast<const BYTE*>(before) + offset, data, bytes))
+                return;
+        }
+        if (!key)
+            result = RegCreateKeyExW(
+                HKEY_CURRENT_USER, Key(s.displayProfile).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
         if (!result)
             result = RegSetValueExW(key, name, 0, type, static_cast<const BYTE*>(data), bytes);
     };
@@ -747,6 +789,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"ColorMappingV1", REG_BINARY, &s.colorMapping, sizeof(s.colorMapping));
     save(L"HDRMode", REG_DWORD, &s.hdrMode, 4);
     save(L"AllowDelayedPeak", REG_DWORD, &s.allowDelayedPeak, 4);
+    save(L"ShaderAutoOrder", REG_DWORD, &s.shaderAutoOrder, 4);
     save(L"Hue", REG_BINARY, &s.hue, 4);
     save(L"Temperature", REG_BINARY, &s.temperature, 4);
     save(L"ColorAdjustment", REG_DWORD, &s.colorAdjustment, 4);
@@ -810,6 +853,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"SmoothMotion", REG_DWORD, &s.smoothMotion, 4);
     save(L"ICCEnabled", REG_DWORD, &s.iccEnabled, 4);
     save(L"LUTEnabled", REG_DWORD, &s.lutEnabled, 4);
+    save(L"LUTFromFolder", REG_DWORD, &s.lutFromFolder, 4);
     save(L"ICCIntent", REG_DWORD, &s.iccIntent, 4);
     save(L"ICCPath", REG_SZ, s.iccPath, static_cast<DWORD>((wcslen(s.iccPath) + 1) * 2));
     save(L"LUTPath", REG_SZ, s.lutPath, static_cast<DWORD>((wcslen(s.lutPath) + 1) * 2));
@@ -820,8 +864,29 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"ClippingProtection", REG_DWORD, &s.clippingProtection, 4);
     save(L"Upscaler", REG_SZ, s.upscaler, static_cast<DWORD>((wcslen(s.upscaler) + 1) * 2));
     save(L"Downscaler", REG_SZ, s.downscaler, static_cast<DWORD>((wcslen(s.downscaler) + 1) * 2));
-    RegCloseKey(key);
-    return HRESULT_FROM_WIN32(result);
+    if (key)
+        RegCloseKey(key);
+    if (result)
+    {
+        if (entry != written.end())
+            written.erase(entry);
+        return HRESULT_FROM_WIN32(result);
+    }
+    if (entry == written.end())
+    {
+        written.push_back({s.displayProfile, {}});
+        entry = written.end() - 1;
+    }
+    entry->second.values = s;
+    // The time counts from the last write of every value, not from the last
+    // partial one: otherwise steady changes would keep it alive and hide a
+    // value another player wrote for as long as they go on.
+    if (!before)
+    {
+        entry->second.at = now;
+        entry->second.deleted = DisplayProfiles::KeysDeleted.load();
+    }
+    return S_OK;
 }
 
 // The values another display takes over from linked settings. Its display

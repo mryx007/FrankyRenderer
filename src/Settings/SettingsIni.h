@@ -51,6 +51,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(iccIntent);
     INI_FIELD(iccPath);
     INI_FIELD(lutPath);
+    INI_FIELD(lutFromFolder);
     INI_FIELD(adaptiveSharpen);
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
@@ -82,6 +83,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(temperature);
     INI_FIELD(colorAdjustment);
     INI_FIELD(allowDelayedPeak);
+    INI_FIELD(shaderAutoOrder);
     INI_FIELD(hdrMode);
     INI_FIELD(windowsHdrToggle);
     INI_FIELD(maximumFramesInFlight);
@@ -349,6 +351,7 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.ditherTemporal,
                       candidate.iccEnabled,
                       candidate.lutEnabled,
+                      candidate.lutFromFolder,
                       candidate.adaptiveSharpen,
                       candidate.smoothMotion,
                       candidate.peakDetect,
@@ -356,7 +359,8 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.imageAnalysis,
                       candidate.statisticsInVideo,
                       candidate.colorAdjustment,
-                      candidate.allowDelayedPeak})
+                      candidate.allowDelayedPeak,
+                      candidate.shaderAutoOrder})
         if (flag != FALSE && flag != TRUE)
             throw std::runtime_error("Boolean settings must be 0 or 1.");
     // Files from before the added shaders list fewer chain slots.

@@ -58,9 +58,6 @@ class RtxScaling
         int width = 0, height = 0;
     };
 
-    // Signals when libplacebo finished writing the RTX input texture.
-    Microsoft::WRL::ComPtr<ID3D11Query> written;
-
     std::vector<Spare> spare;
     // The last video frame number given to the driver; each frame keeps its own.
     UINT inputIndex = 0;
@@ -440,21 +437,10 @@ class RtxScaling
                 Fail(E_FAIL);
                 return {};
             }
+            // libplacebo and the driver's video processor share the device's
+            // immediate context, so the driver reads the input only after
+            // these commands; the CPU need not wait for the GPU here.
             pl_gpu_flush(gpu);
-            // The driver's RTX work may run apart from libplacebo's rendering:
-            // start it only once the input texture is completely written.
-            if (!written)
-            {
-                D3D11_QUERY_DESC query = {D3D11_QUERY_EVENT, 0};
-                d3d->device->CreateQuery(&query, &written);
-            }
-            if (written)
-            {
-                context->End(written.Get());
-                const uint64_t deadline = GetTickCount64() + 100;
-                while (context->GetData(written.Get(), nullptr, 0, 0) == S_FALSE && GetTickCount64() < deadline)
-                    SwitchToThread();
-            }
         }
         inputIndex = std::max(inputIndex, index);
         auto saved = std::make_shared<Frame>();

@@ -211,6 +211,70 @@ int main()
         pl_d3d11_destroy(&d3d);
         printf("PASS user shaders: %d catalogue shaders load and parse; RAVU Zoom R2/R3 variants render\n",
                ShaderBuiltinCount);
+
+        // Stages come from the files; every packaged shader has one.
+        const auto find = [](const char* file)
+        {
+            for (int id = 0; id < ShaderBuiltinCount; id++)
+                if (!strcmp(ShaderCatalog[id].file, file))
+                    return id;
+            throw std::runtime_error(file);
+        };
+        for (int id = 0; id < ShaderBuiltinCount; id++)
+            Require(ShaderStage(id) != ShaderStageUnknown && *ShaderStageLabel(ShaderStage(id)),
+                    ShaderCatalog[id].file);
+        const int cas = find("AMD_CAS_scl_RT.glsl"), nlmeans = find("nlmeans_luma_RT.glsl"),
+                  artcnn = find("ArtCNN_C4F16.glsl"), clarity = find("eq_clarity_RT.glsl"),
+                  hdeband = find("hdeband_rgb_RT.glsl"), krig = find("KrigBilateral.glsl"),
+                  ssim = find("SSimDownscaler_RT.glsl"), antiring = find("kantiring_ms_RT.glsl"),
+                  dehalo = find("FineDehalo_lite_RT.glsl");
+        Require(ShaderStage(artcnn) == 1 && ShaderStage(krig) == 2 && ShaderStage(clarity) == 8 &&
+                    ShaderStage(ssim) == 12 && ShaderStage(cas) == 13,
+                "stages from //!HOOK lines");
+        Require(ShaderStageOfSource("//!HOOK MAINPRESUB\n//!HOOK OUTPUT\n") == 8 &&
+                    ShaderStageOfSource("//!HOOK  LUMA\r\n") == 1 &&
+                    ShaderStageOfSource("no hooks") == ShaderStageUnknown,
+                "earliest stage, MAINPRESUB as MAIN, CRLF and missing hooks");
+
+        // Stored order runs sharpening and contrast first; the automatic order
+        // puts cleanup, scaling and sharpening of each stage in turn.
+        UserShaderSettings chain;
+        const int stored[] = {cas, clarity, antiring, ssim, artcnn, hdeband, krig, nlmeans, dehalo};
+        int at = 0;
+        for (int id : stored)
+            chain.shaders[id].enabled = 1;
+        std::vector<int> rest;
+        for (int id : chain.order)
+            if (std::find(std::begin(stored), std::end(stored), id) == std::end(stored))
+                rest.push_back(id);
+        for (int id : stored)
+            chain.order[at++] = id;
+        for (int id : rest)
+            chain.order[at++] = id;
+        const auto manual = ShaderChainOrder(chain, false);
+        Require(std::equal(std::begin(chain.order), std::end(chain.order), manual.begin()), "manual order unchanged");
+        const auto automatic = ShaderChainOrder(chain, true);
+        std::vector<int> running;
+        for (int id : automatic)
+            if (chain.shaders[id].enabled)
+                running.push_back(id);
+        const std::vector<int> expected = {nlmeans, dehalo, artcnn, krig, hdeband, clarity, ssim, antiring, cas};
+        Require(running == expected, "automatic order: stage, then cleanup, scaling, sharpening");
+        for (size_t i = std::size(stored); i < automatic.size(); i++)
+            Require(automatic[i] == chain.order[i], "switched-off shaders keep their places");
+        Require(ShaderScalesOfSource("//!WIDTH LUMA.w 2 *\n") && ShaderScalesOfSource("//!HEIGHT LUMA.h 4.0 *\r\n") &&
+                    ShaderScalesOfSource("//!WIDTH OUTPUT.w\n") && !ShaderScalesOfSource("//!WIDTH HOOKED.w 2 /\n") &&
+                    !ShaderScalesOfSource("//!WIDTH MAIN.w\n") && !ShaderScalesOfSource("//!WIDTH HOOKED.w 1 *\n") &&
+                    !ShaderScalesOfSource("//!DESC 2x upscale\n"),
+                "scalers recognized only from enlarging or output-sized passes");
+        for (int id = 0; id < ShaderBuiltinCount; id++)
+            Require(ShaderAutoSorted(id), "packaged shaders are placed automatically");
+        // Hand-placed shaders (7, 8) keep their positions while the others sort
+        // around them.
+        const auto fixedChain =
+            AutomaticShaderChain({5, 7, 1, 8, 3}, [](int id) { return id; }, [](int id) { return id != 7 && id != 8; });
+        Require(fixedChain == std::vector<int>({1, 7, 3, 8, 5}), "hand-placed shaders keep their positions");
+        puts("PASS shader stages and automatic chain order");
         return 0;
     }
     catch (const std::exception& e)

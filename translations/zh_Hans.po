@@ -1632,6 +1632,35 @@ msgstr "在 LUT 类型指定的阶段应用所选 3D LUT。"
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
+msgid "LUT from Video Folder"
+msgstr "使用视频文件夹中的 LUT"
+
+#. Setting description (Color > 3D LUT > LUT from Video Folder)
+msgid ""
+"Uses a .cube file next to the video: first one named like the video, else "
+"the folder's only one. Otherwise the LUT above."
+msgstr ""
+"使用视频旁的 .cube 文件：优先使用与视频同名的文件，否则使用文件夹中唯一的 "
+".cube 文件。都没有时使用上方的 LUT。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr "LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr "视频文件夹中没有 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr "视频文件夹中有多个 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr "无法读取视频文件夹中的 LUT"
+
+#. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "LUT Type"
 msgstr "LUT 类型"
 
@@ -3821,3 +3850,35 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Setting name (Shaders > Chain Controls)
+msgid "Automatic Order"
+msgstr "自动排序"
+
+#. Setting description (Shaders > Chain Controls > Automatic Order)
+msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr "先清理，再缩放，最后锐化。关闭后可手动设置位置。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr "输入"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr "亮度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr "色度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr "图像"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr "缩放前"
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr "缩放后"

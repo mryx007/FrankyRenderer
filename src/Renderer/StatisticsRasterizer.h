@@ -19,7 +19,7 @@ class StatisticsRasterizer
     struct Image
     {
         std::vector<unsigned char> pixels;
-        int width = 0, height = 0, viewWidth = 0, viewHeight = 0;
+        int width = 0, height = 0, viewWidth = 0, viewHeight = 0, fontHeight = 0;
     };
 
   private:
@@ -39,9 +39,10 @@ class StatisticsRasterizer
     uint64_t generation = 0;
     bool stopping = false;
 
-    // The box never shrinks while the view size stays the same, so changing
-    // numbers do not make it jitter. Worker thread only.
-    int keptWidth = 0, keptHeight = 0, keptViewWidth = 0, keptViewHeight = 0;
+    // The box never shrinks and the font never grows while the view size
+    // stays the same, so changing numbers and a row that comes and goes (Queue
+    // while playing) do not make it jitter. Worker thread only.
+    int keptWidth = 0, keptHeight = 0, keptViewWidth = 0, keptViewHeight = 0, keptFont = 0;
     uint64_t keptGeneration = 0;
 
     // Statistics text markup: a line "\x01Title" is a section heading, a line
@@ -114,7 +115,7 @@ class StatisticsRasterizer
         return lines;
     }
 
-    static std::optional<Image> Draw(const Request& request, int minWidth, int minHeight)
+    static std::optional<Image> Draw(const Request& request, int minWidth, int minHeight, int maxFont = 0)
     {
         const int viewWidth = request.width, viewHeight = request.height;
         if (viewWidth <= 16 || viewHeight <= 0)
@@ -127,6 +128,8 @@ class StatisticsRasterizer
         const auto contentHeight = [&](int lineHeight)
         { return int(lines.size()) * lineHeight + gaps * lineHeight / 2 + 16; };
         int fontHeight = std::clamp(viewHeight / 45, 10, 24);
+        if (maxFont > 0)
+            fontHeight = std::min(fontHeight, maxFont);
         while (fontHeight > 10 && contentHeight(fontHeight + std::max(4, fontHeight / 3)) > viewHeight)
             --fontHeight;
         const int lineHeight = fontHeight + std::max(4, fontHeight / 3),
@@ -193,6 +196,7 @@ class StatisticsRasterizer
         image.height = h;
         image.viewWidth = viewWidth;
         image.viewHeight = viewHeight;
+        image.fontHeight = fontHeight;
         try
         {
             image.pixels.resize(static_cast<size_t>(w) * h * 4);
@@ -296,7 +300,7 @@ class StatisticsRasterizer
             std::optional<Image> image;
             try
             {
-                image = Draw(*request, same ? keptWidth : 0, same ? keptHeight : 0);
+                image = Draw(*request, same ? keptWidth : 0, same ? keptHeight : 0, same ? keptFont : 0);
             }
             catch (...)
             { /* Retain the previous overlay on allocation failure. */
@@ -305,6 +309,7 @@ class StatisticsRasterizer
             {
                 keptWidth = image->width;
                 keptHeight = image->height;
+                keptFont = image->fontHeight;
                 keptViewWidth = request->width;
                 keptViewHeight = request->height;
                 keptGeneration = request->generation;
