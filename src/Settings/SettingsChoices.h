@@ -18,6 +18,7 @@ inline constexpr RendererChoice ScalerChoices[] = {
     {"spline16", L"Spline16"},
     {"spline64", L"Spline64"},
     {"ewa_lanczossharp", L"EWA Lanczos Sharp"},
+    {"ngu_sharp", L"NGU Sharp (native, experimental)"},
     {"ewa_lanczos4sharpest", L"EWA Lanczos4 Sharpest"},
     {"gaussian", L"Gaussian"},
     {"sinc", L"Sinc"},
@@ -38,7 +39,7 @@ inline bool ScalerHasWidth(size_t index)
     if (index >= std::size(ScalerChoices))
         return false;
     const std::string_view name = ScalerChoices[index].name;
-    return name != "bilinear" && name != "bicubic" && name != "nearest";
+    return name != "bilinear" && name != "bicubic" && name != "nearest" && name != "ngu_sharp";
 }
 
 inline constexpr RendererChoice ToneChoices[] = {

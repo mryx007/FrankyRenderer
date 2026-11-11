@@ -22,6 +22,7 @@
 #include "Renderer/SharpenShader.h"
 #include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
+#include "Renderer/NguScaler.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
@@ -82,6 +83,12 @@ struct PlaceboBackend::State
     uint64_t nextFrame = 1;
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
+    NguScaler ngu;
+    ComPtr<ID3D11Texture2D> nguSource;
+    ComPtr<ID3D11Texture2D> nguOutput;
+    ComPtr<ID3D11RenderTargetView> nguOutputView;
+    ComPtr<ID3D11ShaderResourceView> nguSourceView;
+    pl_tex nguOutputPlane = nullptr;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -405,9 +412,128 @@ struct PlaceboBackend::State
                 pl_tex_destroy(d3d->gpu, &plane);
         felEnhancement = {};
         copy.Reset();
+        nguSource.Reset();
+        nguSourceView.Reset();
         unpack422.ResetFrame();
         image = {};
         valid = false;
+    }
+
+    bool PrepareNgu()
+    {
+        if (!d3d || !d3d->device)
+        {
+            error = "NGU requires a D3D11 device";
+            return false;
+        }
+        if (!nguOutput)
+        {
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = 3840;
+            desc.Height = 2160;
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_DEFAULT;
+            desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            if (FAILED(d3d->device->CreateTexture2D(&desc, nullptr, &nguOutput)) ||
+                FAILED(d3d->device->CreateRenderTargetView(
+                    nguOutput.Get(), nullptr, &nguOutputView)))
+            {
+                error = "NGU output surface could not be created";
+                return false;
+            }
+        }
+        if (!nguOutputPlane)
+        {
+            pl_d3d11_wrap_params wrap = {};
+            wrap.tex = nguOutput.Get();
+            wrap.fmt = DXGI_FORMAT_B8G8R8A8_UNORM;
+            wrap.w = 3840;
+            wrap.h = 2160;
+            nguOutputPlane = pl_d3d11_wrap(d3d->gpu, &wrap);
+            if (!nguOutputPlane)
+            {
+                error = "NGU output surface could not be wrapped";
+                return false;
+            }
+        }
+        if (!ngu.PrepareNativeLuma4x720Full(d3d->gpu))
+        {
+            error = ngu.LastError();
+            return false;
+        }
+        return true;
+    }
+
+    bool RunNgu(int targetWidth, int targetHeight)
+    {
+        if (!settings.nativeNguSharp)
+            return true;
+        if (targetWidth != 3840 || targetHeight != 2160)
+        {
+            error = "ngu_sharp currently requires a 3840x2160 output target";
+            return false;
+        }
+        if (description.width != 1280 || description.height != 720 ||
+            description.format != PixelFormat::RGB48 || description.bottomUp ||
+            image.num_planes != 1)
+        {
+            error = "ngu_sharp currently requires a 1280x720 top-down RGB48 source";
+            return false;
+        }
+        if (!copy)
+        {
+            error = "ngu_sharp source texture is unavailable";
+            return false;
+        }
+        D3D11_TEXTURE2D_DESC sourceDesc = {};
+        copy->GetDesc(&sourceDesc);
+        if (sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
+        {
+            error = "ngu_sharp source format is unsupported";
+            return false;
+        }
+        if (!PrepareNgu())
+            return false;
+        if (nguSource.Get() != copy.Get())
+        {
+            nguSourceView.Reset();
+            nguSource = copy;
+            if (FAILED(d3d->device->CreateShaderResourceView(
+                    nguSource.Get(), nullptr, &nguSourceView)))
+            {
+                error = "ngu_sharp source view could not be created";
+                return false;
+            }
+        }
+        if (!ngu.RunNativeLuma4x720Full(
+                nguSourceView.Get(), 1280, 720, nguOutputView.Get()))
+        {
+            error = ngu.LastError();
+            return false;
+        }
+        pl_frame nguFrame = image;
+        nguFrame.num_planes = 1;
+        nguFrame.planes[0] = {};
+        nguFrame.planes[0].texture = nguOutputPlane;
+        nguFrame.planes[0].components = 3;
+        for (int i = 0; i < 3; ++i)
+            nguFrame.planes[0].component_mapping[i] = i;
+        nguFrame.planes[0].component_mapping[3] = -1;
+        nguFrame.crop = {0, 0, 3840, 2160};
+        nguFrame.repr = pl_color_repr_rgb;
+        nguFrame.repr.bits = {8, 8, 0};
+        nguFrame.repr.alpha = PL_ALPHA_NONE;
+        image = nguFrame;
+        description.width = 3840;
+        description.height = 2160;
+        description.stride = 3840 * 4;
+        description.format = PixelFormat::BGRA32;
+        description.bottomUp = false;
+        error.clear();
+        return true;
     }
 
     void ClearOverlay()
@@ -517,6 +643,13 @@ struct PlaceboBackend::State
             userCached[i] = {};
         }
         userShaderMessage.clear();
+        ngu.Reset();
+        if (d3d && nguOutputPlane)
+            pl_tex_destroy(d3d->gpu, &nguOutputPlane);
+        nguSourceView.Reset();
+        nguSource.Reset();
+        nguOutputView.Reset();
+        nguOutput.Reset();
         pl_d3d11_destroy(&d3d);
         context.Reset();
         shaderCache.Save();
@@ -1508,6 +1641,15 @@ struct PlaceboBackend::State
             }
         } processed{image, mixFrames, image};
 
+        if (settings.nativeNguSharp)
+        {
+            const int targetWidth = target.planes[0].texture->params.w;
+            const int targetHeight = target.planes[0].texture->params.h;
+            if (!RunNgu(targetWidth, targetHeight))
+                return false;
+            processed.active = true;
+        }
+
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         probe.Next(RenderProbe::Rtx);
         // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
@@ -2146,10 +2288,14 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     pl_options validation = pl_options_alloc(nullptr);
     if (!validation)
         return E_OUTOFMEMORY;
-    bool valid = pl_options_set_str(validation, "upscaler", settings.upscaler.c_str()) &&
+    const char* nativeUpscaler =
+        IsNativeNguFilter(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
+    const char* nativeChroma =
+        IsNativeNguFilter(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
+    bool valid = pl_options_set_str(validation, "upscaler", nativeUpscaler) &&
                  pl_options_set_str(validation, "downscaler", settings.downscaler.c_str()) &&
                  (settings.chromaUpscaler == "auto" ||
-                  pl_options_set_str(validation, "plane_upscaler", settings.chromaUpscaler.c_str())) &&
+                  pl_options_set_str(validation, "plane_upscaler", nativeChroma)) &&
                  (settings.toneMapping == "auto" ||
                   pl_options_set_str(validation, "tone_mapping", settings.toneMapping.c_str()));
     pl_options_free(&validation);
@@ -2237,6 +2383,27 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
         data = s.unpacked.data();
         stride = frame.width * 4 * c;
         layout.channels = 4;
+    }
+    if (s.settings.nativeNguSharp && frame.format == PixelFormat::RGB48)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = frame.width;
+        desc.Height = frame.height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA initial = {};
+        initial.pSysMem = data;
+        initial.SysMemPitch = stride;
+        hr = s.d3d->device->CreateTexture2D(&desc, &initial, &s.copy);
+        if (FAILED(hr))
+        {
+            s.valid = false;
+            return hr;
+        }
     }
     size_t offset = 0;
     for (int i = 0; i < layout.planes; i++)

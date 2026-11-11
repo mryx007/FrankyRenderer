@@ -618,6 +618,10 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.temperature = s.temperature;
     out.colorAdjustment = !!s.colorAdjustment;
     out.scaling = s.scaling;
+    out.nativeNguSharp = NativeNguRequested(s.scaling) ||
+                         !wcscmp(s.upscaler, L"ngu_sharp") ||
+                         (s.chromaScaler > 0 &&
+                          !strcmp(ScalerChoices[s.chromaScaler - 1].name, "ngu_sharp"));
     ValidScaling(s.scaling, &out.motionRadius);
     out.maximumFramesInFlight = s.maximumFramesInFlight;
     out.presentAhead = s.presentAhead;

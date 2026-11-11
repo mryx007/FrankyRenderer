@@ -179,7 +179,7 @@ int wmain()
         rtx.reset();
         Require(!s.rtxSuperResolution && scaler.Enabled(), "RTX reset restores normal scaler");
         bool documentedSupported = true;
-        const int expectedCounts[] = {13, 11, 13, 11, 7};
+        const int expectedCounts[] = {14, 11, 14, 11, 7};
         for (int role = 0; role < 5; ++role)
         {
             const auto names = D2DScalerNames(role, true, "auto");

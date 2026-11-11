@@ -42,6 +42,21 @@ inline constexpr const wchar_t* ScalingFieldLabels[] = {L"Radius",
                                                         L"Window Parameter 1",
                                                         L"Window Parameter 2"};
 
+inline bool IsNativeNguFilter(const char* name)
+{
+    return name && !std::strcmp(name, "ngu_sharp");
+}
+
+inline bool NativeNguRequested(const ScalerSettings& settings)
+{
+    return IsNativeNguFilter(settings.filter);
+}
+
+inline bool NativeNguRequested(const ScalingSettings& settings)
+{
+    return NativeNguRequested(settings.filters[0]) || NativeNguRequested(settings.filters[2]);
+}
+
 inline bool ScalingName(const char (&name)[64])
 {
     if (!memchr(name, 0, 64) || !name[0])
@@ -107,6 +122,16 @@ inline bool ApplyScaling(pl_options o, const ScalingSettings& settings)
         const std::string key = ScalingRoles[role];
         if (!strcmp(s.filter, "auto"))
             continue;
+        if (IsNativeNguFilter(s.filter))
+        {
+            if (role != 0 && role != 2)
+                return false;
+            if (role == 0)
+                o->params.upscaler = &pl_filter_nearest;
+            else
+                o->params.plane_upscaler = &pl_filter_nearest;
+            continue;
+        }
         if (strcmp(s.filter, "custom"))
         {
             // This runtime exports the documented box filter but omits its name

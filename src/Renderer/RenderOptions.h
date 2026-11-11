@@ -13,11 +13,15 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
     pl_options_reset(options, &pl_render_default_params);
     if (!settings.scaling)
     {
-        if (!pl_options_set_str(options, "upscaler", settings.upscaler.c_str()) ||
+        const char* upscaler =
+            IsNativeNguFilter(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
+        const char* chroma =
+            IsNativeNguFilter(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
+        if (!pl_options_set_str(options, "upscaler", upscaler) ||
             !pl_options_set_str(options, "downscaler", settings.downscaler.c_str()))
             return E_INVALIDARG;
         if (settings.chromaUpscaler != "auto" &&
-            !pl_options_set_str(options, "plane_upscaler", settings.chromaUpscaler.c_str()))
+            !pl_options_set_str(options, "plane_upscaler", chroma))
             return E_INVALIDARG;
     }
     else if (!ApplyScaling(options, *settings.scaling))
