@@ -46,6 +46,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Luma4x720TailDownX = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720TailDownY = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720Full = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720SuperResFull = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -96,6 +97,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720TailDownY;
     case NguScalerStage::VeryHighLuma4x720Full:
         return &Luma4x720Full;
+    case NguScalerStage::VeryHighLuma4x720SuperResFull:
+        return &Luma4x720SuperResFull;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -479,6 +482,9 @@ struct NguScaler::NativeSuperResStrength3
     ComPtr<ID3D11Texture2D> mainTexture;
     ComPtr<ID3D11RenderTargetView> mainView;
     ComPtr<ID3D11ShaderResourceView> mainShaderView;
+    ComPtr<ID3D11Texture2D> outputTexture;
+    ComPtr<ID3D11RenderTargetView> outputView;
+    ComPtr<ID3D11ShaderResourceView> outputShaderView;
 };
 
 struct NguScaler::NativeLuma4x720Low
@@ -2814,7 +2820,9 @@ bool NguScaler::PrepareNativeSuperResStrength3(pl_gpu gpu)
         !create(640, 360, DXGI_FORMAT_R16G16_FLOAT,
                 state->diffTexture, state->diffView, state->diffShaderView) ||
         !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->mainTexture, state->mainView, state->mainShaderView))
+                state->mainTexture, state->mainView, state->mainShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->outputTexture, state->outputView, state->outputShaderView))
     {
         error_ = "NGU SuperChromaRes strength-3 scheduler surfaces could not be created";
         return false;
@@ -4563,6 +4571,45 @@ bool NguScaler::RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
         return false;
     error_ = "";
     return true;
+}
+
+bool NguScaler::PrepareNativeLuma4x720SuperResFull(pl_gpu gpu)
+{
+    if (!PrepareNativeSuperResStrength3(gpu))
+        return false;
+    if (!PrepareNativeLuma4x720Full(gpu))
+        return false;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720SuperResFull;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720SuperResFull(
+    ID3D11ShaderResourceView* source,
+    ID3D11ShaderResourceView* diffOriginal,
+    ID3D11ShaderResourceView* mainOriginal,
+    ID3D11ShaderResourceView* baseOriginal,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeSuperResStrength3_ || !source || !diffOriginal ||
+        !mainOriginal || !baseOriginal || !finalOutput)
+    {
+        error_ = "NGU 720p SuperRes full request is invalid";
+        return false;
+    }
+    auto& superRes = *nativeSuperResStrength3_;
+    if (!RunNativeSuperResStrength3(source,
+                                    diffOriginal,
+                                    mainOriginal,
+                                    baseOriginal,
+                                    superRes.outputView.Get()))
+        return false;
+    return RunNativeLuma4x720Full(
+        superRes.outputShaderView.Get(), 1280, 720, finalOutput);
 }
 
 void NguScaler::Reset()

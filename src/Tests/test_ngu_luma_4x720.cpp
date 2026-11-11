@@ -64,6 +64,7 @@ ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device,
     desc.BindFlags = bind;
     const UINT pixelBytes = format == DXGI_FORMAT_R16_UNORM ? 2
                            : format == DXGI_FORMAT_R16G16_UNORM ? 4
+                           : format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
                                                                : 8;
     D3D11_SUBRESOURCE_DATA data = {};
     data.pSysMem = initial;
@@ -929,6 +930,87 @@ int main(int argc, char** argv)
                     fullMilliseconds);
         const bool fullFinalPass = fullFinalMaximum <= 1 && fullFinalOverOne == 0;
 
+        const auto superResSourceBytes =
+            ReadBytes(root / "input_00210_PS_520_4a9505a4_s0.bin",
+                      size_t(1280) * 720 * 8);
+        const auto superResMainBytes =
+            ReadBytes(root / "input_00213_PS_4412_c39b49cf_s0.bin",
+                      size_t(1280) * 720 * 8);
+        const auto superResBaseBytes =
+            ReadBytes(root / "input_00217_PS_4576_b7830945_s0.bin",
+                      size_t(1280) * 720 * 8);
+        const auto superResDiffBytes =
+            ReadBytes(root / "input_00212_PS_284_e8e2a8eb_s0.bin",
+                      size_t(640) * 360 * 4);
+        auto superResSource = CreateTexture(
+            device, 1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, superResSourceBytes.data());
+        auto superResMain = CreateTexture(
+            device, 1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, superResMainBytes.data());
+        auto superResBase = CreateTexture(
+            device, 1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, superResBaseBytes.data());
+        auto superResDiff = CreateTexture(
+            device, 640, 360, DXGI_FORMAT_B8G8R8A8_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, superResDiffBytes.data());
+        ComPtr<ID3D11ShaderResourceView> superResSourceView;
+        ComPtr<ID3D11ShaderResourceView> superResMainView;
+        ComPtr<ID3D11ShaderResourceView> superResBaseView;
+        ComPtr<ID3D11ShaderResourceView> superResDiffView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    superResSource.Get(), nullptr, &superResSourceView)),
+                "SuperRes source SRV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    superResMain.Get(), nullptr, &superResMainView)),
+                "SuperRes main SRV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    superResBase.Get(), nullptr, &superResBaseView)),
+                "SuperRes base SRV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    superResDiff.Get(), nullptr, &superResDiffView)),
+                "SuperRes diff SRV");
+        auto superResFinal = CreateTexture(device,
+                                          3840,
+                                          2160,
+                                          DXGI_FORMAT_B8G8R8A8_UNORM,
+                                          D3D11_BIND_RENDER_TARGET |
+                                              D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> superResFinalView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    superResFinal.Get(), nullptr, &superResFinalView)),
+                "SuperRes final RTV");
+        Require(ngu.PrepareNativeLuma4x720SuperResFull(d3d->gpu),
+                ngu.LastError());
+        const auto superResStart = std::chrono::steady_clock::now();
+        Require(ngu.RunNativeLuma4x720SuperResFull(
+                    superResSourceView.Get(),
+                    superResDiffView.Get(),
+                    superResMainView.Get(),
+                    superResBaseView.Get(),
+                    superResFinalView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const double superResMilliseconds =
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - superResStart).count();
+        auto superResFinalActual =
+            Download(device, context.Get(), superResFinal.Get());
+        int superResFinalMaximum = 0, superResFinalOverOne = 0;
+        const int superResFinalDifferent = CountPixelDifferences(
+            superResFinalActual,
+            ReadBytes(root / "draw_00266_PS_1352_6992f6f0_rt0_3840x2160_f21.bin",
+                      size_t(3840) * 2160 * 4),
+            superResFinalMaximum,
+            superResFinalOverOne);
+        std::printf("SuperResFullFinal different=%d maximum=%d diff_gt_1_pixels=%d %.3f ms/frame\n",
+                    superResFinalDifferent,
+                    superResFinalMaximum,
+                    superResFinalOverOne,
+                    superResMilliseconds);
+        const bool superResFullPass =
+            superResFinalMaximum <= 1 && superResFinalOverOne == 0;
+
         if (!actualPrefix.empty())
         {
             WriteBytes(actualPrefix + L"split.bin", splitActual);
@@ -980,13 +1062,23 @@ int main(int argc, char** argv)
                           chromaXDifferent == 0 && chromaXMaximum == 0 &&
                           chromaYDifferent == 0 && chromaYMaximum == 0 &&
                           mergeDifferent == 0 && mergeMaximum == 0 &&
-                          fullFinalPass;
+                          fullFinalPass && superResFullPass;
         std::printf("%s native NGU 720p VeryHigh 4x luma tail prefix\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
         fullFinalView.Reset();
         fullFinal.Reset();
+        superResFinalView.Reset();
+        superResFinal.Reset();
+        superResDiffView.Reset();
+        superResDiff.Reset();
+        superResBaseView.Reset();
+        superResBase.Reset();
+        superResMainView.Reset();
+        superResMain.Reset();
+        superResSourceView.Reset();
+        superResSource.Reset();
         mergeView.Reset();
         merge.Reset();
         targetMergeChromaView.Reset();
