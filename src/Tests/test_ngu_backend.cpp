@@ -153,6 +153,7 @@ int main(int argc, char** argv)
                 "NGU pattern render");
         Require(patternPixels[0] || patternPixels[1] || patternPixels[2],
                 "NGU pattern output is not black");
+
         std::printf("PASS_PRODUCT ngu_sharp backend RGB48 -> 4K\n");
         return 0;
     }
