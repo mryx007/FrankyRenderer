@@ -2328,9 +2328,9 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     if (!validation)
         return E_OUTOFMEMORY;
     const char* nativeUpscaler =
-        IsNativeNguFilter(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
+        IsNativeScalerIdentifier(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
     const char* nativeChroma =
-        IsNativeNguFilter(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
+        IsNativeScalerIdentifier(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
     bool valid = pl_options_set_str(validation, "upscaler", nativeUpscaler) &&
                  pl_options_set_str(validation, "downscaler", settings.downscaler.c_str()) &&
                  (settings.chromaUpscaler == "auto" ||
