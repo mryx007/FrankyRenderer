@@ -183,7 +183,7 @@ three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
 also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
 PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
-`F62E93808494048F4FCA663DEF254539BBBC198B4B6FBD4E874877BDF76F9000`.
+`B973B6911A14748C62509F73F292196EE744410E68D0BBF0E34DF66A15D5A863`.
 
 The complete captured 720p 4x post-network path is now stage-exact. The
 captured `f36` tail is A16B16G16R16 UNORM rather than RGBA16F, and PS_536,
@@ -204,6 +204,10 @@ top-down 1280x720 RGB48 source and 3840x2160 target, creates the exact source
 view, runs the native graph and replaces the image with the 4K RGB result.
 The Backend regression also reports `maximum=1`, `diff_gt_1_pixels=0`.
 Unsupported geometry, source format, orientation or target size fail closed.
+
+Backend dispatch now covers the captured 1920x1080 RGB48 path as well as
+1280x720. Both select native schedulers and both are within the declared
+one-LSB final boundary.
 
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
