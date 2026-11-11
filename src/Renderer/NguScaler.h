@@ -1,5 +1,10 @@
 #pragma once
 #include <libplacebo/shaders/custom.h>
+#include <memory>
+#include <string>
+
+struct ID3D11ShaderResourceView;
+struct ID3D11RenderTargetView;
 
 // NGU quality names mirror the target settings. Only VeryHigh has
 // evidence-backed validation stages; the other levels stay fail-closed until
@@ -16,6 +21,7 @@ enum class NguScalerStage
 {
     None,
     VeryHighChromaReference,
+    VeryHighLumaInitial1080,
     VeryHighLuma1080Core,
 };
 
@@ -46,12 +52,17 @@ NguScalerSupport ProbeNguScaler(const NguScalerRequest& request);
 class NguScaler
 {
   public:
-    NguScaler() = default;
+    NguScaler();
     ~NguScaler();
     NguScaler(const NguScaler&) = delete;
     NguScaler& operator=(const NguScaler&) = delete;
 
     bool PrepareValidation(pl_gpu gpu, const NguScalerRequest& request);
+    bool PrepareNativeLumaInitial(pl_gpu gpu);
+    bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
+                              int width,
+                              int height,
+                              ID3D11RenderTargetView* const outputs[3]);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -59,9 +70,11 @@ class NguScaler
     const char* LastError() const;
 
   private:
+    struct NativeLumaInitial;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
-    const char* error_ = "";
+    std::string error_;
     bool hasCached_ = false;
+    std::unique_ptr<NativeLumaInitial> nativeLumaInitial_;
 };
