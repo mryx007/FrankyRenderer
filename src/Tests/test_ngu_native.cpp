@@ -90,7 +90,8 @@ std::vector<uint8_t> Download(ID3D11Device* device,
     context->CopyResource(staging.Get(), source);
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     Require(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "map staging texture");
-    const size_t rowBytes = size_t(desc.Width) * Components * sizeof(uint16_t);
+    const size_t rowBytes =
+        size_t(desc.Width) * (desc.Format == DXGI_FORMAT_R16_UNORM ? sizeof(uint16_t) : Components * sizeof(uint16_t));
     std::vector<uint8_t> bytes(rowBytes * desc.Height);
     for (UINT y = 0; y < desc.Height; ++y)
         std::memcpy(bytes.data() + size_t(y) * rowBytes,
@@ -291,8 +292,11 @@ int main(int argc, char** argv)
             1922,
             1082);
         ComPtr<ID3D11RenderTargetView> denseView;
+        ComPtr<ID3D11ShaderResourceView> denseShaderView;
         Require(SUCCEEDED(device->CreateRenderTargetView(denseTexture.Get(), nullptr, &denseView)),
                 "create dense RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(denseTexture.Get(), nullptr, &denseShaderView)),
+                "create dense SRV");
         const bool densePrepared = ngu.PrepareNativeLumaDense(d3d->gpu);
         Require(densePrepared, ngu.LastError());
         const bool denseRan = ngu.RunNativeLumaDense(currentInputs.data(), denseView.Get());
@@ -321,10 +325,74 @@ int main(int argc, char** argv)
                     denseMaximum,
                     denseMilliseconds);
 
+        const bool scalePrepared = ngu.PrepareNativeLumaScaleAdd(d3d->gpu);
+        Require(scalePrepared, ngu.LastError());
+        auto chainX = CreateTexture(
+            device,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+            nullptr,
+            3840,
+            1080);
+        ComPtr<ID3D11RenderTargetView> chainXView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(chainX.Get(), nullptr, &chainXView)), "chain X RTV");
+        const bool chainXRan = ngu.RunNativeLumaScaleX(inputView.Get(), chainXView.Get());
+        Require(chainXRan, ngu.LastError());
+        auto chainY = CreateTexture(
+            device,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+            nullptr,
+            3840,
+            2160);
+        ComPtr<ID3D11RenderTargetView> chainYView;
+        ComPtr<ID3D11ShaderResourceView> chainYSrv;
+        Require(SUCCEEDED(device->CreateRenderTargetView(chainY.Get(), nullptr, &chainYView)), "chain Y RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(chainY.Get(), nullptr, &chainYSrv)), "chain Y SRV");
+        auto chainXViewSrv = [&]
+        {
+            ComPtr<ID3D11ShaderResourceView> view;
+            Require(SUCCEEDED(device->CreateShaderResourceView(chainX.Get(), nullptr, &view)), "chain X SRV");
+            return view;
+        }();
+        const bool chainYRan = ngu.RunNativeLumaScaleY(chainXViewSrv.Get(), chainYView.Get());
+        Require(chainYRan, ngu.LastError());
+        auto chainAdd = CreateTexture(
+            device,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+            nullptr,
+            3840,
+            2160);
+        ComPtr<ID3D11RenderTargetView> chainAddView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(chainAdd.Get(), nullptr, &chainAddView)), "chain add RTV");
+        const bool chainAddRan = ngu.RunNativeLumaAdd(chainYSrv.Get(), denseShaderView.Get(), chainAddView.Get());
+        Require(chainAddRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto chainActual = Download(device, context.Get(), chainAdd.Get());
+        const auto chainExpected = ReadBytes(
+            (root / "draw_31723_PS_564_500335c8_rt0_3840x2160_f81.bin").wstring(),
+            size_t(3840) * 2160 * 8);
+        Require(chainActual.size() * 4 == chainExpected.size(), "chain output size");
+        int chainDifferent = 0, chainMaximum = 0;
+        for (size_t i = 0; i < chainActual.size() / 2; ++i)
+        {
+            const uint16_t left =
+                uint16_t(chainActual[i * 2]) | (uint16_t(chainActual[i * 2 + 1]) << 8);
+            const uint16_t right =
+                uint16_t(chainExpected[i * 8]) | (uint16_t(chainExpected[i * 8 + 1]) << 8);
+            if (left != right)
+            {
+                ++chainDifferent;
+                chainMaximum = std::max(chainMaximum, std::abs(int(left) - int(right)));
+            }
+        }
+        std::printf("complete luma chain add different=%d maximum=%d\n", chainDifferent, chainMaximum);
+
         std::ofstream summary(summaryPath);
         Require(bool(summary), "write summary");
         const bool pass =
-            layersPass && denseDifferences == 0 &&
+            layersPass && denseDifferences == 0 && chainDifferent == 0 &&
             std::all_of(differences.begin(), differences.end(), [](int value) { return value == 0; });
         summary << "{\n"
                 << "  \"status\": \"" << (pass ? "PASS_PRODUCT" : "FAIL_PRODUCT") << "\",\n"
@@ -344,6 +412,8 @@ int main(int argc, char** argv)
                 << "  \"dense_different_half_components\": " << denseDifferences << ",\n"
                 << "  \"dense_maximum_half_code_delta\": " << denseMaximum << ",\n"
                 << "  \"dense_ms_per_frame\": " << denseMilliseconds << ",\n"
+                << "  \"complete_chain_add_different_half_components\": " << chainDifferent << ",\n"
+                << "  \"complete_chain_add_maximum_half_code_delta\": " << chainMaximum << ",\n"
                 << "  \"native_ms_per_frame\": " << milliseconds << "\n"
                 << "}\n";
         for (size_t i = 0; i < differences.size(); ++i)
@@ -355,6 +425,15 @@ int main(int argc, char** argv)
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT",
                     milliseconds);
         ngu.Reset();
+        chainAddView.Reset();
+        chainAdd.Reset();
+        chainYSrv.Reset();
+        chainYView.Reset();
+        chainY.Reset();
+        chainXViewSrv.Reset();
+        chainXView.Reset();
+        chainX.Reset();
+        denseShaderView.Reset();
         denseView.Reset();
         denseTexture.Reset();
         rawViews.fill(nullptr);
