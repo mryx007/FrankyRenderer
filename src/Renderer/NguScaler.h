@@ -188,6 +188,8 @@ class NguScaler
     bool RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
                                          ID3D11ShaderResourceView* source,
                                          ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
+                                         ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;

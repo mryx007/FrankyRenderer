@@ -596,11 +596,16 @@ int main(int argc, char** argv)
                                        3840,
                                        2160,
                                        DXGI_FORMAT_R16G16B16A16_UNORM,
-                                       D3D11_BIND_RENDER_TARGET);
+                                       D3D11_BIND_RENDER_TARGET |
+                                           D3D11_BIND_SHADER_RESOURCE);
         ComPtr<ID3D11RenderTargetView> ssimFinalView;
+        ComPtr<ID3D11ShaderResourceView> ssimFinalShaderView;
         Require(SUCCEEDED(device->CreateRenderTargetView(
                     ssimFinal.Get(), nullptr, &ssimFinalView)),
                 "tail SSIM final RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    ssimFinal.Get(), nullptr, &ssimFinalShaderView)),
+                "tail SSIM final SRV");
         Require(ngu.RunNativeLuma4x720TailSsimFinal(
                     ssimRtShaderView.Get(),
                     downYShaderView.Get(),
@@ -659,6 +664,52 @@ int main(int argc, char** argv)
                       size_t(3840) * 2160 * 8),
             targetInputFinalMaximum);
 
+        auto sharpenAr = CreateTexture(device,
+                                       3840,
+                                       2160,
+                                       DXGI_FORMAT_R16G16B16A16_UNORM,
+                                       D3D11_BIND_RENDER_TARGET);
+        ComPtr<ID3D11RenderTargetView> sharpenArView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    sharpenAr.Get(), nullptr, &sharpenArView)),
+                "tail SharpenAR RTV");
+        Require(ngu.RunNativeLuma4x720TailSharpenAr(
+                    ssimFinalShaderView.Get(), sharpenArView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto sharpenArActual =
+            Download(device, context.Get(), sharpenAr.Get());
+        const auto sharpenArExpected =
+            ReadBytes(root / "draw_00256_PS_5868_0cb2f4f9_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8);
+        int sharpenArMaximum = 0;
+        const int sharpenArDifferent = CountWords(
+            sharpenArActual, sharpenArExpected, sharpenArMaximum);
+
+        const auto targetSharpenInputBytes =
+            ReadBytes(root / "input_00256_PS_5868_0cb2f4f9_s0.bin",
+                      size_t(3840) * 2160 * 8);
+        auto targetSharpenInput = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE,
+            targetSharpenInputBytes.data());
+        ComPtr<ID3D11ShaderResourceView> targetSharpenInputView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetSharpenInput.Get(), nullptr, &targetSharpenInputView)),
+                "target SharpenAR SRV");
+        Require(ngu.RunNativeLuma4x720TailSharpenAr(
+                    targetSharpenInputView.Get(), sharpenArView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto targetSharpenActual =
+            Download(device, context.Get(), sharpenAr.Get());
+        int targetSharpenMaximum = 0;
+        const int targetSharpenDifferent = CountWords(
+            targetSharpenActual, sharpenArExpected, targetSharpenMaximum);
+
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
@@ -681,6 +732,10 @@ int main(int argc, char** argv)
                     ssimFinalDifferent, ssimFinalMaximum);
         std::printf("TailSsimFinalTargetInputs different=%d maximum=%d\n",
                     targetInputFinalDifferent, targetInputFinalMaximum);
+        std::printf("TailSharpenArProbe different=%d maximum=%d\n",
+                    sharpenArDifferent, sharpenArMaximum);
+        std::printf("TailSharpenArTargetInputs different=%d maximum=%d\n",
+                    targetSharpenDifferent, targetSharpenMaximum);
 
         if (!actualPrefix.empty())
         {
@@ -712,6 +767,9 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"tail_ssim_final_probe.bin", ssimFinalActual);
             WriteBytes(actualPrefix + L"tail_ssim_final_target_inputs.bin",
                        targetInputFinalActual);
+            WriteBytes(actualPrefix + L"tail_sharpen_ar_probe.bin", sharpenArActual);
+            WriteBytes(actualPrefix + L"tail_sharpen_ar_target_inputs.bin",
+                       targetSharpenActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
@@ -726,6 +784,11 @@ int main(int argc, char** argv)
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        targetSharpenInputView.Reset();
+        targetSharpenInput.Reset();
+        sharpenArView.Reset();
+        sharpenAr.Reset();
+        ssimFinalShaderView.Reset();
         targetSsimSourceView.Reset();
         targetSsimSource.Reset();
         targetSsimRtView.Reset();

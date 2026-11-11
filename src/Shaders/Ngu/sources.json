@@ -112,5 +112,13 @@
     "geometry": [3840, 2160],
     "output_format": "R16G16B16A16_UNORM",
     "constants_sha256": "4A8F8547F197A3E09E9DAC1CEFE77239FF2871EC68B6711D3364771826C64B39"
+  },
+  "luma_4x720_tail_sharpen_ar.hlsl": {
+    "sha256": "3192BB052577F2CBA3EF02EA3E1D1932061B2D151D322CDE996E06C0E794BC9D",
+    "evidence": "OpenMadVR E-110",
+    "target_shader": "PS_5868_0cb2f4f9",
+    "geometry": [3840, 2160],
+    "output_format": "R16G16B16A16_UNORM",
+    "constants_sha256": "CD52816B1BF8EB8912973323D61CE407CA78E6F22D823A8F0E27B26400FDB0D5"
   }
 }

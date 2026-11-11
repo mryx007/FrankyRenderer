@@ -108,6 +108,8 @@ Copy-CapturePrefix 'const_snapshot_draw_00254_PS_1208_b99fedc2.f32' `
     'luma_4x720_tail_ssim_rt_constants.bin' 32
 Copy-CapturePrefix 'const_snapshot_draw_00255_PS_1052_f4319416.f32' `
     'luma_4x720_tail_ssim_final_constants.bin' 32
+Copy-Capture 'const_snapshot_draw_00256_PS_5868_0cb2f4f9.f32' `
+    'luma_4x720_tail_sharpen_ar_constants.bin' 4096
 
 Get-ChildItem $output -File |
     Where-Object Name -Like 'luma_4x720_*' |

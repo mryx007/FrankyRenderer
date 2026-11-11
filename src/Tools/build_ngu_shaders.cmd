@@ -23,6 +23,8 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_tail_ssim_final.cso" "Shaders\Ngu\luma_4x720_tail_ssim_final.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_tail_sharpen_ar.cso" "Shaders\Ngu\luma_4x720_tail_sharpen_ar.hlsl"
+if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_dense.cso" "Shaders\Ngu\luma_1080_dense.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_scale_x.cso" "Shaders\Ngu\luma_1080_scale_x.hlsl"

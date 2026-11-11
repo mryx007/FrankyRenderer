@@ -568,6 +568,8 @@ struct NguScaler::NativeLuma4x720Tail
     ComPtr<ID3D11Buffer> ssimRtConstants;
     ComPtr<ID3D11PixelShader> ssimFinal;
     ComPtr<ID3D11Buffer> ssimFinalConstants;
+    ComPtr<ID3D11PixelShader> sharpenAr;
+    ComPtr<ID3D11Buffer> sharpenArConstants;
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
@@ -3786,11 +3788,16 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final.cso", 0);
     const auto ssimFinalConstants =
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final_constants.bin", 32);
+    const auto sharpenArCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar.cso", 0);
+    const auto sharpenArConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar_constants.bin", 4096);
     if (shaderText.empty() || ycbcrCso.empty() || downXCso.empty() ||
         downXConstants.empty() || downXTable.empty() || downXUvLut.empty() ||
         downYCso.empty() || downYConstants.empty() || downYTable.empty() ||
         downYUvLut.empty() || ssimRtCso.empty() || ssimRtConstants.empty() ||
-        ssimFinalCso.empty() || ssimFinalConstants.empty())
+        ssimFinalCso.empty() || ssimFinalConstants.empty() ||
+        sharpenArCso.empty() || sharpenArConstants.empty())
     {
         error_ = "NGU 720p 4x tail assets are unavailable";
         return false;
@@ -3841,7 +3848,11 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         FAILED(device->CreatePixelShader(ssimFinalCso.data(),
                                          static_cast<SIZE_T>(ssimFinalCso.size()),
                                          nullptr,
-                                         &state->ssimFinal)))
+                                         &state->ssimFinal)) ||
+        FAILED(device->CreatePixelShader(sharpenArCso.data(),
+                                         static_cast<SIZE_T>(sharpenArCso.size()),
+                                         nullptr,
+                                         &state->sharpenAr)))
     {
         error_ = "NGU 720p 4x tail shader objects could not be created";
         return false;
@@ -3881,6 +3892,14 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
             &constantDesc, &constantData, &state->ssimFinalConstants)))
     {
         error_ = "NGU 720p 4x tail SSIM final constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(sharpenArConstants.size());
+    constantData.pSysMem = sharpenArConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->sharpenArConstants)))
+    {
+        error_ = "NGU 720p 4x tail SharpenAR constants could not be created";
         return false;
     }
 
@@ -4141,6 +4160,39 @@ bool NguScaler::RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
                   state.rasterizer.Get(),
                   inputs,
                   3,
+                  targets,
+                  1,
+                  3840,
+                  2160,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
+                                                ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail SharpenAR requires exact 4K surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[2] = {
+        input, state.downYUvLutView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.sharpenAr.Get(),
+                  state.sharpenArConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
                   targets,
                   1,
                   3840,
