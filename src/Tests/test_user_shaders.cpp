@@ -1,6 +1,7 @@
 // Every catalogue shader must load from the shipped folder and parse; the
 // RAVU Zoom variants must also render a 2x upscale of a YCbCr frame.
 #define NOMINMAX
+#include "Renderer/NguScaler.h"
 #include "Renderer/UserShaderSource.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
@@ -26,6 +27,41 @@ int main()
         auto d3d = pl_d3d11_create(nullptr, &params);
         Require(d3d != nullptr, "D3D11 GPU");
         const pl_gpu gpu = d3d->gpu;
+
+        NguScalerRequest lumaRequest;
+        lumaRequest.sourceWidth = 1920;
+        lumaRequest.sourceHeight = 1080;
+        lumaRequest.stage = NguScalerStage::VeryHighLuma1080Core;
+        Require(ProbeNguScaler(lumaRequest) == NguScalerSupport::Ready, "1080p VeryHigh luma capability");
+
+        NguScalerRequest chromaRequest;
+        chromaRequest.sourceWidth = 640;
+        chromaRequest.sourceHeight = 360;
+        chromaRequest.stage = NguScalerStage::VeryHighChromaReference;
+        Require(ProbeNguScaler(chromaRequest) == NguScalerSupport::Ready, "reference VeryHigh chroma capability");
+
+        auto experimental = lumaRequest;
+        experimental.quality = NguQuality::High;
+        Require(ProbeNguScaler(experimental) == NguScalerSupport::ExperimentalUnimplemented,
+                "High NGU remains experimental");
+        auto wrongGeometry = lumaRequest;
+        wrongGeometry.sourceWidth = 1280;
+        wrongGeometry.sourceHeight = 720;
+        Require(ProbeNguScaler(wrongGeometry) == NguScalerSupport::UnsupportedGeometry,
+                "unobserved NGU geometry is rejected");
+
+        NguScaler ngu;
+        Require(ngu.PrepareValidation(gpu, lumaRequest), "prepare 1080p NGU luma validation stage");
+        const pl_hook* lumaHook = ngu.Hook();
+        Require(lumaHook && ngu.Stage() == lumaRequest.stage, "NGU luma hook ownership");
+        Require(ngu.PrepareValidation(gpu, lumaRequest) && ngu.Hook() == lumaHook,
+                "identical NGU request reuses parsed hook");
+        Require(ngu.PrepareValidation(gpu, chromaRequest), "prepare reference NGU chroma validation stage");
+        Require(ngu.Hook() && ngu.Stage() == chromaRequest.stage, "NGU stage replacement");
+        Require(!ngu.PrepareValidation(gpu, wrongGeometry), "unsupported NGU request fails closed");
+        Require(ngu.LastError()[0] != '\0', "failed NGU request reports its boundary");
+        ngu.Reset();
+        Require(!ngu.Hook() && ngu.Stage() == NguScalerStage::None, "NGU reset releases hook state");
 
         const pl_hook* hooks[ShaderCount] = {};
         for (int id = 0; id < ShaderCount; ++id)
@@ -240,7 +276,8 @@ int main()
         for (auto& hook : hooks)
             pl_mpv_user_shader_destroy(&hook);
         pl_d3d11_destroy(&d3d);
-        printf("PASS user shaders: %d catalogue shaders load and parse; RAVU Zoom R2/R3 variants render\n",
+        printf("PASS user shaders: %d catalogue shaders load and parse; NGU lifecycle is fail-closed; "
+               "RAVU Zoom R2/R3 variants render\n",
                ShaderCount);
         return 0;
     }
