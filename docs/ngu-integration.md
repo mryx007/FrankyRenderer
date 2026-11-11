@@ -257,6 +257,11 @@ target sample at zero difference. The local adapter reports no P016 resource
 support, so real P016 remains fail-closed until exercised on a supporting
 device.
 
+The first chroma-core pass is native and exact: PS_260 SplitCb_Cr maps one packed
+CbCr sample into L16 Cb and Cr with byte-identical target output. The attempted
+PS_748 X/Y translation was rejected because D3D9 coordinate interpolation was
+not reproduced exactly; it is not part of the product path.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
