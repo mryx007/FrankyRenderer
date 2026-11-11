@@ -16,18 +16,39 @@ v0.92.17 binary and cited OpenMadVR Evidence remain the behavior oracle.
 - `src/Shaders/PlayKit/`: bundled shader resources.
 - `src/Tests/test_user_shaders.cpp`: shader-chain regression coverage.
 
-## Proposed implementation
+## Implementation boundary
 
-1. Add a separate NGU Sharp shader family rather than pretending it is a
-   libplacebo built-in scaler.
-2. For the first milestone, port the target-observed VeryHigh chroma plus
+NGU will be an external mpv-compatible GLSL shader pack. It must use the public
+libplacebo user-shader contract and the existing Franky hook submission path:
+
+- no libplacebo source changes;
+- no NGU logic inside `Backend.cpp`;
+- no D3D9 bridge;
+- immutable NGU weights/tables embedded as `TEXTURE` assets;
+- intermediate passes connected with `SAVE`/`BIND` and sized with
+  `WIDTH`/`HEIGHT`;
+- luma/chroma attachment through `HOOK LUMA` and `HOOK CHROMA`;
+- colour conversion and final presentation left to libplacebo.
+
+Single-output hook passes cannot directly reproduce a two- or four-target
+target shader. An MRT stage is represented by several passes evaluating the
+same deterministic shader body and returning one target each. This preserves
+the data dependency while increasing GPU work. It is accepted only after
+pass-level numerical comparison.
+
+The current catalogue is compiled into `ShaderCatalog.h`, so the eventual
+loader needs a small manifest/discovery layer. The first feasibility pack may
+register one temporary catalogue entry, but the shader implementation itself
+must remain external and replaceable.
+
+## Implementation order
+
+1. For the first milestone, port the target-observed VeryHigh chroma plus
    SuperRes3 pass graph for 720p/1080p to 4K.
-3. Bundle immutable NGU weight and scale tables and load them as shader
-   textures.
-4. Preserve half/float intermediate formats, sampler coordinates and pass
-   order from the cited Evidence.
-5. Compare every deterministic pass by SHA-256 before adding settings/UI.
-6. Add luma image upscaling and all four Sharp quality levels after the first
+2. Prove the MRT split and embedded table sampling pass by pass.
+3. Port VeryHigh luma, then compare same-frame 4K output.
+4. Compare every deterministic pass by SHA-256 before adding settings/UI.
+5. Add luma image upscaling and all four Sharp quality levels after the first
    path is exact.
 
 ## Initial acceptance
