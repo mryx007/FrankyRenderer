@@ -108,8 +108,11 @@ The branch now has a native `NguScaler` lifecycle and an exact one-call
 1920x1080-to-4K VeryHigh luma scheduler. Native PS_460 Y/CbCr split, luma
 initializer/layers/dense/scale/add, 4x reconstruction, merge, FinalStep, dither,
 and the SuperChromaRes strength-3 primitive chain are covered by stage-exact
-tests. The latest product AX at the time of this decision is
-`89C436E7F576912232645941CA5ED1CF68A1B814E4AB18FED73BEC969EF19025`.
+tests. A one-call strength-3 scheduler now owns and reuses the captured X/Y/diff
+surfaces, validates every external format/geometry, and produces the target
+PS_4576 output exactly at `0.156 ms/frame` on the validation geometry. The
+latest product AX is
+`E8EA4A362263BE1D0D7B81D372AF89FA7E809DC2197E83960AA78B7428788D5B`.
 
 This is not yet a selectable complete scaler. Backend/source-surface binding,
 real DirectShow playback, the combined chroma-plus-SuperRes-plus-luma chain,
