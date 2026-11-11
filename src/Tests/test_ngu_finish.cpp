@@ -52,6 +52,7 @@ ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device,
     desc.BindFlags = bind;
     const UINT pixelBytes = format == DXGI_FORMAT_R16_UNORM ? 2
                            : format == DXGI_FORMAT_R16G16_UNORM ? 4
+                           : format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
                                                                : 8;
     D3D11_SUBRESOURCE_DATA data = {};
     data.pSysMem = initial;
@@ -74,7 +75,10 @@ std::vector<uint8_t> Download(ID3D11Device* device, ID3D11DeviceContext* context
     context->CopyResource(staging.Get(), source);
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     Require(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "map staging texture");
-    const UINT pixelBytes = desc.Format == DXGI_FORMAT_R16_UNORM ? 2 : 8;
+    const UINT pixelBytes = desc.Format == DXGI_FORMAT_R16_UNORM   ? 2
+                            : desc.Format == DXGI_FORMAT_R16G16_UNORM ? 4
+                            : desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
+                                                                      : 8;
     const size_t rowBytes = size_t(desc.Width) * pixelBytes;
     std::vector<uint8_t> bytes(rowBytes * desc.Height);
     for (UINT y = 0; y < desc.Height; ++y)
@@ -100,6 +104,65 @@ int CountComponents(const std::vector<uint8_t>& actual, const std::vector<uint8_
         }
     }
     maximum = largest;
+    return different;
+}
+
+struct Mt19937
+{
+    uint32_t state[624] = {};
+    uint32_t index = 624;
+
+    explicit Mt19937(uint32_t seed)
+    {
+        state[0] = seed;
+        for (uint32_t i = 1; i < 624; ++i)
+            state[i] = 1812433253u * (state[i - 1] ^ (state[i - 1] >> 30)) + i;
+    }
+
+    uint32_t Next()
+    {
+        static constexpr uint32_t magic[2] = {0u, 0x9908b0dfu};
+        if (index >= 624)
+        {
+            for (uint32_t i = 0; i < 623; ++i)
+            {
+                const uint32_t mixed = ((state[i] ^ state[i + 1]) & 0x7fffffffu) ^ state[i];
+                state[i] = state[(i + 397) % 624] ^ (mixed >> 1) ^ magic[mixed & 1u];
+            }
+            const uint32_t mixed = ((state[623] ^ state[0]) & 0x7fffffffu) ^ state[623];
+            state[623] = state[396] ^ (mixed >> 1) ^ magic[mixed & 1u];
+            index = 0;
+        }
+        uint32_t value = state[index++];
+        value ^= value >> 11;
+        value ^= (value & 0xff3a58adu) << 7;
+        value ^= (value & 0xffffdf8cu) << 15;
+        return value ^ (value >> 18);
+    }
+};
+
+int CountPixelDifferences(const std::vector<uint8_t>& actual,
+                          const std::vector<uint8_t>& expected,
+                          int& maximum,
+                          int& overOne)
+{
+    Require(actual.size() == expected.size() && actual.size() % 4 == 0, "final comparison size");
+    maximum = 0;
+    overOne = 0;
+    int different = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (size_t channel = 0; channel < 4; ++channel)
+        {
+            const int delta = std::abs(int(actual[offset + channel]) - int(expected[offset + channel]));
+            if (delta)
+                ++different;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
+    }
     return different;
 }
 } // namespace
@@ -196,18 +259,69 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_31726_PS_548_d6670d4b_rt0_3840x2160_f36.bin", size_t(3840) * 2160 * 8),
             mergeMaximum);
 
+        const bool finalPrepared = ngu.PrepareNativeLumaFinal(d3d->gpu);
+        Require(finalPrepared, ngu.LastError());
+        auto finalInputBytes = mergeActual;
+        auto finalInput = CreateTexture(
+            device, 3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, finalInputBytes.data());
+        ComPtr<ID3D11ShaderResourceView> finalInputSrv;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    finalInput.Get(), nullptr, &finalInputSrv)),
+                "final input SRV");
+        std::vector<uint8_t> ditherBytes(size_t(3840) * 2160 * 4);
+        Mt19937 ditherRandom(1);
+        for (size_t pixel = 0; pixel < size_t(3840) * 2160; ++pixel)
+        {
+            const uint32_t word = ditherRandom.Next();
+            std::memcpy(ditherBytes.data() + pixel * 4, &word, sizeof(word));
+        }
+        auto dither = CreateTexture(
+            device, 3840, 2160, DXGI_FORMAT_B8G8R8A8_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, ditherBytes.data());
+        ComPtr<ID3D11ShaderResourceView> ditherSrv;
+        Require(SUCCEEDED(device->CreateShaderResourceView(dither.Get(), nullptr, &ditherSrv)),
+                "dither SRV");
+        auto finalOutput = CreateTexture(
+            device, 3840, 2160, DXGI_FORMAT_B8G8R8A8_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> finalView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(finalOutput.Get(), nullptr, &finalView)),
+                "final RTV");
+        const bool finalRan = ngu.RunNativeLumaFinal(finalInputSrv.Get(), ditherSrv.Get(), finalView.Get());
+        Require(finalRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto finalActual = Download(device, context.Get(), finalOutput.Get());
+        int finalMaximum = 0, finalOverOne = 0;
+        const int finalDifferent = CountPixelDifferences(
+            finalActual,
+            ReadBytes(root / "draw_31727_PS_1352_6992f6f0_rt0_3840x2160_f21.bin", size_t(3840) * 2160 * 4),
+            finalMaximum,
+            finalOverOne);
+
         std::printf("UpX different=%d maximum=%d\n", xDifferent, xMaximum);
         std::printf("UpY different=%d maximum=%d\n", yDifferent, yMaximum);
         std::printf("Merge different=%d maximum=%d\n", mergeDifferent, mergeMaximum);
-        const bool pass = xDifferent == 0 && yDifferent == 0 && mergeDifferent == 0;
+        std::printf("Final different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    finalDifferent, finalMaximum, finalOverOne);
+        const bool pass = xDifferent == 0 && yDifferent == 0 && mergeDifferent == 0 &&
+                          finalMaximum <= 1 && finalOverOne == 0;
         for (const auto& [name, bytes] :
-             {std::pair{L"upx", xActual}, std::pair{L"upy", yActual}, std::pair{L"merge", mergeActual}})
+             {std::pair{L"upx", xActual}, std::pair{L"upy", yActual},
+              std::pair{L"merge", mergeActual}, std::pair{L"final", finalActual}})
         {
             std::ofstream file(actualPrefix + name + L".bin", std::ios::binary);
             file.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
         }
-        std::printf("%s native NGU 4x reconstruct + merge\n", pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
+        std::printf("%s native NGU 4x reconstruct + merge + final\n",
+                    pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
         ngu.Reset();
+        finalView.Reset();
+        finalOutput.Reset();
+        ditherSrv.Reset();
+        dither.Reset();
+        finalInputSrv.Reset();
+        finalInput.Reset();
         mergeView.Reset();
         mergeOutput.Reset();
         lumaSrv.Reset();

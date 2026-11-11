@@ -30,6 +30,7 @@ enum class NguScalerStage
     VeryHighLumaUpX1080,
     VeryHighLumaUpY1080,
     VeryHighLumaMerge1080,
+    VeryHighLumaFinal1080,
     VeryHighLuma1080Core,
 };
 
@@ -90,6 +91,10 @@ class NguScaler
     bool RunNativeLumaMerge(ID3D11ShaderResourceView* luma,
                             ID3D11ShaderResourceView* chroma,
                             ID3D11RenderTargetView* output);
+    bool PrepareNativeLumaFinal(pl_gpu gpu);
+    bool RunNativeLumaFinal(ID3D11ShaderResourceView* input,
+                            ID3D11ShaderResourceView* dither,
+                            ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -102,6 +107,7 @@ class NguScaler
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
     struct NativeLumaFinish;
+    struct NativeLumaFinal;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -112,4 +118,5 @@ class NguScaler
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;
     std::unique_ptr<NativeLumaFinish> nativeLumaFinish_;
+    std::unique_ptr<NativeLumaFinal> nativeLumaFinal_;
 };
