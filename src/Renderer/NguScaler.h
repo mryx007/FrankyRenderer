@@ -37,6 +37,7 @@ enum class NguScalerStage
     VeryHighSuperResDiff,
     VeryHighSuperResToRgbMain,
     VeryHighSuperResToRgbBase,
+    VeryHighSuperResStrength3,
     VeryHighLuma1080Core,
 };
 
@@ -139,6 +140,12 @@ class NguScaler
                                     ID3D11ShaderResourceView* work,
                                     ID3D11ShaderResourceView* difference,
                                     ID3D11RenderTargetView* output);
+    bool PrepareNativeSuperResStrength3(pl_gpu gpu);
+    bool RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
+                                    ID3D11ShaderResourceView* diffOriginal,
+                                    ID3D11ShaderResourceView* mainOriginal,
+                                    ID3D11ShaderResourceView* baseOriginal,
+                                    ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -156,6 +163,7 @@ class NguScaler
     struct NativeLumaFinal;
     struct NativeLumaVeryHigh1080;
     struct NativeSuperResPrimitives;
+    struct NativeSuperResStrength3;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -171,4 +179,5 @@ class NguScaler
     std::unique_ptr<NativeLumaFinal> nativeLumaFinal_;
     std::unique_ptr<NativeLumaVeryHigh1080> nativeLumaVeryHigh1080_;
     std::unique_ptr<NativeSuperResPrimitives> nativeSuperRes_;
+    std::unique_ptr<NativeSuperResStrength3> nativeSuperResStrength3_;
 };

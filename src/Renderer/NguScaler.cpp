@@ -38,6 +38,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig SuperResDownY = {nullptr, 640, 720};
     static constexpr StageConfig SuperResDiff = {nullptr, 640, 360};
     static constexpr StageConfig SuperResToRgb = {nullptr, 1280, 720};
+    static constexpr StageConfig SuperResStrength3 = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -72,6 +73,8 @@ const StageConfig* FindStage(NguScalerStage stage)
     case NguScalerStage::VeryHighSuperResToRgbMain:
     case NguScalerStage::VeryHighSuperResToRgbBase:
         return &SuperResToRgb;
+    case NguScalerStage::VeryHighSuperResStrength3:
+        return &SuperResStrength3;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -257,6 +260,21 @@ void DrawD3D11Pass(ID3D11Device* device,
     if (oldConstant)
         oldConstant->Release();
 }
+
+bool ViewMatchesTexture(ID3D11View* view, DXGI_FORMAT format, UINT width, UINT height)
+{
+    if (!view)
+        return false;
+    ComPtr<ID3D11Resource> resource;
+    view->GetResource(&resource);
+    ComPtr<ID3D11Texture2D> texture;
+    if (!resource || FAILED(resource.As(&texture)))
+        return false;
+    D3D11_TEXTURE2D_DESC desc = {};
+    texture->GetDesc(&desc);
+    return desc.Format == format && desc.Width == width && desc.Height == height &&
+           desc.ArraySize == 1 && desc.MipLevels == 1 && desc.SampleDesc.Count == 1;
+}
 } // namespace
 
 void NguDither::SeedColorFromClock()
@@ -408,6 +426,22 @@ struct NguScaler::NativeSuperResPrimitives
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11SamplerState> linearSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeSuperResStrength3
+{
+    ComPtr<ID3D11Texture2D> downXTexture;
+    ComPtr<ID3D11RenderTargetView> downXView;
+    ComPtr<ID3D11ShaderResourceView> downXShaderView;
+    ComPtr<ID3D11Texture2D> downYTexture;
+    ComPtr<ID3D11RenderTargetView> downYView;
+    ComPtr<ID3D11ShaderResourceView> downYShaderView;
+    ComPtr<ID3D11Texture2D> diffTexture;
+    ComPtr<ID3D11RenderTargetView> diffView;
+    ComPtr<ID3D11ShaderResourceView> diffShaderView;
+    ComPtr<ID3D11Texture2D> mainTexture;
+    ComPtr<ID3D11RenderTargetView> mainView;
+    ComPtr<ID3D11ShaderResourceView> mainShaderView;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -2568,6 +2602,96 @@ bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
     return true;
 }
 
+bool NguScaler::PrepareNativeSuperResStrength3(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU SuperChromaRes strength-3 scheduler requires a GPU";
+        return false;
+    }
+    if (nativeSuperResStrength3_ && gpu == gpu_)
+        return true;
+    if (!PrepareNativeSuperResPrimitives(gpu))
+        return false;
+
+    ID3D11Device* device = pl_d3d11_get(gpu)->device;
+    auto state = std::make_unique<NativeSuperResStrength3>();
+    auto create = [&](UINT width,
+                      UINT height,
+                      DXGI_FORMAT format,
+                      ComPtr<ID3D11Texture2D>& texture,
+                      ComPtr<ID3D11RenderTargetView>& renderTarget,
+                      ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
+    };
+    if (!create(640, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->downXTexture, state->downXView, state->downXShaderView) ||
+        !create(640, 360, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->downYTexture, state->downYView, state->downYShaderView) ||
+        !create(640, 360, DXGI_FORMAT_R16G16_FLOAT,
+                state->diffTexture, state->diffView, state->diffShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->mainTexture, state->mainView, state->mainShaderView))
+    {
+        error_ = "NGU SuperChromaRes strength-3 scheduler surfaces could not be created";
+        return false;
+    }
+
+    nativeSuperResStrength3_ = std::move(state);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
+                                           ID3D11ShaderResourceView* diffOriginal,
+                                           ID3D11ShaderResourceView* mainOriginal,
+                                           ID3D11ShaderResourceView* baseOriginal,
+                                           ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !nativeSuperResStrength3_ || !source || !diffOriginal ||
+        !mainOriginal || !baseOriginal || !output)
+    {
+        error_ = "NGU SuperChromaRes strength-3 scheduler request is invalid";
+        return false;
+    }
+    if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
+    {
+        error_ = "NGU SuperChromaRes strength-3 scheduler input format or geometry is unsupported";
+        return false;
+    }
+
+    auto& state = *nativeSuperResStrength3_;
+    if (!RunNativeSuperResDownX(source, state.downXView.Get()) ||
+        !RunNativeSuperResDownY(state.downXShaderView.Get(), state.downYView.Get()) ||
+        !RunNativeSuperResDiff(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
+        !RunNativeSuperResToRgbMain(
+            mainOriginal, source, state.diffShaderView.Get(), state.mainView.Get()) ||
+        !RunNativeSuperResDownX(state.mainShaderView.Get(), state.downXView.Get()) ||
+        !RunNativeSuperResDownY(state.downXShaderView.Get(), state.downYView.Get()) ||
+        !RunNativeSuperResDiff(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
+        !RunNativeSuperResToRgbBase(
+            baseOriginal, state.mainShaderView.Get(), state.diffShaderView.Get(), output))
+        return false;
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -2581,6 +2705,7 @@ void NguScaler::Reset()
     nativeLumaFinal_.reset();
     nativeLumaVeryHigh1080_.reset();
     nativeSuperRes_.reset();
+    nativeSuperResStrength3_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -132,6 +133,20 @@ int main(int argc, char** argv)
         ID3D11Device* device = d3d->device;
         ComPtr<ID3D11DeviceContext> context;
         device->GetImmediateContext(&context);
+
+        NguScalerRequest schedulerRequest;
+        schedulerRequest.sourceWidth = 1280;
+        schedulerRequest.sourceHeight = 720;
+        schedulerRequest.stage = NguScalerStage::VeryHighSuperResStrength3;
+        Require(ProbeNguScaler(schedulerRequest) == NguScalerSupport::Ready,
+                "strength-3 scheduler capability");
+        schedulerRequest.sourceHeight = 721;
+        Require(ProbeNguScaler(schedulerRequest) == NguScalerSupport::UnsupportedGeometry,
+                "strength-3 scheduler geometry gate");
+        schedulerRequest.sourceHeight = 720;
+        schedulerRequest.quality = NguQuality::High;
+        Require(ProbeNguScaler(schedulerRequest) == NguScalerSupport::ExperimentalUnimplemented,
+                "strength-3 scheduler quality gate");
 
         NguScaler ngu;
         Require(ngu.PrepareNativeSuperResPrimitives(d3d->gpu), ngu.LastError());
@@ -324,12 +339,66 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_00164_PS_4576_b7830945_rt0_1280x720_f36.bin", size_t(1280) * 720 * 8),
             chainMaximum);
 
+        Require(ngu.PrepareNativeSuperResStrength3(d3d->gpu), ngu.LastError());
+        auto schedulerOutput = CreateTexture(
+            device, 1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerOutputView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerOutput.Get(), nullptr, &schedulerOutputView)),
+                "scheduler output RTV");
+        Require(ngu.RunNativeSuperResStrength3(sourceSrv.Get(),
+                                               originalSrv.Get(),
+                                               mainOriginalSrv.Get(),
+                                               baseOriginalSrv.Get(),
+                                               schedulerOutputView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerActual = Download(device, context.Get(), schedulerOutput.Get());
+        int schedulerMaximum = 0;
+        const int schedulerDifferences = CountWords(
+            schedulerActual,
+            ReadBytes(root / "draw_00164_PS_4576_b7830945_rt0_1280x720_f36.bin", size_t(1280) * 720 * 8),
+            schedulerMaximum);
+
+        constexpr int benchmarkFrames = 20;
+        const auto benchmarkStart = std::chrono::steady_clock::now();
+        for (int frame = 0; frame < benchmarkFrames; ++frame)
+            Require(ngu.RunNativeSuperResStrength3(sourceSrv.Get(),
+                                                   originalSrv.Get(),
+                                                   mainOriginalSrv.Get(),
+                                                   baseOriginalSrv.Get(),
+                                                   schedulerOutputView.Get()),
+                    ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const double schedulerMilliseconds =
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - benchmarkStart).count() / benchmarkFrames;
+
+        auto unsupportedOutput = CreateTexture(
+            device, 1280, 720, DXGI_FORMAT_B8G8R8A8_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> unsupportedOutputView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    unsupportedOutput.Get(), nullptr, &unsupportedOutputView)),
+                "unsupported output RTV");
+        const bool unsupportedRejected =
+            !ngu.RunNativeSuperResStrength3(sourceSrv.Get(),
+                                            originalSrv.Get(),
+                                            mainOriginalSrv.Get(),
+                                            baseOriginalSrv.Get(),
+                                            unsupportedOutputView.Get()) &&
+            *ngu.LastError();
+
         std::printf("DownX different=%d maximum=%d\n", downXDifferences, downXMax);
         std::printf("DownY different=%d maximum=%d\n", downYDifferences, downYMax);
         std::printf("Diff different=%d maximum=%d\n", diffDifferences, diffMaximum);
         std::printf("Main different=%d maximum=%d\n", mainDifferences, mainMaximum);
         std::printf("Base different=%d maximum=%d\n", baseDifferences, baseMaximum);
         std::printf("Chain different=%d maximum=%d\n", chainDifferences, chainMaximum);
+        std::printf("Scheduler different=%d maximum=%d %.3f ms/frame\n",
+                    schedulerDifferences, schedulerMaximum, schedulerMilliseconds);
+        std::printf("SchedulerUnsupported rejected=%d\n", unsupportedRejected);
         if (!actualPrefix.empty())
         {
             WriteBytes(actualPrefix + L"downx.bin", downXActual);
@@ -339,12 +408,18 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"main_float.bin", mainFloatActual);
             WriteBytes(actualPrefix + L"base.bin", baseActual);
             WriteBytes(actualPrefix + L"chain.bin", chainActual);
+            WriteBytes(actualPrefix + L"scheduler.bin", schedulerActual);
         }
         const bool pass = downXDifferences == 0 && downYDifferences == 0 && diffDifferences == 0 &&
                           mainDifferences == 0 && baseDifferences == 0 &&
-                          chainMaximum <= 1;
+                          chainMaximum <= 1 && schedulerDifferences == 0 && schedulerMaximum == 0 &&
+                          unsupportedRejected;
         std::printf("%s native SuperChromaRes primitives\n", pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
         ngu.Reset();
+        unsupportedOutputView.Reset();
+        unsupportedOutput.Reset();
+        schedulerOutputView.Reset();
+        schedulerOutput.Reset();
         mainOutputSrv.Reset();
         baseOutputView.Reset();
         baseOutput.Reset();
