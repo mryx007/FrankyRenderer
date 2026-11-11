@@ -757,8 +757,10 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
         return valid;
     std::lock_guard writing(writtenLock);
     const auto now = GetTickCount64();
-    auto entry =
-        std::find_if(written.begin(), written.end(), [&](const auto& w) { return w.first == s.displayProfile; });
+    // By registry key, not profile name: the same profile under another
+    // settings root (tests, a moved root) is a different place to write.
+    const auto path = Key(s.displayProfile);
+    auto entry = std::find_if(written.begin(), written.end(), [&](const auto& w) { return w.first == path; });
     const PlaceboSettings* before = nullptr;
     if (entry != written.end() && now - entry->second.at < 2000 &&
         entry->second.deleted == DisplayProfiles::KeysDeleted.load())
@@ -777,8 +779,8 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
                 return;
         }
         if (!key)
-            result = RegCreateKeyExW(
-                HKEY_CURRENT_USER, Key(s.displayProfile).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
+            result =
+                RegCreateKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
         if (!result)
             result = RegSetValueExW(key, name, 0, type, static_cast<const BYTE*>(data), bytes);
     };
@@ -874,7 +876,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     }
     if (entry == written.end())
     {
-        written.push_back({s.displayProfile, {}});
+        written.push_back({path, {}});
         entry = written.end() - 1;
     }
     entry->second.values = s;
