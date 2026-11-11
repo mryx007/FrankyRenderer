@@ -183,7 +183,7 @@ three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
 also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
 PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
-`AE7F09C0306BAF3B4254CE4CB84BB971F12D694211CF886B55AEBEF60475275C`.
+`C4FF63ECF8A58F91D98093BEFD402DA1D6E88C1F984BF787FCBD0E3B4BDAC849`.
 
 The complete captured 720p 4x post-network path is now stage-exact. The
 captured `f36` tail is A16B16G16R16 UNORM rather than RGBA16F, and PS_536,
@@ -204,6 +204,12 @@ top-down 1280x720 RGB48 source and 3840x2160 target, creates the exact source
 view, runs the native graph and replaces the image with the 4K RGB result.
 The Backend regression also reports `maximum=1`, `diff_gt_1_pixels=0`.
 Unsupported geometry, source format, orientation or target size fail closed.
+
+The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
+directly into the 720p full path without a readback. With the four captured
+strength-3 inputs, the composed final result is `maximum=1` and
+`diff_gt_1_pixels=0` in `20.811 ms/frame`. The product source path still needs
+to produce those four inputs from the real chroma network/decoder.
 
 This is selectable only for the experimental RGB48 Backend path. The DirectShow
 filter graph renders five RGB48 frames through the normal lifecycle, but real
