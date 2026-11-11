@@ -154,6 +154,35 @@ int main(int argc, char** argv)
         Require(patternPixels[0] || patternPixels[1] || patternPixels[2],
                 "NGU pattern output is not black");
 
+        const auto capture1080 = root.parent_path() / "luma_1080_full_v17";
+        const auto rgba1080 =
+            ReadBytes(capture1080 / "input_31703_PS_460_bfe50921_s0.bin",
+                      size_t(1920) * 1080 * 8);
+        std::vector<uint8_t> rgb48_1080(size_t(1920) * 1080 * 6);
+        for (size_t i = 0; i < size_t(1920) * 1080; ++i)
+            std::memcpy(rgb48_1080.data() + i * 6, rgba1080.data() + i * 8, 6);
+        VideoFrame frame1080 = frame;
+        frame1080.width = 1920;
+        frame1080.height = 1080;
+        frame1080.stride = 1920 * 6;
+        Require(SUCCEEDED(backend.Upload(
+                    frame1080, rgb48_1080.data(), rgb48_1080.size())),
+                "NGU 1080 RGB48 upload");
+        std::vector<uint8_t> pixels1080;
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, pixels1080)),
+                "NGU 1080 render");
+        const auto expected1080 =
+            ReadBytes(capture1080 /
+                          "draw_31727_PS_1352_6992f6f0_rt0_3840x2160_f21.bin",
+                      size_t(3840) * 2160 * 4);
+        int maximum1080 = 0, overOne1080 = 0;
+        const int different1080 =
+            CompareRgb(pixels1080, expected1080, maximum1080, overOne1080);
+        std::printf("NGU backend 1080 RGB different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    different1080, maximum1080, overOne1080);
+        Require(maximum1080 <= 1 && overOne1080 == 0,
+                "NGU 1080 RGB acceptance");
+
         std::printf("PASS_PRODUCT ngu_sharp backend RGB48 -> 4K\n");
         return 0;
     }

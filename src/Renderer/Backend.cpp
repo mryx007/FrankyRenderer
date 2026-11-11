@@ -419,7 +419,7 @@ struct PlaceboBackend::State
         valid = false;
     }
 
-    bool PrepareNgu()
+    bool PrepareNgu(int sourceWidth, int sourceHeight)
     {
         if (!d3d || !d3d->device)
         {
@@ -459,7 +459,13 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        if (!ngu.PrepareNativeLuma4x720Full(d3d->gpu))
+        const bool prepared =
+            sourceWidth == 1280 && sourceHeight == 720
+                ? ngu.PrepareNativeLuma4x720Full(d3d->gpu)
+                : sourceWidth == 1920 && sourceHeight == 1080
+                    ? ngu.PrepareNativeLumaVeryHigh1080(d3d->gpu)
+                    : false;
+        if (!prepared)
         {
             error = ngu.LastError();
             return false;
@@ -476,13 +482,21 @@ struct PlaceboBackend::State
             error = "ngu_sharp currently requires a 3840x2160 output target";
             return false;
         }
-        if (description.width != 1280 || description.height != 720 ||
+        if ((description.width != 1280 || description.height != 720) &&
+            (description.width != 1920 || description.height != 1080))
+        {
+            error = "ngu_sharp source geometry is unsupported: got " +
+                    std::to_string(description.width) + "x" +
+                    std::to_string(description.height);
+            return false;
+        }
+        if (
             description.format != PixelFormat::RGB48 || description.bottomUp ||
             image.num_planes != 1)
         {
-            error = "ngu_sharp currently requires a 1280x720 top-down RGB48 source: got " +
-                    std::to_string(description.width) + "x" +
-                    std::to_string(description.height) + " format " +
+            error = "ngu_sharp currently requires a top-down RGB48 source: got " +
+                    std::to_string(description.width) + "x" + std::to_string(description.height) +
+                    " format " +
                     std::to_string(static_cast<int>(description.format)) +
                     (description.bottomUp ? " bottom-up" : " top-down") +
                     " planes " + std::to_string(image.num_planes);
@@ -500,7 +514,7 @@ struct PlaceboBackend::State
             error = "ngu_sharp source format is unsupported";
             return false;
         }
-        if (!PrepareNgu())
+        if (!PrepareNgu(description.width, description.height))
             return false;
         if (nguSourceView)
         {
@@ -518,8 +532,13 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        if (!ngu.RunNativeLuma4x720Full(
-                nguSourceView.Get(), 1280, 720, nguOutputView.Get()))
+        const bool ran =
+            description.width == 1280
+                ? ngu.RunNativeLuma4x720Full(
+                      nguSourceView.Get(), 1280, 720, nguOutputView.Get())
+                : ngu.RunNativeLumaVeryHigh1080(
+                      nguSourceView.Get(), 1920, 1080, nguOutputView.Get());
+        if (!ran)
         {
             error = ngu.LastError();
             return false;
