@@ -1434,7 +1434,8 @@ int wmain(int argc, wchar_t** argv)
     }
     Check(window->put_AutoShow(OAFALSE), "disable autoshow");
     Check(window->put_Visible(OAFALSE), "hide test window");
-    Check(window->SetWindowPosition(0, 0, 128, 128), "video size");
+    Check(window->SetWindowPosition(0, 0, nguTest ? 3840 : 128, nguTest ? 2160 : 128),
+          nguTest ? "NGU video size" : "video size");
     if (measureTest)
     {
         Check(window->SetWindowPosition(40, 40, 640, 360), "measurement window size");
