@@ -205,7 +205,8 @@ view, runs the native graph and replaces the image with the 4K RGB result.
 The Backend regression also reports `maximum=1`, `diff_gt_1_pixels=0`.
 Unsupported geometry, source format, orientation or target size fail closed.
 
-This is selectable only for the experimental RGB48 Backend path. Real
-DirectShow playback and decoder/YUV source binding, the combined SuperChromaRes
+This is selectable only for the experimental RGB48 Backend path. The DirectShow
+filter graph renders five RGB48 frames through the normal lifecycle, but real
+decoder/YUV source binding, graph-frame readback, the combined SuperChromaRes
 strength-3 path, 1080p composition, other geometries/formats, lifecycle
 coverage, and the performance matrix remain open.
