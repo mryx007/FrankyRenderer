@@ -13,5 +13,6 @@ dist/
 releases/
 
 src/deps/lavffmpeg/
+src/Shaders/Ngu/*.cso
 
 promotion/
