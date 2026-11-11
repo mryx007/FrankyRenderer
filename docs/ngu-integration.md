@@ -185,31 +185,23 @@ PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
 `1F1A4B7D8B6618DEFD53975BF76CBF3E1B241583815D3EB92397F4843BCBD570`.
 
-The post-network tail is now exact through PS_1176 as separate
-format-checked native call. The tail's capture format `f36` is A16B16G16R16
-UNORM rather than RGBA16F, and the D3D9 L16 input sample is represented by
-repeating the native R16 value into XYZ. PS_536, PS_1200 and PS_1176 pass with
-`different=0 maximum=0`. PS_1200/1176 use a 61,440-byte separable D3D9 UV LUT
-to preserve POINT interpolation at one-ULP boundaries.
+The complete captured 720p 4x post-network path is now stage-exact. The
+captured `f36` tail is A16B16G16R16 UNORM rather than RGBA16F, and PS_536,
+PS_1200, PS_1176, PS_1208, PS_1052, PS_5868, PS_1284 X/Y and PS_548 all report
+`different=0 maximum=0` with their captured inputs. `PS_1200/1176` use the
+61,440-byte separable D3D9 UV LUT. The 4x chroma X/Y normalization uses the
+captured output-axis constant `c0.y`; the old 2x source-axis formula was only
+valid for the 1080p geometry.
 
-PS_1208 remains the current numerical boundary: 259 halfwords differ from the
-target by one LSB. PS_1052 is exact when supplied the captured target PS_1208
-surface, demonstrating that its shader is not the source of that residual.
-PS_5868 is the target `SharpenAR[1,1,1]` pass and has 4,770 halfwords differing
-by one LSB. Consequently the complete 720p luma tail currently matches at
-`maximum=1` with no differences greater than one.
-
-The CbCr tail is not yet admitted to the product chain. The captured 720p-to-4K
-path requires target shaders `PS_1284_386cc8d7` and `PS_1284_dc97a0d0`; the
-existing generic 2160p X/Y shaders do not represent that path. The current
-probe results are `different=5,362,340 maximum=40,329` for X and
-`different=16,248,210 maximum=41,311` for Y. `PS_548_d6670d4b` is exact only
-when supplied the captured target luma and CbCr inputs. These are
-evidence-boundary failures, not tunable tolerances.
+The completed `VeryHighLuma4x720Full` scheduler runs source RGB through the
+720p 4x luma network, CbCr X/Y, SuperChromaRes-aware merge and owned-dither
+FinalStep. The recorded source-to-final result is
+`maximum=1`, `diff_gt_1_pixels=0`, `69.358 ms/frame`; the one-LSB boundary is
+the expected time-seeded dither. This is a native execution path, but it is not
+yet bound to the Backend frame source or exposed as `ngu_sharp`.
 
 This is not yet a selectable complete scaler. Backend/source-surface binding,
-real DirectShow playback, exact CbCr X/Y, sub-LSB-exact PS_1208/PS_5868
-arithmetic, the combined chroma-plus-SuperRes-plus-luma chain, other
-geometries/formats, lifecycle coverage, and the performance matrix remain open.
-The source-level peer decision is recorded; `ngu_sharp` remains unexposed until
-the final-image and playback gates pass.
+real DirectShow playback, the combined SuperChromaRes strength-3 path, 1080p
+composition, other geometries/formats, lifecycle coverage, and the performance
+matrix remain open. The source-level peer decision is recorded; `ngu_sharp`
+remains unexposed until the final-image and playback gates pass.
