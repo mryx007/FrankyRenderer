@@ -259,6 +259,17 @@ void DrawD3D11Pass(ID3D11Device* device,
 }
 } // namespace
 
+void NguDither::SeedColorFromClock()
+{
+    SYSTEMTIME systemTime = {};
+    FILETIME fileTime = {};
+    GetSystemTime(&systemTime);
+    SystemTimeToFileTime(&systemTime, &fileTime);
+    SeedColor(static_cast<uint32_t>(GetTickCount()),
+              fileTime.dwLowDateTime,
+              fileTime.dwHighDateTime);
+}
+
 struct NguScaler::NativeLumaInitial
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -320,6 +331,8 @@ struct NguScaler::NativeLumaFinal
     std::array<float, 16> constantsData{};
     ComPtr<ID3D11Texture2D> weightTexture;
     ComPtr<ID3D11ShaderResourceView> weightView;
+    ComPtr<ID3D11Texture2D> ditherTexture;
+    ComPtr<ID3D11ShaderResourceView> ditherView;
     ComPtr<ID3D11SamplerState> clampSampler;
     ComPtr<ID3D11SamplerState> wrapSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
@@ -1554,6 +1567,29 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
         return false;
     }
 
+    std::vector<uint32_t> ditherWords(size_t(3840) * 2160);
+    dither_.SeedColorFromClock();
+    dither_.FillColor(ditherWords);
+    D3D11_TEXTURE2D_DESC ditherDesc = {};
+    ditherDesc.Width = 3840;
+    ditherDesc.Height = 2160;
+    ditherDesc.MipLevels = 1;
+    ditherDesc.ArraySize = 1;
+    ditherDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ditherDesc.SampleDesc.Count = 1;
+    ditherDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    ditherDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA ditherData = {};
+    ditherData.pSysMem = ditherWords.data();
+    ditherData.SysMemPitch = 3840 * sizeof(uint32_t);
+    if (FAILED(device->CreateTexture2D(&ditherDesc, &ditherData, &state->ditherTexture)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->ditherTexture.Get(), nullptr, &state->ditherView)))
+    {
+        error_ = "NGU native final dither texture could not be created";
+        return false;
+    }
+
     D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -1667,6 +1703,17 @@ bool NguScaler::RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
                   nativeLumaFinal_->wrapSampler.Get());
     error_ = "";
     return true;
+}
+
+bool NguScaler::RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
+                                              ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaFinal_ || !nativeLumaFinal_->ditherView || !input || !output)
+    {
+        error_ = "NGU native final request is invalid";
+        return false;
+    }
+    return RunNativeLumaFinalNextPhase(input, nativeLumaFinal_->ditherView.Get(), output);
 }
 
 bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)

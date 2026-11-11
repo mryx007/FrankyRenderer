@@ -105,6 +105,8 @@ class NguScaler
     bool RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
                                      ID3D11ShaderResourceView* dither,
                                      ID3D11RenderTargetView* output);
+    bool RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* output);
     bool PrepareNativeSuperResPrimitives(pl_gpu gpu);
     bool RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
                                 ID3D11RenderTargetView* output);

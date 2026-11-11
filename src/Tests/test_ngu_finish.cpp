@@ -321,6 +321,19 @@ int main(int argc, char** argv)
             dynamicFinalMaximum,
             dynamicFinalOverOne);
 
+        ngu.ResetDitherPhase();
+        const bool ownedFinalRan =
+            ngu.RunNativeLumaFinalOwnedDither(finalInputSrv.Get(), finalView.Get());
+        Require(ownedFinalRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto ownedFinalActual = Download(device, context.Get(), finalOutput.Get());
+        int ownedFinalMaximum = 0, ownedFinalOverOne = 0;
+        const int ownedFinalDifferent = CountPixelDifferences(
+            ownedFinalActual,
+            ReadBytes(root / "draw_31727_PS_1352_6992f6f0_rt0_3840x2160_f21.bin", size_t(3840) * 2160 * 4),
+            ownedFinalMaximum,
+            ownedFinalOverOne);
+
         std::printf("UpX different=%d maximum=%d\n", xDifferent, xMaximum);
         std::printf("UpY different=%d maximum=%d\n", yDifferent, yMaximum);
         std::printf("Merge different=%d maximum=%d\n", mergeDifferent, mergeMaximum);
@@ -328,13 +341,17 @@ int main(int argc, char** argv)
                     finalDifferent, finalMaximum, finalOverOne);
         std::printf("FinalDynamic different=%d maximum=%d diff_gt_1_pixels=%d\n",
                     dynamicFinalDifferent, dynamicFinalMaximum, dynamicFinalOverOne);
+        std::printf("FinalOwned different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    ownedFinalDifferent, ownedFinalMaximum, ownedFinalOverOne);
         const bool pass = xDifferent == 0 && yDifferent == 0 && mergeDifferent == 0 &&
                           finalMaximum <= 1 && finalOverOne == 0 &&
-                          dynamicFinalMaximum <= 1 && dynamicFinalOverOne == 0;
+                          dynamicFinalMaximum <= 1 && dynamicFinalOverOne == 0 &&
+                          ownedFinalMaximum <= 1 && ownedFinalOverOne == 0;
         for (const auto& [name, bytes] :
              {std::pair{L"upx", xActual}, std::pair{L"upy", yActual},
               std::pair{L"merge", mergeActual}, std::pair{L"final", finalActual},
-              std::pair{L"final_dynamic", dynamicFinalActual}})
+              std::pair{L"final_dynamic", dynamicFinalActual},
+              std::pair{L"final_owned", ownedFinalActual}})
         {
             std::ofstream file(actualPrefix + name + L".bin", std::ios::binary);
             file.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
