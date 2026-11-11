@@ -65,5 +65,14 @@
     "output_format": "R16_UNORM",
     "constants": "luma_1080_add_constants.bin",
     "constants_sha256": "1F3347B43A5A974E77BD0457744D2E5734EC445F1F8AB2D04E34C955B3C32B37"
+  },
+  "luma_4x720_tail_ycbcr.hlsl": {
+    "sha256": "ABC50AE9228C0CCA3C7A9DBE6823389981EDA501FA48F4FA563CC322D0259528",
+    "evidence": "OpenMadVR E-109",
+    "target_shader": "PS_536_057fb11f",
+    "input_geometry": [5120, 2880],
+    "input_format": "R16_UNORM",
+    "output_geometry": [5120, 2880],
+    "output_format": "R16G16B16A16_UNORM"
   }
 }

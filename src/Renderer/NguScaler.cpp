@@ -42,6 +42,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Luma4x720LowCore = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720HighCore = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720DenseAdd = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720TailYcbcr = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -84,6 +85,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720HighCore;
     case NguScalerStage::VeryHighLuma4x720DenseAdd:
         return &Luma4x720DenseAdd;
+    case NguScalerStage::VeryHighLuma4x720TailYcbcr:
+        return &Luma4x720TailYcbcr;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -537,6 +540,14 @@ struct NguScaler::NativeLuma4x720DenseAdd
     ComPtr<ID3D11Texture2D> addTexture;
     ComPtr<ID3D11RenderTargetView> addView;
     ComPtr<ID3D11ShaderResourceView> addShaderView;
+};
+
+struct NguScaler::NativeLuma4x720Tail
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> ycbcr;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -3707,6 +3718,133 @@ bool NguScaler::CopyNativeLuma4x720Add(ID3D11RenderTargetView* output)
     return true;
 }
 
+bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU 720p 4x tail requires a GPU";
+        return false;
+    }
+    if (nativeLuma4x720Tail_ && gpu == gpu_)
+        return true;
+    if (!PrepareNativeLuma4x720DenseAdd(gpu))
+        return false;
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU 720p 4x tail requires the D3D11 backend";
+        return false;
+    }
+
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl", 32 * 1024);
+    const auto ycbcrCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.cso", 0);
+    if (shaderText.empty() || ycbcrCso.empty())
+    {
+        error_ = "NGU 720p 4x tail assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_Luma4x720_Ycbcr",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU 720p 4x tail vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLuma4x720Tail>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(ycbcrCso.data(),
+                                         static_cast<SIZE_T>(ycbcrCso.size()),
+                                         nullptr,
+                                         &state->ycbcr)))
+    {
+        error_ = "NGU 720p 4x tail shader objects could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU 720p 4x tail sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU 720p 4x tail rasterizer could not be created";
+        return false;
+    }
+
+    nativeLuma4x720Tail_ = std::move(state);
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720TailYcbcr;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input,
+                                            ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16_UNORM, 5120, 2880) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880))
+    {
+        error_ = "NGU 720p 4x tail YCbCr requires exact 5120x2880 surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.ycbcr.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &input,
+                  1,
+                  targets,
+                  1,
+                  5120,
+                  2880,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -3724,6 +3862,7 @@ void NguScaler::Reset()
     nativeLuma4x720Low_.reset();
     nativeLuma4x720High_.reset();
     nativeLuma4x720DenseAdd_.reset();
+    nativeLuma4x720Tail_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

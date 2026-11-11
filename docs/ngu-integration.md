@@ -118,10 +118,21 @@ three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
 also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
 PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
-`5F3B8EFBA83B307362F4C28178C4EC1BA7F874418E0912BD47E7FAD0669F9DF3`.
+`4F3E7431876A0A3873723847B360BDF38EBEB2943634B4967751E3BD40DC2AA9`.
+
+The first post-network tail stage, PS_536, is now exact as a separate
+format-checked native call. The tail's capture format `f36` is A16B16G16R16
+UNORM rather than RGBA16F, and the D3D9 L16 input sample is represented by
+repeating the native R16 value into XYZ. PS_536 passes with
+`different=0 maximum=0`.
+
+PS_1200 remains an explicit residual. A source-level SM5 translation was
+implemented during this pass but did not reach word-exact output; its best
+diagnostic result was `different=2008273 maximum=1282`. That stage is not in
+the product capability or acceptance path.
 
 This is not yet a selectable complete scaler. Backend/source-surface binding,
-real DirectShow playback, the combined chroma-plus-SuperRes-plus-luma chain,
-other geometries/formats, lifecycle coverage, and the performance matrix remain
-open. `ngu_sharp` must stay unexposed until the final-image and playback gates
-pass.
+real DirectShow playback, the PS_1200-through-PS_5868 tail, the combined
+chroma-plus-SuperRes-plus-luma chain, other geometries/formats, lifecycle
+coverage, and the performance matrix remain open. `ngu_sharp` must stay
+unexposed until the final-image and playback gates pass.

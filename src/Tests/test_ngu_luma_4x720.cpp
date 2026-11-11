@@ -168,6 +168,9 @@ int main(int argc, char** argv)
         request.stage = NguScalerStage::VeryHighLuma4x720HighCore;
         Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
                 "720p 4x high-core capability");
+        request.stage = NguScalerStage::VeryHighLuma4x720TailYcbcr;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x tail YCbCr capability");
 
         const auto sourceBytes =
             ReadBytes(root / "input_00224_PS_460_bfe50921_s0.bin", size_t(1280) * 720 * 8);
@@ -464,6 +467,42 @@ int main(int argc, char** argv)
             denseDifferent == 0 && denseMaximum == 0 &&
             addDifferent == 0 && addMaximum == 0;
 
+        Require(ngu.PrepareNativeLuma4x720Tail(d3d->gpu), ngu.LastError());
+        const auto ycbcrInputBytes = ExtractL16(
+            ReadBytes(root / "input_00251_PS_536_057fb11f_s0.bin",
+                      size_t(5120) * 2880 * 8),
+            size_t(5120) * 2880);
+        auto ycbcrInput = CreateTexture(device,
+                                        5120,
+                                        2880,
+                                        DXGI_FORMAT_R16_UNORM,
+                                        D3D11_BIND_SHADER_RESOURCE,
+                                        ycbcrInputBytes.data());
+        ComPtr<ID3D11ShaderResourceView> ycbcrInputView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    ycbcrInput.Get(), nullptr, &ycbcrInputView)),
+                "tail YCbCr input SRV");
+        auto ycbcr = CreateTexture(device,
+                                   5120,
+                                   2880,
+                                   DXGI_FORMAT_R16G16B16A16_UNORM,
+                                   D3D11_BIND_RENDER_TARGET);
+        ComPtr<ID3D11RenderTargetView> ycbcrView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    ycbcr.Get(), nullptr, &ycbcrView)),
+                "tail YCbCr RTV");
+        Require(ngu.RunNativeLuma4x720TailYcbcr(
+                    ycbcrInputView.Get(), ycbcrView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto ycbcrActual = Download(device, context.Get(), ycbcr.Get());
+        int ycbcrMaximum = 0;
+        const int ycbcrDifferent = CountWords(
+            ycbcrActual,
+            ReadBytes(root / "draw_00251_PS_536_057fb11f_rt0_5120x2880_f36.bin",
+                      size_t(5120) * 2880 * 8),
+            ycbcrMaximum);
+
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
@@ -474,6 +513,8 @@ int main(int argc, char** argv)
         std::printf("Dense different=%d maximum=%d\n", denseDifferent, denseMaximum);
         std::printf("Add different=%d maximum=%d\n", addDifferent, addMaximum);
         std::printf("DenseAddCore %.3f ms/frame\n", denseAddMilliseconds);
+        std::printf("TailYcbcr different=%d maximum=%d\n",
+                    ycbcrDifferent, ycbcrMaximum);
 
         if (!actualPrefix.empty())
         {
@@ -498,17 +539,23 @@ int main(int argc, char** argv)
             }
             WriteBytes(actualPrefix + L"dense.bin", denseActual);
             WriteBytes(actualPrefix + L"add.bin", addActual);
+            WriteBytes(actualPrefix + L"tail_ycbcr.bin", ycbcrActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
                           scaleYDifferent == 0 && scaleYMaximum == 0 &&
                           initialDifferent == 0 && initialMaximum == 0 &&
                           lowLayerDifferent == 0 && lowLayerMaximum == 0 &&
-                          highPass && denseAddPass;
-        std::printf("%s native NGU 720p VeryHigh 4x luma core\n",
+                          highPass && denseAddPass &&
+                          ycbcrDifferent == 0 && ycbcrMaximum == 0;
+        std::printf("%s native NGU 720p VeryHigh 4x luma tail\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        ycbcrView.Reset();
+        ycbcr.Reset();
+        ycbcrInputView.Reset();
+        ycbcrInput.Reset();
         addView.Reset();
         add.Reset();
         denseView.Reset();

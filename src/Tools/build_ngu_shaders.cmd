@@ -13,6 +13,8 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_convert.cso" "Shaders\Ngu\luma_4x720_convert.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_tail_ycbcr.cso" "Shaders\Ngu\luma_4x720_tail_ycbcr.hlsl"
+if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_dense.cso" "Shaders\Ngu\luma_1080_dense.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_scale_x.cso" "Shaders\Ngu\luma_1080_scale_x.hlsl"
