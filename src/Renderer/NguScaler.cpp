@@ -357,6 +357,14 @@ struct NguScaler::NativeDecoderSource
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeChromaSplit
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -1054,6 +1062,125 @@ bool NguScaler::RunNativeDecoderSourceCopy(ID3D11Texture2D* source,
                   static_cast<UINT>(width / 2),
                   static_cast<UINT>(height / 2),
                   nativeDecoderSource_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaSplit(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma split requires a GPU";
+        return false;
+    }
+    if (nativeChromaSplit_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma split requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_split.hlsl", 16 * 1024);
+    const auto pixelCso =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_split.cso", 0);
+    if (shaderText.empty() || pixelCso.empty())
+    {
+        error_ = "NGU chroma split assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaSplit",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma split vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaSplit>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    {
+        error_ = "NGU chroma split shader objects could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU chroma split sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU chroma split rasterizer could not be created";
+        return false;
+    }
+
+    nativeChromaSplit_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaSplit(ID3D11ShaderResourceView* packedUv,
+                                     int width,
+                                     int height,
+                                     ID3D11RenderTargetView* cb,
+                                     ID3D11RenderTargetView* cr)
+{
+    if (!nativeChromaSplit_ || !packedUv || width <= 0 || height <= 0 || !cb || !cr ||
+        !ViewMatchesTexture(cb, DXGI_FORMAT_R16_UNORM, width, height) ||
+        !ViewMatchesTexture(cr, DXGI_FORMAT_R16_UNORM, width, height))
+    {
+        error_ = "NGU chroma split request is invalid";
+        return false;
+    }
+    ID3D11RenderTargetView* outputs[2] = {cb, cr};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaSplit_->vertex.Get(),
+                  nativeChromaSplit_->pixel.Get(),
+                  nullptr,
+                  nativeChromaSplit_->rasterizer.Get(),
+                  &packedUv,
+                  1,
+                  outputs,
+                  2,
+                  static_cast<UINT>(width),
+                  static_cast<UINT>(height),
+                  nativeChromaSplit_->pointSampler.Get());
     error_ = "";
     return true;
 }
@@ -5197,6 +5324,7 @@ void NguScaler::Reset()
     nativeLumaInitial_.reset();
     nativeLumaSplit_.reset();
     nativeDecoderSource_.reset();
+    nativeChromaSplit_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();
