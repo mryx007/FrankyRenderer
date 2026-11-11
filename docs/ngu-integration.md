@@ -20,12 +20,20 @@ NGU is therefore an implementation peer of the existing `ewa_lanczos`,
 user-shader-only extension.
 
 This authorization is a change to the implementation route, not to the
-behavioral oracle. The product-level identifier is `ngu_sharp`, but the current
-branch still keeps that identifier out of the exposed scaler lists until there
-is a complete, evidence-backed image path. The user-authorized selection-list
-integration is therefore implemented as a staged capability: the generic list
-path is prepared first; the name is published only when the native path can
-execute without a silent fallback.
+behavioral oracle. The product-level identifier is `ngu_sharp`; it is currently
+published as an experimental normal scaler choice whose resolver owns only the
+declared native contracts. Every unsupported geometry, format, quality or
+resource path fails explicitly rather than falling through to a guessed
+algorithm.
+
+The accepted implementation may change FrankyRenderer's scaling source and
+resource transport directly. In particular, it does not have to force the
+SuperChromaRes strength-3 network's independent 16-bit RGB results through the
+general public user-shader path or one packed intermediate. The native module
+may own the target-observed R16/G16R16/RGBA16 UNORM surfaces, MRT topology,
+samplers and scheduling while preserving the captured arithmetic pass by pass.
+This is a performance-first transport decision, not permission to invent
+missing target arithmetic.
 
 This decision is required by observed madVR behavior. The SuperChromaRes
 strength-3 chain carries independent 16-bit RGB results that cannot be
@@ -216,7 +224,11 @@ strength-3 inputs, the composed final result is `maximum=1` and
 to produce those four inputs from the real chroma network/decoder.
 
 This is selectable only for the experimental RGB48 Backend path. The DirectShow
-filter graph renders five RGB48 frames through the normal lifecycle, but real
-decoder/YUV source binding, graph-frame readback, the combined SuperChromaRes
-strength-3 path, 1080p composition, other geometries/formats, lifecycle
+filter graph now renders five RGB48 frames and its full-frame readback matches
+the captured PS_1352 final image at `maximum=1`. The verification source uses
+the captured PS_460 input, declares the correct 16:9 display aspect and remains
+SDR; the earlier black frame was a test-source 1:1 aspect error that introduced
+840-pixel pillarboxes. This closes the RGB48 graph/readback boundary only.
+Real decoder/YUV source binding, production of the combined SuperChromaRes
+strength-3 inputs, 1080p composition, other geometries/formats, full lifecycle
 coverage, and the performance matrix remain open.

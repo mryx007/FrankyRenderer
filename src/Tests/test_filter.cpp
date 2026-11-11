@@ -47,6 +47,7 @@ static bool startupTest = false;
 static bool mpcbeOwnerTest = false;
 static bool nguTest = false;
 static std::wstring nguCaptureRoot;
+static std::vector<BYTE> nguCapturedInput;
 
 static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
 {
@@ -731,8 +732,8 @@ class PatternStream final : public CSourceStream
         info->AvgTimePerFrame = 333333;
         info->dwInterlaceFlags =
             interlacedTest ? (AMINTERLACE_IsInterlaced | (bottomFirst ? 0 : AMINTERLACE_Field1First)) : 0;
-        info->dwPictAspectRatioX = 1;
-        info->dwPictAspectRatioY = 1;
+        info->dwPictAspectRatioX = nguTest ? 16 : 1;
+        info->dwPictAspectRatioY = nguTest ? 9 : 1;
         info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         info->bmiHeader.biWidth = nguTest ? NguWidth : 64;
         info->bmiHeader.biHeight = nguTest ? -NguHeight : 64;
@@ -798,8 +799,8 @@ class PatternStream final : public CSourceStream
         hdr.white_point_y = .329;
         hdr.max_display_mastering_luminance = 1000;
         hdr.min_display_mastering_luminance = .0001;
-        // The RTX Video HDR test needs an SDR source: no HDR metadata.
-        if (!rtxHdrTest)
+        // RTX HDR and the captured NGU RGB48 source are SDR inputs.
+        if (!rtxHdrTest && !nguTest)
         {
             hr = side->SetSideData(IID_MediaSideDataHDR, reinterpret_cast<const BYTE*>(&hdr), sizeof(hdr));
             if (FAILED(hr))
@@ -813,14 +814,24 @@ class PatternStream final : public CSourceStream
         if (nguTest)
         {
             auto data = reinterpret_cast<uint16_t*>(bytes);
-            for (int y = 0; y < NguHeight; ++y)
-                for (int x = 0; x < NguWidth; ++x)
-                {
-                    const size_t offset = (size_t(y) * NguWidth + x) * 3;
-                    data[offset] = static_cast<uint16_t>(x * 65535 / (NguWidth - 1));
-                    data[offset + 1] = static_cast<uint16_t>(y * 65535 / (NguHeight - 1));
-                    data[offset + 2] = static_cast<uint16_t>((x + y) * 32767 / (NguWidth + NguHeight - 2));
-                }
+            if (!nguCapturedInput.empty())
+            {
+                for (size_t i = 0; i < size_t(NguWidth) * NguHeight; ++i)
+                    std::memcpy(reinterpret_cast<BYTE*>(data) + i * 6,
+                                nguCapturedInput.data() + i * 8,
+                                6);
+            }
+            else
+            {
+                for (int y = 0; y < NguHeight; ++y)
+                    for (int x = 0; x < NguWidth; ++x)
+                    {
+                        const size_t offset = (size_t(y) * NguWidth + x) * 3;
+                        data[offset] = static_cast<uint16_t>(x * 65535 / (NguWidth - 1));
+                        data[offset + 1] = static_cast<uint16_t>(y * 65535 / (NguHeight - 1));
+                        data[offset + 2] = static_cast<uint16_t>((x + y) * 32767 / (NguWidth + NguHeight - 2));
+                    }
+            }
         }
         else if (textureFormat == DXGI_FORMAT_NV12)
         {
@@ -1148,6 +1159,17 @@ int wmain(int argc, wchar_t** argv)
     {
         puts("FAIL --ngu currently accepts the CPU RGB48 graph path only");
         return 1;
+    }
+    if (nguTest && !nguCaptureRoot.empty())
+    {
+        nguCapturedInput = ReadFile(
+            nguCaptureRoot + L"\\input_00224_PS_460_bfe50921_s0.bin",
+            size_t(1280) * 720 * 8);
+        if (nguCapturedInput.empty())
+        {
+            puts("FAIL ngu_sharp capture source");
+            return 1;
+        }
     }
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--srv") == 0)
