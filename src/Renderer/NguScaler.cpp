@@ -34,6 +34,10 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig LumaUpY = {nullptr, 3840, 1080};
     static constexpr StageConfig LumaMerge = {nullptr, 3840, 2160};
     static constexpr StageConfig LumaFinal = {nullptr, 3840, 2160};
+    static constexpr StageConfig SuperResDownX = {nullptr, 1280, 720};
+    static constexpr StageConfig SuperResDownY = {nullptr, 640, 720};
+    static constexpr StageConfig SuperResDiff = {nullptr, 640, 360};
+    static constexpr StageConfig SuperResToRgb = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -59,6 +63,15 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &LumaMerge;
     case NguScalerStage::VeryHighLumaFinal1080:
         return &LumaFinal;
+    case NguScalerStage::VeryHighSuperResDownX:
+        return &SuperResDownX;
+    case NguScalerStage::VeryHighSuperResDownY:
+        return &SuperResDownY;
+    case NguScalerStage::VeryHighSuperResDiff:
+        return &SuperResDiff;
+    case NguScalerStage::VeryHighSuperResToRgbMain:
+    case NguScalerStage::VeryHighSuperResToRgbBase:
+        return &SuperResToRgb;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -136,7 +149,9 @@ void DrawD3D11Pass(ID3D11Device* device,
                    UINT height,
                    ID3D11SamplerState* sampler0 = nullptr,
                    ID3D11SamplerState* sampler5 = nullptr,
-                   ID3D11SamplerState* sampler7 = nullptr)
+                   ID3D11SamplerState* sampler7 = nullptr,
+                   ID3D11SamplerState* sampler2 = nullptr,
+                   ID3D11SamplerState* sampler3 = nullptr)
 {
     ComPtr<ID3D11DeviceContext> context;
     device->GetImmediateContext(context.GetAddressOf());
@@ -153,8 +168,10 @@ void DrawD3D11Pass(ID3D11Device* device,
     context->RSGetViewports(&viewportCount, oldViewports.data());
     ID3D11VertexShader* oldVertex = nullptr;
     ID3D11PixelShader* oldPixel = nullptr;
-    ID3D11ShaderResourceView* oldInputs[3] = {};
+    ID3D11ShaderResourceView* oldInputs[4] = {};
     ID3D11SamplerState* oldSampler0 = nullptr;
+    ID3D11SamplerState* oldSampler2 = nullptr;
+    ID3D11SamplerState* oldSampler3 = nullptr;
     ID3D11SamplerState* oldSampler5 = nullptr;
     ID3D11SamplerState* oldSampler7 = nullptr;
     ID3D11Buffer* oldConstant = nullptr;
@@ -163,6 +180,8 @@ void DrawD3D11Pass(ID3D11Device* device,
     context->PSGetShader(&oldPixel, nullptr, nullptr);
     context->PSGetShaderResources(0, inputCount, oldInputs);
     context->PSGetSamplers(0, 1, &oldSampler0);
+    context->PSGetSamplers(2, 1, &oldSampler2);
+    context->PSGetSamplers(3, 1, &oldSampler3);
     context->PSGetSamplers(5, 1, &oldSampler5);
     context->PSGetSamplers(7, 1, &oldSampler7);
     context->PSGetConstantBuffers(0, 1, &oldConstant);
@@ -180,15 +199,19 @@ void DrawD3D11Pass(ID3D11Device* device,
     context->PSSetShader(pixel, nullptr, 0);
     context->PSSetShaderResources(0, inputCount, inputs);
     context->PSSetSamplers(0, 1, &sampler0);
+    context->PSSetSamplers(2, 1, &sampler2);
+    context->PSSetSamplers(3, 1, &sampler3);
     context->PSSetSamplers(5, 1, &sampler5);
     context->PSSetSamplers(7, 1, &sampler7);
     context->PSSetConstantBuffers(0, 1, &constants);
     context->Draw(3, 0);
-    ID3D11ShaderResourceView* nullInputs[3] = {};
+    ID3D11ShaderResourceView* nullInputs[4] = {};
     ID3D11Buffer* nullConstant = nullptr;
     context->PSSetShaderResources(0, inputCount, nullInputs);
     ID3D11SamplerState* nullSampler = nullptr;
     context->PSSetSamplers(0, 1, &nullSampler);
+    context->PSSetSamplers(2, 1, &nullSampler);
+    context->PSSetSamplers(3, 1, &nullSampler);
     context->PSSetSamplers(5, 1, &nullSampler);
     context->PSSetSamplers(7, 1, &nullSampler);
     context->PSSetConstantBuffers(0, 1, &nullConstant);
@@ -201,6 +224,8 @@ void DrawD3D11Pass(ID3D11Device* device,
     context->PSSetShader(oldPixel, nullptr, 0);
     context->PSSetShaderResources(0, inputCount, oldInputs);
     context->PSSetSamplers(0, 1, &oldSampler0);
+    context->PSSetSamplers(2, 1, &oldSampler2);
+    context->PSSetSamplers(3, 1, &oldSampler3);
     context->PSSetSamplers(5, 1, &oldSampler5);
     context->PSSetSamplers(7, 1, &oldSampler7);
     context->PSSetConstantBuffers(0, 1, &oldConstant);
@@ -221,6 +246,10 @@ void DrawD3D11Pass(ID3D11Device* device,
             oldInputs[i]->Release();
     if (oldSampler0)
         oldSampler0->Release();
+    if (oldSampler2)
+        oldSampler2->Release();
+    if (oldSampler3)
+        oldSampler3->Release();
     if (oldSampler5)
         oldSampler5->Release();
     if (oldSampler7)
@@ -292,6 +321,33 @@ struct NguScaler::NativeLumaFinal
     ComPtr<ID3D11ShaderResourceView> weightView;
     ComPtr<ID3D11SamplerState> clampSampler;
     ComPtr<ID3D11SamplerState> wrapSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeSuperResPrimitives
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> downX;
+    ComPtr<ID3D11PixelShader> downY;
+    ComPtr<ID3D11PixelShader> diff;
+    ComPtr<ID3D11PixelShader> toRgbMain;
+    ComPtr<ID3D11PixelShader> toRgbBase;
+    ComPtr<ID3D11Buffer> downXConstants;
+    ComPtr<ID3D11Buffer> downYConstants;
+    ComPtr<ID3D11Buffer> toRgbMainConstants;
+    ComPtr<ID3D11Buffer> toRgbBaseConstants;
+    ComPtr<ID3D11Texture2D> downXTable;
+    ComPtr<ID3D11Texture2D> downYTable;
+    ComPtr<ID3D11ShaderResourceView> downXTableView;
+    ComPtr<ID3D11ShaderResourceView> downYTableView;
+    ComPtr<ID3D11Texture2D> uvLut;
+    ComPtr<ID3D11ShaderResourceView> uvLutView;
+    ComPtr<ID3D11Texture2D> downXUvLut;
+    ComPtr<ID3D11ShaderResourceView> downXUvLutView;
+    ComPtr<ID3D11Texture2D> downYUvLut;
+    ComPtr<ID3D11ShaderResourceView> downYUvLutView;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11SamplerState> linearSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -1566,6 +1622,371 @@ bool NguScaler::RunNativeLumaFinal(ID3D11ShaderResourceView* input,
     return true;
 }
 
+bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU SuperChromaRes requires a GPU";
+        return false;
+    }
+    if (nativeSuperRes_ && gpu == gpu_)
+        return true;
+    Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU SuperChromaRes requires the D3D11 backend";
+        return false;
+    }
+    const std::string vertexText = LoadBundledText(L"shaders\\Ngu\\superres_down_x.hlsl", 64 * 1024);
+    const auto downXCso = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x.cso", 0);
+    const auto downYCso = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y.cso", 0);
+    const auto diffCso = LoadBundledBytes(L"shaders\\Ngu\\superres_diff.cso", 0);
+    const auto toRgbMainCso = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main.cso", 0);
+    const auto toRgbBaseCso = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base.cso", 0);
+    const auto downXConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_constants.bin", 2 * sizeof(float) * 4);
+    const auto downYConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_constants.bin", 2 * sizeof(float) * 4);
+    const auto toRgbMainConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants.bin", 6 * sizeof(float) * 4);
+    const auto downXTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_table.bin", 4 * 640 * 8);
+    const auto downYTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_table.bin", 4 * 360 * 8);
+    const auto uvLut = LoadBundledBytes(L"shaders\\Ngu\\superres_uv_lut.bin", 2048 * 8);
+    const auto downXUvLut =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_uv_lut.bin", (640 + 720) * 8);
+    const auto downYUvLut =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_uv_lut.bin", (640 + 360) * 8);
+    if (vertexText.empty() || downXCso.empty() || downYCso.empty() || diffCso.empty() ||
+        toRgbMainCso.empty() || toRgbBaseCso.empty() || downXConstants.empty() ||
+        downYConstants.empty() || toRgbMainConstants.empty() || toRgbBaseConstants.empty() ||
+        downXTable.empty() || downYTable.empty() || uvLut.empty() ||
+        downXUvLut.empty() || downYUvLut.empty())
+    {
+        error_ = "NGU SuperChromaRes primitive assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(vertexText.data(),
+                            vertexText.size(),
+                            "NGU_SuperResVertex",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU SuperChromaRes vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeSuperResPrimitives>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            downXCso.data(), static_cast<SIZE_T>(downXCso.size()), nullptr, &state->downX)) ||
+        FAILED(device->CreatePixelShader(
+            downYCso.data(), static_cast<SIZE_T>(downYCso.size()), nullptr, &state->downY)) ||
+        FAILED(device->CreatePixelShader(
+            diffCso.data(), static_cast<SIZE_T>(diffCso.size()), nullptr, &state->diff)) ||
+        FAILED(device->CreatePixelShader(toRgbMainCso.data(),
+                                         static_cast<SIZE_T>(toRgbMainCso.size()),
+                                         nullptr,
+                                         &state->toRgbMain)) ||
+        FAILED(device->CreatePixelShader(toRgbBaseCso.data(),
+                                         static_cast<SIZE_T>(toRgbBaseCso.size()),
+                                         nullptr,
+                                         &state->toRgbBase)))
+    {
+        error_ = "NGU SuperChromaRes shader objects could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(downXConstants, state->downXConstants) ||
+        !createConstants(downYConstants, state->downYConstants) ||
+        !createConstants(toRgbMainConstants, state->toRgbMainConstants) ||
+        !createConstants(toRgbBaseConstants, state->toRgbBaseConstants))
+    {
+        error_ = "NGU SuperChromaRes constants could not be created";
+        return false;
+    }
+
+    auto createTable = [&](const std::vector<uint8_t>& bytes,
+                           int height,
+                           ComPtr<ID3D11Texture2D>& texture,
+                           ComPtr<ID3D11ShaderResourceView>& view)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = 4;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        data.SysMemPitch = 4 * 8;
+        return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &view));
+    };
+    if (!createTable(downXTable, 640, state->downXTable, state->downXTableView) ||
+        !createTable(downYTable, 360, state->downYTable, state->downYTableView))
+    {
+        error_ = "NGU SuperChromaRes tables could not be created";
+        return false;
+    }
+    D3D11_TEXTURE2D_DESC uvLutDesc = {};
+    uvLutDesc.Width = 2048;
+    uvLutDesc.Height = 1;
+    uvLutDesc.MipLevels = 1;
+    uvLutDesc.ArraySize = 1;
+    uvLutDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    uvLutDesc.SampleDesc.Count = 1;
+    uvLutDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    uvLutDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA uvLutData = {};
+    uvLutData.pSysMem = uvLut.data();
+    uvLutData.SysMemPitch = 2048 * 8;
+    if (FAILED(device->CreateTexture2D(&uvLutDesc, &uvLutData, &state->uvLut)) ||
+        FAILED(device->CreateShaderResourceView(state->uvLut.Get(), nullptr, &state->uvLutView)))
+    {
+        error_ = "NGU SuperChromaRes UV LUT could not be created";
+        return false;
+    }
+    auto createUvLut = [&](const std::vector<uint8_t>& bytes,
+                           UINT width,
+                           ComPtr<ID3D11Texture2D>& texture,
+                           ComPtr<ID3D11ShaderResourceView>& view)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = 1;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        data.SysMemPitch = width * 8;
+        return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &view));
+    };
+    if (!createUvLut(downXUvLut, 640 + 720, state->downXUvLut, state->downXUvLutView) ||
+        !createUvLut(downYUvLut, 640 + 360, state->downYUvLut, state->downYUvLutView))
+    {
+        error_ = "NGU SuperChromaRes downsample UV LUTs could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU SuperChromaRes sampler could not be created";
+        return false;
+    }
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->linearSampler)))
+    {
+        error_ = "NGU SuperChromaRes linear sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU SuperChromaRes rasterizer could not be created";
+        return false;
+    }
+
+    nativeSuperRes_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighSuperResDownX;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !input || !output)
+    {
+        error_ = "NGU SuperChromaRes X downsample request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, nativeSuperRes_->downXTableView.Get(), nativeSuperRes_->downXUvLutView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeSuperRes_->vertex.Get(),
+                  nativeSuperRes_->downX.Get(),
+                  nativeSuperRes_->downXConstants.Get(),
+                  nativeSuperRes_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  &output,
+                  1,
+                  640,
+                  720,
+                  nativeSuperRes_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResDownY(ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !input || !output)
+    {
+        error_ = "NGU SuperChromaRes Y downsample request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, nativeSuperRes_->downYTableView.Get(), nativeSuperRes_->downYUvLutView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeSuperRes_->vertex.Get(),
+                  nativeSuperRes_->downY.Get(),
+                  nativeSuperRes_->downYConstants.Get(),
+                  nativeSuperRes_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  &output,
+                  1,
+                  640,
+                  360,
+                  nativeSuperRes_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResDiff(ID3D11ShaderResourceView* original,
+                                      ID3D11ShaderResourceView* downsample,
+                                      ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !original || !downsample || !output)
+    {
+        error_ = "NGU SuperChromaRes difference request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[3] = {
+        original, downsample, nativeSuperRes_->downYUvLutView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeSuperRes_->vertex.Get(),
+                  nativeSuperRes_->diff.Get(),
+                  nullptr,
+                  nativeSuperRes_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  &output,
+                  1,
+                  640,
+                  360,
+                  nativeSuperRes_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResToRgbMain(ID3D11ShaderResourceView* original,
+                                           ID3D11ShaderResourceView* work,
+                                           ID3D11ShaderResourceView* difference,
+                                           ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !original || !work || !difference || !output)
+    {
+        error_ = "NGU SuperChromaRes main ToRGB request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[4] = {
+        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeSuperRes_->vertex.Get(),
+                  nativeSuperRes_->toRgbMain.Get(),
+                  nativeSuperRes_->toRgbMainConstants.Get(),
+                  nativeSuperRes_->rasterizer.Get(),
+                  inputs,
+                  4,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeSuperRes_->linearSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  nativeSuperRes_->pointSampler.Get(),
+                  nativeSuperRes_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
+                                           ID3D11ShaderResourceView* work,
+                                           ID3D11ShaderResourceView* difference,
+                                           ID3D11RenderTargetView* output)
+{
+    if (!nativeSuperRes_ || !original || !work || !difference || !output)
+    {
+        error_ = "NGU SuperChromaRes base ToRGB request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[4] = {
+        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeSuperRes_->vertex.Get(),
+                  nativeSuperRes_->toRgbBase.Get(),
+                  nativeSuperRes_->toRgbBaseConstants.Get(),
+                  nativeSuperRes_->rasterizer.Get(),
+                  inputs,
+                  4,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeSuperRes_->linearSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  nativeSuperRes_->pointSampler.Get(),
+                  nativeSuperRes_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -1576,6 +1997,7 @@ void NguScaler::Reset()
     nativeLumaScaleAdd_.reset();
     nativeLumaFinish_.reset();
     nativeLumaFinal_.reset();
+    nativeSuperRes_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

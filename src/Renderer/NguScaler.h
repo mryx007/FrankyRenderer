@@ -31,6 +31,11 @@ enum class NguScalerStage
     VeryHighLumaUpY1080,
     VeryHighLumaMerge1080,
     VeryHighLumaFinal1080,
+    VeryHighSuperResDownX,
+    VeryHighSuperResDownY,
+    VeryHighSuperResDiff,
+    VeryHighSuperResToRgbMain,
+    VeryHighSuperResToRgbBase,
     VeryHighLuma1080Core,
 };
 
@@ -95,6 +100,22 @@ class NguScaler
     bool RunNativeLumaFinal(ID3D11ShaderResourceView* input,
                             ID3D11ShaderResourceView* dither,
                             ID3D11RenderTargetView* output);
+    bool PrepareNativeSuperResPrimitives(pl_gpu gpu);
+    bool RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
+                                ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDownY(ID3D11ShaderResourceView* input,
+                                ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDiff(ID3D11ShaderResourceView* original,
+                               ID3D11ShaderResourceView* downsample,
+                               ID3D11RenderTargetView* output);
+    bool RunNativeSuperResToRgbMain(ID3D11ShaderResourceView* original,
+                                    ID3D11ShaderResourceView* work,
+                                    ID3D11ShaderResourceView* difference,
+                                    ID3D11RenderTargetView* output);
+    bool RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
+                                    ID3D11ShaderResourceView* work,
+                                    ID3D11ShaderResourceView* difference,
+                                    ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -108,6 +129,7 @@ class NguScaler
     struct NativeLumaScaleAdd;
     struct NativeLumaFinish;
     struct NativeLumaFinal;
+    struct NativeSuperResPrimitives;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -119,4 +141,5 @@ class NguScaler
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;
     std::unique_ptr<NativeLumaFinish> nativeLumaFinish_;
     std::unique_ptr<NativeLumaFinal> nativeLumaFinal_;
+    std::unique_ptr<NativeSuperResPrimitives> nativeSuperRes_;
 };
