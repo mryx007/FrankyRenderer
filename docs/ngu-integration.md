@@ -183,7 +183,7 @@ three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
 also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
 PS_2100 dense and PS_564 add now extend that path exactly to the native
 `5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
-`0A72183EBBEC178C057FB2B24C8BDAEE54DC41A9B4EB1776BAFCB171956B1CAB`.
+`AE7F09C0306BAF3B4254CE4CB84BB971F12D694211CF886B55AEBEF60475275C`.
 
 The complete captured 720p 4x post-network path is now stage-exact. The
 captured `f36` tail is A16B16G16R16 UNORM rather than RGBA16F, and PS_536,
@@ -197,11 +197,15 @@ The completed `VeryHighLuma4x720Full` scheduler runs source RGB through the
 720p 4x luma network, CbCr X/Y, SuperChromaRes-aware merge and owned-dither
 FinalStep. The recorded source-to-final result is
 `maximum=1`, `diff_gt_1_pixels=0`, `69.358 ms/frame`; the one-LSB boundary is
-the expected time-seeded dither. This is a native execution path, but it is not
-yet bound to the Backend frame source or exposed as `ngu_sharp`.
+the expected time-seeded dither.
 
-This is not yet a selectable complete scaler. Backend/source-surface binding,
-real DirectShow playback, the combined SuperChromaRes strength-3 path, 1080p
-composition, other geometries/formats, lifecycle coverage, and the performance
-matrix remain open. The source-level peer decision is recorded; `ngu_sharp`
-remains unexposed until the final-image and playback gates pass.
+`ngu_sharp` is now an experimental normal scaler choice. Backend accepts a
+top-down 1280x720 RGB48 source and 3840x2160 target, creates the exact source
+view, runs the native graph and replaces the image with the 4K RGB result.
+The Backend regression also reports `maximum=1`, `diff_gt_1_pixels=0`.
+Unsupported geometry, source format, orientation or target size fail closed.
+
+This is selectable only for the experimental RGB48 Backend path. Real
+DirectShow playback and decoder/YUV source binding, the combined SuperChromaRes
+strength-3 path, 1080p composition, other geometries/formats, lifecycle
+coverage, and the performance matrix remain open.
