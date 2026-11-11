@@ -158,6 +158,7 @@ int main(int argc, char** argv)
 
         std::array<ComPtr<ID3D11Texture2D>, 3> outputs;
         std::array<ComPtr<ID3D11RenderTargetView>, 3> outputViews;
+        std::array<ComPtr<ID3D11ShaderResourceView>, 3> outputShaderViews;
         std::array<ID3D11RenderTargetView*, 3> rawViews = {};
         for (size_t i = 0; i < outputs.size(); ++i)
         {
@@ -167,6 +168,8 @@ int main(int argc, char** argv)
                 D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
             Require(SUCCEEDED(device->CreateRenderTargetView(outputs[i].Get(), nullptr, &outputViews[i])),
                     "create output RTV");
+            Require(SUCCEEDED(device->CreateShaderResourceView(outputs[i].Get(), nullptr, &outputShaderViews[i])),
+                    "create output SRV");
             rawViews[i] = outputViews[i].Get();
         }
 
@@ -177,9 +180,10 @@ int main(int argc, char** argv)
         Require(ProbeNguScaler(request) == NguScalerSupport::Ready, "native Cubici1 capability");
 
         NguScaler ngu;
-        Require(ngu.PrepareNativeLumaInitial(d3d->gpu), ngu.LastError());
-        Require(ngu.RunNativeLumaInitial(inputView.Get(), Width, Height, rawViews.data()),
-                ngu.LastError());
+        const bool initialPrepared = ngu.PrepareNativeLumaInitial(d3d->gpu);
+        Require(initialPrepared, ngu.LastError());
+        const bool initialRan = ngu.RunNativeLumaInitial(inputView.Get(), Width, Height, rawViews.data());
+        Require(initialRan, ngu.LastError());
         pl_gpu_finish(d3d->gpu);
 
         ComPtr<ID3D11DeviceContext> context;
@@ -197,17 +201,87 @@ int main(int argc, char** argv)
         constexpr int BenchmarkFrames = 20;
         const auto benchmarkStart = std::chrono::steady_clock::now();
         for (int frame = 0; frame < BenchmarkFrames; ++frame)
-            Require(ngu.RunNativeLumaInitial(inputView.Get(), Width, Height, rawViews.data()),
-                    ngu.LastError());
+        {
+            const bool benchmarkRan = ngu.RunNativeLumaInitial(inputView.Get(), Width, Height, rawViews.data());
+            Require(benchmarkRan, ngu.LastError());
+        }
         pl_gpu_finish(d3d->gpu);
         const double milliseconds =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - benchmarkStart).count() /
             BenchmarkFrames;
 
+        const bool layersPrepared = ngu.PrepareNativeLumaLayers(d3d->gpu);
+        Require(layersPrepared, ngu.LastError());
+        std::array<ComPtr<ID3D11Texture2D>, 3> capturedLayerInputs;
+        std::array<ComPtr<ID3D11ShaderResourceView>, 3> capturedLayerViews;
+        for (size_t i = 0; i < capturedLayerInputs.size(); ++i)
+        {
+            capturedLayerInputs[i] = CreateTexture(
+                device,
+                DXGI_FORMAT_R16G16B16A16_FLOAT,
+                D3D11_BIND_SHADER_RESOURCE,
+                expected[i].data());
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        capturedLayerInputs[i].Get(), nullptr, &capturedLayerViews[i])),
+                    "create captured layer input SRV");
+        }
+        std::array<std::array<ComPtr<ID3D11Texture2D>, 3>, 2> layerTextures;
+        std::array<std::array<ComPtr<ID3D11RenderTargetView>, 3>, 2> layerViews;
+        std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 3>, 2> layerShaderViews;
+        std::array<std::array<ID3D11RenderTargetView*, 3>, 2> rawLayerViews = {};
+        for (auto& set : layerTextures)
+            for (auto& texture : set)
+                texture = CreateTexture(
+                    device,
+                    DXGI_FORMAT_R16G16B16A16_FLOAT,
+                    D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        for (size_t set = 0; set < layerTextures.size(); ++set)
+            for (size_t feature = 0; feature < 3; ++feature)
+            {
+                Require(SUCCEEDED(device->CreateRenderTargetView(
+                            layerTextures[set][feature].Get(), nullptr, &layerViews[set][feature])),
+                        "create layer RTV");
+                Require(SUCCEEDED(device->CreateShaderResourceView(
+                            layerTextures[set][feature].Get(), nullptr, &layerShaderViews[set][feature])),
+                        "create layer SRV");
+                rawLayerViews[set][feature] = layerViews[set][feature].Get();
+            }
+
+        std::array<int, 15> layerDifferences = {};
+        std::array<int, 15> layerMaximum = {};
+        std::array<ID3D11ShaderResourceView*, 3> currentInputs = {
+            capturedLayerViews[0].Get(), capturedLayerViews[1].Get(), capturedLayerViews[2].Get()};
+        for (int layer = 0; layer < 15; ++layer)
+        {
+            const int set = (layer / 3) % 2;
+            const int feature = layer % 3;
+            const bool layerRan =
+                ngu.RunNativeLumaLayer(currentInputs.data(), layer, rawLayerViews[set][feature]);
+            Require(layerRan, ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto actualLayer = Download(device, context.Get(), layerTextures[set][feature].Get());
+            const auto expectedLayer = ReadBytes(
+                (root /
+                 ("draw_" + std::to_string(31707 + layer) +
+                  "_PS_3588_80fb311e_rt0_1920x1080_f113.bin"))
+                    .wstring(),
+                Half4Bytes);
+            layerDifferences[layer] = CountDifferences(actualLayer, expectedLayer, layerMaximum[layer]);
+            if (feature == 2)
+                for (size_t i = 0; i < 3; ++i)
+                    currentInputs[i] = layerShaderViews[set][i].Get();
+            std::printf("layer%02d different_half_components=%d maximum_half_code_delta=%d\n",
+                        layer,
+                        layerDifferences[layer],
+                        layerMaximum[layer]);
+        }
+        const bool layersPass =
+            std::all_of(layerDifferences.begin(), layerDifferences.end(), [](int value) { return value == 0; });
+
         std::ofstream summary(summaryPath);
         Require(bool(summary), "write summary");
         const bool pass =
-            std::all_of(differences.begin(), differences.end(), [](int value) { return value == 0; });
+            layersPass && std::all_of(differences.begin(), differences.end(), [](int value) { return value == 0; });
         summary << "{\n"
                 << "  \"status\": \"" << (pass ? "PASS_PRODUCT" : "FAIL_PRODUCT") << "\",\n"
                 << "  \"geometry\": [1920, 1080],\n"
@@ -215,6 +289,14 @@ int main(int argc, char** argv)
                 << differences[0] << ", " << differences[1] << ", " << differences[2] << "],\n"
                 << "  \"maximum_half_code_delta\": [" << maximum[0] << ", " << maximum[1] << ", "
                 << maximum[2] << "],\n"
+                << "  \"layer_different_half_components\": [";
+        for (size_t i = 0; i < layerDifferences.size(); ++i)
+            summary << (i ? ", " : "") << layerDifferences[i];
+        summary << "],\n"
+                << "  \"layer_maximum_half_code_delta\": [";
+        for (size_t i = 0; i < layerMaximum.size(); ++i)
+            summary << (i ? ", " : "") << layerMaximum[i];
+        summary << "],\n"
                 << "  \"native_ms_per_frame\": " << milliseconds << "\n"
                 << "}\n";
         for (size_t i = 0; i < differences.size(); ++i)
@@ -227,6 +309,23 @@ int main(int argc, char** argv)
                     milliseconds);
         ngu.Reset();
         rawViews.fill(nullptr);
+        for (auto& set : rawLayerViews)
+            set.fill(nullptr);
+        for (auto& set : layerShaderViews)
+            for (auto& view : set)
+                view.Reset();
+        for (auto& set : layerViews)
+            for (auto& view : set)
+                view.Reset();
+        for (auto& set : layerTextures)
+            for (auto& texture : set)
+                texture.Reset();
+        for (auto& view : capturedLayerViews)
+            view.Reset();
+        for (auto& texture : capturedLayerInputs)
+            texture.Reset();
+        for (auto& view : outputShaderViews)
+            view.Reset();
         for (auto& view : outputViews)
             view.Reset();
         for (auto& output : outputs)

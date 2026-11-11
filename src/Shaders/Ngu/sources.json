@@ -9,5 +9,21 @@
     "output_format": "R16G16B16A16_FLOAT",
     "constants": "luma_1080_cubici1_constants.bin",
     "constants_sha256": "43B41EB1930BCEC7C2C615BACDE114F775C2D64A2D3AED61AE6EE3CA04EA8AA2"
+  },
+  "luma_1080_layer.hlsl": {
+    "sha256": "C26788BED172E090C63477EFED517D8180F12C084CD625A85F80738AC77D2D57",
+    "evidence": "OpenMadVR E-095",
+    "target": "madVR64.ax sha256 09f6eafb6117073617f042b79c1674660f0818125c6aca6ff7aa2d66f3bfbb23",
+    "target_shader": "PS_3588_80fb311e",
+    "geometry": [1920, 1080],
+    "passes": 15,
+    "output_format": "R16G16B16A16_FLOAT",
+    "constants": "luma_1080_layer_constants.bin",
+    "constants_sha256": "D173DD0D501A76F404D30FA5610FA5177FC948E258B9A8652FB799A2630443DC"
+  },
+  "luma_1080_layer_body.glsl": {
+    "sha256": "F3620B086208902BC8340A325F755777B43694B4AEF8CE9B83A437921F518182",
+    "evidence": "OpenMadVR E-095",
+    "role": "single-layer GLSL oracle generated from the exact product shader"
   }
 }

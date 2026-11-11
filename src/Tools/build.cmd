@@ -16,6 +16,8 @@ xcopy /E /I /Y Shaders\PlayKit "%rendererBin%\shaders\PlayKit" >nul
 if errorlevel 1 exit /b 1
 xcopy /E /I /Y Shaders\Ngu "%rendererBin%\shaders\Ngu" >nul
 if errorlevel 1 exit /b 1
+call "%~dp0build_ngu_shaders.cmd"
+if errorlevel 1 exit /b 1
 lib /nologo /def:build\libplacebo.def /machine:x64 /out:build\lib\libplacebo.lib
 if errorlevel 1 exit /b 1
 rem Menu translations (translations\*.po) become embedded resources.

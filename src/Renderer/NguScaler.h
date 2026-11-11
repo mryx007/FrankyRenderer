@@ -22,6 +22,7 @@ enum class NguScalerStage
     None,
     VeryHighChromaReference,
     VeryHighLumaInitial1080,
+    VeryHighLumaLayers1080,
     VeryHighLuma1080Core,
 };
 
@@ -63,6 +64,10 @@ class NguScaler
                               int width,
                               int height,
                               ID3D11RenderTargetView* const outputs[3]);
+    bool PrepareNativeLumaLayers(pl_gpu gpu);
+    bool RunNativeLumaLayer(ID3D11ShaderResourceView* const inputs[3],
+                            int layer,
+                            ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -71,10 +76,12 @@ class NguScaler
 
   private:
     struct NativeLumaInitial;
+    struct NativeLumaLayers;
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
     std::string error_;
     bool hasCached_ = false;
     std::unique_ptr<NativeLumaInitial> nativeLumaInitial_;
+    std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
 };
