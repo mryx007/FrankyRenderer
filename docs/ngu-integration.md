@@ -250,6 +250,13 @@ oracle. Capture draw 921-928 and draw 953 PS_1352 produce
 `NGU_1080_FRAME_BASE=921`. Earlier `maximum=21/40` results were cross-frame
 comparisons and are no longer acceptance evidence.
 
+The native source bridge now imports P010 decoder planes through D3D11.3 plane
+views into `R16_UNORM` luma and `R16G16B16A16_UNORM` chroma without CPU
+readback. The active 1280x720 crop and packed U/V values match the captured
+target sample at zero difference. The local adapter reports no P016 resource
+support, so real P016 remains fail-closed until exercised on a supporting
+device.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -277,11 +284,11 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| `ngu_sharp` peer | Generic resolver, experimental Image/Plane Upscaler choice and fail-closed Backend contract pass | Production YUV source binding and final playback acceptance |
+| `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: real decoder/YUV binding, production
-SuperChromaRes strength-3 input generation, then full
-DirectShow/format/lifecycle/performance acceptance. No missing mapping may be
-replaced by a guessed fallback while those gates are open.
+The shortest critical path is therefore: native PS_260...PS_4576 chroma core,
+P010 bridge wiring into Backend/DirectShow, then full
+format/lifecycle/performance acceptance. No missing mapping may be replaced by
+a guessed fallback while those gates are open.
