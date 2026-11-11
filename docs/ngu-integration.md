@@ -12,6 +12,34 @@ On 2026-11-11 the user explicitly authorized direct source changes for this
 work. The preferred product form is a dedicated native scaling module selected
 as `ngu_sharp`, peer to `ewa_lanczos` and the other normal scaler choices.
 
+## Architecture decision (2026-11-12)
+
+The user accepted performance-first changes to FrankyRenderer's scaling source.
+NGU is therefore an implementation peer of the existing `ewa_lanczos`,
+`ewa_lanczossharp`, `ewa_jinc`, and related algorithm identifiers, not a
+user-shader-only extension.
+
+This decision is required by observed madVR behavior. The SuperChromaRes
+strength-3 chain carries independent 16-bit RGB results that cannot be
+represented exactly by one public RGBA16F user-shader `SAVE` target. A native
+algorithm may own explicit `R16_UNORM`, `R16G16_UNORM`, `R16G16B16A16_UNORM`,
+and MRT surfaces, plus dedicated samplers and a reusable render graph. Those
+implementation choices may change transport and scheduling, but not the
+target-observed arithmetic.
+
+To keep the change reviewable and upstreamable:
+
+- select NGU through the ordinary scaler identifier/selection path;
+- keep algorithm-specific execution in `NguScaler`, behind a narrow interface;
+- avoid NGU conditionals in colour management, presentation, and unrelated
+  EWA/filter code;
+- keep host changes generic rather than requiring a libplacebo fork;
+- package target-derived immutable tables and shader stages with reproducible
+  generation scripts;
+- initialize GPU state once, reuse textures/samplers/views, and avoid readbacks,
+  copies, or format changes that alter target-visible results;
+- reject unsupported quality, geometry, or format combinations explicitly.
+
 ## Existing extension points
 
 - `src/Renderer/ShaderHooks.h`: parses mpv-compatible multi-pass GLSL hooks.
@@ -30,6 +58,9 @@ dedicated `NguScaler` module and integrate through generic host interfaces:
 
 - add `ngu_sharp` to the normal scaler identifier and UI choice lists only when
   a real execution path exists;
+- model the implementation as another algorithm selected by the same backend
+  interface as the `ewa_*` family, rather than as a special case in the
+  presentation path;
 - keep NGU scheduling out of unrelated EWA/filter code;
 - prefer existing public or internal libplacebo/D3D11 interfaces;
 - keep any required host change generic and independently reviewable;
@@ -73,6 +104,15 @@ three 16-bit RGB surfaces downstream of Realign; a single RGBA16F user-shader
 
 ## Current implementation state
 
-The branch has buildable experimental shader packs, but no native `NguScaler`
-module and no NGU scaler selection yet. Existing shader-pack exactness is
-evidence of pass arithmetic, not completion of the native product path.
+The branch now has a native `NguScaler` lifecycle and an exact one-call
+1920x1080-to-4K VeryHigh luma scheduler. Native PS_460 Y/CbCr split, luma
+initializer/layers/dense/scale/add, 4x reconstruction, merge, FinalStep, dither,
+and the SuperChromaRes strength-3 primitive chain are covered by stage-exact
+tests. The latest product AX at the time of this decision is
+`89C436E7F576912232645941CA5ED1CF68A1B814E4AB18FED73BEC969EF19025`.
+
+This is not yet a selectable complete scaler. Backend/source-surface binding,
+real DirectShow playback, the combined chroma-plus-SuperRes-plus-luma chain,
+other geometries/formats, lifecycle coverage, and the performance matrix remain
+open. `ngu_sharp` must stay unexposed until the final-image and playback gates
+pass.
