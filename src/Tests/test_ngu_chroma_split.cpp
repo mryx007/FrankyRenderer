@@ -3,12 +3,14 @@
 #include <libplacebo/d3d11.h>
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 using Microsoft::WRL::ComPtr;
@@ -116,6 +118,66 @@ std::vector<uint8_t> ExtractL16(const std::vector<uint8_t>& expanded)
     return bytes;
 }
 
+void CompareWrittenTriangle(const std::vector<uint8_t>& actual,
+                            const std::vector<uint8_t>& expected,
+                            UINT width,
+                            UINT height,
+                            bool upperLeftTriangle,
+                            int maximumAllowedDifference,
+                            const char* name)
+{
+    int different = 0;
+    int maximum = 0;
+    int aboveAllowed = 0;
+    bool reported = false;
+    for (UINT y = 0; y < height; ++y)
+        for (UINT x = 0; x < width; ++x)
+        {
+            if (upperLeftTriangle &&
+                uint64_t(x) * 720 + uint64_t(y) * 1280 >=
+                    uint64_t(width) * 720)
+                continue;
+            const size_t pixel = size_t(y) * width + x;
+            const uint16_t a = uint16_t(actual[pixel * 2]) |
+                               (uint16_t(actual[pixel * 2 + 1]) << 8);
+            const uint16_t e = uint16_t(expected[pixel * 2]) |
+                               (uint16_t(expected[pixel * 2 + 1]) << 8);
+            const int delta = std::abs(int(a) - int(e));
+            different += delta != 0;
+            maximum = std::max(maximum, delta);
+            aboveAllowed += delta > maximumAllowedDifference;
+            if (delta && !reported)
+            {
+                reported = true;
+                std::printf("%s first x=%u y=%u actual=%u expected=%u\n",
+                            name, x, y, a, e);
+            }
+        }
+    std::printf(
+        "%s covered different=%d maximum=%d diff_gt_%d=%d\n",
+        name,
+        different,
+        maximum,
+        maximumAllowedDifference,
+        aboveAllowed);
+    Require(aboveAllowed == 0, "covered region comparison");
+}
+
+void DumpIfRequested(const std::vector<uint8_t>& bytes, const char* name)
+{
+    char root[32768] = {};
+    const DWORD length =
+        GetEnvironmentVariableA("NGU_CHROMA_DUMP_ROOT", root, 32768);
+    if (!length || length >= 32768)
+        return;
+    const auto path = std::filesystem::path(std::string(root, length)) / name;
+    std::ofstream file(path, std::ios::binary);
+    Require(bool(file), "open chroma dump");
+    file.write(reinterpret_cast<const char*>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+    Require(bool(file), "write chroma dump");
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -135,6 +197,12 @@ int main(int argc, char** argv)
         const auto expectedCr =
             ReadBytes(root / "draw_00006_PS_260_cdfc6b55_rt1_640x360_f81.bin",
                       size_t(width) * height * 8);
+        const auto expectedScaleX =
+            ReadBytes(root / "draw_00007_PS_748_721dd04e_rt0_1280x360_f81.bin",
+                      size_t(1280) * 360 * 8);
+        const auto expectedScaleY =
+            ReadBytes(root / "draw_00008_PS_748_4085ea73_rt0_1280x720_f81.bin",
+                      size_t(1280) * 720 * 8);
 
         auto d3dParams = pl_d3d11_default_params;
         auto d3d = pl_d3d11_create(nullptr, &d3dParams);
@@ -171,7 +239,49 @@ int main(int argc, char** argv)
         Require(cbDifferent == 0 && crDifferent == 0,
                 "chroma split comparison");
 
-        std::puts("PASS_PRODUCT native PS_260 chroma split");
+        ComPtr<ID3D11ShaderResourceView> cbShaderView;
+        Require(SUCCEEDED(d3d->device->CreateShaderResourceView(
+                    cbTexture.Get(), nullptr, &cbShaderView)),
+                "create Cb SRV");
+        ComPtr<ID3D11RenderTargetView> scaleXView;
+        auto scaleXTexture = CreateOutput(d3d->device, 1280, 360, scaleXView);
+        Require(ngu.PrepareNativeChromaScale(d3d->gpu), ngu.LastError());
+        Require(ngu.RunNativeChromaScaleX(
+                    cbShaderView.Get(), scaleXView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto scaleX = Download(d3d->device, context.Get(), scaleXTexture.Get(), 2);
+        DumpIfRequested(scaleX, "scale_x_l16.bin");
+        CompareWrittenTriangle(
+            scaleX,
+            ExtractL16(expectedScaleX),
+            1280,
+            360,
+            true,
+            0,
+            "PS_748 X");
+
+        ComPtr<ID3D11ShaderResourceView> scaleXShaderView;
+        Require(SUCCEEDED(d3d->device->CreateShaderResourceView(
+                    scaleXTexture.Get(), nullptr, &scaleXShaderView)),
+                "create scale-X SRV");
+        ComPtr<ID3D11RenderTargetView> scaleYView;
+        auto scaleYTexture = CreateOutput(d3d->device, 1280, 720, scaleYView);
+        Require(ngu.RunNativeChromaScaleY(
+                    scaleXShaderView.Get(), scaleYView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto scaleY = Download(d3d->device, context.Get(), scaleYTexture.Get(), 2);
+        DumpIfRequested(scaleY, "scale_y_l16.bin");
+        CompareWrittenTriangle(
+            scaleY,
+            ExtractL16(expectedScaleY),
+            1280,
+            720,
+            false,
+            1,
+            "PS_748 Y");
+        std::puts("PASS_PRODUCT native PS_260/PS_748 chroma front end");
         return 0;
     }
     catch (const std::exception& error)

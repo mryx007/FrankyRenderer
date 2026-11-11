@@ -257,10 +257,15 @@ target sample at zero difference. The local adapter reports no P016 resource
 support, so real P016 remains fail-closed until exercised on a supporting
 device.
 
-The first chroma-core pass is native and exact: PS_260 SplitCb_Cr maps one packed
-CbCr sample into L16 Cb and Cr with byte-identical target output. The attempted
-PS_748 X/Y translation was rejected because D3D9 coordinate interpolation was
-not reproduced exactly; it is not part of the product path.
+The first chroma-core pass is native and exact: PS_260 SplitCb_Cr maps one
+packed CbCr sample into L16 Cb and Cr with byte-identical target output. Complete
+D3D9 state replay resolved the PS_748 coordinate contract: X uses effective
+`c0.x=640`, while Y uses captured `c0.x=720` rather than a halved value. Native
+PS_748 X/Y L16 passes now build. X matches its target-written triangle exactly;
+Y reports `274/921600` changed samples, `maximum=1`, and
+`diff_gt_1_pixels=0`. Explicit half-up and round-even conversion tests were
+worse, so this remains a cross-API L16 rounding boundary rather than a
+substituted coordinate formula.
 
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
@@ -293,7 +298,7 @@ product integration, not another transport redesign:
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: native PS_260...PS_4576 chroma core,
+The shortest critical path is therefore: native PS_1672...PS_4576 chroma core,
 P010 bridge wiring into Backend/DirectShow, then full
 format/lifecycle/performance acceptance. No missing mapping may be replaced by
 a guessed fallback while those gates are open.

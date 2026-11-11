@@ -104,6 +104,11 @@ class NguScaler
                               int height,
                               ID3D11RenderTargetView* cb,
                               ID3D11RenderTargetView* cr);
+    bool PrepareNativeChromaScale(pl_gpu gpu);
+    bool RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
+                               ID3D11RenderTargetView* output);
+    bool RunNativeChromaScaleY(ID3D11ShaderResourceView* input,
+                               ID3D11RenderTargetView* output);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -265,6 +270,7 @@ class NguScaler
     struct NativeLumaSplit;
     struct NativeDecoderSource;
     struct NativeChromaSplit;
+    struct NativeChromaScale;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -288,6 +294,7 @@ class NguScaler
     std::unique_ptr<NativeLumaSplit> nativeLumaSplit_;
     std::unique_ptr<NativeDecoderSource> nativeDecoderSource_;
     std::unique_ptr<NativeChromaSplit> nativeChromaSplit_;
+    std::unique_ptr<NativeChromaScale> nativeChromaScale_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;

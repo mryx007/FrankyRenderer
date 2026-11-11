@@ -365,6 +365,17 @@ struct NguScaler::NativeChromaSplit
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeChromaScale
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> scaleX;
+    ComPtr<ID3D11PixelShader> scaleY;
+    ComPtr<ID3D11Buffer> scaleXConstants;
+    ComPtr<ID3D11Buffer> scaleYConstants;
+    ComPtr<ID3D11SamplerState> sampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -1181,6 +1192,180 @@ bool NguScaler::RunNativeChromaSplit(ID3D11ShaderResourceView* packedUv,
                   static_cast<UINT>(width),
                   static_cast<UINT>(height),
                   nativeChromaSplit_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma scale requires a GPU";
+        return false;
+    }
+    if (nativeChromaScale_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma scale requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_scale.hlsl", 16 * 1024);
+    const auto scaleXCso =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x.cso", 0);
+    const auto scaleYCso =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y.cso", 0);
+    if (shaderText.empty() || scaleXCso.empty() || scaleYCso.empty())
+    {
+        error_ = "NGU chroma scale assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaScale",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma scale vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaScale>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(scaleXCso.data(),
+                                         static_cast<SIZE_T>(scaleXCso.size()),
+                                         nullptr,
+                                         &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(scaleYCso.data(),
+                                         static_cast<SIZE_T>(scaleYCso.size()),
+                                         nullptr,
+                                         &state->scaleY)))
+    {
+        error_ = "NGU chroma scale shader objects could not be created";
+        return false;
+    }
+
+    const float scaleXConstants[12] = {
+        640.0f, 0.00078125f, 0.0015625f, 0.0f,
+        0.871875f, 0.240625f, -0.084375f, -0.028125f,
+        640.0f, 360.0f, 0.0f, 0.0f};
+    const float scaleYConstants[12] = {
+        720.0f, 0.0013888889f, 0.0027777778f, 0.0f,
+        0.871875f, 0.240625f, -0.084375f, -0.028125f,
+        1280.0f, 720.0f, 0.0f, 0.0f};
+    D3D11_BUFFER_DESC bufferDesc = {};
+    bufferDesc.ByteWidth = sizeof(scaleXConstants);
+    bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = scaleXConstants;
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleXConstants)))
+    {
+        error_ = "NGU chroma X scale constants could not be created";
+        return false;
+    }
+    initial.pSysMem = scaleYConstants;
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleYConstants)))
+    {
+        error_ = "NGU chroma Y scale constants could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU chroma scale rasterizer could not be created";
+        return false;
+    }
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->sampler)))
+    {
+        error_ = "NGU chroma scale sampler could not be created";
+        return false;
+    }
+
+    nativeChromaScale_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
+                                      ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaScale_ || !input || !output ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 360))
+    {
+        error_ = "NGU chroma X scale request is outside the verified 720p path";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaScale_->vertex.Get(),
+                  nativeChromaScale_->scaleX.Get(),
+                  nativeChromaScale_->scaleXConstants.Get(),
+                  nativeChromaScale_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  1280,
+                  360,
+                  nativeChromaScale_->sampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaScaleY(ID3D11ShaderResourceView* input,
+                                      ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaScale_ || !input || !output ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 360) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720))
+    {
+        error_ = "NGU chroma Y scale request is outside the verified 720p path";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaScale_->vertex.Get(),
+                  nativeChromaScale_->scaleY.Get(),
+                  nativeChromaScale_->scaleYConstants.Get(),
+                  nativeChromaScale_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeChromaScale_->sampler.Get());
     error_ = "";
     return true;
 }
@@ -5325,6 +5510,7 @@ void NguScaler::Reset()
     nativeLumaSplit_.reset();
     nativeDecoderSource_.reset();
     nativeChromaSplit_.reset();
+    nativeChromaScale_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

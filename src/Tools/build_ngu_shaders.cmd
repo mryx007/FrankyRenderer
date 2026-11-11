@@ -9,6 +9,10 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_s
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_split.cso" "Shaders\Ngu\ngu_chroma_split.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_X /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_Y /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_y.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
+if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_scale_x.cso" "Shaders\Ngu\luma_4x720_scale_x.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_4x720_scale_y.cso" "Shaders\Ngu\luma_4x720_scale_y.hlsl"
