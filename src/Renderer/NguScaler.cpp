@@ -570,6 +570,16 @@ struct NguScaler::NativeLuma4x720Tail
     ComPtr<ID3D11Buffer> ssimFinalConstants;
     ComPtr<ID3D11PixelShader> sharpenAr;
     ComPtr<ID3D11Buffer> sharpenArConstants;
+    ComPtr<ID3D11PixelShader> chromaX;
+    ComPtr<ID3D11PixelShader> chromaY;
+    ComPtr<ID3D11PixelShader> merge;
+    ComPtr<ID3D11Buffer> chromaXConstants;
+    ComPtr<ID3D11Buffer> chromaYConstants;
+    ComPtr<ID3D11Buffer> mergeConstants;
+    ComPtr<ID3D11Texture2D> chromaXTable;
+    ComPtr<ID3D11Texture2D> chromaYTable;
+    ComPtr<ID3D11ShaderResourceView> chromaXTableView;
+    ComPtr<ID3D11ShaderResourceView> chromaYTableView;
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
@@ -3792,12 +3802,31 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar.cso", 0);
     const auto sharpenArConstants =
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar_constants.bin", 4096);
+    const auto chromaXCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x.cso", 0);
+    const auto chromaYCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y.cso", 0);
+    const auto mergeCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge.cso", 0);
+    const auto chromaXConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_constants.bin", 32);
+    const auto chromaYConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_constants.bin", 32);
+    const auto mergeConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_merge_constants.bin", 32);
+    const auto chromaXTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_table.bin", 122880);
+    const auto chromaYTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_table.bin", 69120);
     if (shaderText.empty() || ycbcrCso.empty() || downXCso.empty() ||
         downXConstants.empty() || downXTable.empty() || downXUvLut.empty() ||
         downYCso.empty() || downYConstants.empty() || downYTable.empty() ||
         downYUvLut.empty() || ssimRtCso.empty() || ssimRtConstants.empty() ||
         ssimFinalCso.empty() || ssimFinalConstants.empty() ||
-        sharpenArCso.empty() || sharpenArConstants.empty())
+        sharpenArCso.empty() || sharpenArConstants.empty() ||
+        chromaXCso.empty() || chromaYCso.empty() || mergeCso.empty() ||
+        chromaXConstants.empty() || chromaYConstants.empty() ||
+        mergeConstants.empty() || chromaXTable.empty() || chromaYTable.empty())
     {
         error_ = "NGU 720p 4x tail assets are unavailable";
         return false;
@@ -3852,7 +3881,19 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         FAILED(device->CreatePixelShader(sharpenArCso.data(),
                                          static_cast<SIZE_T>(sharpenArCso.size()),
                                          nullptr,
-                                         &state->sharpenAr)))
+                                         &state->sharpenAr)) ||
+        FAILED(device->CreatePixelShader(chromaXCso.data(),
+                                         static_cast<SIZE_T>(chromaXCso.size()),
+                                         nullptr,
+                                         &state->chromaX)) ||
+        FAILED(device->CreatePixelShader(chromaYCso.data(),
+                                         static_cast<SIZE_T>(chromaYCso.size()),
+                                         nullptr,
+                                         &state->chromaY)) ||
+        FAILED(device->CreatePixelShader(mergeCso.data(),
+                                         static_cast<SIZE_T>(mergeCso.size()),
+                                         nullptr,
+                                         &state->merge)))
     {
         error_ = "NGU 720p 4x tail shader objects could not be created";
         return false;
@@ -3902,6 +3943,30 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         error_ = "NGU 720p 4x tail SharpenAR constants could not be created";
         return false;
     }
+    constantDesc.ByteWidth = static_cast<UINT>(chromaXConstants.size());
+    constantData.pSysMem = chromaXConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->chromaXConstants)))
+    {
+        error_ = "NGU 720p 4x tail chroma-X constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(chromaYConstants.size());
+    constantData.pSysMem = chromaYConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->chromaYConstants)))
+    {
+        error_ = "NGU 720p 4x tail chroma-Y constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(mergeConstants.size());
+    constantData.pSysMem = mergeConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->mergeConstants)))
+    {
+        error_ = "NGU 720p 4x tail merge constants could not be created";
+        return false;
+    }
 
     D3D11_TEXTURE2D_DESC tableDesc = {};
     tableDesc.Width = 6;
@@ -3931,6 +3996,28 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
             state->downYTable.Get(), nullptr, &state->downYTableView)))
     {
         error_ = "NGU 720p 4x tail down-Y table could not be created";
+        return false;
+    }
+    tableDesc.Width = 4;
+    tableDesc.Height = 3840;
+    tableData.pSysMem = chromaXTable.data();
+    tableData.SysMemPitch = 4 * 8;
+    if (FAILED(device->CreateTexture2D(
+            &tableDesc, &tableData, &state->chromaXTable)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->chromaXTable.Get(), nullptr, &state->chromaXTableView)))
+    {
+        error_ = "NGU 720p 4x tail chroma-X table could not be created";
+        return false;
+    }
+    tableDesc.Height = 2160;
+    tableData.pSysMem = chromaYTable.data();
+    if (FAILED(device->CreateTexture2D(
+            &tableDesc, &tableData, &state->chromaYTable)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->chromaYTable.Get(), nullptr, &state->chromaYTableView)))
+    {
+        error_ = "NGU 720p 4x tail chroma-Y table could not be created";
         return false;
     }
 
@@ -4197,6 +4284,80 @@ bool NguScaler::RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
                   1,
                   3840,
                   2160,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailChromaX(ID3D11ShaderResourceView* input,
+                                              ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720))
+    {
+        error_ = "NGU 720p 4x tail chroma-X requires exact 1280x720/3840x720 surfaces";
+        return false;
+    }
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[2] = {input, state.chromaXTableView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(), state.chromaX.Get(),
+                  state.chromaXConstants.Get(), state.rasterizer.Get(),
+                  inputs, 2, targets, 1, 3840, 720,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailChromaY(ID3D11ShaderResourceView* input,
+                                              ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail chroma-Y requires exact 3840x720/2160 surfaces";
+        return false;
+    }
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[2] = {input, state.chromaYTableView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(), state.chromaY.Get(),
+                  state.chromaYConstants.Get(), state.rasterizer.Get(),
+                  inputs, 2, targets, 1, 3840, 2160,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
+                                            ID3D11ShaderResourceView* chroma,
+                                            ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            luma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(
+            chroma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail merge requires exact 4K surfaces";
+        return false;
+    }
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[2] = {luma, chroma};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(), state.merge.Get(),
+                  state.mergeConstants.Get(), state.rasterizer.Get(),
+                  inputs, 2, targets, 1, 3840, 2160,
                   state.pointSampler.Get());
     error_ = "";
     return true;

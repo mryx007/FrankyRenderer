@@ -190,6 +190,13 @@ class NguScaler
                                          ID3D11RenderTargetView* output);
     bool RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
                                          ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailChromaX(ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailChromaY(ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
+                                     ID3D11ShaderResourceView* chroma,
+                                     ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;

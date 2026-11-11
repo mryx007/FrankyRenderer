@@ -110,6 +110,16 @@ Copy-CapturePrefix 'const_snapshot_draw_00255_PS_1052_f4319416.f32' `
     'luma_4x720_tail_ssim_final_constants.bin' 32
 Copy-Capture 'const_snapshot_draw_00256_PS_5868_0cb2f4f9.f32' `
     'luma_4x720_tail_sharpen_ar_constants.bin' 4096
+Copy-CapturePrefix 'const_snapshot_draw_00257_PS_1284_386cc8d7.f32' `
+    'luma_4x720_tail_chroma_x_constants.bin' 32
+Copy-Capture 'scale_update_22_0x2152147f8c0_0x21521481060.bin' `
+    'luma_4x720_tail_chroma_x_table.bin' 122880
+Copy-CapturePrefix 'const_snapshot_draw_00258_PS_1284_dc97a0d0.f32' `
+    'luma_4x720_tail_chroma_y_constants.bin' 32
+Copy-Capture 'scale_update_23_0x2152147e120_0x2152147e7c0.bin' `
+    'luma_4x720_tail_chroma_y_table.bin' 69120
+Copy-CapturePrefix 'const_snapshot_draw_00259_PS_548_d6670d4b.f32' `
+    'luma_4x720_tail_merge_constants.bin' 32
 
 Get-ChildItem $output -File |
     Where-Object Name -Like 'luma_4x720_*' |

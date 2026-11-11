@@ -710,6 +710,129 @@ int main(int argc, char** argv)
         const int targetSharpenDifferent = CountWords(
             targetSharpenActual, sharpenArExpected, targetSharpenMaximum);
 
+        const auto targetChromaXInputBytes =
+            ReadBytes(root / "input_00257_PS_1284_386cc8d7_s0.bin",
+                      size_t(1280) * 720 * 4);
+        auto targetChromaXInput = CreateTexture(
+            device,
+            1280,
+            720,
+            DXGI_FORMAT_R16G16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE,
+            targetChromaXInputBytes.data());
+        ComPtr<ID3D11ShaderResourceView> targetChromaXInputView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetChromaXInput.Get(), nullptr, &targetChromaXInputView)),
+                "target chroma-X SRV");
+        auto chromaX = CreateTexture(device,
+                                     3840,
+                                     720,
+                                     DXGI_FORMAT_R16G16B16A16_UNORM,
+                                     D3D11_BIND_RENDER_TARGET |
+                                         D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> chromaXView;
+        ComPtr<ID3D11ShaderResourceView> chromaXShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    chromaX.Get(), nullptr, &chromaXView)),
+                "chroma-X RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    chromaX.Get(), nullptr, &chromaXShaderView)),
+                "chroma-X SRV");
+        Require(ngu.RunNativeLuma4x720TailChromaX(
+                    targetChromaXInputView.Get(), chromaXView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto chromaXActual = Download(device, context.Get(), chromaX.Get());
+        int chromaXMaximum = 0;
+        const int chromaXDifferent = CountWords(
+            chromaXActual,
+            ReadBytes(root / "draw_00257_PS_1284_386cc8d7_rt0_3840x720_f36.bin",
+                      size_t(3840) * 720 * 8),
+            chromaXMaximum);
+
+        const auto targetChromaYInputBytes =
+            ReadBytes(root / "input_00258_PS_1284_dc97a0d0_s0.bin",
+                      size_t(3840) * 720 * 8);
+        auto targetChromaYInput = CreateTexture(
+            device,
+            3840,
+            720,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE,
+            targetChromaYInputBytes.data());
+        ComPtr<ID3D11ShaderResourceView> targetChromaYInputView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetChromaYInput.Get(), nullptr, &targetChromaYInputView)),
+                "target chroma-Y SRV");
+        auto chromaY = CreateTexture(device,
+                                     3840,
+                                     2160,
+                                     DXGI_FORMAT_R16G16B16A16_UNORM,
+                                     D3D11_BIND_RENDER_TARGET |
+                                         D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> chromaYView;
+        ComPtr<ID3D11ShaderResourceView> chromaYShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    chromaY.Get(), nullptr, &chromaYView)),
+                "chroma-Y RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    chromaY.Get(), nullptr, &chromaYShaderView)),
+                "chroma-Y SRV");
+        Require(ngu.RunNativeLuma4x720TailChromaY(
+                    targetChromaYInputView.Get(), chromaYView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto chromaYActual = Download(device, context.Get(), chromaY.Get());
+        int chromaYMaximum = 0;
+        const int chromaYDifferent = CountWords(
+            chromaYActual,
+            ReadBytes(root / "draw_00258_PS_1284_dc97a0d0_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8),
+            chromaYMaximum);
+
+        auto merge = CreateTexture(device,
+                                   3840,
+                                   2160,
+                                   DXGI_FORMAT_R16G16B16A16_UNORM,
+                                   D3D11_BIND_RENDER_TARGET);
+        ComPtr<ID3D11RenderTargetView> mergeView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    merge.Get(), nullptr, &mergeView)),
+                "tail merge RTV");
+        const auto targetMergeLumaBytes =
+            ReadBytes(root / "input_00259_PS_548_d6670d4b_s0.bin",
+                      size_t(3840) * 2160 * 8);
+        const auto targetMergeChromaBytes =
+            ReadBytes(root / "input_00259_PS_548_d6670d4b_s2.bin",
+                      size_t(3840) * 2160 * 8);
+        auto targetMergeLuma = CreateTexture(
+            device, 3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, targetMergeLumaBytes.data());
+        auto targetMergeChroma = CreateTexture(
+            device, 3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE, targetMergeChromaBytes.data());
+        ComPtr<ID3D11ShaderResourceView> targetMergeLumaView;
+        ComPtr<ID3D11ShaderResourceView> targetMergeChromaView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetMergeLuma.Get(), nullptr, &targetMergeLumaView)),
+                "target merge luma SRV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetMergeChroma.Get(), nullptr, &targetMergeChromaView)),
+                "target merge chroma SRV");
+        Require(ngu.RunNativeLuma4x720TailMerge(
+                    targetMergeLumaView.Get(),
+                    targetMergeChromaView.Get(),
+                    mergeView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto mergeActual = Download(device, context.Get(), merge.Get());
+        int mergeMaximum = 0;
+        const int mergeDifferent = CountWords(
+            mergeActual,
+            ReadBytes(root / "draw_00259_PS_548_d6670d4b_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8),
+            mergeMaximum);
+
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
@@ -736,6 +859,12 @@ int main(int argc, char** argv)
                     sharpenArDifferent, sharpenArMaximum);
         std::printf("TailSharpenArTargetInputs different=%d maximum=%d\n",
                     targetSharpenDifferent, targetSharpenMaximum);
+        std::printf("TailChromaXProbe different=%d maximum=%d\n",
+                    chromaXDifferent, chromaXMaximum);
+        std::printf("TailChromaYProbe different=%d maximum=%d\n",
+                    chromaYDifferent, chromaYMaximum);
+        std::printf("TailMergeProbe different=%d maximum=%d\n",
+                    mergeDifferent, mergeMaximum);
 
         if (!actualPrefix.empty())
         {
@@ -770,6 +899,9 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"tail_sharpen_ar_probe.bin", sharpenArActual);
             WriteBytes(actualPrefix + L"tail_sharpen_ar_target_inputs.bin",
                        targetSharpenActual);
+            WriteBytes(actualPrefix + L"tail_chroma_x_probe.bin", chromaXActual);
+            WriteBytes(actualPrefix + L"tail_chroma_y_probe.bin", chromaYActual);
+            WriteBytes(actualPrefix + L"tail_merge_probe.bin", mergeActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
@@ -784,6 +916,22 @@ int main(int argc, char** argv)
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        mergeView.Reset();
+        merge.Reset();
+        targetMergeChromaView.Reset();
+        targetMergeChroma.Reset();
+        targetMergeLumaView.Reset();
+        targetMergeLuma.Reset();
+        chromaYShaderView.Reset();
+        chromaYView.Reset();
+        chromaY.Reset();
+        targetChromaYInputView.Reset();
+        targetChromaYInput.Reset();
+        chromaXShaderView.Reset();
+        chromaXView.Reset();
+        chromaX.Reset();
+        targetChromaXInputView.Reset();
+        targetChromaXInput.Reset();
         targetSharpenInputView.Reset();
         targetSharpenInput.Reset();
         sharpenArView.Reset();
