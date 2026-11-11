@@ -39,6 +39,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig SuperResDiff = {nullptr, 640, 360};
     static constexpr StageConfig SuperResToRgb = {nullptr, 1280, 720};
     static constexpr StageConfig SuperResStrength3 = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720LowCore = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -75,6 +76,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &SuperResToRgb;
     case NguScalerStage::VeryHighSuperResStrength3:
         return &SuperResStrength3;
+    case NguScalerStage::VeryHighLuma4x720LowCore:
+        return &Luma4x720LowCore;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -275,6 +278,22 @@ bool ViewMatchesTexture(ID3D11View* view, DXGI_FORMAT format, UINT width, UINT h
     return desc.Format == format && desc.Width == width && desc.Height == height &&
            desc.ArraySize == 1 && desc.MipLevels == 1 && desc.SampleDesc.Count == 1;
 }
+
+bool CopyTextureToTarget(pl_gpu gpu, ID3D11Texture2D* source, ID3D11RenderTargetView* output)
+{
+    if (!gpu || !source || !output)
+        return false;
+    ComPtr<ID3D11Resource> destination;
+    output->GetResource(&destination);
+    if (!destination)
+        return false;
+    ComPtr<ID3D11DeviceContext> context;
+    pl_d3d11_get(gpu)->device->GetImmediateContext(context.GetAddressOf());
+    if (!context)
+        return false;
+    context->CopyResource(destination.Get(), source);
+    return true;
+}
 } // namespace
 
 void NguDither::SeedColorFromClock()
@@ -442,6 +461,43 @@ struct NguScaler::NativeSuperResStrength3
     ComPtr<ID3D11Texture2D> mainTexture;
     ComPtr<ID3D11RenderTargetView> mainView;
     ComPtr<ID3D11ShaderResourceView> mainShaderView;
+};
+
+struct NguScaler::NativeLuma4x720Low
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> scaleX;
+    ComPtr<ID3D11PixelShader> scaleY;
+    ComPtr<ID3D11PixelShader> initial;
+    ComPtr<ID3D11PixelShader> layer;
+    ComPtr<ID3D11Buffer> scaleXConstants;
+    ComPtr<ID3D11Buffer> scaleYConstants;
+    ComPtr<ID3D11Buffer> initialConstants;
+    std::array<ComPtr<ID3D11Buffer>, 15> layerConstants;
+    ComPtr<ID3D11Texture2D> scaleXTable;
+    ComPtr<ID3D11Texture2D> scaleYTable;
+    ComPtr<ID3D11ShaderResourceView> scaleXTableView;
+    ComPtr<ID3D11ShaderResourceView> scaleYTableView;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+
+    ComPtr<ID3D11Texture2D> splitLumaTexture;
+    ComPtr<ID3D11RenderTargetView> splitLumaView;
+    ComPtr<ID3D11ShaderResourceView> splitLumaShaderView;
+    ComPtr<ID3D11Texture2D> splitCbCrTexture;
+    ComPtr<ID3D11RenderTargetView> splitCbCrView;
+    ComPtr<ID3D11ShaderResourceView> splitCbCrShaderView;
+    ComPtr<ID3D11Texture2D> scaleXTexture;
+    ComPtr<ID3D11RenderTargetView> scaleXView;
+    ComPtr<ID3D11ShaderResourceView> scaleXShaderView;
+    ComPtr<ID3D11Texture2D> scaleYTexture;
+    ComPtr<ID3D11RenderTargetView> scaleYView;
+    ComPtr<ID3D11ShaderResourceView> scaleYShaderView;
+    std::array<ComPtr<ID3D11Texture2D>, 3> featureATextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 3> featureAViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 3> featureAShaderViews;
+    std::array<ComPtr<ID3D11Texture2D>, 3> featureBTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 3> featureBViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 3> featureBShaderViews;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -2692,6 +2748,434 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
     return true;
 }
 
+bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU 720p 4x luma core requires a GPU";
+        return false;
+    }
+    if (nativeLuma4x720Low_ && gpu == gpu_)
+        return true;
+    if (!PrepareNativeLumaSplit(gpu))
+        return false;
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU 720p 4x luma core requires the D3D11 backend";
+        return false;
+    }
+
+    const std::string scaleXText =
+        LoadBundledText(L"shaders\\Ngu\\luma_4x720_scale_x.hlsl", 64 * 1024);
+    const std::string initialText =
+        LoadBundledText(L"shaders\\Ngu\\luma_1080_cubici1.hlsl", 256 * 1024);
+    const auto scaleXCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x.cso", 0);
+    const auto scaleYCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y.cso", 0);
+    const auto layerCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_layer.cso", 0);
+    const auto scaleXConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x_constants.bin", 32);
+    const auto scaleYConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y_constants.bin", 32);
+    const auto initialConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_initial_constants.bin", 512);
+    const auto layerConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_low_layer_constants.bin",
+                         15 * 111 * sizeof(float) * 4);
+    const auto scaleXTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_x.bin", 163840);
+    const auto scaleYTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_y.bin", 92160);
+    if (scaleXText.empty() || initialText.empty() || scaleXCso.empty() ||
+        scaleYCso.empty() || layerCso.empty() || scaleXConstants.empty() ||
+        scaleYConstants.empty() || initialConstants.empty() ||
+        layerConstants.empty() || scaleXTable.empty() || scaleYTable.empty())
+    {
+        error_ = "NGU 720p 4x luma core assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, initialBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(scaleXText.data(),
+                            scaleXText.size(),
+                            "NGU_Luma4x720_Vertex",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU 720p 4x vertex shader failed";
+        return false;
+    }
+    errors.Reset();
+    hr = D3DCompile(initialText.data(),
+                    initialText.size(),
+                    "NGU_Luma4x720_Initial",
+                    nullptr,
+                    nullptr,
+                    "PSMain",
+                    "ps_5_0",
+                    flags,
+                    0,
+                    &initialBlob,
+                    &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU 720p 4x initializer shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLuma4x720Low>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(scaleXCso.data(),
+                                         static_cast<SIZE_T>(scaleXCso.size()),
+                                         nullptr,
+                                         &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(scaleYCso.data(),
+                                         static_cast<SIZE_T>(scaleYCso.size()),
+                                         nullptr,
+                                         &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(initialBlob->GetBufferPointer(),
+                                         initialBlob->GetBufferSize(),
+                                         nullptr,
+                                         &state->initial)) ||
+        FAILED(device->CreatePixelShader(layerCso.data(),
+                                         static_cast<SIZE_T>(layerCso.size()),
+                                         nullptr,
+                                         &state->layer)))
+    {
+        error_ = "NGU 720p 4x luma shader objects could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(scaleXConstants, state->scaleXConstants) ||
+        !createConstants(scaleYConstants, state->scaleYConstants) ||
+        !createConstants(initialConstants, state->initialConstants))
+    {
+        error_ = "NGU 720p 4x luma constants could not be created";
+        return false;
+    }
+    for (size_t layer = 0; layer < state->layerConstants.size(); ++layer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = 111 * sizeof(float) * 4;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = layerConstants.data() + layer * desc.ByteWidth;
+        if (FAILED(device->CreateBuffer(&desc, &data, &state->layerConstants[layer])))
+        {
+            error_ = "NGU 720p 4x luma layer constants could not be created";
+            return false;
+        }
+    }
+
+    auto createTable = [&](const std::vector<uint8_t>& bytes,
+                           UINT height,
+                           ComPtr<ID3D11Texture2D>& texture,
+                           ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = 4;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        data.SysMemPitch = 4 * 8;
+        return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!createTable(scaleXTable, 5120, state->scaleXTable, state->scaleXTableView) ||
+        !createTable(scaleYTable, 2880, state->scaleYTable, state->scaleYTableView))
+    {
+        error_ = "NGU 720p 4x luma scale tables could not be created";
+        return false;
+    }
+
+    auto createTexture = [&](UINT width,
+                             UINT height,
+                             DXGI_FORMAT format,
+                             ComPtr<ID3D11Texture2D>& texture,
+                             ComPtr<ID3D11RenderTargetView>& renderTarget,
+                             ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!createTexture(1280, 720, DXGI_FORMAT_R16_UNORM,
+                       state->splitLumaTexture, state->splitLumaView,
+                       state->splitLumaShaderView) ||
+        !createTexture(1280, 720, DXGI_FORMAT_R16G16_UNORM,
+                       state->splitCbCrTexture, state->splitCbCrView,
+                       state->splitCbCrShaderView) ||
+        !createTexture(5120, 720, DXGI_FORMAT_R16_UNORM,
+                       state->scaleXTexture, state->scaleXView,
+                       state->scaleXShaderView) ||
+        !createTexture(5120, 2880, DXGI_FORMAT_R16_UNORM,
+                       state->scaleYTexture, state->scaleYView,
+                       state->scaleYShaderView))
+    {
+        error_ = "NGU 720p 4x luma fixed surfaces could not be created";
+        return false;
+    }
+    for (size_t i = 0; i < state->featureATextures.size(); ++i)
+    {
+        if (!createTexture(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           state->featureATextures[i], state->featureAViews[i],
+                           state->featureAShaderViews[i]) ||
+            !createTexture(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           state->featureBTextures[i], state->featureBViews[i],
+                           state->featureBShaderViews[i]))
+        {
+            error_ = "NGU 720p 4x luma feature surfaces could not be created";
+            return false;
+        }
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU 720p 4x luma rasterizer could not be created";
+        return false;
+    }
+
+    nativeLuma4x720Low_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720LowCore;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
+                                      int sourceWidth,
+                                      int sourceHeight)
+{
+    if (!nativeLuma4x720Low_ || !nativeLumaSplit_ || !sourceRgb ||
+        sourceWidth != 1280 || sourceHeight != 720)
+    {
+        error_ = "NGU 720p 4x luma core request is outside the verified path";
+        return false;
+    }
+    if (!ViewMatchesTexture(
+            sourceRgb, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
+    {
+        error_ = "NGU 720p 4x luma source format or geometry is unsupported";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Low_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    if (!RunNativeLumaSplit(sourceRgb,
+                            sourceWidth,
+                            sourceHeight,
+                            state.splitLumaView.Get(),
+                            state.splitCbCrView.Get()))
+        return false;
+
+    ID3D11ShaderResourceView* scaleXInputs[2] = {
+        state.splitLumaShaderView.Get(), state.scaleXTableView.Get()};
+    ID3D11RenderTargetView* scaleXOutput = state.scaleXView.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.scaleX.Get(),
+                  state.scaleXConstants.Get(),
+                  state.rasterizer.Get(),
+                  scaleXInputs,
+                  2,
+                  &scaleXOutput,
+                  1,
+                  5120,
+                  720,
+                  nativeLumaSplit_->pointSampler.Get());
+    ID3D11ShaderResourceView* scaleYInputs[2] = {
+        state.scaleXShaderView.Get(), state.scaleYTableView.Get()};
+    ID3D11RenderTargetView* scaleYOutput = state.scaleYView.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.scaleY.Get(),
+                  state.scaleYConstants.Get(),
+                  state.rasterizer.Get(),
+                  scaleYInputs,
+                  2,
+                  &scaleYOutput,
+                  1,
+                  5120,
+                  2880,
+                  nativeLumaSplit_->pointSampler.Get());
+
+    ID3D11ShaderResourceView* initialInput = state.splitLumaShaderView.Get();
+    ID3D11RenderTargetView* initialOutputs[3] = {
+        state.featureAViews[0].Get(),
+        state.featureAViews[1].Get(),
+        state.featureAViews[2].Get()};
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.initial.Get(),
+                  state.initialConstants.Get(),
+                  state.rasterizer.Get(),
+                  &initialInput,
+                  1,
+                  initialOutputs,
+                  3,
+                  1280,
+                  720,
+                  nativeLumaSplit_->pointSampler.Get());
+
+    for (size_t stage = 0; stage < 5; ++stage)
+    {
+        ID3D11ShaderResourceView* inputs[3] = {
+            state.featureAShaderViews[0].Get(),
+            state.featureAShaderViews[1].Get(),
+            state.featureAShaderViews[2].Get()};
+        for (size_t feature = 0; feature < 3; ++feature)
+        {
+            const size_t layer = stage * 3 + feature;
+            ID3D11RenderTargetView* layerOutput =
+                state.featureBViews[feature].Get();
+            DrawD3D11Pass(device,
+                          state.vertex.Get(),
+                          state.layer.Get(),
+                          state.layerConstants[layer].Get(),
+                          state.rasterizer.Get(),
+                          inputs,
+                          3,
+                          &layerOutput,
+                          1,
+                          1280,
+                          720,
+                          nativeLumaSplit_->pointSampler.Get());
+        }
+        state.featureATextures.swap(state.featureBTextures);
+        state.featureAViews.swap(state.featureBViews);
+        state.featureAShaderViews.swap(state.featureBShaderViews);
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ ||
+        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitLumaTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x split output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ ||
+        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleXTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x X-scale output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720ScaleY(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ ||
+        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleYTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x Y-scale output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720Initial(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ || !output)
+    {
+        error_ = "NGU 720p 4x initializer output is unavailable";
+        return false;
+    }
+    auto& state = *nativeLuma4x720Low_;
+    ID3D11ShaderResourceView* input = state.splitLumaShaderView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.initial.Get(),
+                  state.initialConstants.Get(),
+                  state.rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeLumaSplit_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720LowLayer(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ ||
+        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->featureATextures[2].Get(), output))
+    {
+        error_ = "NGU 720p 4x low-layer output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -2706,6 +3190,7 @@ void NguScaler::Reset()
     nativeLumaVeryHigh1080_.reset();
     nativeSuperRes_.reset();
     nativeSuperResStrength3_.reset();
+    nativeLuma4x720Low_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

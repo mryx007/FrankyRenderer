@@ -18,7 +18,10 @@ VSOut VSMain(uint vertex : SV_VertexID)
 
 PSOut PSMain(VSOut input)
 {
-    float4 source = SourceTex.SampleLevel(SourceSampler, input.position.xy / float2(1920.0, 1080.0), 0.0);
+    int width, height;
+    SourceTex.GetDimensions(width, height);
+    float4 source = SourceTex.SampleLevel(
+        SourceSampler, input.position.xy / float2(width, height), 0.0);
     float3 rgb = source.xyz * 1.16438353 + -0.0730593577;
     float3 ycbcr = float3(
         dot(rgb, float3(0.212599993, 0.715200007, 0.0722000003)),
