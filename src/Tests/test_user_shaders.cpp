@@ -133,6 +133,66 @@ int main()
                    ms,
                    100.0 * changed / (pixels.size() / 4));
         }
+        {
+            const char* file = "ngu_chroma_cubici2.glsl";
+            int id = 0;
+            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, file))
+                ++id;
+            Require(id < ShaderCount, "NGU catalogue entry");
+            auto render = pl_render_default_params;
+            render.hooks = &hooks[id];
+            render.num_hooks = 1;
+            Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const auto start = std::chrono::steady_clock::now();
+            constexpr int frames = 10;
+            for (int frame = 0; frame < frames; ++frame)
+                Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const double ms =
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / frames;
+            printf("PASS %s: 4 MRT-split passes, %.2f ms per frame\n", file, ms);
+        }
+        {
+            const char* file = "ngu_sharp_veryhigh_chroma_stage1.glsl";
+            int id = 0;
+            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, file))
+                ++id;
+            Require(id < ShaderCount, "NGU stage-1 catalogue entry");
+            auto render = pl_render_default_params;
+            render.hooks = &hooks[id];
+            render.num_hooks = 1;
+            Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const auto start = std::chrono::steady_clock::now();
+            constexpr int frames = 10;
+            for (int frame = 0; frame < frames; ++frame)
+                Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const double ms =
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / frames;
+            printf("PASS %s: 33 passes, %.2f ms per frame\n", file, ms);
+        }
+        {
+            const char* file = "ngu_sharp_veryhigh_chroma_dual_core.glsl";
+            int id = 0;
+            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, file))
+                ++id;
+            Require(id < ShaderCount, "NGU dual-core catalogue entry");
+            auto render = pl_render_default_params;
+            render.hooks = &hooks[id];
+            render.num_hooks = 1;
+            Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const auto start = std::chrono::steady_clock::now();
+            constexpr int frames = 10;
+            for (int frame = 0; frame < frames; ++frame)
+                Require(pl_render_image(renderer, &image, &out, &render), file);
+            pl_gpu_finish(gpu);
+            const double ms =
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / frames;
+            printf("PASS %s: 66 passes, %.2f ms per frame\n", file, ms);
+        }
         pl_renderer_destroy(&renderer);
         pl_tex_destroy(gpu, &target);
         for (auto& tex : planes)

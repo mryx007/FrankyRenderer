@@ -1,0 +1,9308 @@
+//!DESC [NGU Sharp VeryHigh chroma Cubici2] MRT output 0
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND ngu_cubici2_constants
+//!SAVE NGU_CUBICI2_O0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define U(index) texelFetch(ngu_cubici2_constants, ivec2((index), 0), 0)
+float ngu_cubici2_fetch(int x, int y) {
+    ivec2 center = ivec2(floor(HOOKED_pos * HOOKED_size));
+    ivec2 upper = ivec2(HOOKED_size) - ivec2(1);
+    return texelFetch(HOOKED_raw, clamp(center + ivec2(x, y), ivec2(0), upper), 0).x;
+}
+vec4 ngu_cubici2_body(int output_index) {
+    float down_left = ngu_cubici2_fetch(-1, -1);
+    float down = ngu_cubici2_fetch(0, -1);
+    float down_right = ngu_cubici2_fetch(1, -1);
+    float left = ngu_cubici2_fetch(-1, 0);
+    float center = ngu_cubici2_fetch(0, 0);
+    float right = ngu_cubici2_fetch(1, 0);
+    float up_left = ngu_cubici2_fetch(-1, 1);
+    float up = ngu_cubici2_fetch(0, 1);
+    float up_right = ngu_cubici2_fetch(1, 1);
+
+    vec4 a0 = down_left * U(0) + U(36);
+    a0 += down * U(1);
+    a0 += down_right * U(2);
+    a0 += left * U(3);
+    a0 += center * U(4);
+    a0 += right * U(5);
+    a0 += up_left * U(6);
+    a0 += up * U(7);
+    a0 += up_right * U(8);
+    vec4 a1 = down_left * U(9) + U(37);
+    a1 += down * U(10);
+    a1 += down_right * U(11);
+    a1 += left * U(12);
+    a1 += center * U(13);
+    a1 += right * U(14);
+    a1 += up_left * U(15);
+    a1 += up * U(16);
+    a1 += up_right * U(17);
+    vec4 a2 = down_left * U(18) + U(38);
+    vec4 a3 = down_left * U(27) + U(39);
+    a2 += down * U(19);
+    a3 += down * U(28);
+    a2 += down_right * U(20);
+    a3 += down_right * U(29);
+    a2 += left * U(21);
+    a3 += left * U(30);
+    a2 += center * U(22);
+    a3 += center * U(31);
+    a2 += right * U(23);
+    a3 += right * U(32);
+    a2 += up_left * U(24);
+    a3 += up_left * U(33);
+    a2 += up * U(25);
+    a3 += up * U(34);
+    a2 += up_right * U(26);
+    a3 += up_right * U(35);
+
+    vec4 leak = U(40).xxxx;
+    vec4 o0 = mix(vec4(0.0), a0 * leak, lessThan(a0, vec4(0.0)));
+    o0 += max(a0, vec4(0.0));
+    vec4 o1 = mix(vec4(0.0), a1 * leak, lessThan(a1, vec4(0.0)));
+    o1 += max(a1, vec4(0.0));
+    vec4 o2 = mix(vec4(0.0), a2 * leak, lessThan(a2, vec4(0.0)));
+    o2 += max(a2, vec4(0.0));
+    vec4 o3 = mix(vec4(0.0), a3 * leak, lessThan(a3, vec4(0.0)));
+    o3 += max(a3, vec4(0.0));
+    return output_index == 0 ? o0 : output_index == 1 ? o1 : output_index == 2 ? o2 : o3;
+}
+vec4 hook() {
+    return ngu_cubici2_body(0);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubici2] MRT output 1
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND ngu_cubici2_constants
+//!SAVE NGU_CUBICI2_O1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define U(index) texelFetch(ngu_cubici2_constants, ivec2((index), 0), 0)
+float ngu_cubici2_fetch(int x, int y) {
+    ivec2 center = ivec2(floor(HOOKED_pos * HOOKED_size));
+    ivec2 upper = ivec2(HOOKED_size) - ivec2(1);
+    return texelFetch(HOOKED_raw, clamp(center + ivec2(x, y), ivec2(0), upper), 0).x;
+}
+vec4 ngu_cubici2_body(int output_index) {
+    float down_left = ngu_cubici2_fetch(-1, -1);
+    float down = ngu_cubici2_fetch(0, -1);
+    float down_right = ngu_cubici2_fetch(1, -1);
+    float left = ngu_cubici2_fetch(-1, 0);
+    float center = ngu_cubici2_fetch(0, 0);
+    float right = ngu_cubici2_fetch(1, 0);
+    float up_left = ngu_cubici2_fetch(-1, 1);
+    float up = ngu_cubici2_fetch(0, 1);
+    float up_right = ngu_cubici2_fetch(1, 1);
+
+    vec4 a0 = down_left * U(0) + U(36);
+    a0 += down * U(1);
+    a0 += down_right * U(2);
+    a0 += left * U(3);
+    a0 += center * U(4);
+    a0 += right * U(5);
+    a0 += up_left * U(6);
+    a0 += up * U(7);
+    a0 += up_right * U(8);
+    vec4 a1 = down_left * U(9) + U(37);
+    a1 += down * U(10);
+    a1 += down_right * U(11);
+    a1 += left * U(12);
+    a1 += center * U(13);
+    a1 += right * U(14);
+    a1 += up_left * U(15);
+    a1 += up * U(16);
+    a1 += up_right * U(17);
+    vec4 a2 = down_left * U(18) + U(38);
+    vec4 a3 = down_left * U(27) + U(39);
+    a2 += down * U(19);
+    a3 += down * U(28);
+    a2 += down_right * U(20);
+    a3 += down_right * U(29);
+    a2 += left * U(21);
+    a3 += left * U(30);
+    a2 += center * U(22);
+    a3 += center * U(31);
+    a2 += right * U(23);
+    a3 += right * U(32);
+    a2 += up_left * U(24);
+    a3 += up_left * U(33);
+    a2 += up * U(25);
+    a3 += up * U(34);
+    a2 += up_right * U(26);
+    a3 += up_right * U(35);
+
+    vec4 leak = U(40).xxxx;
+    vec4 o0 = mix(vec4(0.0), a0 * leak, lessThan(a0, vec4(0.0)));
+    o0 += max(a0, vec4(0.0));
+    vec4 o1 = mix(vec4(0.0), a1 * leak, lessThan(a1, vec4(0.0)));
+    o1 += max(a1, vec4(0.0));
+    vec4 o2 = mix(vec4(0.0), a2 * leak, lessThan(a2, vec4(0.0)));
+    o2 += max(a2, vec4(0.0));
+    vec4 o3 = mix(vec4(0.0), a3 * leak, lessThan(a3, vec4(0.0)));
+    o3 += max(a3, vec4(0.0));
+    return output_index == 0 ? o0 : output_index == 1 ? o1 : output_index == 2 ? o2 : o3;
+}
+vec4 hook() {
+    return ngu_cubici2_body(1);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubici2] MRT output 2
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND ngu_cubici2_constants
+//!SAVE NGU_CUBICI2_O2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define U(index) texelFetch(ngu_cubici2_constants, ivec2((index), 0), 0)
+float ngu_cubici2_fetch(int x, int y) {
+    ivec2 center = ivec2(floor(HOOKED_pos * HOOKED_size));
+    ivec2 upper = ivec2(HOOKED_size) - ivec2(1);
+    return texelFetch(HOOKED_raw, clamp(center + ivec2(x, y), ivec2(0), upper), 0).x;
+}
+vec4 ngu_cubici2_body(int output_index) {
+    float down_left = ngu_cubici2_fetch(-1, -1);
+    float down = ngu_cubici2_fetch(0, -1);
+    float down_right = ngu_cubici2_fetch(1, -1);
+    float left = ngu_cubici2_fetch(-1, 0);
+    float center = ngu_cubici2_fetch(0, 0);
+    float right = ngu_cubici2_fetch(1, 0);
+    float up_left = ngu_cubici2_fetch(-1, 1);
+    float up = ngu_cubici2_fetch(0, 1);
+    float up_right = ngu_cubici2_fetch(1, 1);
+
+    vec4 a0 = down_left * U(0) + U(36);
+    a0 += down * U(1);
+    a0 += down_right * U(2);
+    a0 += left * U(3);
+    a0 += center * U(4);
+    a0 += right * U(5);
+    a0 += up_left * U(6);
+    a0 += up * U(7);
+    a0 += up_right * U(8);
+    vec4 a1 = down_left * U(9) + U(37);
+    a1 += down * U(10);
+    a1 += down_right * U(11);
+    a1 += left * U(12);
+    a1 += center * U(13);
+    a1 += right * U(14);
+    a1 += up_left * U(15);
+    a1 += up * U(16);
+    a1 += up_right * U(17);
+    vec4 a2 = down_left * U(18) + U(38);
+    vec4 a3 = down_left * U(27) + U(39);
+    a2 += down * U(19);
+    a3 += down * U(28);
+    a2 += down_right * U(20);
+    a3 += down_right * U(29);
+    a2 += left * U(21);
+    a3 += left * U(30);
+    a2 += center * U(22);
+    a3 += center * U(31);
+    a2 += right * U(23);
+    a3 += right * U(32);
+    a2 += up_left * U(24);
+    a3 += up_left * U(33);
+    a2 += up * U(25);
+    a3 += up * U(34);
+    a2 += up_right * U(26);
+    a3 += up_right * U(35);
+
+    vec4 leak = U(40).xxxx;
+    vec4 o0 = mix(vec4(0.0), a0 * leak, lessThan(a0, vec4(0.0)));
+    o0 += max(a0, vec4(0.0));
+    vec4 o1 = mix(vec4(0.0), a1 * leak, lessThan(a1, vec4(0.0)));
+    o1 += max(a1, vec4(0.0));
+    vec4 o2 = mix(vec4(0.0), a2 * leak, lessThan(a2, vec4(0.0)));
+    o2 += max(a2, vec4(0.0));
+    vec4 o3 = mix(vec4(0.0), a3 * leak, lessThan(a3, vec4(0.0)));
+    o3 += max(a3, vec4(0.0));
+    return output_index == 0 ? o0 : output_index == 1 ? o1 : output_index == 2 ? o2 : o3;
+}
+vec4 hook() {
+    return ngu_cubici2_body(2);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubici2] MRT output 3
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND ngu_cubici2_constants
+//!SAVE NGU_CUBICI2_O3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define U(index) texelFetch(ngu_cubici2_constants, ivec2((index), 0), 0)
+float ngu_cubici2_fetch(int x, int y) {
+    ivec2 center = ivec2(floor(HOOKED_pos * HOOKED_size));
+    ivec2 upper = ivec2(HOOKED_size) - ivec2(1);
+    return texelFetch(HOOKED_raw, clamp(center + ivec2(x, y), ivec2(0), upper), 0).x;
+}
+vec4 ngu_cubici2_body(int output_index) {
+    float down_left = ngu_cubici2_fetch(-1, -1);
+    float down = ngu_cubici2_fetch(0, -1);
+    float down_right = ngu_cubici2_fetch(1, -1);
+    float left = ngu_cubici2_fetch(-1, 0);
+    float center = ngu_cubici2_fetch(0, 0);
+    float right = ngu_cubici2_fetch(1, 0);
+    float up_left = ngu_cubici2_fetch(-1, 1);
+    float up = ngu_cubici2_fetch(0, 1);
+    float up_right = ngu_cubici2_fetch(1, 1);
+
+    vec4 a0 = down_left * U(0) + U(36);
+    a0 += down * U(1);
+    a0 += down_right * U(2);
+    a0 += left * U(3);
+    a0 += center * U(4);
+    a0 += right * U(5);
+    a0 += up_left * U(6);
+    a0 += up * U(7);
+    a0 += up_right * U(8);
+    vec4 a1 = down_left * U(9) + U(37);
+    a1 += down * U(10);
+    a1 += down_right * U(11);
+    a1 += left * U(12);
+    a1 += center * U(13);
+    a1 += right * U(14);
+    a1 += up_left * U(15);
+    a1 += up * U(16);
+    a1 += up_right * U(17);
+    vec4 a2 = down_left * U(18) + U(38);
+    vec4 a3 = down_left * U(27) + U(39);
+    a2 += down * U(19);
+    a3 += down * U(28);
+    a2 += down_right * U(20);
+    a3 += down_right * U(29);
+    a2 += left * U(21);
+    a3 += left * U(30);
+    a2 += center * U(22);
+    a3 += center * U(31);
+    a2 += right * U(23);
+    a3 += right * U(32);
+    a2 += up_left * U(24);
+    a3 += up_left * U(33);
+    a2 += up * U(25);
+    a3 += up * U(34);
+    a2 += up_right * U(26);
+    a3 += up_right * U(35);
+
+    vec4 leak = U(40).xxxx;
+    vec4 o0 = mix(vec4(0.0), a0 * leak, lessThan(a0, vec4(0.0)));
+    o0 += max(a0, vec4(0.0));
+    vec4 o1 = mix(vec4(0.0), a1 * leak, lessThan(a1, vec4(0.0)));
+    o1 += max(a1, vec4(0.0));
+    vec4 o2 = mix(vec4(0.0), a2 * leak, lessThan(a2, vec4(0.0)));
+    o2 += max(a2, vec4(0.0));
+    vec4 o3 = mix(vec4(0.0), a3 * leak, lessThan(a3, vec4(0.0)));
+    o3 += max(a3, vec4(0.0));
+    return output_index == 0 ? o0 : output_index == 1 ? o1 : output_index == 2 ? o2 : o3;
+}
+vec4 hook() {
+    return ngu_cubici2_body(3);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 0
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_CUBICI2_O0
+//!BIND NGU_CUBICI2_O1
+//!BIND NGU_CUBICI2_O2
+//!BIND NGU_CUBICI2_O3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER0_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_CUBICI2_O0_raw
+#define NN2 NGU_CUBICI2_O1_raw
+#define NN3 NGU_CUBICI2_O2_raw
+#define NN4 NGU_CUBICI2_O3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(0);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 1
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_CUBICI2_O0
+//!BIND NGU_CUBICI2_O1
+//!BIND NGU_CUBICI2_O2
+//!BIND NGU_CUBICI2_O3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER0_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_CUBICI2_O0_raw
+#define NN2 NGU_CUBICI2_O1_raw
+#define NN3 NGU_CUBICI2_O2_raw
+#define NN4 NGU_CUBICI2_O3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(1);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 2
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_CUBICI2_O0
+//!BIND NGU_CUBICI2_O1
+//!BIND NGU_CUBICI2_O2
+//!BIND NGU_CUBICI2_O3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER0_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_CUBICI2_O0_raw
+#define NN2 NGU_CUBICI2_O1_raw
+#define NN3 NGU_CUBICI2_O2_raw
+#define NN4 NGU_CUBICI2_O3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(2);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 3
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_CUBICI2_O0
+//!BIND NGU_CUBICI2_O1
+//!BIND NGU_CUBICI2_O2
+//!BIND NGU_CUBICI2_O3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER0_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_CUBICI2_O0_raw
+#define NN2 NGU_CUBICI2_O1_raw
+#define NN3 NGU_CUBICI2_O2_raw
+#define NN4 NGU_CUBICI2_O3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(3);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 4
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER0_0
+//!BIND NGU_LAYER0_1
+//!BIND NGU_LAYER0_2
+//!BIND NGU_LAYER0_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER1_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER0_0_raw
+#define NN2 NGU_LAYER0_1_raw
+#define NN3 NGU_LAYER0_2_raw
+#define NN4 NGU_LAYER0_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(4);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 5
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER0_0
+//!BIND NGU_LAYER0_1
+//!BIND NGU_LAYER0_2
+//!BIND NGU_LAYER0_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER1_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER0_0_raw
+#define NN2 NGU_LAYER0_1_raw
+#define NN3 NGU_LAYER0_2_raw
+#define NN4 NGU_LAYER0_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(5);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 6
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER0_0
+//!BIND NGU_LAYER0_1
+//!BIND NGU_LAYER0_2
+//!BIND NGU_LAYER0_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER1_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER0_0_raw
+#define NN2 NGU_LAYER0_1_raw
+#define NN3 NGU_LAYER0_2_raw
+#define NN4 NGU_LAYER0_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(6);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 7
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER0_0
+//!BIND NGU_LAYER0_1
+//!BIND NGU_LAYER0_2
+//!BIND NGU_LAYER0_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER1_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER0_0_raw
+#define NN2 NGU_LAYER0_1_raw
+#define NN3 NGU_LAYER0_2_raw
+#define NN4 NGU_LAYER0_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(7);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 8
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER1_0
+//!BIND NGU_LAYER1_1
+//!BIND NGU_LAYER1_2
+//!BIND NGU_LAYER1_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER2_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER1_0_raw
+#define NN2 NGU_LAYER1_1_raw
+#define NN3 NGU_LAYER1_2_raw
+#define NN4 NGU_LAYER1_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(8);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 9
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER1_0
+//!BIND NGU_LAYER1_1
+//!BIND NGU_LAYER1_2
+//!BIND NGU_LAYER1_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER2_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER1_0_raw
+#define NN2 NGU_LAYER1_1_raw
+#define NN3 NGU_LAYER1_2_raw
+#define NN4 NGU_LAYER1_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(9);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 10
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER1_0
+//!BIND NGU_LAYER1_1
+//!BIND NGU_LAYER1_2
+//!BIND NGU_LAYER1_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER2_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER1_0_raw
+#define NN2 NGU_LAYER1_1_raw
+#define NN3 NGU_LAYER1_2_raw
+#define NN4 NGU_LAYER1_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(10);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 11
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER1_0
+//!BIND NGU_LAYER1_1
+//!BIND NGU_LAYER1_2
+//!BIND NGU_LAYER1_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER2_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER1_0_raw
+#define NN2 NGU_LAYER1_1_raw
+#define NN3 NGU_LAYER1_2_raw
+#define NN4 NGU_LAYER1_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(11);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 12
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER2_0
+//!BIND NGU_LAYER2_1
+//!BIND NGU_LAYER2_2
+//!BIND NGU_LAYER2_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER3_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER2_0_raw
+#define NN2 NGU_LAYER2_1_raw
+#define NN3 NGU_LAYER2_2_raw
+#define NN4 NGU_LAYER2_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(12);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 13
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER2_0
+//!BIND NGU_LAYER2_1
+//!BIND NGU_LAYER2_2
+//!BIND NGU_LAYER2_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER3_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER2_0_raw
+#define NN2 NGU_LAYER2_1_raw
+#define NN3 NGU_LAYER2_2_raw
+#define NN4 NGU_LAYER2_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(13);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 14
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER2_0
+//!BIND NGU_LAYER2_1
+//!BIND NGU_LAYER2_2
+//!BIND NGU_LAYER2_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER3_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER2_0_raw
+#define NN2 NGU_LAYER2_1_raw
+#define NN3 NGU_LAYER2_2_raw
+#define NN4 NGU_LAYER2_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(14);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 15
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER2_0
+//!BIND NGU_LAYER2_1
+//!BIND NGU_LAYER2_2
+//!BIND NGU_LAYER2_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER3_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER2_0_raw
+#define NN2 NGU_LAYER2_1_raw
+#define NN3 NGU_LAYER2_2_raw
+#define NN4 NGU_LAYER2_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(15);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 16
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER3_0
+//!BIND NGU_LAYER3_1
+//!BIND NGU_LAYER3_2
+//!BIND NGU_LAYER3_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER4_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER3_0_raw
+#define NN2 NGU_LAYER3_1_raw
+#define NN3 NGU_LAYER3_2_raw
+#define NN4 NGU_LAYER3_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(16);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 17
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER3_0
+//!BIND NGU_LAYER3_1
+//!BIND NGU_LAYER3_2
+//!BIND NGU_LAYER3_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER4_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER3_0_raw
+#define NN2 NGU_LAYER3_1_raw
+#define NN3 NGU_LAYER3_2_raw
+#define NN4 NGU_LAYER3_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(17);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 18
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER3_0
+//!BIND NGU_LAYER3_1
+//!BIND NGU_LAYER3_2
+//!BIND NGU_LAYER3_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER4_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER3_0_raw
+#define NN2 NGU_LAYER3_1_raw
+#define NN3 NGU_LAYER3_2_raw
+#define NN4 NGU_LAYER3_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(18);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 19
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER3_0
+//!BIND NGU_LAYER3_1
+//!BIND NGU_LAYER3_2
+//!BIND NGU_LAYER3_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER4_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER3_0_raw
+#define NN2 NGU_LAYER3_1_raw
+#define NN3 NGU_LAYER3_2_raw
+#define NN4 NGU_LAYER3_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(19);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 20
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER4_0
+//!BIND NGU_LAYER4_1
+//!BIND NGU_LAYER4_2
+//!BIND NGU_LAYER4_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER5_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER4_0_raw
+#define NN2 NGU_LAYER4_1_raw
+#define NN3 NGU_LAYER4_2_raw
+#define NN4 NGU_LAYER4_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(20);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 21
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER4_0
+//!BIND NGU_LAYER4_1
+//!BIND NGU_LAYER4_2
+//!BIND NGU_LAYER4_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER5_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER4_0_raw
+#define NN2 NGU_LAYER4_1_raw
+#define NN3 NGU_LAYER4_2_raw
+#define NN4 NGU_LAYER4_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(21);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 22
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER4_0
+//!BIND NGU_LAYER4_1
+//!BIND NGU_LAYER4_2
+//!BIND NGU_LAYER4_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER5_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER4_0_raw
+#define NN2 NGU_LAYER4_1_raw
+#define NN3 NGU_LAYER4_2_raw
+#define NN4 NGU_LAYER4_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(22);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 23
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER4_0
+//!BIND NGU_LAYER4_1
+//!BIND NGU_LAYER4_2
+//!BIND NGU_LAYER4_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER5_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER4_0_raw
+#define NN2 NGU_LAYER4_1_raw
+#define NN3 NGU_LAYER4_2_raw
+#define NN4 NGU_LAYER4_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(23);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 24
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER5_0
+//!BIND NGU_LAYER5_1
+//!BIND NGU_LAYER5_2
+//!BIND NGU_LAYER5_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER6_0
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER5_0_raw
+#define NN2 NGU_LAYER5_1_raw
+#define NN3 NGU_LAYER5_2_raw
+#define NN4 NGU_LAYER5_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(24);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 25
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER5_0
+//!BIND NGU_LAYER5_1
+//!BIND NGU_LAYER5_2
+//!BIND NGU_LAYER5_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER6_1
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER5_0_raw
+#define NN2 NGU_LAYER5_1_raw
+#define NN3 NGU_LAYER5_2_raw
+#define NN4 NGU_LAYER5_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(25);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 26
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER5_0
+//!BIND NGU_LAYER5_1
+//!BIND NGU_LAYER5_2
+//!BIND NGU_LAYER5_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER6_2
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER5_0_raw
+#define NN2 NGU_LAYER5_1_raw
+#define NN3 NGU_LAYER5_2_raw
+#define NN4 NGU_LAYER5_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(26);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] layer 27
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER5_0
+//!BIND NGU_LAYER5_1
+//!BIND NGU_LAYER5_2
+//!BIND NGU_LAYER5_3
+//!BIND ngu_layer_constants
+//!SAVE NGU_LAYER6_3
+//!WIDTH HOOKED.w
+//!HEIGHT HOOKED.h
+//!COMPONENTS 4
+#define NN1 NGU_LAYER5_0_raw
+#define NN2 NGU_LAYER5_1_raw
+#define NN3 NGU_LAYER5_2_raw
+#define NN4 NGU_LAYER5_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_layer_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL147 = vec4(0,-1,1,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 w1 = ngu_layer_fetch0(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w2 = (w1.yyyy * ngu_u(17, layer));
+  vec4 w3 = (ngu_u(16, layer) * w1.xxxx + w2);
+  vec4 w4 = (ngu_u(18, layer) * w1.zzzz + w3);
+  vec4 w5 = (ngu_u(19, layer) * w1.wwww + w4);
+  vec4 w6 = ngu_layer_fetch1(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w7 = (w6.yyyy * ngu_u(53, layer));
+  vec4 w8 = (ngu_u(52, layer) * w6.xxxx + w7);
+  vec4 w9 = (ngu_u(54, layer) * w6.zzzz + w8);
+  vec4 w10 = (ngu_u(55, layer) * w6.wwww + w9);
+  vec4 w11 = (w5 + w10);
+  vec4 w12 = ngu_layer_fetch2(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w13 = (w12.yyyy * ngu_u(89, layer));
+  vec4 w14 = (ngu_u(88, layer) * w12.xxxx + w13);
+  vec4 w15 = (ngu_u(90, layer) * w12.zzzz + w14);
+  vec4 w16 = (ngu_u(91, layer) * w12.wwww + w15);
+  vec4 w17 = (w11 + w16);
+  vec4 w18 = ngu_layer_fetch3(vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w19 = (w18.yyyy * ngu_u(125, layer));
+  vec4 w20 = (ngu_u(124, layer) * w18.xxxx + w19);
+  vec4 w21 = (ngu_u(126, layer) * w18.zzzz + w20);
+  vec4 w22 = (ngu_u(127, layer) * w18.wwww + w21);
+  vec4 w23 = (w17 + w22);
+  vec4 e24 = ((-ngu_u(146, layer)) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w24 = vec4(e24.x, e24.y, w22.z, w22.w);
+  vec4 w25 = ngu_layer_fetch0(w24);
+  vec4 w26 = (w25.yyyy * ngu_u(1, layer));
+  vec4 w27 = (ngu_u(0, layer) * w25.xxxx + w26);
+  vec4 w28 = (ngu_u(2, layer) * w25.zzzz + w27);
+  vec4 w29 = (ngu_u(3, layer) * w25.wwww + w28);
+  vec4 w30 = ngu_layer_fetch1(w24);
+  vec4 w31 = (w30.yyyy * ngu_u(37, layer));
+  vec4 w32 = (ngu_u(36, layer) * w30.xxxx + w31);
+  vec4 w33 = (ngu_u(38, layer) * w30.zzzz + w32);
+  vec4 w34 = (ngu_u(39, layer) * w30.wwww + w33);
+  vec4 w35 = (w29 + w34);
+  vec4 w36 = ngu_layer_fetch2(w24);
+  vec4 w37 = ngu_layer_fetch3(w24);
+  vec4 w38 = (w36.yyyy * ngu_u(73, layer));
+  vec4 w39 = (ngu_u(72, layer) * w36.xxxx + w38);
+  vec4 w40 = (ngu_u(74, layer) * w36.zzzz + w39);
+  vec4 w41 = (ngu_u(75, layer) * w36.wwww + w40);
+  vec4 w42 = (w35 + w41);
+  vec4 w43 = (w37.yyyy * ngu_u(109, layer));
+  vec4 w44 = (ngu_u(108, layer) * w37.xxxx + w43);
+  vec4 w45 = (ngu_u(110, layer) * w37.zzzz + w44);
+  vec4 w46 = (ngu_u(111, layer) * w37.wwww + w45);
+  vec4 w47 = (w46 + w42);
+  vec4 w48 = (w47 + ngu_u(144, layer));
+  vec4 e49 = DL147;
+  vec4 w49 = vec4(e49.x, e49.y, e49.z, w42.w);
+  vec4 w50 = (ngu_u(146, layer).xyxy * w49.xyzy + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w51 = ngu_layer_fetch0(w50);
+  vec4 w52 = (w51.yyyy * ngu_u(5, layer));
+  vec4 w53 = (ngu_u(4, layer) * w51.xxxx + w52);
+  vec4 w54 = (ngu_u(6, layer) * w51.zzzz + w53);
+  vec4 w55 = (ngu_u(7, layer) * w51.wwww + w54);
+  vec4 w56 = ngu_layer_fetch1(w50);
+  vec4 w57 = (w56.yyyy * ngu_u(41, layer));
+  vec4 w58 = (ngu_u(40, layer) * w56.xxxx + w57);
+  vec4 w59 = (ngu_u(42, layer) * w56.zzzz + w58);
+  vec4 w60 = (ngu_u(43, layer) * w56.wwww + w59);
+  vec4 w61 = (w55 + w60);
+  vec4 w62 = ngu_layer_fetch2(w50);
+  vec4 w63 = (w62.yyyy * ngu_u(77, layer));
+  vec4 w64 = (ngu_u(76, layer) * w62.xxxx + w63);
+  vec4 w65 = (ngu_u(78, layer) * w62.zzzz + w64);
+  vec4 w66 = (ngu_u(79, layer) * w62.wwww + w65);
+  vec4 w67 = (w61 + w66);
+  vec4 w68 = ngu_layer_fetch3(w50);
+  vec4 w69 = (w68.yyyy * ngu_u(113, layer));
+  vec4 w70 = (ngu_u(112, layer) * w68.xxxx + w69);
+  vec4 w71 = (ngu_u(114, layer) * w68.zzzz + w70);
+  vec4 w72 = (ngu_u(115, layer) * w68.wwww + w71);
+  vec4 w73 = (w67 + w72);
+  vec4 w74 = (w48 + w73);
+  vec4 w75 = ngu_layer_fetch0(w50.zwzw);
+  vec4 w76 = (w75.yyyy * ngu_u(9, layer));
+  vec4 w77 = (ngu_u(8, layer) * w75.xxxx + w76);
+  vec4 w78 = (ngu_u(10, layer) * w75.zzzz + w77);
+  vec4 w79 = (ngu_u(11, layer) * w75.wwww + w78);
+  vec4 w80 = ngu_layer_fetch1(w50.zwzw);
+  vec4 w81 = (w80.yyyy * ngu_u(45, layer));
+  vec4 w82 = (ngu_u(44, layer) * w80.xxxx + w81);
+  vec4 w83 = (ngu_u(46, layer) * w80.zzzz + w82);
+  vec4 w84 = (ngu_u(47, layer) * w80.wwww + w83);
+  vec4 w85 = (w79 + w84);
+  vec4 w86 = ngu_layer_fetch2(w50.zwzw);
+  vec4 w87 = ngu_layer_fetch3(w50.zwzw);
+  vec4 w88 = (w86.yyyy * ngu_u(81, layer));
+  vec4 w89 = (ngu_u(80, layer) * w86.xxxx + w88);
+  vec4 w90 = (ngu_u(82, layer) * w86.zzzz + w89);
+  vec4 w91 = (ngu_u(83, layer) * w86.wwww + w90);
+  vec4 w92 = (w85 + w91);
+  vec4 w93 = (w87.yyyy * ngu_u(117, layer));
+  vec4 w94 = (ngu_u(116, layer) * w87.xxxx + w93);
+  vec4 w95 = (ngu_u(118, layer) * w87.zzzz + w94);
+  vec4 w96 = (ngu_u(119, layer) * w87.wwww + w95);
+  vec4 w97 = (w96 + w92);
+  vec4 w98 = (w74 + w97);
+  vec4 w99 = (ngu_u(146, layer).xyxy * w49.yxzx + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w100 = ngu_layer_fetch0(w99);
+  vec4 w101 = (w100.yyyy * ngu_u(13, layer));
+  vec4 w102 = (ngu_u(12, layer) * w100.xxxx + w101);
+  vec4 w103 = (ngu_u(14, layer) * w100.zzzz + w102);
+  vec4 w104 = (ngu_u(15, layer) * w100.wwww + w103);
+  vec4 w105 = ngu_layer_fetch1(w99);
+  vec4 w106 = (w105.yyyy * ngu_u(49, layer));
+  vec4 w107 = (ngu_u(48, layer) * w105.xxxx + w106);
+  vec4 w108 = (ngu_u(50, layer) * w105.zzzz + w107);
+  vec4 w109 = (ngu_u(51, layer) * w105.wwww + w108);
+  vec4 w110 = (w104 + w109);
+  vec4 w111 = ngu_layer_fetch2(w99);
+  vec4 w112 = (w111.yyyy * ngu_u(85, layer));
+  vec4 w113 = (ngu_u(84, layer) * w111.xxxx + w112);
+  vec4 w114 = (ngu_u(86, layer) * w111.zzzz + w113);
+  vec4 w115 = (ngu_u(87, layer) * w111.wwww + w114);
+  vec4 w116 = (w110 + w115);
+  vec4 w117 = ngu_layer_fetch3(w99);
+  vec4 w118 = (w117.yyyy * ngu_u(121, layer));
+  vec4 w119 = (ngu_u(120, layer) * w117.xxxx + w118);
+  vec4 w120 = (ngu_u(122, layer) * w117.zzzz + w119);
+  vec4 w121 = (ngu_u(123, layer) * w117.wwww + w120);
+  vec4 w122 = (w116 + w121);
+  vec4 w123 = (w98 + w122);
+  vec4 w124 = (w23 + w123);
+  vec4 w125 = ngu_layer_fetch0(w99.zwzw);
+  vec4 w126 = (w125.yyyy * ngu_u(21, layer));
+  vec4 w127 = (ngu_u(20, layer) * w125.xxxx + w126);
+  vec4 w128 = (ngu_u(22, layer) * w125.zzzz + w127);
+  vec4 w129 = (ngu_u(23, layer) * w125.wwww + w128);
+  vec4 w130 = ngu_layer_fetch1(w99.zwzw);
+  vec4 w131 = (w130.yyyy * ngu_u(57, layer));
+  vec4 w132 = (ngu_u(56, layer) * w130.xxxx + w131);
+  vec4 w133 = (ngu_u(58, layer) * w130.zzzz + w132);
+  vec4 w134 = (ngu_u(59, layer) * w130.wwww + w133);
+  vec4 w135 = (w129 + w134);
+  vec4 w136 = ngu_layer_fetch2(w99.zwzw);
+  vec4 w137 = ngu_layer_fetch3(w99.zwzw);
+  vec4 w138 = (w136.yyyy * ngu_u(93, layer));
+  vec4 w139 = (ngu_u(92, layer) * w136.xxxx + w138);
+  vec4 w140 = (ngu_u(94, layer) * w136.zzzz + w139);
+  vec4 w141 = (ngu_u(95, layer) * w136.wwww + w140);
+  vec4 w142 = (w135 + w141);
+  vec4 w143 = (w137.yyyy * ngu_u(129, layer));
+  vec4 w144 = (ngu_u(128, layer) * w137.xxxx + w143);
+  vec4 w145 = (ngu_u(130, layer) * w137.zzzz + w144);
+  vec4 w146 = (ngu_u(131, layer) * w137.wwww + w145);
+  vec4 w147 = (w142 + w146);
+  vec4 w148 = (w124 + w147);
+  vec4 w149 = (ngu_u(146, layer).xyxy * w49.yzxz + vec4(HOOKED_pos, 0.0, 1.0).xyxy);
+  vec4 w150 = ngu_layer_fetch0(w149);
+  vec4 w151 = (w150.yyyy * ngu_u(25, layer));
+  vec4 w152 = (ngu_u(24, layer) * w150.xxxx + w151);
+  vec4 w153 = (ngu_u(26, layer) * w150.zzzz + w152);
+  vec4 w154 = (ngu_u(27, layer) * w150.wwww + w153);
+  vec4 w155 = ngu_layer_fetch1(w149);
+  vec4 w156 = (w155.yyyy * ngu_u(61, layer));
+  vec4 w157 = (ngu_u(60, layer) * w155.xxxx + w156);
+  vec4 w158 = (ngu_u(62, layer) * w155.zzzz + w157);
+  vec4 w159 = (ngu_u(63, layer) * w155.wwww + w158);
+  vec4 w160 = (w154 + w159);
+  vec4 w161 = ngu_layer_fetch2(w149);
+  vec4 w162 = (w161.yyyy * ngu_u(97, layer));
+  vec4 w163 = (ngu_u(96, layer) * w161.xxxx + w162);
+  vec4 w164 = (ngu_u(98, layer) * w161.zzzz + w163);
+  vec4 w165 = (ngu_u(99, layer) * w161.wwww + w164);
+  vec4 w166 = (w160 + w165);
+  vec4 w167 = ngu_layer_fetch3(w149);
+  vec4 w168 = (w167.yyyy * ngu_u(133, layer));
+  vec4 w169 = (ngu_u(132, layer) * w167.xxxx + w168);
+  vec4 w170 = (ngu_u(134, layer) * w167.zzzz + w169);
+  vec4 w171 = (ngu_u(135, layer) * w167.wwww + w170);
+  vec4 w172 = (w166 + w171);
+  vec4 w173 = (w148 + w172);
+  vec4 w174 = ngu_layer_fetch0(w149.zwzw);
+  vec4 w175 = (w174.yyyy * ngu_u(29, layer));
+  vec4 w176 = (ngu_u(28, layer) * w174.xxxx + w175);
+  vec4 w177 = (ngu_u(30, layer) * w174.zzzz + w176);
+  vec4 w178 = (ngu_u(31, layer) * w174.wwww + w177);
+  vec4 w179 = ngu_layer_fetch1(w149.zwzw);
+  vec4 w180 = (w179.yyyy * ngu_u(65, layer));
+  vec4 w181 = (ngu_u(64, layer) * w179.xxxx + w180);
+  vec4 w182 = (ngu_u(66, layer) * w179.zzzz + w181);
+  vec4 w183 = (ngu_u(67, layer) * w179.wwww + w182);
+  vec4 w184 = (w178 + w183);
+  vec4 w185 = ngu_layer_fetch2(w149.zwzw);
+  vec4 w186 = ngu_layer_fetch3(w149.zwzw);
+  vec4 w187 = (w185.yyyy * ngu_u(101, layer));
+  vec4 w188 = (ngu_u(100, layer) * w185.xxxx + w187);
+  vec4 w189 = (ngu_u(102, layer) * w185.zzzz + w188);
+  vec4 w190 = (ngu_u(103, layer) * w185.wwww + w189);
+  vec4 w191 = (w184 + w190);
+  vec4 w192 = (w186.yyyy * ngu_u(137, layer));
+  vec4 w193 = (ngu_u(136, layer) * w186.xxxx + w192);
+  vec4 w194 = (ngu_u(138, layer) * w186.zzzz + w193);
+  vec4 w195 = (ngu_u(139, layer) * w186.wwww + w194);
+  vec4 w196 = (w195 + w191);
+  vec4 w197 = (w173 + w196);
+  vec4 e198 = (ngu_u(146, layer) + vec4(HOOKED_pos, 0.0, 1.0));
+  vec4 w198 = vec4(e198.x, e198.y, w196.z, w196.w);
+  vec4 w199 = ngu_layer_fetch0(w198);
+  vec4 w200 = (w199.yyyy * ngu_u(33, layer));
+  vec4 w201 = (ngu_u(32, layer) * w199.xxxx + w200);
+  vec4 w202 = (ngu_u(34, layer) * w199.zzzz + w201);
+  vec4 w203 = (ngu_u(35, layer) * w199.wwww + w202);
+  vec4 w204 = ngu_layer_fetch1(w198);
+  vec4 w205 = (w204.yyyy * ngu_u(69, layer));
+  vec4 w206 = (ngu_u(68, layer) * w204.xxxx + w205);
+  vec4 w207 = (ngu_u(70, layer) * w204.zzzz + w206);
+  vec4 w208 = (ngu_u(71, layer) * w204.wwww + w207);
+  vec4 w209 = (w203 + w208);
+  vec4 w210 = ngu_layer_fetch2(w198);
+  vec4 w211 = ngu_layer_fetch3(w198);
+  vec4 w212 = (w210.yyyy * ngu_u(105, layer));
+  vec4 w213 = (ngu_u(104, layer) * w210.xxxx + w212);
+  vec4 w214 = (ngu_u(106, layer) * w210.zzzz + w213);
+  vec4 w215 = (ngu_u(107, layer) * w210.wwww + w214);
+  vec4 w216 = (w209 + w215);
+  vec4 w217 = (w211.yyyy * ngu_u(141, layer));
+  vec4 w218 = (ngu_u(140, layer) * w211.xxxx + w217);
+  vec4 w219 = (ngu_u(142, layer) * w211.zzzz + w218);
+  vec4 w220 = (ngu_u(143, layer) * w211.wwww + w219);
+  vec4 w221 = (w220 + w216);
+  vec4 w222 = (w197 + w221);
+  vec4 w223 = (w222 * ngu_u(145, layer).xxxx);
+  vec4 w224 = mix(vec4(0.0), w223, lessThan(w222, vec4(0.0)));
+  vec4 w225 = max(w222, DL147.xxxx);
+  vec4 w226 = (w224 + w225);
+  return w226;
+}
+vec4 hook() {
+    return ngu_layer_body(27);
+}
+
+//!DESC [NGU Sharp VeryHigh chroma Cubic22] dense output
+//!HOOK CHROMA
+//!BIND HOOKED
+//!BIND NGU_LAYER6_0
+//!BIND NGU_LAYER6_1
+//!BIND NGU_LAYER6_2
+//!BIND NGU_LAYER6_3
+//!BIND ngu_dense_constants
+//!SAVE NGU_DENSE
+//!WIDTH HOOKED.w 2 +
+//!HEIGHT HOOKED.h 2 +
+//!COMPONENTS 4
+#define NN1 NGU_LAYER6_0_raw
+#define NN2 NGU_LAYER6_1_raw
+#define NN3 NGU_LAYER6_2_raw
+#define NN4 NGU_LAYER6_3_raw
+vec4 ngu_u(int index, int layer) {
+    return texelFetch(ngu_dense_constants, ivec2(index, layer), 0);
+}
+vec4 ngu_layer_fetch0(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN1, p, 0);
+}
+vec4 ngu_layer_fetch0(vec4 pos) { return ngu_layer_fetch0(pos.xy); }
+vec4 ngu_layer_fetch1(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN2, p, 0);
+}
+vec4 ngu_layer_fetch1(vec4 pos) { return ngu_layer_fetch1(pos.xy); }
+vec4 ngu_layer_fetch2(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN3, p, 0);
+}
+vec4 ngu_layer_fetch2(vec4 pos) { return ngu_layer_fetch2(pos.xy); }
+vec4 ngu_layer_fetch3(vec2 pos) {
+    ivec2 p = clamp(ivec2(floor(pos * HOOKED_size)), ivec2(0), ivec2(HOOKED_size) - ivec2(1));
+    return texelFetch(NN4, p, 0);
+}
+vec4 ngu_layer_fetch3(vec4 pos) { return ngu_layer_fetch3(pos.xy); }
+vec4 ngu_layer_body(int layer) {
+
+    vec4 DL67 = vec4(-1,1,0,0);
+  vec4 r0_init = vec4(0,0,0,0);
+  vec4 r1_init = vec4(0,0,0,0);
+  vec4 r2_init = vec4(0,0,0,0);
+  vec4 r3_init = vec4(0,0,0,0);
+  vec4 r4_init = vec4(0,0,0,0);
+  vec4 r5_init = vec4(0,0,0,0);
+  vec4 r6_init = vec4(0,0,0,0);
+  vec4 r7_init = vec4(0,0,0,0);
+  vec4 r8_init = vec4(0,0,0,0);
+  vec4 r9_init = vec4(0,0,0,0);
+  vec4 r10_init = vec4(0,0,0,0);
+  vec4 r11_init = vec4(0,0,0,0);
+  vec4 r12_init = vec4(0,0,0,0);
+  vec4 r13_init = vec4(0,0,0,0);
+  vec4 r14_init = vec4(0,0,0,0);
+  vec4 r15_init = vec4(0,0,0,0);
+  vec4 r16_init = vec4(0,0,0,0);
+  vec4 r17_init = vec4(0,0,0,0);
+  vec4 r18_init = vec4(0,0,0,0);
+  vec4 r19_init = vec4(0,0,0,0);
+  vec4 r20_init = vec4(0,0,0,0);
+  vec4 r21_init = vec4(0,0,0,0);
+  vec4 r22_init = vec4(0,0,0,0);
+  vec4 r23_init = vec4(0,0,0,0);
+  vec4 r24_init = vec4(0,0,0,0);
+  vec4 r25_init = vec4(0,0,0,0);
+  vec4 r26_init = vec4(0,0,0,0);
+  vec4 r27_init = vec4(0,0,0,0);
+  vec4 r28_init = vec4(0,0,0,0);
+  vec4 r29_init = vec4(0,0,0,0);
+  vec4 r30_init = vec4(0,0,0,0);
+  vec4 r31_init = vec4(0,0,0,0);
+  vec4 e1 = DL67;
+  vec4 w1 = vec4(e1.x, e1.y, e1.z, r0_init.w);
+  vec4 e2 = (vec4(HOOKED_pos, 0.0, 1.0).xyzy * ngu_u(66, layer).xyzy + w1.xxxx);
+  vec4 w2 = vec4(e2.x, w1.y, w1.z, e2.w);
+  vec4 e3 = (w2.xwzw * ngu_u(65, layer));
+  vec4 w3 = vec4(e3.x, e3.y, r1_init.z, r1_init.w);
+  vec4 e4 = (w2 * ngu_u(65, layer).xyzy + ngu_u(65, layer).xyzy);
+  vec4 w4 = vec4(e4.x, w2.y, w2.z, e4.w);
+  vec4 w5 = ngu_layer_fetch0(w3);
+  vec4 e6 = vec4(dot(w5, ngu_u(10, layer)));
+  vec4 w6 = vec4(w3.x, w3.y, e6.z, w3.w);
+  vec4 w7 = ngu_layer_fetch1(w6);
+  vec4 e8 = vec4(dot(w7, ngu_u(26, layer)));
+  vec4 w8 = vec4(w6.x, w6.y, w6.z, e8.w);
+  vec4 e9 = (w8.wwww + w8.zzzz);
+  vec4 w9 = vec4(w8.x, w8.y, e9.z, w8.w);
+  vec4 w10 = ngu_layer_fetch2(w9);
+  vec4 e11 = vec4(dot(w10, ngu_u(42, layer)));
+  vec4 w11 = vec4(w9.x, w9.y, w9.z, e11.w);
+  vec4 e12 = (w11.wwww + w11.zzzz);
+  vec4 w12 = vec4(w11.x, w11.y, e12.z, w11.w);
+  vec4 w13 = ngu_layer_fetch3(w12);
+  vec4 w14 = (ngu_u(65, layer).xyxy * w4.yzzy + w12.xyxy);
+  vec4 e15 = vec4(dot(w13, ngu_u(58, layer)));
+  vec4 w15 = vec4(w4.x, e15.y, w4.z, w4.w);
+  vec4 e16 = (w15.yyyy + w12.zzzz);
+  vec4 w16 = vec4(w15.x, e16.y, w15.z, w15.w);
+  vec4 w17 = ngu_layer_fetch0(w14);
+  vec4 e18 = vec4(dot(w17, ngu_u(8, layer)));
+  vec4 w18 = vec4(w16.x, w16.y, e18.z, w16.w);
+  vec4 e19 = (w18.zzzz + w18.yyyy);
+  vec4 w19 = vec4(w18.x, e19.y, w18.z, w18.w);
+  vec4 w20 = ngu_layer_fetch1(w14);
+  vec4 e21 = vec4(dot(w20, ngu_u(24, layer)));
+  vec4 w21 = vec4(w19.x, w19.y, e21.z, w19.w);
+  vec4 e22 = (w21.zzzz + w21.yyyy);
+  vec4 w22 = vec4(w21.x, e22.y, w21.z, w21.w);
+  vec4 w23 = ngu_layer_fetch2(w14);
+  vec4 e24 = vec4(dot(w23, ngu_u(40, layer)));
+  vec4 w24 = vec4(w22.x, w22.y, e24.z, w22.w);
+  vec4 e25 = (w24.zzzz + w24.yyyy);
+  vec4 w25 = vec4(w24.x, e25.y, w24.z, w24.w);
+  vec4 w26 = ngu_layer_fetch3(w14);
+  vec4 e27 = vec4(dot(w26, ngu_u(56, layer)));
+  vec4 w27 = vec4(w25.x, w25.y, e27.z, w25.w);
+  vec4 e28 = (w27.zzzz + w27.yyyy);
+  vec4 w28 = vec4(w27.x, e28.y, w27.z, w27.w);
+  vec4 w29 = ngu_layer_fetch0(w14.zwzw);
+  vec4 e30 = vec4(dot(w29, ngu_u(2, layer)));
+  vec4 w30 = vec4(w28.x, w28.y, e30.z, w28.w);
+  vec4 e31 = (w30.zzzz + w30.yyyy);
+  vec4 w31 = vec4(w30.x, e31.y, w30.z, w30.w);
+  vec4 w32 = ngu_layer_fetch1(w14.zwzw);
+  vec4 e33 = vec4(dot(w32, ngu_u(18, layer)));
+  vec4 w33 = vec4(w31.x, w31.y, e33.z, w31.w);
+  vec4 e34 = (w33.zzzz + w33.yyyy);
+  vec4 w34 = vec4(w33.x, e34.y, w33.z, w33.w);
+  vec4 w35 = ngu_layer_fetch2(w14.zwzw);
+  vec4 w36 = ngu_layer_fetch3(w14.zwzw);
+  vec4 e37 = vec4(dot(w35, ngu_u(34, layer)));
+  vec4 w37 = vec4(w34.x, w34.y, e37.z, w34.w);
+  vec4 e38 = (w37.zzzz + w37.yyyy);
+  vec4 w38 = vec4(w37.x, e38.y, w37.z, w37.w);
+  vec4 e39 = vec4(dot(w36, ngu_u(50, layer)));
+  vec4 w39 = vec4(w38.x, w38.y, e39.z, w38.w);
+  vec4 e40 = (w39.zzzz + w39.yyyy);
+  vec4 w40 = vec4(w39.x, e40.y, w39.z, w39.w);
+  vec4 w41 = ngu_layer_fetch0(w40.xwzw);
+  vec4 e42 = vec4(dot(w41, ngu_u(0, layer)));
+  vec4 w42 = vec4(w40.x, w40.y, e42.z, w40.w);
+  vec4 e43 = (w42.zzzz + w42.yyyy);
+  vec4 w43 = vec4(w42.x, e43.y, w42.z, w42.w);
+  vec4 w44 = ngu_layer_fetch1(w43.xwzw);
+  vec4 e45 = vec4(dot(w44, ngu_u(16, layer)));
+  vec4 w45 = vec4(w43.x, w43.y, e45.z, w43.w);
+  vec4 e46 = (w45.zzzz + w45.yyyy);
+  vec4 w46 = vec4(w45.x, e46.y, w45.z, w45.w);
+  vec4 w47 = ngu_layer_fetch2(w46.xwzw);
+  vec4 w48 = ngu_layer_fetch3(w46.xwzw);
+  vec4 e49 = vec4(dot(w47, ngu_u(32, layer)));
+  vec4 w49 = vec4(e49.x, w46.y, w46.z, w46.w);
+  vec4 e50 = (w49.xxxx + w49.yyyy);
+  vec4 w50 = vec4(e50.x, w49.y, w49.z, w49.w);
+  vec4 e51 = vec4(dot(w48, ngu_u(48, layer)));
+  vec4 w51 = vec4(w50.x, e51.y, w50.z, w50.w);
+  vec4 e52 = (w51.yyyy + w51.xxxx);
+  vec4 w52 = vec4(e52.x, w51.y, w51.z, w51.w);
+  vec4 e53 = vec4(dot(w17, ngu_u(9, layer)));
+  vec4 w53 = vec4(e53.x, r17_init.y, r17_init.z, r17_init.w);
+  vec4 e54 = vec4(dot(w5, ngu_u(11, layer)));
+  vec4 w54 = vec4(w53.x, e54.y, w53.z, w53.w);
+  vec4 e55 = vec4(dot(w7, ngu_u(27, layer)));
+  vec4 w55 = vec4(w54.x, w54.y, e55.z, w54.w);
+  vec4 e56 = (w55.zzzz + w55.yyyy);
+  vec4 w56 = vec4(w55.x, e56.y, w55.z, w55.w);
+  vec4 e57 = vec4(dot(w10, ngu_u(43, layer)));
+  vec4 w57 = vec4(w56.x, w56.y, e57.z, w56.w);
+  vec4 e58 = (w57.zzzz + w57.yyyy);
+  vec4 w58 = vec4(w57.x, e58.y, w57.z, w57.w);
+  vec4 e59 = vec4(dot(w13, ngu_u(59, layer)));
+  vec4 w59 = vec4(w58.x, w58.y, e59.z, w58.w);
+  vec4 e60 = (w59.zzzz + w59.yyyy);
+  vec4 w60 = vec4(w59.x, e60.y, w59.z, w59.w);
+  vec4 e61 = (w60.xxxx + w60.yyyy);
+  vec4 w61 = vec4(e61.x, w60.y, w60.z, w60.w);
+  vec4 e62 = vec4(dot(w20, ngu_u(25, layer)));
+  vec4 w62 = vec4(w61.x, e62.y, w61.z, w61.w);
+  vec4 e63 = (w62.yyyy + w62.xxxx);
+  vec4 w63 = vec4(e63.x, w62.y, w62.z, w62.w);
+  vec4 e64 = vec4(dot(w23, ngu_u(41, layer)));
+  vec4 w64 = vec4(w63.x, e64.y, w63.z, w63.w);
+  vec4 e65 = (w64.yyyy + w64.xxxx);
+  vec4 w65 = vec4(e65.x, w64.y, w64.z, w64.w);
+  vec4 e66 = vec4(dot(w26, ngu_u(57, layer)));
+  vec4 w66 = vec4(w65.x, e66.y, w65.z, w65.w);
+  vec4 e67 = (w66.yyyy + w66.xxxx);
+  vec4 w67 = vec4(e67.x, w66.y, w66.z, w66.w);
+  vec4 e68 = vec4(dot(w29, ngu_u(3, layer)));
+  vec4 w68 = vec4(w67.x, e68.y, w67.z, w67.w);
+  vec4 e69 = (w68.yyyy + w68.xxxx);
+  vec4 w69 = vec4(e69.x, w68.y, w68.z, w68.w);
+  vec4 e70 = vec4(dot(w32, ngu_u(19, layer)));
+  vec4 w70 = vec4(w69.x, e70.y, w69.z, w69.w);
+  vec4 e71 = (w70.yyyy + w70.xxxx);
+  vec4 w71 = vec4(e71.x, w70.y, w70.z, w70.w);
+  vec4 e72 = vec4(dot(w35, ngu_u(35, layer)));
+  vec4 w72 = vec4(w71.x, e72.y, w71.z, w71.w);
+  vec4 e73 = (w72.yyyy + w72.xxxx);
+  vec4 w73 = vec4(e73.x, w72.y, w72.z, w72.w);
+  vec4 e74 = vec4(dot(w36, ngu_u(51, layer)));
+  vec4 w74 = vec4(w73.x, e74.y, w73.z, w73.w);
+  vec4 e75 = (w74.yyyy + w74.xxxx);
+  vec4 w75 = vec4(e75.x, w74.y, w74.z, w74.w);
+  vec4 e76 = vec4(dot(w41, ngu_u(1, layer)));
+  vec4 w76 = vec4(w75.x, e76.y, w75.z, w75.w);
+  vec4 e77 = (w76.yyyy + w76.xxxx);
+  vec4 w77 = vec4(e77.x, w76.y, w76.z, w76.w);
+  vec4 e78 = vec4(dot(w44, ngu_u(17, layer)));
+  vec4 w78 = vec4(w77.x, e78.y, w77.z, w77.w);
+  vec4 e79 = (w78.yyyy + w78.xxxx);
+  vec4 w79 = vec4(e79.x, w78.y, w78.z, w78.w);
+  vec4 e80 = vec4(dot(w47, ngu_u(33, layer)));
+  vec4 w80 = vec4(w79.x, e80.y, w79.z, w79.w);
+  vec4 e81 = (w80.yyyy + w80.xxxx);
+  vec4 w81 = vec4(e81.x, w80.y, w80.z, w80.w);
+  vec4 e82 = vec4(dot(w48, ngu_u(49, layer)));
+  vec4 w82 = vec4(w81.x, e82.y, w81.z, w81.w);
+  vec4 e83 = (w82.yyyy + w82.xxxx);
+  vec4 w83 = vec4(w52.x, e83.y, w52.z, w52.w);
+  vec4 e84 = vec4(dot(w5, ngu_u(14, layer)));
+  vec4 w84 = vec4(e84.x, w82.y, w82.z, w82.w);
+  vec4 e85 = vec4(dot(w5, ngu_u(15, layer)));
+  vec4 w85 = vec4(e85.x, w5.y, w5.z, w5.w);
+  vec4 e86 = vec4(dot(w7, ngu_u(30, layer)));
+  vec4 w86 = vec4(w85.x, e86.y, w85.z, w85.w);
+  vec4 e87 = vec4(dot(w7, ngu_u(31, layer)));
+  vec4 w87 = vec4(w86.x, w86.y, e87.z, w86.w);
+  vec4 e88 = (w87.zzzz + w87.xxxx);
+  vec4 w88 = vec4(e88.x, w87.y, w87.z, w87.w);
+  vec4 e89 = (w88.yyyy + w84.xxxx);
+  vec4 w89 = vec4(w88.x, e89.y, w88.z, w88.w);
+  vec4 e90 = vec4(dot(w10, ngu_u(46, layer)));
+  vec4 w90 = vec4(w89.x, w89.y, e90.z, w89.w);
+  vec4 e91 = vec4(dot(w10, ngu_u(47, layer)));
+  vec4 w91 = vec4(w90.x, w90.y, w90.z, e91.w);
+  vec4 e92 = (w91.wzzw + w91);
+  vec4 w92 = vec4(e92.x, e92.y, w91.z, w91.w);
+  vec4 e93 = vec4(dot(w13, ngu_u(62, layer)));
+  vec4 w93 = vec4(w92.x, w92.y, e93.z, w92.w);
+  vec4 e94 = vec4(dot(w13, ngu_u(63, layer)));
+  vec4 w94 = vec4(w93.x, w93.y, w93.z, e94.w);
+  vec4 e95 = (w94.wzzw + w94);
+  vec4 w95 = vec4(e95.x, e95.y, w94.z, w94.w);
+  vec4 e96 = vec4(dot(w17, ngu_u(12, layer)));
+  vec4 w96 = vec4(w95.x, w95.y, e96.z, w95.w);
+  vec4 e97 = vec4(dot(w17, ngu_u(13, layer)));
+  vec4 w97 = vec4(e97.x, w17.y, w17.z, w17.w);
+  vec4 e98 = (w97.xxxx + w96.xxxx);
+  vec4 w98 = vec4(e98.x, w97.y, w97.z, w97.w);
+  vec4 e99 = (w96.zzzz + w96.yyyy);
+  vec4 w99 = vec4(w98.x, e99.y, w98.z, w98.w);
+  vec4 e100 = vec4(dot(w20, ngu_u(28, layer)));
+  vec4 w100 = vec4(w99.x, w99.y, e100.z, w99.w);
+  vec4 e101 = vec4(dot(w20, ngu_u(29, layer)));
+  vec4 w101 = vec4(w100.x, w100.y, w100.z, e101.w);
+  vec4 e102 = (w101.wzzw + w101);
+  vec4 w102 = vec4(e102.x, e102.y, w101.z, w101.w);
+  vec4 e103 = vec4(dot(w23, ngu_u(44, layer)));
+  vec4 w103 = vec4(w102.x, w102.y, e103.z, w102.w);
+  vec4 e104 = vec4(dot(w23, ngu_u(45, layer)));
+  vec4 w104 = vec4(w103.x, w103.y, w103.z, e104.w);
+  vec4 e105 = (w104.wzzw + w104);
+  vec4 w105 = vec4(e105.x, e105.y, w104.z, w104.w);
+  vec4 e106 = vec4(dot(w26, ngu_u(60, layer)));
+  vec4 w106 = vec4(w105.x, w105.y, e106.z, w105.w);
+  vec4 e107 = vec4(dot(w26, ngu_u(61, layer)));
+  vec4 w107 = vec4(w106.x, w106.y, w106.z, e107.w);
+  vec4 e108 = (w107.wzzw + w107);
+  vec4 w108 = vec4(e108.x, e108.y, w107.z, w107.w);
+  vec4 e109 = vec4(dot(w29, ngu_u(6, layer)));
+  vec4 w109 = vec4(w108.x, w108.y, e109.z, w108.w);
+  vec4 e110 = vec4(dot(w29, ngu_u(7, layer)));
+  vec4 w110 = vec4(w109.x, w109.y, w109.z, e110.w);
+  vec4 e111 = (w110.wzzw + w110);
+  vec4 w111 = vec4(e111.x, e111.y, w110.z, w110.w);
+  vec4 e112 = vec4(dot(w32, ngu_u(22, layer)));
+  vec4 w112 = vec4(w111.x, w111.y, e112.z, w111.w);
+  vec4 e113 = vec4(dot(w32, ngu_u(23, layer)));
+  vec4 w113 = vec4(w112.x, w112.y, w112.z, e113.w);
+  vec4 e114 = (w113.wzzw + w113);
+  vec4 w114 = vec4(e114.x, e114.y, w113.z, w113.w);
+  vec4 e115 = vec4(dot(w35, ngu_u(38, layer)));
+  vec4 w115 = vec4(w114.x, w114.y, e115.z, w114.w);
+  vec4 e116 = vec4(dot(w35, ngu_u(39, layer)));
+  vec4 w116 = vec4(w115.x, w115.y, w115.z, e116.w);
+  vec4 e117 = (w116.wzzw + w116);
+  vec4 w117 = vec4(e117.x, e117.y, w116.z, w116.w);
+  vec4 e118 = vec4(dot(w36, ngu_u(54, layer)));
+  vec4 w118 = vec4(w117.x, w117.y, e118.z, w117.w);
+  vec4 e119 = vec4(dot(w36, ngu_u(55, layer)));
+  vec4 w119 = vec4(w118.x, w118.y, w118.z, e119.w);
+  vec4 e120 = (w119.wzzw + w119);
+  vec4 w120 = vec4(e120.x, e120.y, w119.z, w119.w);
+  vec4 e121 = vec4(dot(w41, ngu_u(4, layer)));
+  vec4 w121 = vec4(w120.x, w120.y, e121.z, w120.w);
+  vec4 e122 = vec4(dot(w41, ngu_u(5, layer)));
+  vec4 w122 = vec4(w121.x, w121.y, w121.z, e122.w);
+  vec4 e123 = (w122.wzzw + w122);
+  vec4 w123 = vec4(e123.x, e123.y, w122.z, w122.w);
+  vec4 e124 = vec4(dot(w44, ngu_u(20, layer)));
+  vec4 w124 = vec4(w123.x, w123.y, e124.z, w123.w);
+  vec4 e125 = vec4(dot(w44, ngu_u(21, layer)));
+  vec4 w125 = vec4(w124.x, w124.y, w124.z, e125.w);
+  vec4 e126 = (w125.wzzw + w125);
+  vec4 w126 = vec4(e126.x, e126.y, w125.z, w125.w);
+  vec4 e127 = vec4(dot(w47, ngu_u(36, layer)));
+  vec4 w127 = vec4(w126.x, w126.y, e127.z, w126.w);
+  vec4 e128 = vec4(dot(w47, ngu_u(37, layer)));
+  vec4 w128 = vec4(w127.x, w127.y, w127.z, e128.w);
+  vec4 e129 = (w128.wzzw + w128);
+  vec4 w129 = vec4(e129.x, e129.y, w128.z, w128.w);
+  vec4 e130 = vec4(dot(w48, ngu_u(52, layer)));
+  vec4 w130 = vec4(w129.x, w129.y, e130.z, w129.w);
+  vec4 e131 = vec4(dot(w48, ngu_u(53, layer)));
+  vec4 w131 = vec4(w130.x, w130.y, w130.z, e131.w);
+  vec4 e132 = (w131 + w131.xyyx);
+  vec4 w132 = vec4(w83.x, w83.y, e132.z, e132.w);
+  vec4 w133 = (w132 + ngu_u(64, layer).xxxx);
+  return w133;
+}
+vec4 hook() {
+    return ngu_layer_body(0);
+}
+
+//!TEXTURE ngu_cubici2_constants
+//!SIZE 42 1
+//!FORMAT rgba32f
+//!FILTER NEAREST
+//!BORDER CLAMP
+b946eeb7389f08be98eb9b3d55efa0b9a898a6b8ad3620bdb1b37c3dc9339fb9b9b2afb83c21a53de65d843a40dcf7b9e8dc1838910519bf9d61573f78e25cb9cb7f8eb75ce8293d8587af3dcdb752b99d8182b84323f53d1b1ca53c1b87c4b98ac6be388a6a4ebcffd66cbf09f3563960c85638e934043ee67c92bdb4d24b397ba2b0b7595f393e875463bcb1cbd1b56037dd3df3d080b89524823d087276bc49f9cdbca00b22b838e916bf8445d0bd0536a53dad82ca3882b30a3db688c5bc5f16fabc4dcd2239eb9a473cfdd5e2bd235e90be14ae2139c2a4363fd7a636bfe8109cbe68ab6639402f64bd0cc8febde737a23deace57383613b73c99a8283eb6e2c0be617404b71bf1e4bd67d44d3f27dafbbe2026a2b6cfdc6c3d52ff173e417cb9bce55053bdb10d7bb9f454bcb90290013d0c5a53bdcfef1eb9edcab1b93d9b15bc406d34bd9de44bb99b0f88b9881ed4bdc8af563c160b1fb91cfcb1b9cf33913d33936c3cc59c4bb98ae0a7b9ceaccc3cbb1e433ca7f191b9df417ab928677ebf96f6a13cd91f4db8024ab8b93313823f3f31b53c6a5e4db9fb72b2b908b84a3a47b1f33c317e8fb9210f67b9568949bee287ebb70222fe3c357fed3d8c8e61bd1880be37875621bd76954a3e452046bd97c169b8e9e44f3cfffe78bd19ca743ddfb9a9b7bd9ae23d4302d93d227c8a3e24ee70385a4d91bd24ae343e0a8082be8d4f83b669b8b0bc0a7121bff1854ebeffe7e2b401c3813f29d9eb3d8c19b23e0aea62b75b5981bffdac0e3d13bce1bd90188db6c91b02bc6841a8bdb4c4b1b3be73ecb85d257738fcaa95b37265633a12f5aa35b8c98f39ea39a238ad66feb7d795bfb8d2ee9ab5dc058b3612cfee39099d2135cf3829b833f03db9cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000
+
+//!TEXTURE ngu_layer_constants
+//!SIZE 147 28
+//!FORMAT rgba32f
+//!FILTER NEAREST
+//!BORDER CLAMP
+ceaa303714cf03b855cd8eb882b1263804a904bdd2a1b8bcb51404be9d796bbbd67e153d74d280bd7c8c54bc13150bbd735c2e393549a939d60c5eb917ca043954a02c37c0a7fcb7ae0085b85588d637929696bb673403bc18b429bd174cd2bcea0223be7dd67ebc724587bd7554853c9c7c06390143aa3956e358b92b2b2639a0b222386791cbb771b0a9b81f94d7375a66ab3c11eeda3c9067f2bd1765203d9a78973dbc0d883bc1cab83d6426ff3cf3890c3900f9ad39068649b987b3443971de903851dcd0375d9a57b8a27dab37f909c23d96c571bd942906bebb543bbc6ca8f03db04cad3d9e99afbd7908153d022226392f0ec7390a883eb97bed9f384a0d633817d9c036ea6a2fb84fbb0a37d18b3ebda0bab4bca502a8bda8c066bd29bd5c3bb9b681bc76fe08be055ec1bcc85226390739d13901433fb9a36ef63824b8ea37b78798b71ff665b832fbadb6ff0790bd1d71d1bc09c89bbd0e19973de75936be288febbcc535d73c85510bbe15b9283918a8dd39bfbd2fb9fdb713396b92bd378e15cd374c9377b8ebdc7b376e1b45bdb8cc6cbdf81f34be9fc835bd7541ee3c5970fd3b1a4d3cbdfb09353c7c1d9d37d4e59c39bc67ecb82e9ec03781029c383273da37fe8f4eb8a79897376cfa9ebbc157ce3c7999acbde73ed0bd87839ebca3370ebda70bdbbc40ccd1bcdc523c3803fcac391eedf3b88abd8d38c5a858380cc80833140d76b892852fb724b58e3db53526bd6733d3bd6d7fdb3c30c9cfbc060ccb3dbb233a3dfd31023e5377e2388780bf397f51eab8e648aa383d84743dcd943e3c6c8e013e7edb82bc3ed364b8c15620b8746bbf37de934ab8d9509cbcb154bcbdcbc021bd2db5b53c4b1bc43dc083793d8f5262befc458f3cb25b5b3ddd83c33c9e21b63d8ed8843b0a89abb7197b0fb892215c383b1f5fb8559d2bbd07195abd9e24163bf4a78dbd5294aebdde9a42bb7468cdbd652c9a3d00921d3d0680593d39faef3dbce49fbb481db7b7f27406b80567fa37e0b3f4b70e0074bba3393bbc92cb843dac02853c81c460bdaf5c41bd14ff2cbd8de1033c36b04f3d27627bbce212053c238500bd131aabb7f45f19b855f50338c26bd0b793ca943ef19fc73ddc8f2c3ef34234bd6d81c4bd6a2fe2bd9c513cbdb44567bcfb337b3dd723babc259adabcca7258bb202287b595780bb8158c743859ff3ab823de72bd393c5d3d8cccc33db421703d74b2213effcc033ea9b7a33daba98abcc531393c752f103cd8ae7fbc2d5595bc4a1477b7bafd08b8d5d44938cbd8d5b77157b13d4896ccbc54990b3e97a850bd8f348c3d4287373e7a5bf83d00e11cbc7e96803d870708bba1cabb3ca901a7bcef2861b89bb181b851fca9b5b8013ab87083d3bd55cad9bd269f93bdb0ef4fbdbfad34bd98f778beb5ca9b3dc6fced3c81f3a63c59e4c7bcc89d903b3f6deebb640f36b8db5f2fb8607043383d4777b847e8103e9080023dc97930bd12920f3d7cc5133dcf0541be1a60a0bb37356dbd199fcbbc8e9373bc774fdb3c8fa31fbd3219ceb7a2b420b861f02e386b0d07b8fd6685bd5cbae93d9ff037bdccca48bd1d1031bb0b3281bb990c0f3d6b448e3d6d26353cdd6bc3bd9a8850be66c65d3d528ab9bc297669bc5f729bbbf41c873cc850a038fae2fcb9ea2fe6b97d95af39171882bac4c80dba566432391c17fab9568f68be14dc77bd0f043a3d9c38b13b1e0980bcad168cbc193b51bcfe0f9a3ce0ab76b8af3effb9ea73d4b96dd2b739402881ba3472fcb9b4b84a39a9bbd6b94995043e469c02be14ea313e551c83be34b14c3b74d145bce9779cbc858c963cb0a2aeb8f702f0b998bab3b99831ba39d0ba7bbab9c2dab9d856783957a1e3b95aec4dbdfd16afbd5d1da7bd85e7d83c5c84033da7edad3bbc45623b6cacbd3ac7089538b0cffeb95eccf9b93737b239735c82ba118c10ba153cb438cae201bafb2c8cbe0400903c2d3b133ea859023e4e0d0e3d7701373b6a493b3b895ce4bb17ad55b85c57ffb948a7e8b9e9aabe39251981ba78f9fbb9da5afa38ca94d9b91dd882bd0fcf283ed2c5e63db9a49dbeb6a6063d2d4a863bdaa94f3c538f993b8d0294b8985cf3b95553ceb9602dbb39617176baa712d6b9723a2d399d88e8b977c45cbc54faa0bca51b2a3d97fbfe3c6f76673c922496bcee5b4abc1f92233c01018038772300baff5207ba5f2db6394b1884ba241916bab3919ab66bf607bae95566bd754bd3bd5a24453dbd8b073de2fc133cf67c8bbcef2b25bcf515513cfa2a91b8715af9b9161c01ba27fec139cbd782ba305c04ba55fe30384ee5e3b9a4e630baf118133ddd817f3de9b2adbdc935683cd5fb5bbc95df72bb9014c53bef6585b8ebd9eab9a194e3b9b31bb7390ad67eba32c9e5b91705c938e870f5b990c19c3a788d2ebd3f9cc0b98e9b18bddbbf0137698724378dc0a83718fb4c365684a2bd346fbf3d51af70be30c6e7bcf112603d22fbc6bcd8063abd25b6e5bba55f0cbd0562a2bd367e143d61871fbd0c9fa0b73c06f736ca92ab37d32f393752a94f3f732b9b3db8ef51be992b83bef0cc89bb24ce2d3d483918bdc82c69bd035eb4bd9e1a0bbda613453c72f5c8bb64ac1336d47930b6a6f46b35fdcd32b572541abec338263ecce88a3c3632e93d4785e8bb1ae3bbbca7dfc43cf202163d4895903db7e2d63c87b21e3d37b279bcd54f5737682654373b109f37395cd5361764663d4366c6bd5e9bc7bda03c033d095ab63dcce66ebda6b964bd38e458bc2ff0b9bc237e05bd5c3a9ebaeaf46cbd213de1b726e745374cdeaf3777648e37283ff93d5cfd49be9de1c8bdf5d493be2fb7efbcc478a0bda9add2bc720be5bd6f777e3ad24bca3b3c76073c5ecfa7bca82c3137163e4c3623a3a636133bb4354fc8603c979db83d54e8233d6ae08e3eae18cc3d72c0393c540cb2bcaae4853c2b99933d86811b3c105f293d8b2f3ebdd5c76537ec901a37746ad13617815cb61eb0a33cd00b77bde7121a3c39e612bc18701f3d7c928dbd328846bd551e50bd0ca80b3bacaf23bd03862ebd5c3f26bdecb0feb7ad7d4c370f4bb136685b873779958f3cad6448beb6e5cd3ca74ef7bd3d1912393d7c98bd7c31f6bcdf73d7bc859f86bd1877a73bc514a93cdbe59ebd93c77e374784723634a732b7190b03b75f81223ba76f92bd7d4eae3df8f1823d136ee8bc43ce0dbc99b081bcac17183dc995a4b9af8843394111453ab7dba8b9cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000cb7c92376f1c1fb838b58eb8e4b580b7266707bd14f72fbcd4c18bbcecfccc3d651d3dbcbdd8cb3d7d56c83c026e183da086f8b8de67fab9ce1eeab9ca461db9b953ba3700fc26b86f2495b8ee0d22b894100ebc7fcc96bd1159293dfb6f783c159be63c45913abdfd01fabd77ccf73c6688b1b8626afbb90636f1b997231eb965ff5237047579b7951fa9b8f070e0b7f1f1863c107ca53d3f37163cd3f5c8bce99220bddd54723d85bd173dd4ba723ed08b2cb8d576fbb9c30a01ba763f12b95b7ac336886f34b854ad5fb8feccabb6f8a819bc282b72bdd483e1bc5cb6d93d87e3b23c2f677abd4f96063ec2f00e3cc14cf8b8bfc6f0b95c1ed8b948021bb99310a6373a2336b85b866db8ba25a3b7ae9b7dbdd9eb22bedd99173aa63db5bcb291123e4a07303cc17dafbc951b3b3cf6779db8422301bafd64dbb9290910b95626f137f54399b7a70f96b80a6012b746c71b3d8a68b93dc2d813bdf0e925bc06209cbdbc247b3d0a82b73d08d4693c25001fb7dd8c07baa905e8b9f7bdebb885d975b76c2002b876da56b8d0aabf365cf85dbdcee1d3bc1fdd98bd3231f13db3480dbe880d963d4de702bc758a3b3c594c2eb9d4e506bae3e0e6b922d117b9475e54b7a5e935b808fb4fb86ab214b7604c99bd311a01be06e695bdfe062b3c20f8ee3c9e59963dfb0fc6bd80d612bdfacf24b9dea30fba5973ebb9157c09b9b4ee11b7929b17b84bf536b8450945366e9e1a3d139f823d710d9ebd2bb3363d3174483ee1a28bbc11961abe65776fbdd2b0e0b834ed13baae22f1b976d4bfb8af4461bcc293e2bbe95f64bc49d3da3d72079238f7a90539be822e39fc0cb8b5388bd0bd8e1edebc54fa333d8000c4bc6c45b7bdbb0815bc1083733ce9781c3e96568c3cba3e9ebc7bcac63ce97c90bd08b2a9373e08f43848d33039dd1894371422263dec3f763dd194603c96b53a3daec543bddd8381bc71f821be067fbe3dad23313d3f0208bdc64b98bd7d99eb3ce8718337f1cd0339f7cc3539921e8137fd71873dc7740bbd9f12083ea9758d3dc591123d5d7dea3dbae8a6bddea48a3de63ba9bcb52e273c3891e63d47f7083d504e6c381c8cac38d5903f39d0b1ca36646b8d3d516a97bc6684523dfd00a43c84191abe7064373eaa74d53cb16011bbfc87a2bcae68e93b8b19083e5368fdbd5ece1d38c928b738c5803d392eead5b5fd1ba73cecdad1bc3a3cecbd1b5b7ab9e79f82bdf954ff3c911f53bdde2601be246a87bcbb003d3cde20973c6ee0aabc30e620387c90eb38fbda383910ec96b7e8f3aa3daa21863d02203abe5cda6fbdef60e73c1b94cbbc3af0473ec64f56bd700d323d13ab2abc342b193c21e77e3d216c18389716c838ab3a3039d7ffa2b7cc6ddcbda5270a3d03f837bdad68d7bce2e6813dbdc03e3d514a0d3d5863eabc4a00513d925f1cbc4603c73c7f79d5bd46a2013700d4ac38229045397dbcc3b772999d3c2d42e9bb83950dbee5858bbce0d49bbd5642a13d64d08c3bbaa823bed7368b3d653c993c5d7ed8bdae4a42bca2eec237c67dc838710b51399e5d14b8ae97f63b406aa6bd29ee563efa6f52bd03720ebd0e22b73d50e7a5bc82a7bcbd1b964c3da57f2d3dee509ebb61fa203eb3d2c43c7b7213bca0b768bc5c9e2ebc8a5dedb9197e8839d5670c3a5e9b83b83d8b64ba083c0bbaa5cdd1b95af2cab912a85dbd85f938bee6b5323d6534dfbd7166853c3e428dbc483f5dbca6e931bc030df2b9ef108439b75d0e3a1bb016b8b9706dbacffd12bafe60ddb9965dcab9a5e03abe0d31ea3d7f9621beeb432bbd649cd43b18a253bc2a9857bc40dd16bc3497e9b967584a39cba1083a37330bb7761167ba49cc01ba63aefdb9666cadb9fcd7fc3c402f05bef93a043e8ec9503cef15193d3d4f9cbc93387ebc773ccebb01c501ba8b1f7339e1af043acb0e89b8302b6fbada430cbac84cd8b98bc4c9b903f0953e0b71a1bea07fa8bccb4c38beacd8453d377d5cbcf1e299bce0c30cbc592c03babdf9623946c6063a4051ebb7228b76ba322414babb67e0b95b25cab98e3d28bd8cf8bebd23de3e3e5ecf37bef4c8353dd82d05bceaa6a4bcab1361bc1d6dffb9d7401e3983b6ff3929352e37eed370ba1778fdb9c5a8fbb90a2baab980ee86bd2ac9e43cfa2bc6ba3d96783df2a4103a0dd9a8bc43c293bcbf9b04bb27980eba78064b392665003acd281ab8788076ba218c0ebadb4ee1b95312cab938d5053ee44908bd81a27f3c76510fbe5549de3a734f07bdbc6ad5bc23762bbb233211bab140373977c3fe39ed26f6b624577fba43c217baaadbeab98492c9b951242c3d51ad1b3df55732bc4fc3c8bd5a1c173b63f910bd6e1d23bdd500143bce090dba743005391fadf7391ccecf3785257bba98bc01ba01b9feb91009a9b9af8cf33ce2ad5abd73ba50bd495644bac9af1cb7c64882379b5490b788b6ec34513563be3b1a91beaf81703d16cd383d41b180bd73ed31bd89cc4c3d25c2053e71b09a3df36b28bd1b94cc3cf8e61cbde2b090b6b7506237d45361b71f0eafb67b7b04bee8278abe5f7e4abbca7717bd4fa69f3d6a4829bd148bbf3a48ec06bd3f13393cb153bdbce277e7bb1aedcebc2e4e9eb660d248379418ceb78a9eb2b4bf87bfbd1d0288be0feea73e2fe2d1bd671e563b2a6d143e5b34a43b139d61b97bb2333d65f502bd5ef62bbd796740bc90f053b744719937603a1cb7f2e0e8b6f467353dfded84bdbe02bcbcc41b053ccc1d79bc81c4203cac6728be2519b83d93bafb3d45561bbc7f2e19bc0310cabc8721cfb66a5c7537763105b79f6f5bb7c25ee0bdde90aebdaecb893dc58673bd8d86113eb2e8c9bd45e3f73d715db5bdf8ba4e3c568d503a4dc09cbd2ca9bebcb20ba5b62aac80378e16d3b73a91a4b639b0e5bd828afbbceafb38be31b63abe19b0b83b3341903d1a0d0e3b864cf83aac7c36bc00b84abdad117abd0a62a93c281e8ab7a5e986378b7f83b74b4b65b790d4ba3db11662bdddfb023aa85f603d780884bd0c65423c512096bc1091113e25726c3c2d7b92bd018468bc0d3adabb388e1cb7b9450b371a9372b74ab983b76a7f5e3d12958fbde3b2663c81853abbd883093e6b7764bd566ddcbd4807dabd986f08bdd8c3bfbc8f60e0bc08c18c3b204851b76720d936c65ed1b7210bb0b6da01f6bd396231bdc261d6bd09b81fbe6bd365bd8c0e5b3ee79db8bd96f61dbdf1ec15ba3ae673397a34c3b9c9d8e539cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000dca9fe370de228b82596b036b9607c3754cf373d978348bc2a062fbdc9c5633b2c26b3bc16965fbc778030bcaa19b93c891d33b6c7108a36b7ea1139e32606395fde05387402d5b7eefd8eb769cc79b79a627f3d13af053daa8872bd8e4bdebca42ec8b9f25ff7bd2afd023d2ba077bcd0e310b69af35e378172f3389028c3385d33113826a792b70e83653521b399b7f84f523dfada113c36cfcebcbac349bc4c8168b94905febd3088753e68daa13d1712bfb7bb3bdb3729ba2539b7a78038e096f936a7b56bb8c09e773834cabd38f4d22e3d128062bc67c3bbbde606d3bbf6ae33bda475c5bc1d0cb23bf90c66bcebf914b7f65a23b77ef1b239f233ab3927704837c7be67b83bcad837ab5e07377a68023df4d4113d21b8e8bd14fd673c15f2c0bcecf4bebd717da8bd9f82efbd8f190eb769670db74a93b0397b179739f5fe0938463dffb73864ee378200a4b7f5ad193d6c24c1bc07198c3e33439f3c2194a0bc41350bbefd6193be81bebdbed4a536b72fd9e637c51ac53937f86b39bfa4ec36c4a811b8900e0c39d5f7db3896288c3c9063403d4b84e73c7a91903ca98cd1bc0c80b03d8f582c3ca8a8393c0207b5b7e190253872d41e3a932a7e39011031b5118135b87aa4e738e48ce738029fec3b1ef0273de233a23c4108543d0ff319bc995fcf3cb6f451bdb4e44ebd686fd9b705c3133891f6213ad95b873992bdb4373f0a0ab809d99f38f7d5583831f2133dffd1743d9acb603d414afd3c391cb4bc8f4e85bcfc535abb4772c4bc49c098b7ea3b9e3840d4223ab3637c397d12f23bdea19d3b60a0d63e3be1543ddf191c3800aa04b93ead0f39ba24beb7810b54bcaa36b6bcc1d5fabce66947bde75d3b3d4fc103bd02a211bd598ac33b2bf6ae3b1c0fccbcd423883efaa8b13d2bd72e387ee8f4b8663143394b7d0b3786cbe0bc2a448fbd08b6403d7f16023e9a1c533dae4d40bde4d8a2be8192fb3b26ee1a3dc04221bcdaa6733eff61b33c9c441e384a8202b96ba54639089b083672ea21bd034e5dbdba352f3c45b639bd67b4803d320decbcfa047d3cdf5057bc5c14f93afd9308bc8de0993ee9bb43bd06af4a38ddae0bb91d470f38b2aa43b84bc2283c0dee46bc3171653daa1883bd77077a3c25b22d3db668733d32a9083e01dbdeb91023f8bc04893f3e29a0593c99642e38a54ffdb81acda0385167c8b745f8423c70b31b3b0f50f5bd467b67bede79a73c70b16dbdf5778a3c871d323fdbb9f03c43781ebcb7bf1a3e8a1683bc0d0d0438f35303b9c6f3f738b5e4c7b65045443cfeb2adbc03c0303ca8d890bdf7324b3dc29584bdaf0a463da994943db41226ba78a4cbbc51e45e3ed00f3fbd67612938ea55f8b8baaebb384e5f8f3831dad4397d4d6c3d0453c23a77525cbdd6b78f3c80cf4d3efc3b3e3d21e8d93c5c18babb7c891cbdbf49ce3d82c725bc5246ff3782c2e5b8c97f32393a03e838dabd6bba04ea103c7d4ced3db75f123fc427a23c1965013ec0d804bc774cd6bb7a1a663c6f01c6bc97c9da3dff0402bd6752d337494c08b9f4b6583931a48f38e5cbf63b11227d3b0060ccbc349d07bd1f0b273d58219f3db19f003c8941d23ca1e980bab4a65abc3152d63cd428f73c63406c3c4c3203bcc3ae82bc8d449d3cea023d38e00cd2b9c2689eb9d3f158384ea27d37fc8d9c39d8d8b339dfa13eb95ee7d3bbcc3b1fbebfbc8abeb9e52cbe3d02823cc67418b9bf7fddbc4cb6183c826cf03767aac2b9fdd599b9fe406b3798b1beb7ccbebd392fab983940083fb91732da380c9e84bddee6933e0e98373e29021e3c8992a9bb522fc6bcf161693ca9b807382d2ab1b99c0f41b9009e3db1626190b880a5cc3963b89139470463b9d43afabbbdcfa13dae143dbcec38a9b8742e813c06a2f7bc0b0fe8bcd948103b73de77387844d8b9e793beb92d871e386ed534387fa98f39b444b1394ffeedb8ba9702bd703634bdc25004bddd30743e4f97943c13c4bfbcfc921fbdde0c223ceca81838ec3dd3b90d4fadb9454d1b387833e4b51076ab39302a9f393267c2b81b3802bb67df2dbd0f473cbc4dde06bea7a9893cbfab9abca29596bb968d543c28854e380e49beb931405bb939c08737071b47b831d0c239fd35a439776d0ab9206382bce42b5f3d88a49cbc4eb86cbcf8ae693c77e5933bc8ef16bb72bb253ca64193384a8dcfb9b6fbd9b9d7eda2386b406938b3608739bad4a4390fb381b7627602bdaa50fb3cdd30123aecfb4a3ddcca333cfd26c83b249b2d3ab0c7bbbb24bf2d38e148cab9bbb0bfb9b29ba93898982e37d768a339ea5a9a39c762f6363b8e9c3cd4a102bd3e5303bdbb7720bc9abb653c7987083c7918873cc7dd82bb4fd13538d6b1b5b9746c5db969fce138242227b8e742c4391e35a1391b1a58b89b8696bba6db9dbd4160aa3d4567ee3c82e77b37e85149b7da9da338fe67853725bdfebca7e3403ddded203c84ce063c258fd93c5e2553bd7562f13ba5a5903d0728c13cba4b39bb3f736a3b6d23373d58b7a8b68de9f4b664436038cfdf13386271853c8b54efbd2014053c86d3023e1609213dcfa6023d6309c0bc88601d3db12048bb6fd8d3bc3652d83d2b7d9abc4acb213728a61db7e38a853811a0ed37d6f8563d5544c23c255794be44043ebe6261b83dd4f4ddba33b298bce79d9d3c0aebd2bc4402b5bd49ea323e9c91b9bceffe983770e374b7d15a7f38eaa8f435ccbb9abc6b50ae3dde1d8cbc3a7aecbb5b4d10bb701972bd2825813e1b5d173c122dbf3c5a8467bc53d6ab3be42182bd7367aeb5e3a235b7888c0638140ea237b765e9b78a6f3d3d6b7948bd49d933beaad2ae3c53273dbd333a4ebe61ba62bc59ea953c0d54d7bc406ca53da27bb03d51eb973781662ab7c4a27738919fa23779f41f3d2d3e98bcc6eafd3bd349ae3de5c5ee3d6f4a523c2471c8bc500932bc172dfbbc434866bc06e7003ede2af43d8fee3237b09b38b7f9489e386efcba372ba615bda2db003e321ea6bb891a513c03e396bcf22880bd5060c2bcd9ab8cbd5f65a2ba2e4a6fbc1aa71d3e023d993d234e07b7bf323fb7247920384ec80638f5fbafba4068273e71b7fdbc8bfa473d7f1c573ca08d93bd8aa493bd4466bc3b8b2fbd3b47f72fbaab1b3a3ebb31673deb6d81377dcdf7b69dbf81381ac20c385f17123dbe858d3d7e4f2fbbac7b193d0be1aa3d632eeebb802f55bd0471393c516b76b97e165c3a27a4ed398b51d2b8cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000003175a7b70f3bba372f082238b1191638bfb20c3d05954a3c69a51dbcf2fe933cd96d54bdac9a953b13073fbbdaa8203dc98e56b969af5b398df30939bd62bc3921739cb700f7b437698080b79a11e23763ad72bc0c09fe3c47d919bceb1914bdf807bcbcdad482bceca2babc1b9e213cea0962b9d0b2433912faa3382529a139401300b7f856a3b7075a93b781fcf0376d052e3db13b653c5cc41c3cb8aa11bdab4febbd0b8355bd318766bd2f14e23dc6ee64b9904e6139b2abc337a9e3a939be4cafb724c3dc3703200f38d13282382f82e1bbc5987abd25d696bd8828113d116093bd0a1c683c55b7bfbc551b113c78824db9c9e91739ac5ef43849dfa039f1b79fb7b10f70378d87a1b7a0f90e38a1141ebbc0ac003c0998cfbd733f633c6351c5bd7e56023e175aff3daa700abd984c4ab9a733df3808279538972576393ec920b7c7140fb8a4c6dfb7ef32fb37df96f03ca2b95cbd13c6c1bb0c2911bd386957be830e7d3f2f9bedbdefd5833c712956b9321c02397c080d3822ab6f396663c0b492c53938ba392e3748c666371759d43a8942d53b3434d8bc7ba46c3cc9440e3e4f239bbbfc5c063e5959af3cc6ea3cb9db5eea3637b736389eaa4139bec523b614036637e01947b7fd5a993728268f3c0f08333d9127ffbc71060fbb8be22c3e3153f53c28b94e3d5c46ddbc63e137b99ea420b8648a4236074c063988229536829ff2b7b77d83b7a2d89c3620e4e53cee0a603c58968dbd505e173c7bd42b3e109018bdcc4357bee6670abb6b3945b92a442eb8ccc4e0b7bb9cef381640b7bc591ad9bdc5fc313d186a113cbd747938af20f6b8d92a1a3728df82b87e7bdfbcf5be483dcdd0c8bd6e205ebcfbc664be926e803d28a961bd1bd2d83c012988bc5362e2bc6082edbbe4b796bded0b7038b5182cb9453e9837e35ff1b77753ba3dcf3c0cbe4a38c93dd4cbec3cd0eedbbdb2dd573d17a2a4bc791e6cbd6fbb4fbd52f530bdebadfabc96e8babd2c80a338ed985fb9715f5b38d4853db834281e3d42cbf43cee3173bc86a1b73d321694bda3ab8e3df1ea053b25f6e13b742e9ebc566ac43dbcd1593ddab1e03de1648a38226b17b82b920238fdcaacb8863c06bee652513d9a0b3b3dcb8f473d3c385fbe60872fbe76e766be34b8903da2bb66bcd5160f3edd669bbca6b6843d62d385386e72a3b7916a0138e38507b81fd841bd18b7213e28c07fbdb63732be359f17be14dcaabed27f003cf7c9f83ca1695fbd88d6a63dc5c5c5bc4c81a83c67a2ad38f8859cb8c73e383854f4e2b73df9dcbc286a783dd014653cbb16083e54fc6ebd550905bea2f1b13b387bb2bd3e6c34bcd2538a3db9406d3d0602203d40dea93861f6a1b8c64897377c2110b8048e5bbdf9620cbd2cde0fbe67a4aabcc616dc3c013881bdf26400bd33ae7f3bad666539436e113e9c23d0bcc012fa3c7d50b138648db2b8b1e53f38fc831bb79b21573c085f9ebef3822c3d3a1a57bc04cf9b3d8c35843d7813f33da013f33c5cba1cbda084213c0f5eeabcb30a8abcee84e0389d92f3b84184803874b1363694323a3d661ee7bc589b1f3e1fa21abe73a7183ee0fa8cbb0f6ecdbb9e3484bc950365bce4405b3ce81d1dbe7cb6bc3c98b3c2bb7be2bcbcd0eb8e3c088edbbb9edfb9b805f4b1b9d34f5e3a157b48b9323cc4b8933ad8b8cbd50439fde59bb9386e0dbd6b00833ec0af35bec54dc0bc994206bc433199bc890f163c666f30391f55d5b85957bcb99495583a85b384b98ce5e0b8bc6604b9ac0cae3850c099b95187e23b26d125be8da1b33c3a04433f853107bcdfde33bc8aa9c73b42f0753c9ca9f5b8fdecbbb98191513a19505bb97dd68db8da482cb9ecf43d38248557b9293920bdc0ea99bbac8e58beb1b0783c03214abbdaf4d83bd343023c037e1d3c12a8bfb83648bbb9b4375b3a128042b9d003b4b8c3023db979e617397687a0b9697f16bd46c482bef219823ebc4d33bbe09d23bb5329b83bac6793bb113c4e3c1aecdeb8958ed1b910f4533a7b1e72b91170d8b8abc554b99125ee38f45ca4b9ef03d4bc317ac33db58c123e5bb6363ebd9f43badbf0293cc2f8b0bb78802b3ca9cc07b96bf2d6b92aef4d3a568b49b93818a4b8f9ae82b914ea4e3887d670b9d167a7bd09ed1e3c08f58abd30dc51bc2ce80a3ce4e63b3c0dfc783982e3b03a8988b5b81048d3b98049583aefcaf6b8e4f836b8981099b97822163965fea0b9aa23693d7c0414bc4df53d3e49ebdfbb12a98c3b7d83e23b674693bad6ce93bbb342dfb8e3f6d8b96fa3523ac3922eb9f2f595b8c53ba5b985b8e838536ea4b9fbba15bded23f93cf75561bd3553ea3a188ea83b9ca539bbc582843a0077c1ba85ec09b9050bdfb93b734d3a84d704b958ba7fb83ac1bcb9466dfe376aa178b92bb247bd67b0483d8854773d1ffd6dbc0ee643b7f1d28bb50fec87b73baa71372ff27cbd3d4af0bc023fd2bdbb4d933c4165cabc2761753d2ad34f3cd01d383d41d338bd996ad7bce73ab73bbf654bbd732f96b71241e4b41c2a0cb7f7fba5b68851873dcc11e6bd0332d63ddcdd41bdefcf48bd21c0803d64e1193cb7f9b5bcf91f0dbda90b78bcef69a8bae0ffa73dbbeca1b7f74e16b6bc49b9b7874ad937ff69a23c8cee453ec46c21bb048985bec4e474bd82c2d03b4e51fb3b2fbe6e3c0b601fbd2c20963cb7008b3d89ec66bdcb2332b7dd265737ddf974b7602dd137eab2c4bd839ea9bbba98093e2d06c33a25cd17bd4afc8bbddf1c7c3a6684eabd018066bdb73e23bc88a8c9bce05f5abdb1c178b71fae8337a0300cb78aea83b684fe20bd4ba4f33da9b3963dfc9b66bdd3e8583c7d46b53dd0738e3c15591cbe767e4abc7dcf7cbdcaf615bcf3fb6e3d857386b7b8267037b743a9b706ab0f3850baff3cddeb21be4134dfbd7c4426be2d12c3bcea2324bb768642bc3bf7e23d0903e53ba2e151bd7c0becbad6edcfbb50feb6b73fc78735b56db9b7598aff3736aa063d3d55e33c9a8d7a3d55c4b63c889f6abd5c20543d5ed43e3bd7ebfdbbfa4fdcbcdd6c86bd5953843d4d5c74bdcef7d7b7125827b6f82b5eb70dd75bb61966873d88a28a3c393648bef222cdbb95a75c3d1234a43d129e4bbc099560bdd5aebdba3b2c6ebd7db1573d9891223c6a7dd6b796768036dd689ab78b922038429e533ef96e8a3b42c5263d7cb8bbbc8bfefbbcd9cc48ba1b8b5f3da31ac53b65091038185b0a3938fcafb9f29ee5b8cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000af2ef23bba5467bc674e7fbcc2aead3cdd5bc7bc42b27dbc392143be25099d3dc9187dbdbbe1a4bdd47ba33cc85908bd2afce4bc315e8d3c92d2963d9051eebde45580bd805327bdafa3eebcfabf07be2be921bce7d8c9bc2df00abeade29d3d2cb97cbcafa0f0bc8a7ea83c1710973d9763313e06a4b63df5ade4bc955ce03d8220adbd14851b3dc3a786bdf48c3abd2678e33b96e9bcbc5e43a2bddba0ba3d5031963c886ab2bc42d6ba3dad01e43cb3cc80bd226cec3ca523d73da0645f3b33c2013d548c1a3dedcc9cbcbdbfc83d9b78663c55dc6d3d654f1abe528b163d6f9584bd33bb53bdd14901bd360ba83c207309bed1a7f43c0d7556bd58f40fbdbf4d39be245a07bef2dbc83beadad3bef620bcb90105183d059e41bc5880813c59dc6a3d5ae9833c8e42c0bcd9086a3d0a72dc3d5a2162bcec93153d37d2da3cbc767abea3d7673d617aa4bd78f9933d539b96bc6fbdcc3c4f88d3bdadad2d3dbed6823d6db110bbec7853bccc3f71bc7a4a04be1a4abdbbf4311ebb420df23bdd4f1c3ca12b713d43d8e3bc9d421fbd93b603bb39a724bde77cbcbdeb4652bd1b0636bd66645dbd624e92bcd1a107bc88b0ddbc8f70b63c811a8fbc9032393cb25c0ebe2489c73d3d7da6bdc02821beccca12bdcabbedb9738fa2bde3a2adbbe8762d3de1d1593de2c7be3b92f3053de262c03d73ab77bdafd81e3ed6761cbdc7077dbed2644ebe883b823d0fe91fbda4e3a6bdd493e2bb44546abd5dacd83c5379263d8102e83c707c6cbd9596643d198566bdca779fbc21e88d3cffb6f33bcef3d63d3d64c13c8c7799bdb4b3a03de688c6bd6886fdba8a643fbda817cf3ce8c71f3e6e449a3d0407c83d982892bd7ab2593bc6980cbddb8b91bb15e1143db6920ebddfdd3e3d007b8dbca7a7a8bc2220e8bc77770839b783c8bd8d88a5bd41fc363d7f05cdbbee08013ebb2f94bc7962c23dd21ca03d3e760cbc91949f3da0bed2bc96121bbdfc1434be33729abd7d7c743d104c833cac78c0bd2c5f6fbd09d50ebb7d832a3cba3d7a3d21cf9e3badab923d06cb893caec2bebd3cc3c23de522633c9ae43a3d01158abb7ed3dd3d21df71bd829f1a3a063a113d3fea2c3e09784e3daa682c3dc520e13d57aca3bd7ca340bc832db63c506081bd2abcb23d20fee53dc10e97bcf302d3bdce03eb3bbd7a853daf6c023e4b91aebd34c0afbc51eb8ebb4be5743c4f53a93b2dda033dbfbab23d47cab33d0470bf3ac32d9b3d722f31bba0c6003e5f0249bc3a8e5abdd51b083e0b02183d86ef073d7ef62cbc8b3e2abd7375423d3a14233eebc189bdd1ef6b3d9252a7bbabe6f7bca435fe3c725b673d652a653c83dfc0ba983ac23c9985babc5aab8b3d4fad933deab648bdd0dad33cd0bd883df158cb3d8c40dfbb17530a3d64426cbc7964e6bcd036cfbccc4b853d39292b39ef0160bd1f13ec3ae42a933d5e89083d563decbcff698e3c7696d1bc994f2d3c2192d43d5eeac4bc3b4a1d3ea2120a3bb140bb3c99f77dbc43f33c3deac6e93d3238a5bdd2dae83cb192033e2fec38bcbb7307bd376865bdb9ea6c3dd67c24bcaec1ae3d268ab43c4ef0783ce1d385bd552cffbc3312143bc2db143cc919eebb82228d3cfa333d3b3514ad3ce31ebbbcae0f35bda77eb03d1c9c48bdee61153b013a2abc32f5143d3dbe283cc3a9d5bd3cd324bd08e318be4d02473c4bc98c3c43d942b90a5991bb772c443d42ffadbca4d92cbc0a16153d71c8293dcc93a93de46a15ba60f017bdb5d3523d6ce2ecba446dc43ce9d6c53d94831c3d09d7963b86c44dbcc182383dd46206bb087b923c39e483bd84f5fe3d000c8d3b4cf4703db9d6893dcf9d74bdd4645dbda016debdd329973d461f413cb062bdbb8c29383c546b203cd79229bd2240a4bc328c82bbda27babc73c5963c9310debd2dc22cbcff9a203d0dd4803e91852f3ec00ca7bd3fc5f53d1e875f3e8028d7b93d513e3d9bd8f3bac1942fbdadd5e1bb79a5e4bc92f39dbc41f9203d74e3c43df545b53c04f055be41aba4bdc88be8bd3b54e1bd9ed3043e4f4929be4948f33c9ee1213df4730abdae570f3dd2ba78bd64a58ebde284e6bd174a8a3d9b47863db5e93b3d16ac153d5b4b84bc6e2f73bc8023fbbdf9af15becd32813b7d939c3baa15663c0069c13bec768dbc2d5f57bcbdba18bc7dee2fbdaff50e3d2bb38ebd53d24a3d9f72353daaa571bc5c87233dd858d73b24810f3dc99edf3b270352bc3a1554baed33103c752210bde686553d120580bc9f3591bd190dc33c69a1053efacd173db4b2d73cc3da82bd566b2fbd39abb03ded8e99bd18f1533c1d12e13c390705bb7d0f6b3cdc72e93c9de97abdb0dc4ebc3e8f9e3cd1cb313d9983983d89a0f43d154a09bdfa7ad5bd3017b8bbda5d23bd8ceb993bb2fd7f3c15c7e53c623fd23c0c59a23beaef8e3c6d6e933d9180a13c61d748bcdfe20c3ece0c8d3d9ec4ab3bf0968cbbc12125be131eab3d4860653d8b6b803c0e3f3d3ed6c5363dbfa7ba3d66f014bd3092783c605033be05b94fbee0c73cbd1779dbbd0749e73c2aa1a8bd7d42183e09c6f43d3b9562bc74760ebccf93843d64f54f3dda42b33d7e1eb33d4bfd1bbc148d9d3c97d7debd7571d6bcff9938bde26e093d61c5be3bab402abdc8b0f73d37cdf5bca45f5cbc3c4109bca269283c6b169e3c04866dbd9ff5133db8b25fbdb652f9bb63ee9f3dd6b6e83cd61ed5bd423621be022a3b3d608e15bc4570dbbcffa681bc2e8e293e19fd6fbba296b6bdbe37833eb8418c3c0bca6d3df8dc04beb4d86bbd4a6f1cbecb3d0a3f9ccb12bd1f75213e7a5e763c3d463dbc312a043d3fb9153d7e17b8bd188909be45d29f3d3a2101be39c2563de9b1953d02fd8cbdd9d800bdd28586bd0e9d353d981a733e65aa183d509763bc0aa3b3bc0d68a63db6e907bdbd41dcbc4f41363ba676c9bdf9112b3d001ccabc0d8b443d77214d3d0d3f803de628c8bc43e6dfbc4a127b3cef10bc39648a263d461421bb5a5f423d126799bc9271783d604af03b1ab60a3cabea943d0d656abc7db40fbccef76d3d6f1e243de959a8bc00ec9fbdb2cc103e1567efbbea7883bc7204c03c2ba0473dfeec963b1350afbd8ee1193ecea7b8bd7967b63cff98833c9a64e9bb49f3d53da6200f3d3402bdbbe183893b378e2ebd19a3963cd95d3a3c5a62a93cfb7bb93c08f7fc3b610cc2bd4cd5343ce61476bc81b8233c857b52b9af6703ba9cdd0cba1c323e3acdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000002193223d7257a13b9ac4b23b3f33273c896d2d3da1ab32bcd975683c13f8a33df9b9dd3d8f1ff1bda97f073e12f8863d6953be3be6f8cabd3092b33c5908eb3c6602b83dd1c0f13d0395033b007a5f3dff14253df715ce3c6701a33d47c0523c6440d63dcc31d3bd6166b43d9c27dc3d28ee49bda4a04abd7bf586bdca662f3d3569b33c2428063d4085bb3deb88943c12fd693db4a7a6bcaa0dd13dac16003d70f0153e10dfc0bd33eec83db4ab133e39d83f3caf760e3c3885293dfa17fabcdb5138bb18e55fbd2bf4d7bbe14d1abd6d3f853d1e6eaebd15dedb3b8bf7b03c3a57193ba88b7fbd5c56a03da7d3093e58a40e3e2504f6bdee4674bd71dfb43acd289e3d804736bd7f15eb3c7ce0813d17e2db3c7fa7043d8c77013d6e3ed13afff6f8bd683c0b3d59b4663c96015b3e20c046bd6a2d103c6be772bd35cfd03ca2699dbdcb4bfa3d856783bcd4da89be0cf4893d888f90bc22cf6b3ee827283dbe5f2abd833e1bbd0a61ad3d8add7b3dc42b88bd733b9cbc4756043d6a4f00bdc70718bb7652edba74ed93bce11183bc949d19bbaa18cdbdbe01dcbc6f4ddf3ce0100e3dad9e8fbd791e013d435bd03db0d21e3dba11553b1ea203bd992403bb377f0f3dd44b73bd7350123d83b5cb3d7d2b853c1aaa83bd55104abd3b456f3de34ecfbdee974a3b038d913d1f5e243db0886b3d9afc9cbaa39db23ce85bb13c3dc60c3ef269373ea22048beb5dbc23c4cae093e3f3c98baeac68f3da333343dcd1387bcde28b8bda087ab3d2126a5bc37e520bd21794a3d92d24f3cc2864bbc80fd173e17776cbde8160dbdb1d5293cfe666c3ab426f53d3cb5043be500bcbc8f1ab03cd998bbbdc7d2e03d28db01bca8b53cbd015b06bb86475b3c8b1b88bd21ea763d5a086abdeb0d363c7edc62ba9aa1ca3d54f740bce21fb23db376983d7dcd473b15b2b2bd264ed63c6f02363c1017b9bd1dd96e3de0f4083c121483bde55b823ed8b40a3eedf09c3d670eb13d9b67f73c8c986e3dc1f417bc91e86dbde28777bd637f883d188ab63b0908a4bced53833de4ef09bdfb39eb3dc0c92c3c24d9983dff0b0e3ddfcc9ebd9024cc3c1b8fcfbdfd84283e7035373d332706bdf25bb53ca3d8f6bca2ac353d3730af3dc429393c6654a53c1f30703d439d9dbd32f2993df8464a3b353eafbd315a023dd9529dbb79176d3c9261ee3d8f909c3df8a7dd3c99d854bd6f6d103e1b1be43dcd9553bd44ea2b3de0fd953c44cc593dc3eeae3d1bc4093e5f1246bd18257ebd494a42bd6d397c3dcb6c283d8f2b943c7e0d96bdf2e4323d272d413c1499b03dddbaee3d1b1c11bd7864eb3df7ae483d9ead52bd6eebfb3c10ee6bbcb417acbc7918d5bc9d9f503ecd8e32bd6f4ccdbb967f8d3d13684c3df732b2bd65a3a73c6c96843c972aa93ca6a7823dd71163bd98838dbdac4e753de5e0bbbc0d3e8d3b0622a73db2cb87bdd3def43d58546a3d348a2a3d1ddbc03c9d0c26bef9f62bbd7e507bbdbdbff8bb0a7b1e3e6520dc3cd371f73dbbe2033ed48414bd2fed323d09e339bd1c4e1f3cbbe66abbdf1482bdb323363d3556073ee424a1bdda17033c69ab04bdc15bc1bd47584e3de3e6b1ba576c38bdbbf5e33bff3f99bd0ce4f03aa6dbbcbb43d9e7bcc35a713db325423dfbe7483da5609c3c86919f3c36dddc3c8d899abcc0741e3de50f5a3c8f2e0c3c559cd43c2f3205b908027abd4629e9bcc20bf2bc8e572e3d6bb3443decb4273d3fd448bd5670503b421a43bd14ea223ec38a53bd25fdaabdb3d3be3c19f2a0be0991bebb2af46c3bbcc846bde0676fbd6b6d293df18781bda288543d1a8d09be4b12f83c0d068abb11a130bd53a6cd3df51ea4bd1bcde6bb7f3f52bc6dbe96bd5a4d15bd057cb43b05dd1cbd44028dbc5b2dbb3d13cf3abd8754d13c38b6c63c924d953c43b5bdbce988713c646f8b3d49b67fbd14da31bc15d49abd16222d3d827e693c0f8cae3c27e70dbd7f42c7bc9c4bbbbc4fc48a3b76f1913d730bedbc3f52a3bdc6042b3d1fe197bd9ce42c3f903c5e3eede9bebd45b299bec25c1b3efd7dbd3cd21b9c3c2dd502bd18e649bdb100c2bba4bb52bb56f97b3de8fd0b3c1a37563c96e770bd3fd72cbb65f0833e4fdccbbdc9b8083dec6facbda4b3c5bc71b6efbc38c2fb3b03ee523c9da2c0bcc09c723d93e61cbc76fd0d3c3f11d63c50ad973d21fc88bd2e55fcbcf359c93dd4ac63bdfa240cbd308ebebd1fd7f33c57ff91bb7b26c23c000c883b8adcf8bb0968023d54e3d0bcd158fb3bc0033bbda49896bc906ad2bc3856ef3ef9c6d33ddc71723d5feb61bd941323bee6345bbb1cc5633cd7ebb53b2b8f4bbbef2189bc0a7aad3c45179d3c1ef35f3d4d41bcba85854dbdaa620cbe15048d3d95020c3e49d1773d8012133dbd283b3cf6e69ebb11c3a63daadb283de229e5bde06ea7bdcd63e7bc613dbcbd4f8d873c00c931bd402cf53cc04fe43c0e0b993ca8cea93ca78d6cbdce3faabd6ead253d1d0f2fbd001631bc3d9dc33cda7b90bdba16e9bdcf560bbbb2b436bd86cca43bc28e7fbddc6053bebee361bd1f1715bd8752c9bc31fba1bdf27a273dc084bd3c39bb89bd46b764bdaa9f703da20817bef9e49fbdc38e8f3c2027b83c5cd5543dbd85e0bc657d33beb8ee353d8562803dd5f6a3bcaa4a9bba64ffcd3b225fd63c578c9dbce33d77bd94c6523c9175ea3b3c4dbcbc514667bdd18e81bd75538e3d369e2abc4dd00c3d37d408be7a9e493c147de43cd9f0b3bd752046be237c693dd3fd30be33d909bed3b36a3d3d09153d577e933c6edf89be875c0fbd71c5e73dcae592be3423b5bd4860a4bc45da8d3ca55acd3d5cc1703d804dbbbd5f17493d70a62cbea7272fbea2fcb43cba570ebdd90a173d6e2081bd5665ce3d75a7ae3c2d126cbdb99431bd340a2b3d372c84bde8bfc3bd8916143bc7050a3cab1006bd560b09bd65da713d30ff483d3477c0bbf5608f3dac73163e43faa4bd48cf36bb85883e3c502262bc511edebcf82c9b3ba2d6a93cfe53bf3c7e2268beca739cbed6a55abdf327f73d4bff0b3c153e633b34e03d3da8776d3ca3b9bb3c6aa1abbecc98303d9ea5b6bcb5b56c3d48821fbdde6c353dc59da3bd8126f73cd2c1c6bd7e67f33c56e79f3deb0fc83d647b3eba9349b93d99684abd3d265e3de4815abd05bf09bc7c4398bd7782d23d4ded593caf7ddebb6456ef3cd9c366bb8c4c0f3c59736abdb434abb8b8c08bb9afa2bf3914980ab8cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000005ad2083dca171fbdf35d8c3defcbeb3b654faebdf1bf903d972e99bc1eec953df990413df25bb9bd7131b2bc8d2475bda8bc813c02afa8bb9dace4bd1d0568bd6f28093d6b8777398814803d3e05133e57084fbd95fa863d0a82b9bc55c3b23db275833bfbe39dbd8b7e0f3ecfaa423cf162edbd2b9a963d49d3fc3deb970d3d2632bfbc2741613d030130bdf6231bbe924d6cbd42ae8d3d291f3b3c05efa03b95b7f8bb48e49dbd60c0883d61331c3d100238be52500cbdb153c5bb18e20dbc5125afbcaa9b5bbbebae4e3da307b53cae0613bd8f03df3b50a704bdfc608fbc2a63ab3ce2fe8e3b630c74bd131309bcd87d273c7228dbbdc4b3773d3eea03bc3cfb6fbdf711b73cd93d92bdf1ab5dbe8d76d9bc54938f3d822d8dbdf61ca8bc1caa793b4edfa1bdc77f273c02e10e3cab8213be68a7a23db5e80d3dd991a53d2a9f5dbe64f3113e759d143e496f2c3ec3942abdbc6e9b3dcad95fbcf6e85abc91fb913b4bcb4a3c4ac7843cb1f402bc92b01ebed5d897bcc64d5c3d1072db3c50b3a1bcd6e2edbc468087bdfad4b7bcf05d963ced527ebd7448ac3cc0d3223be0424e3d1af5acbd614d73bcd06ca53b1447343d372be7bc4c53883da482ac3c735a573d59ae84be9d22293e184cb8bc6b534b3b36cb07be7af24e3cecffd63cf36f7c3c4fc61abdbe35f93cabed583cfb71dcbc68c6e03d3ee027bdb9c094bd3fc78cbe45664fbdbfe197bd6c46393dd6fa93bc0bafccbb9c7524bccaf7f63bbe88edbbac0d433d0462093dd2282f3ceff320bc8ab89e3c6499933df13d98bba4640fbb1caacd3dd24023b93c55163d35e1713db868a33df3988a3d37d6ff3cc89aee3d43bc6a3d4d2fe23d74bd203e77ad933c12471e3d8f9bce3dae837abdbc5aa4bc631c893c16aa1b3c22d0243d59600c3eead9cb3dd392e3bc2f85f3bcd0e6a33dc827df3dc558133eb3442a3c61a51e3e33728d3de5efc63de4ab39bb1138af3b0787acbb9834143d9058afbacc3a423e19f1883d2d6e533d7c0beabbd9f529bd6172603df41c293dfd5455bd401f873ca43fbcbd2f8cef3c27be0d3d444c12bc33aec9bbc69ab93dc00da83b053327befdce4abc9f6e26bd4826803c5861ee3d9ec69c3ce3c011bda45d80bb6fd789bba9809e3d964f483d08c37b3c45fdd0bc3128013d11c8a9bbad3d0e3d445179bd620bb83d04e9cebdf92a8b3c109fac3d352b45bda738b93da30c083dc5f2e93d9f65143d10ce32bdd7c7ec3def175b3d79b376bde6160d3d6600a8bb521f02be4d121b3d74193abcef41623decf0c93baf1194ba9b8b913d80da78bc456594bca32db1bde68ebbbd1d7c9d3dc413073d6f29cb3c4b95b0bcfb9ccc3b0130e43bbe6a21bd737c89bd9a042fbdec798f3d9520a3bc411ee6bb483c8bbd71d69abdffa0803df011333dd9051c3b20d1d13d0e26a83d2c75633df9b9313df6ebad3da047d83dd8ab65bdc347a43c1cc9db3cc0e49cbc8e5d35bda372a6bdd85c9a3d9891673d280ca53d90561e3c00e5333d20388cbc33ccc73d8a26333da4c5523dcfe075bc7be0aebb5a8160bca6bb653d4ee8ab3d4323b33d53dccebc264defbd8a3084bda7ee6dbd4be4903b0185853c6a3ab6bcdbfd00bdb1f999bc14a45d3dbf2eb6bdfe4e75bd23a2eebb4e8c0d3df84a4c3c99260abd1d1193bc2f02a03c28f68b3dd0f5da3ce67d653d1bf9083dd6b452bce66c51bc7ee7b0bc1ee18e3c972ea9bd1992c13a8ae96a3cc23986bb9b05453d9d7cafbcdb94db3de0413a3d220e183d9f2a45bde88aee3e3677a33bfae9423c6301b93c345ecfbbc150a6bc93ae05bebaab9ebce3d4ac3dfec7a4bdfb7616392b61cfbcf677a63dadbbd8bca4e4acbcd94af63d8bafc53deca3aabbbe1cc3bc69a91bbd70aad93bf7c6803d2107babcd6578b3d884bf93ca41d01bc1f64ce3c69761c3c56372bbc3d21063d9dc2973bd15f88bc6a7428bce65188ba8a162ebcceaf633945eaf53b2659343da07710bdc217503da88bac3c3fd32e3d158b56bc1a24d6bd337298bde18846bd6b031c3d86b5c8be71ac42be02b608bdb168963bc042cb3b57bfa23c6a7dbc3bc46bbabda1c9953d7275213c142fb0bdd711f3bd1fe02abd1c04cebcbcc4093e105619bc0b587e3d5d69d93c5338bdbc7cc390bccf761bbd55db01bc2515043caa949dbdcec1b03d897baa3c838e19bd48067d3c9371ca3cae5500bd80a7423cca832fbdfb57d8bd3b70c3bc1b768dbc81f3cd3b929df93cd3e6a3bcee34a6bc36a3c0bdebf52dbdbaa1583c0363403d35c886b9b7393ebcaf28763dbfa6d83d2435aabec800bfbc15fb413d711d92bcf5d6143dcc150ab8265d8dbc0801213d467797bddaa85a3db87c3f3c86f7fabd99c86cbd3b11583dfe79873d4e0881bdc1738fbda9ae3abad9fd373ba2996f3d854796bd124a313ddac6edbc237c843cc0f1cc3aa0bc8ebdf3a9ebbdc851393da0bb103d0e5387bdcfb8d63baa018dbd124c043d8cddc43c19d407be2a729f3c1cf18abd8ecc2c3d263ce4bcb54072bc85af0a3c46dd44bda9321fbe1418e0bcb33bfd3dfee40fbe86e6633d0f2b18be19a62d3a887d733d8153d33d3b370bbdb6e0323d94a7963da5f385bd8e186e3db3bd9a3d037990bd3959eebd52d025bebd6aaa3bd49603bed18a1dbd4ead2abd1bbf453db4954a3db760a93c299e673c5d6d36bbb047b53d36634ebcb722963df0b3aebdaf7d48be2edacdbc37872e3c52c3d63de9281ebbcc6a1a3b7a2035bdfe9130bddebcce3d40dd9a3d5ea339bdc672a63b2691ac3cbd487fbd159a6b3d509fbbbefc8f5f3e93a66d3d49032cbdd4eb46bdbe7dd0bde6cc9fbc2fa812be9afb55bda8da41bd942717be88f3eeba7da9a23d2258a53dcb9f27bde88582bd810d99bd71abadbcd689eb3c866553bd7ed8b0bdd7df03bd0dbce13ccc8846bed17d653cb8e4573d5eb69ebb368fb63d8526643d10c9f43d163c07bda21a833cc3b61c3d12f4a8bd49ecdb3c7f4a1d3d49e35fbdb3a10d3c89dc053c4df40cbe2cc9d2bce11811bd0e3dbfba17f9073d2623d13c4426a23b32043bbdc9ddb1bc94ba00be067b10befd4783bce4b33c3dbe1d3bbdb88ae1bdffe755bc3927eebbf4e193beb9598c3d72c8e3bc1d9db63cc1bf903da13eae3d59bc4bbd4b82f83d3bf5fdbbfe9e8fbdc206b13c7eec633d6a4623bdc0b9c8bcd205d13dcf3c05be4f34a1bc04e0a0bdead4aabb1aaedb39dc9665ba68c626399100ccb6cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000005865b3b9a072bdbcb90d423948f5213d9af3d1bd3198523bff5caebc7ad0f2bcdef1be3cf858843ce5c973bdc3458e3dec9b19be670adf3d6bc048bdaafb013efed262bdd4c3293d698d8dbc525d883d0d1c243c5d9ba73b02bc4cbd44b0b9bcf88899bde73ab9bb3d0a22bc95a6e8ba494f0dbd07f145bd214f95bd06b1813dadf546beb8f4b43b2b283fbc9e98a2bc94cccd3daa38713b07b82cbd71da25bc45c7fa3de97b86bd771587ba496f643d4e6fb53dee91e83cddce98bc020c8fbd8ed47ebcb99183bdc6f011bd787baa3dbb2a75bc9778a73c1572813c71473a3d1214633ab012a8bc5b0b0f3d8c96a9bc543260bdc9a7493d2103883d6e2d653d9648573cf4d3873d95e51cbe63f916bda3136bbc6c7da43d155f92bcb24e7dbc8fc55bbd5d0225bdb8932b3d1201d93c456886bd6a62aabc8d1b55bca06e113c12a256bb896b00beb07c2b3ca3ea5c3a21e53d3d11753b3d725797bca753483c1fbd1cbcb0039fbdbc1ee13df1e3973db065b13dcab7253c4df63839620045bdd285e2bce933743dd01e64bc282389bc909cba3bbc3b733dc089453b56eabf3be7ad823dfd8a4ebbfb67853dfb18b23bbfc476bda095cc3c41c8013ead4ad5bd111370bb24db933de1c1073e65c072ba7e40fb3c441d353d0b5996bd8316943d2ffc3a3ce0b72dbd266ddd3cc45f073dd2ef91bdf1d4173d4ba42c3dd3c67b3df316083ba0f5c3bb58042d3dd213a43ba129cd3d18ab863dddb4a2bd96d17f3df7c5c23db8b6e7bd2319573de502913cd4861b3e778b373df7ceaf3cbb8b09bcf1e8123d2010083d233e74bac1ead23bdf516d3dc06c49bdd326aabc4af5383dc7ed0cbc3ed7c93d883a89bde94e103e03c1793df78705bd124e8e3d232e1d3ddbaa393c1565cabd1f90983ca8c103be0676783b6bbef7bdd78840bcdb0b91bc7b826bbdbfb3743d4f6f1abdbf59633c4ff6c13d6daee23db12d7f3cf326823d219257bd6d6b81bd633351bddc5244bcc9fc763d55f989bd54d9c93dec83d03c30f9043d43f6653deefff93df9bf8c3d1dcfaa3dc23b91bdfc6f5cbc3403063dfb1fa73c116bb53c85e8b43c73ccefbcfd935dbd18be82bdfd5f013ec7278ebdc80ea13d6385823d6ca14fbccd6caf3c6cb4a1bbf313db3bdf7f8c3d5d0792bcd663b5bcc178e73ab8bf10bde2760bbda226d43b6438babdb7ba523d866dc3bc441fa6bce4bfd7bd495e66bc187ba5bdc0d9b13cf93b8d3d6451b93dc4bae6bdba3693bd5299ed3da954303d518a54bd38d2c73d051c8b3da12f683dc6f1353d0a2f623d569f96bc2f839c3d2f998abc88a812bdacbd78bd82ae593df5032c3c828b2e3d2260103c8a4fcdbd34ab03bdc75cdb3c32f6e73d87f0c1bd11b7a2bd85b5e53ca425023d8594b63d545bf9bc2b4c80bc0bc9783c9d30183e8135103cc2ba16bd61e49abd73949fbd236aa0bd106c793c44db1d3c4ea6dbbd6a340ebda66687bc8ea5b9bcb8749c3d2c8bc4bcff38363d034e333d7519373d4c40f63b625e21bd2b6ea6bccb4783bd6676a1bdf4ba10ba3119003ed4686a3c56935f3d4b173a3d1760353d5d75b53d766f94bc9828e23ba83700bd63b1a93cd556f03c96e0e53ce4d7c13bc7c9303ca27883bc9399313d5b5a7ebdaaab893c7c9c4c3d4348743ca653543d2ee93dbdc794073ec64e43bd0a22a4bdda54f03cc235ed3d895cd3bcec483b3d944a143cbe451b3b9d2d443d6bb037bb5f1d48bb7532bdbca25454bc3d08b83d789cccbbd9f5333e8fdee1bd0f07a73d97e547bde49c12beef9af1bc09a9b8bc9bb6583d3372243d0355dd3c529598bd1b7b12bd29b1143c4b3a563e10684b3d832cd03c564e4a3d1577b13d5a7bf5bc5382423d78fd53bb474cf03c365b1b3b4904243b87951dbc154296bc3a12cbbcebc648bd58d7023e18c1a5bde58fa7bc8739283d897bd03c26547bbc64f2c1bd085a923ee782e8bdb6cd7cbc247d653d1496853c469d523b89ab6fbb0a529dbbf43f023d208e473da957b03ce89575bdb82f5abd74ca1fbd5d9994bceca58dbdec830dbe8312eabdffe57cbc48bd08bd692e2f3deba51d3d8b04523cf9e740bde4e8fb3af1bcf73cb3f1e0ba34d814bdb0f48dbb50f411bde122c0bc615bbdbdd74007bd1378a93bbab41e3cd092dabb591d163cd3ad2fbcca376d392ea8f13c851fc13df245ee3ca0ef4cbd7d1b4d3d084c503df630adbd5e213e3c4910de3d2a6813bec5192cbde34bbabb4cba053d5ebf9b3c1282f9bbe5a28a3c8ec56dbd4ddbc93dbbe6b5bcff8eccbdd49fd2bb455d7d3df81404bed01cfdbba045a53cbfc3e5bd64512a3dd7f69bbcdccc16bd917c043d1f95213c7aa97a3d5a2b2bbdb4dfde3d33debe3cc0be393c335747bddc561b3d81ba07bdaf2d053d2142303c584e73bd379286bcb4205f3d9b9ef3bca6e0493d1f4289bc60a817bd7f4205be11f7e43c1bfc983ec0d473bc1df9b33ce122c1bcc57ec5bbf428693b944758bd385f7ebcf31f00bee98273bd3e4a90bbcf0f843d60b3443d07be12bec92368bd254573bd82eb4cbe35b0c13b3be7413efb1cb2bceef9d7bd3026a5bd4e4b3b3d66b8043d88d2e8bc11b09bbb5a5aea3c2158a93d7454ea3a03a58ebea5a8a1bd6a3955bd4f6ba1bcbb6ab33dd3bd1bbddbf704bd65204d3dcf29ba3dff59c23c8d76f7bb901a82bb1b7d2b3de7bf2dbd01b2903dfa1d54bcd9669c3912960d3e278e78be3c1a133e02180abd715ca1bcab52563d61eb833c40747abb0a7f88bd219f07be666f11bea2efe53cb0f202beb9d2a33d85464d3cdaa31ebde256cdbdf4414abe48683ebccb5c253c76a4293e5c115dbdc0a3563c21b04f3d8a0184bd90a577bc57732fbd60f0583d9ff72dbda6aa743d2649933ce0c5d73d05483d3c8b1cf1bd05ce13bd7df2953ce5261ebccf68fabb03c1e53dcadd2a3e92eeb1bc24289f3c3d2be3bce2c31dbd1807003da8d27d3c57d8613b0a76b2bc98c3e8bb6cb2013e34b8bcbb30c28dbb963c763c0ec7043e25fd813b7900b8bce3f7073ee12d8dbd5663b4bd15eeeebc28dde1bc89ce663d83e4fe3b7eecb73b35eb68baddde5fbd7c68653b80c83d3d41d0493efe8e47bda0fdbabc09517d3dd192db3c8ef43e3d916ea439e3af883dcb0a4b3d3a82093d3df637bc3ae54d3d170a5a3d56410bbd9b29963c6896abbc833db53d8e43103cc4c8853dde02b13c5080a63c1985153c3178e2bc6639373ab54de8b919f5ab3765b2ab3acdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000000c8209bd41e1e93dc4d8873dc5ee9c3a13f37ebd5e93b8bdf54ecebc4f85f0bc04fa59bbc28d99bcda7517bdb88f0ebdc0561c3cf81a1cbd58e81f3cba5184bcdb37f8bd29b98b3dbf3229bd6b269dbcb82c1dbc32727ebecf26bbbdb6e90ebddeaa24bd114b453d8c37b93d6eefddbd76c64fbd1055ffbb904c04bd489cb5bb321f73bd815b2abd86e7bebd81eccbbc03b1873d22f6f7bd6cef9b3dbf7697bc6a90703c82b0553d6c9c0f3dea6fdabdd8fbb1bc7bfa53bdd021083dc9949c3b433246be8e161c3dc0ec923da95535bc2bbe28beaac8d1bd0cbcbfbb24a5ddbc1d73013e9785503c56196f3c03e2063cdbbec63dac4792bdc6cc3ebec0d8613daf9445be60d7233dd87ece3c827d4ebdb173f03d995de9bdd9bbe43d13b69fbd88c7fdb97eb0df3d8927873b1c4bb9bb619f3fbeda49c13df38f563ee81e8d3cf95462bb23055f3c43a011be0f9ea3362475843dd299113c6cc38abd3d8c59bd1a030abd72ca873c9a2db53dee1667bd8ced13bd6ec888bcd7e826be1e074abdb39433be89b757bdf32891bc3b5e20bb9ac03d3d64be9b3dea0c713cf8d2093dc3697a3d9a19763ddba67b3d513ea0bde2c8073ec291b43df1a800bd8848d63d4e896dbe626c573de350f4bc9666b6bd7510eabd2815443ca38993bcf7cd9ebd95ec6d3d317d853e822d0f3df8c792bcb7fab1be0fd822bb38ec35bbb0b66f3de8a7733dc167f83d563b18bca88af73c89061d3da435d43c916f003d80351e3de82192bc2106e2bc8fa8cfbc8e39e7bbf3e4f53c7ac2e53cb7f833bd4d73a63dd1ca653c8fecb8bc5288803d852de3bc04a7873df47010be6d028cbca15a5ebc71b0a43d80d9debc3516433e0c1e10bef3d6cabc720d21bdf2f3d6bc519a94bda0ec283c8515debdde7f683ce1d04bbcd25e343ea1f8c03d0bac2c3e8fd4b03c4234ac3db24b883cd00929bed35388bdb1fa9a3c5eeef0bd94a6d53c339a4bbd7c3cbebd2f7c3abd5e5316bdaaf1abbdc6a29f3db3adab3d370ec3bda2b8b23d9f314c3dca3729bc31c4d83c7360cabcf82bf5bc5f7002bd79f490bd118fb7bd81d3e7b95e8860bcea42ab3b4fb78abd3b55353e67fe6ebc715983bdd3d6633c788788bdc60757bdfb69e23cff7cb7bd54d16b3badf01bbc2af4893d2e3222be39ef863c53a1a13b9b62893d704f4abdd05d773d349c453dbdbc823d506cd63cde06ae3c9947c73c698b1f3e9609ebbc4824963df39b49bd3a2110be40868abe8520093c8bc2cc3ca9fd91bd111a06bc4e7edfbc24dc67bc78fa45bc280b1b3e5beea23d5f0e89bdc4ad113df64788bdc02985bd750d44bde5e4553be61e93bdd4c86e3b8548bdbabe83893cd600493b615db73d3adb2c3da03284bc3fc7463d3179e6bb3244f3bdb9b3b33bc43e1e3bdf65e7bdc49b753df57e0b3dd82daebc0c17cc3db74584bddbda8fb9aa38b7bc58103a3d8f3bb83c1349123d3bd09d3dbcf6883d5da793bddd801fbd83a25c3c7f55a73dae5dab3c6fa268bc875c603d8ba6cdbc65ee953da3434cbcf11b173c823f9f3cbc2b35bdea7e103d5873333d3a443cbcf43eeb3b71400ebd76da2d3d20c1c3bd2cabd13c9d2ff03c07702f3dd6dd163c17c6c5bd86fba93d155f843d6c8bc03d593442bd5a97403dcdac7abd104f21bdfde0c6bc75f5333d042daebcc8bec43bc77519bd7db4b13c3ceaedbb8cf5f9bc81136bbccf1d38be16ed07bd3476dbbd97a4923df73596bd939baabdc2ef293d734d3c3e88a3cc3ccb3fe13c94fc783cb02585bd71d711bdd7dbdabc392795bba41484bb922d323ea08f9cbdc2a622bddab582bd0c240cbdd08376bdf964dcbc395277bdbc8e1b3e570fb13c252a613cf511f2bc9a193cba6e43b53b26f7e5bde59c88bc8d5ca5bd94c5bf3c9e8a463e2cce27bdfb3abcbdcb4851bdd89d29bd190172bc79b199bddb279dbc256bd53d37012fbea48489bda104913c268e47bd60b1ad3d0104dbbd6242ebbb9c08b1bd717bb0bdfb9d793c2ea707bee296a73d2aad093eab1f3e3ead7dbd3c1c8f88bd607c38beccdf323e7e15ae3b609449bcd62657bdb561983caa3988bc30ca8abdbced5dbd6b8dbc3bc95e06be5d69c7bc1da0973c4bd8793d5a469ebdfddab63c45196fbd0464d8bd209a79bc3090ebbda47a323c92b763ba0e7b6d3d6494993dfe88d2bc8039eebc99ec36bd416a303b050dcfbdb4fa9abc43d122bd13bc203e198bdebd5cfb573db5af003ce985c9bc93efd53d535565bc043a32b99a509f3cbe68e5bd5cd5053d9e04c6bd809090bc7d0e893db0e4d43ca717e13d2d4b2bbe9ab15dbe54cfafbdcf2714bcb39c8dbd03b812bc28d1a13b9ca80a3d56f2b9bdb367bfbcccd8e73b1a5c99bda7fbbebd2c64bebd8bd39a3b20a2b3bd36efa23c8fb48ebdadb9093ee1f9c13c1f4c52bda453ddbbc03312bd0577013df9b01ebddc2829bc78ca9fbd9bcabdbc7275e83c2ece04bc56d270bd884e33bb675b423dcd8d103d981c483cb624d83c8cba3ebc4cab1f3db086d03cddfa373d88a3233b579ed33de4ce763db1193dbdcb3ef03c55eab63ce7a8b33ca03bf53cba412b3d3c0659bc4dfe6ebdcc0b0ebde8905d3c77e6ae3c0854213c41db493c4aef71bb92b5833d9ff76d3d1eba31bef5108d3cbf242dbd3094153e147682ba894f15bca2a9db3ba5b4313dc69ff33c858976bda753bfbc26d3313d53bfd83dcfa29cbc098b1d3b353155bd5755e23df535e73dc769473b646548bd283bc8bb10360e3da63419bdc9e9efbcf9e7363d1d38b6bb72ef3a3c640a483d5e9a343df55bac3dd69d083ee2f8023d91e01c3dd097003e45251a3d28fa8abdfb97133d4999703d6480173da73c653d2feb003d0faf92ba0c567c3c58149a3d8255613ddba6013df794663dc697693dfa868abc955a7cbcc8bf05bd4a3f4d3d8ab217be10ebdd3df6950c3e5864ad3b6ee2803d8c652fbe0f4a1c3d4fa971bde823103d145a81bd56dd233efd2e94b94808d43db4ba093d59f5b5bc98fe76bcdcb4c43c2548853d2d54a63cab85d8bcb3ed6a3d2b2224bdf7bddf3d51afa53da415113d42edeb3da654393e7600653d45be55bdb0393cbdc92f133d0a8214bde96cd43d32e2db3d5dff7cbc09256abd685082bc8cce3e3d2a35b53d363740bcf8cafbbccee506bdda2d7a3ddfc2d33df1bdc1bca4eaf639eb359dbd31b7f83d6d3c693c37ad823d9827dc3de689a53d98146ebb3e9b2039e6fb3f38ea671dba59e2ca3acdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000083d9a3cdc0b99bc581867bcaf45d33dfab6643cec26653d01f83d3dace2403b4c9a203edb36653c5976f2b86b3e67be0cbbd73c4b54e53b6b2fa0bb9ba291bd14a1263cbdea11bd16c168ba30474e3d3a39213cd00b063ec4f0cbbc57bd07bdabde613a6366cf3db529dc3c1f3b80be42ced93bdd10033d86879d3b1274efbc04d63a3d928a493d2017033ed33b17bd8a1a32bc5c8d0d3b2a8937bd6ad1b73d5c7a8d3d9ed095bc86f0c7bc548dfcbc4ddc28bc778a093d82a8bb3d26bb9c3c593ef33b80e235bdd1f7a53ccf8d0d3d9a7f2fbce00b8fbdae546ebda48f15bc63c91a3e81c107bed4c4b1bd2e2037be3f0855bc5f2b17bd44c5993cd64daabd61c20f3ddd79bb3adeac9d3d04534bbcd35cbc3c411838bddebc47bef4d7f93de499233e90a0043ccc0247bc7b0d95bd517f5a3dae3e2cbd5b8d213d97f3f83d26554f3e4798843d0f4c623d73e405bdfdb65d3cd5a76ebd619010be4a3094bb94c0f33d877d8a3b5f1287bd080ac8bb37a6abbd26dbba3d9fd7353c8828edbcc7b1493de1e21ebd944db13d2e87243cc437163d3effd73cac52a03cd8b8e13da0a25b3dfd7c54bc45a3b3bc422ae9bd0fd7e8bb5c4d413c00d485bd27935fbb11b1c23dab20553de0bbe63da6ea9f3d3f58143c9fa4183d9317a3bccc2164bd4ae4b1bcb86a353dc2f5063dea7b09bda015d3bced9badbd89a3dabd4474ef3dccc4fabc7766bcbd4e63d13dcbf48abc95f3e23b39521abde045a4bc36f15cbc0eb0763dcb269fbb5fee2dbd920e18bd80b60abe35d703be8c817abdae3a943de19e373cf38995b9630fc2bce172343e9078ca3c5648de3d132a323db751bcbdfe5638bdb759a9bdf6138bbdc977523d55f76c3d379d3fbcee6035bc6b886ebc42f68a3d26552dbc4c9630bd7c638e3e288e01bdac08fd3c75baf53d23f2503c3cd7ac3c233b18bec4adf4bd61036bbc737c283d417fbbbc962c64bd265c0e3ebdcfc4bdc2c7d73cdd4b903d5ee1ae3d3c4973bde267fc3beb22e4bd2eaec5b43d0f4cbd2b1420bd20cc9a3cbc797a3cb51b7f3cf5fee03c831f0fbc3652d73dfe1888bda3f1c9bb7cfc12bdffae983defc2bf3cc447ce3da577b63cd1330e3dc2952f3c0d1c42be9112d3bc68822fbd9ce1a93cf892373df4ce33bd4af31bbc241f42be7e44183e2536cfbb6219083e348d44bdf5343ebdb163043e325fc53c1eaeefbdd80455be14de763de0e1bebc35a741be21dcdbbc3d9552bde335273c39ac1dbec3c009bd2381bc3c10e0c43decfe853c1d7165bd404b813c1120f8ba22a2723df0aa75bd1400ab3cff80ebbcae3f23bd74e08abcd4de44bd2a80553caa0fa9bd06f8a1bb9753f4bcd8f4dbbcaad9e8bc55b8883cdbcb9abc8d3b553d6e467b3bbcd80dbd9806babd379ccabd9934a53c3c23a4bde4bc95bdd1395ebdcc3da03a9a70633c72eea9bd99bc0d3e8152d93ccf511db9e919813d71ac53bdc9a6a43d8c87b3bd3cfdf1bd09f397bdad1b5abd55ae2dbd2c95b9bd89e3dfbd803321be05fb473c645697bd0e98ed3d0f23123d4f359c3c51bb273c754721bc1189a5bd9c6d97bdcd9277bd7d4234bd21e5633cf790c83dd7762bbd32520ebd859ee03d4e77cdbd1742733c1b2bb7bcd58621bd910ec03da4e71e3e28aba1bc88963e3c4bd12cbcd49d8e3d20184f3dfb5b80bc1f22a63c5d9c213c3d244dbddc2ea7bc0a585ebc4cecd53c105a46bd428405bea5af6d3cbf4b233eb8e3823d5946d1bc00396d3dc51680bec2a4893d05b5643c9b45a0bb3553b83b5564753c7810073c5a4ec0bc17c066bd5fd96e3d411b8e3dd32cba3d04f9243ebfce773d21bc19bdb58779bbdc001ebc60d80b3e49159a3c2f324ebc7268ee3c5fed1a3daef93c3d44e5f2bc158c293d0d31093dc2b9d7bb92c4b43c93ad11bdc61acabd2c828cbb5ffe80bd158c113ef0cb873c0b9f9ebdb36cbc3d491ca73c6d158cbd2c17313e362f84bdc00302bb52eb4d3de236773d19e392bd8140d6bd8032b73d7e1d36bdf987c8bd9cd8c03dbf12053e3ccff9bc2054c93c8f42e93d42718a3d89d7b63dccbaf13c82ee08be1143ab3b534a22bdb8b9153ce42523bcb1c43a3d2ac891bde49201bd59c7b43d1b4c063e3606963a003ea53b15624a3d4bcd03bef842213eb8589a3da03d3dbd65df0b3e4ea65fbd3413073e7808103def25eb3dd2932abd1b3c523ce76d073dd3898e3c0b3182bc3f6c1e3e53b7df3dc5f723bd6742203e10171cbd102e73bdb8b4033d6a9a81bdf359a63d5e444c3dbb39873c4f86013d886e01beb6c8a7bdfa97103e34662f3e1188db3ee1a5a2bd39b342be9703953d7626cf3c2357e8bd835df5ba1682d43c403cdf3dc8af8a3a1a274dba347ef1bc07954dbd62ce383d26c4873d08e537bd6c86b23dcbeae8bc13865fbd502606bdd331f5bcf4001dbe0a5145bd980318bdc3f6cb3c6b55e53cfedf1b3c4b8f8f3c2a7005bd9e15b03d6f5011bc1cc6be3cc2c74ebdb6ff293de4be0dbc47cdd7bb30442b3c21265c3c37c4033c2a4ddabd141e1bbd8d4f4cbc944b08beb25d83bd7a2d2c3d4b15963d507dd23dd882b93c62ae6ebcfba38ebd4dd000bef5d5d4bb82b4aebbf2fd36bd5442d33c32c420beecbf07bdeb8f2ebd74ab243bf9b59e3d8eb556bd82f6203dc4c6debcf31d7c3ce1f92f3dc74ab3bb78bf8bbd7451703d0819263d2f951ebe50755c3dd32bb6bbc8dd223d441f5d3d60c364bcd366143d6724123bf13f83ba19150c3dbad2093d85b6da3cf2b7a03ceadab6bc47ca243c642fe23cf716733d1f12093de709f53ba9188dbd66013c3c7f792cbe777cf03c3128883d2bbbd1bd73a9593e20feed3d4e6e3d3db74a56bdcf400abe5438223d78925d3dbc986d3cbcb3583c14c2ccbde80a8cbc3362fdbd20720a3de9a7c43de6188e3d468efabd2de9e6bdd145aa3d3a24bebd5d9f7cbd2be4a2bddad835bdcedf18befb61c4bdab0bf1bd3029bfbd5ee8983b2819a53d9f1edc3bccf459bcf162433c47360a3da06b3b3debdd2d3d0a7cd33a39d383bbae9d623c49efa73c6319c53cae50133e5625a4bde2bef1bdc2bad5bc15ac9c3cb763e4bc068589bdbb192a3db891debc2627d73dcbef19bd7e76b2bb2d5c9bbd0b9d79bda863873da801ebbc9e0a093d3221dd3c4857b0bdced79abc50a079bdbd9989bde8a7a63d4903373d3c81cabb4a71a9bd44ee31bd931b90bcd2e1893c7cb803be188f883919adb3b85147f3395a8e7db8cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000a2ab8d3bd128a23d5371e8bc0f57a8bd8b52133d27c8323dc01e3abb558f32bd06cf8d3d07c553bc7b5127bde4f632bed01efd3c9c8e4bbb6a6fea3ca6098d3d71c56f3cf126c7bc00df07bdc382a13c895a7b3c6dfd82bc3430a5ba65130bbde77d9d3d37b1a53ce785e33bea1e0dbe0986233b8104523d9d08de3d6fbe943dc9acf8373b5783bdf083b5bde2c3aebd6590e53a67fa00bd5f894d3cd963213e9952d83b2e2a133cd46fc0bc92abac3c459f383cd908dfbaa23daa3d68aa4c3d27ef9fbd301832bc9ea64e3d0385ceba5133f03c1db2893da0f868bdc4fff23cef28143e9a78b73d4ac8e4bc0fcf95ba5c95cc3c58960ebd31b982bb36558ebd0ab9003e24a768bd448abb3d0e7be73d2e8d12be89eafa3eb50cee3bf816093c60acb23b4154b03c5afa76bdb9cf933db1dbde3d6297013ed2c5a73d09f126befe5865bd92afbf3d8c5002bd5eba41bd1d078f3d1511e53d9dce2f3dd64fe53b2f02843d22386bbd4fefcf3d365ae1bc9917a5bd441675bd97395e3e42c761bedb96f83b9a1c81bc18ca7fbcd7b0c9bdce0994bd0d15143d18a3d0bc71eeb7bce366cc3d766b1d3cdb17c3bdb2440dbd6b055b3d19bbc93b5b7115bdd616b33d462a953da10c1cbd5d5e2a3d3f6cad3d71a4293d01517a3c2be6423de9059b3b0657b9bafea1233e9c9f0cbdcb1210beb2aa353e815323bd08cb62bb47abb3bbda61cabd6c0dcb3dcae5bcba52a708be8c6d76bd328af83c28f298bcb403223cd003c13db7320b3d64ad103db652efbdea4504be865d793de504a83d4509993db1af2c3decdd123c290406be4851e8bc2dd8223d47f4d4bdfe88dfbd91d39abd0135e4bc29027cbd81022e3e2e40343ce95e473cefce55bd40c296bd3ce066bbac5a3d3d34d40a3ebe2ca0bb0303e9bd9c2ae6bd52808e3dcc672dbd89d462bc455155be2e114e3d2027813dd9e875bc1674b8bc06ef953da54692bccc8ad2bd4826903c5e1a783d5efc46bdc07680bd5306a43ce002143e828930bd5601873db056e7bca2e00f3db542f73d7477ce3de8fcd2bcc67f76bd3a5260bc09f413bd2f144f3d30ad063cab75f83cf6f87e3d88b92d3c9fc26d3de0dcb2bd2acaba3c649510be9e7d8b3c3e9f02beb80b593dd30442bd11e4d2bd5fff6ebd94a487bd09e11e3e06b183bd2e5f4f3d01c3b7bd199b73bec3942bbdeb63d7bcbd151cbc26468dbe122f9d3d3ab721bed4e9c9bd4646cdbdbff87dbe6876e2bd495f1ebe2c7074bd53fb73ba3fd2de3c3c19693d0809123db865073c942e353a81663abdd850503dcbb3a43db947fd3c7a2691bd93c7f93c43e476bd7c0a53bc14f6833d52e4913df185ad3c1cae0f3d297bf5b9101038bd22492f3d3e06d4bdb566b7bc693b153dab8e9fbcdc4e5c3d10fa80bd58df26bdfe831bbd52e857bc0d51f03c06458bbc9c1c713db2f133bd96158c3b3f1db1bde44810bd995751bd66b281bdabdfe93cc6748e3c8f1f2fbd97a308bd972f12beea501cbe9772fc3b410599bd5952b43d8afd833ddf2f03bd5a74e43d4a7c12bdb6e53c3d93a6f9bca3c89b3b5a9914bd4d47b5bdabc42b3c7accef3da7870d3e8d3786bde79e633deeb70dbb1948463d171da83d05fe0ebd8f038ebdc5d2193aa931f3bc95830bbe1d37fabb9b6d363da20f1fbd960b51bd83ff61bde4d3423c77cc013cac617a3c1d8e4dbdf4ed9d3c7e67313cbebe24bd15d993bdf26662bde6f8aabd63bd1cbdc26f8c3c7578863d0089ecba3a40f43ce383ba3d6dee63bcb9c4ee3ceb0997bc7527fabbe3ec5f3d722637bd2b1b933c6ceffd3ba5d238bcad04223da645fcbdf3ac0ebd30297b3dade0813c73c79a3c4cc695bd5fc2433c315ee6bc18b5133d3e227e3d577408bd1108603c27abca3c08ebf73dc10b133d38b291bd4f38aabc592e4dbd00099b3d0c90cdbd0ccf8cbda7b2433c3b0066bd8c16a43c214f653c3ed3da3bb32a6ebea792e2bb451fc8bb994b0e3eab84b93c6ec889beec48ca3c050d833b62871ebc0624bc3d17238c3d037cb93dc6ad2d3cfabb513dd2ebf13b3916063ca5884b3e87e5d3bc0208543d20918e3ec1a0c13b0513bfbc012f91bd4397d0bc9c2a153eee0c2bbd233ea03d92c4bcbc435d2d3cd52817bd649e993d21b724b97e2c803bc2e0463dfcdd873cf49106be352e34bd41edb8bc91db37be3a2a4d3df80b133e0f1e0cbdb44d11bd545bb63bc4ab15bdf4ec1dbdcbdea1bdb83cdfbc300675bcd511803d48cb24bd73d715bd9e1cb5bc00aa62bde4d0cfbd0aceb6bd94580b3ee94d03be00cc92bc7863a33c4c6c99bd5ec27dbecba5063aee548a3ce004c03ddd91af3d150230bd74f2183d7b86b53d8375923c1dacebbd67df13bec97ffb3da9a004bd427b193d6929493dbae655bda6a5a7bdfb61803c47cd933d14b49cbd17342dbd5d8242bcdbeec2bd7e57113d3c4a853cd26ec1bdf151bf3cb0efdb3bf4899dbdd274afbde483393e3556df3c8299083d2b4e013e94311e3c6b4085bdea73cebb87cf8d3cfdaa2e3d31d7173b548f153c827206bcffcc463df101dd3b14d408bd32fb11bdac600b3e6e7d873bb1e6eb3bc90bac3d3897d93b4e5d6cb9a9caeb3c7813183d87899c3d17c6ab3c5c0b8f3dd80448bd1008e53dae7619bdfe48c7bd39f2623d5b591a3da69db6bcbff8903a7f290f3e99ab9f3c5dc251bdf18a683c34e169bc0b0ab53d882a533d31b40f3b809b13bd5495ecbc9a995f3d07c748bd5995d2bdb799993b7c0b283d8f3c05bc8e02b8ba58caa03d3eb591bcecfe963c0673073d62a0673a15fce13ce2f47e3c9a35ce3c340f323d759b223c0f6dddbdb501f4bdb535a9bdb1069abb7ab805bdc4b11f3e1d56a83d4894203ba3347d3d44f3bf3ae9c0c3bc0222d03d208cf93d42d62fbd4cb87dbc3139e83d802f63becdac8b3c368a81ba8ea400be8a497abdd3e30d3e6e488cbc224cc0bcc85d20bef84fd43a56c1c5bcd3a9d53da272233d27b861bd6769aa3db94d9abb5223d3bcd4fa31bce2828f3d33fef43ccce9eb3b7864ab3d0e6fc0bc5d2cbdbd197164bdb43da23b19d7193dacc30bbc9832ea3c7a74e2bb3c66be3cf29d433dc663013d85c0e13ce253303d5d4db3baec3bd8bd67f488bda8eec0bcab4fa9bc5009723d7b9b3c3dbba6f23c9e95dd3da309cbbce247063d5aa539bc37502bbda0bf553d9b646c3d3f2cc53c944d15be14c043bd754fc33db7b5dabceb3441ba1dab20b95f882b3b110539b9cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000dc480e3de1deb73cc3b7dbbcac443cbda9b8003d6aec983d1ca2ac3cd515b4bc59a16a3c597c10bac2c5ec3c0e2024bd4c924fbd5ccbd93c6a68a1bca911aabc47b51a3dc61efabc3bc0a03c05ead83c6c1f803d27394c3e01c7803d4838e9bdeba1a8bb5762803df55f033ef30c223de9c25bbd8ec0d4bb7b8f853deb924bbd1137703d3c81973d4a7b403bc2a412bec84845bdb41c9c3ccc5220bc03c3e3bd8d955a3dd616bdbc5843e03b6aceca3ca10bd3b9070b1bbde6bbefbc584e103d3d1dbabccc37ccbcbe859b3a3f6acbbdad04683c99cdd03de56be5bd267168bdeb6d0b3d9efb9b3debe017be939b623d4abe82bc8124763c9441d7bdf3ca4b3dad8b1a3e430564bd3b95a6bd12a87c3d721545be87b683bd97a3233be858623d127b4cbdadc54c3b5986903dbc9082bdaef927be4060cdbdbf29983d3295edbd585f11bd46ddd53d36d1e63df8882dbee4f05abdf26a40bc84b3483d722f41bd2cf3383dee1948bd05906cbd86fa7abc6800513e88732f3ee3751e3b8c4d8dbd7151943c5b5129bcd667ed3c34ec8dbd5fbeabbcb0aa30bce94fed3d4cf7d1bcdae1313d972f693ccc4dbebdafec4f3a917c06bdf9760c3c64cf42bd1ea64e3db014a83cc97e903ddb5ca23c7239793d4b8231bdee7f32bd88c4a23db7ee7d3c6d4c823d71b05ebde3a48c3d646e843d56a2f8bd0a082b3c2815ddbd855e45bcb6becc3dba298b3c5eb57a3de832c4bda8b5063cdcfc01bdb4c89d3d2d8008bd858f8bbc2ce6d1bce757053dc88a4db9a535de3e296861bddf31b93b3ee5d9bb014e83bd3dcf703ce18f2d3e68d12e3e9554c9bbdd9808ba578dafbda631edbdef950a3db2f744bc5c8dda3dda02a43d8297a53dc7336c3de7ffe23c3ef2673c6ab6c0bdfc64abbd645f8f3e84fb1ebdbe261fbd76708cbd529807be607e0a3d3672d53dd96f353e538edebdbec21f3e34038bbc0c72bd3d8ecfb73d1e8d82be252da2bddbb71c3dae305a3ea2fbc13cbf44b7bd0fcf783d0ffc79bc0b97cbbddc368cbdc63639bd8bb8d03c2eb8b53de37439bd786e393b1c242cbde3fda4bd821007bdeeba21bd60205e3d88392c3e4657953c2040b53c409c81bd1efb59bb4f80503c59cdcbbdeb13e1bd737aee3d23c1d43cb42bd33da463943d1c34113e4b329c3dc32dd3bd8c3bc5bd5ffe8c3b901e5dbd66c2f6bc1cfdf73c0d28c53deb44e03c682a16be90675c3ee6098ebc6143b63d41fd0a3f096bc13d2040c33ec6ceb23d1325483da312493c91fce9babc1b18be1caa703d953141ba16ba3cbc429126befe0c11bdeaff803d657eaf3c1f3873bdfed1c03c410afebc8e2c87baf81828bd24cf3c3da54f4ebd10a0993c2b98c9bdb2a3823b4b7f233a67e388bd5b3477bcc377c8bb821b813d65d77f3d231ca13ceb48b93c4d801bbd963e243c5828babcac5457bb7871623dadb3933c8c2b12bd36f120bda1c48bbc88d6a9bc074166bdeaa3283ef9feacbd05efe8bd803d273c0f06b53dc189c43d3e1fb2bd3a2dc7ba16fe6abc2ca3653dba41753d06ef0b3cfefb513de159f5bcec17d2bdd2f2d73cab59543d44ae83bbc15a5e3d81e78bbdc6fddebbc40e0ebd4d75bfbcecae193db28f2fbdb9b429bd8a7303be9067033b38e84b3d29be3abd2ce40ebd1e7f06bd2328f33ae96e113db735d23c5d1ab53c9c2d2c3d8bbf36bc5cd2043df47287b98ae4373dcc8d2b3e5e571e3ebc8918bd7fa0a1bd98d7bfbdba108ebd5d06373c5c0c32bcef1d143e5320a6bbf9a57ebbe2fb403d720646bbe5fb9abc8601ef39279f3bbc605ed8bcc00e843cc34dd83d6f42a43d760caf3b05a5cbbddd08c13bed57babc565d973c44305ebbc51e1dbd93eda4bc13d9533c75cbefbb2ff6483c514532bd180eb8bd60a843bd424aa4bd4319043e86604dbd9854e4bd5ba1843dfb589bbc5c14afbd5dfb853d3165cebbb518913cd0a0f6bd7c65c53c17eb8ebc76f362bc44679abb6a56bc3d5bfd39beb002e63d5405dcbd9cc12dbafafc97bd835b02be9bce753e8ce9c63cfa173cbdcff0c8bdecd099bce2f6e03b02cd16bd876e10bdb4b68bbd47ee8ebc2b03403d66c0543dccd2c3bcdc6e8dbd49dfc7bc91655e3b106a14bd8d2f7ebd6270b23d3dbdbb3b54f28cbc61418b3ca81918bd95aa453c55a5a8bd6ee558bd0e5fbc3be969c6bc494a463d274bcabb562fd1bc91ea7b3d398b5ebde6f16b3daff781bcc4ee853db400d8bc0d9d6c3dec8b9bbde4bf26bd76db363dc81da83dc415d6bc93c3cabd82daa83c49332b3d02856f3d7823dd3d659a2c3e4d14f43a264363bc61f2603e258d0bbdb6dbea3c42472bbe163ee6bc3935af3a6bc3813d958ecfbc9eba6fbdc35b5dbda756b3bd95c1203d925c713d2e0da93d450e3fbd02e8333edef98abcee014cbb4ce955bac2d6bfbb5113163a7fadd5bd3a00063e1ee039bd6a1aedbac8b4f73a28c5cd3c6a6d703d991b9dbbf2bcee3c1a0a293e3e945bbba1dc883cf310f03c0223423db68275bcbb30d13ca293d0bc3ecb4f3da64a08bd6a71c33d55ce543d93bd833d11496e3b93ff133ea6779f3dd3ec2e3d2e7888bc81679f3d91df29bd47c0983be73f10bc03019d3cc492063c27a1223d3c3012bd0d42f43c074373bd3887febcecf718bc3314e3bd849f63bd9d099cbdcdc63b3bf6af363d7c4ba23dad2c103ee6664d3d6a8da43cdd5de23712d9c7bdfcad123d3623ed3ca97208be538cc13cd5186d3da23d863da3238e3dd94fcd3da0bd843cb112a1bc1a284abd2808af3a8fecb63dbebcf83c39f5b23dcd3a8a3c1d0503bd89f52c3d8ff3933c7d95633d5b50b83bb28fe2bb7de7d63d2a045bbdfa7d8f3caa5b183d07d895bd5679b83d02fe49bca5d522bc320d473d580c86bc54b436bc081881bc2cd579bca5cd1fbd4de381bd7421ab3d0b13ebbc62ae083cc9d2aabcc53ebd3d9bc72c3d6db33c3df8263c3ef460a13dd90043be88cc243e15b4cb3cf4c1523b10d162bd6dca883bbe90223c203d09bcc2e2a83db113cc3d98aada3c65e916bc7f7e27bd4f32a33cc5e0293e2fdc7bbd2861d2bb033d223d0b83973dfaf5643d68ef7bbdb18cfbbafbf9163de65fc1bc7239c7ba54f0453d72f1f2bb7687db3dbdbff4bd9ee1ec3dfef9073dcbd949bbae0411bd64df343db7a3ae3c954dc03cf7ae22bd5333bcbd375e5f3d36ce56bdd63fabba14f5d93db8bbfdbcc38994bd5b2e47bdda9a1c3d2306d6b8734d09ba961f8c395ad5d03acdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000b6be4c3bbc7437bdc9c035becf69cb3b48c10d3d48495cbd404edd3cf3f7f3bbdc9a7abc779ba73dcd9202bc3d010abe6ce191bd0c297c3ccae6a5bd4b251abd25f0e8bbecd73fbdf0ed04bebed69d3d648eee3d87ab023d79495f3db43d143d7a10963c0ccb64bdf56b29bd790005be1390073dc88b4cbec568063d6dfb4d3d6de03cbee01f413e89a9983ccaf5be3d0d1aea3d841837bd5f5929bd4eb28bbc8680c43b087332bd3e3e5c3d425cacbd6a0f80bbe4fbebbcbe25423d869ab23b9ede4a3b4d78ba3c26e380bdc921fd3dc6c7a33d45c8db3c25df0a3b168ecd3ad330b6bcb2fc9c3cfcfe043d1f85bcbde738dd384eedbd3d7e7cffbb7a2f4e3d8106233db0931fbd284cc5bdabb4923da515123ebfe0d83c378abbbd585cf03d7ab145bd60eace3c5444933dc83285bed84efabccc67143d5963b8bddc81b6bc300eb6bd1ecf023ee6a8023d7476073e67ad123d50997d3c01c650bd2956cb3dcd608e3ddc3533bd1f87673dd309e7bd9735e8bc3ac5cf3d908ac8bccf1ce83c754232bdd39b033dd605303c13bc6c3df8b6f03c51bfbf3c0fd2b43bef43c03c6b520ebc784d723c4bfb05bebac74bbeda3e6dbcd907773d3ae095bd09dec6bcba1efc3c4e29513d78e99dbb3938b43d3eed523ddd53653dcf7c13bd6678ff3c556360bcdb4e1f3e0faf0e3ecb7360bd50e716bd1baee73cc92c41bcdaf969bcbbd3583ded005d3d1764623d4f8dc23d9da7013d50748b3d76bfb9bcebe1a0bcbc9cb13df4835dbcefaff9ba8f6e23be888793bd8c73d93da35d0e3db538d9bcb4e5863de8a080bd4f1c0abcafac73bcf30c40bda2f5253c08a3a1bddce4873cf427d2bd78b567bdb176b03ddaf9ac3c9f6d3c3c1d043abab710603dee78ee3c1dfd023bc08252be2bcb353e325cc23d6d32c7bd809ca33dc60f11bd2b51c3bc9ddbcabd4a83263c783dffbb0cef863d63aa553cea67f3bd293e12bc6892913d60014dbcdffcc5bd465e023ebbc80b3d6b1aa3bd570435bdf8b8123d231d4b3dd6b2a8bdf0fea63d4f2afbbcd983af3c88109bbc77f0b23d680d503dab2851bd799ae43c5ac4e9bccdfa3f3e38d38d3c77be0abd7113e43c956e12be1fe0873c949d853b754d23bd9d18da3c339cde3cbe6fadbc820d5cbdc0f0963cad6c933b84c15dbd0ede2d3d305df03db979313df95a55be7ffd183d5a4304be16681f3e0c7ea43c8f9acfbb91cf3bbd6ee81c3d2297ec3db3a572bca0daaebcd3c75dbc6ec9a23d09e818be280b6f3e3638883d71506dbd155eec3d7953f53bfa52263e4dc18fbd80daa3bc81f22ebd18b5933db22def3de1b14abd58ba2d3da1f56e3d54f4e1bb573819bd3815833ea5d522bd6f7fa4bc9b5b1f3d49e5c1bd703f8c3da2008fbc273d99bd8404d7bddd41c33cbf8c403dd522d83c27aa743d7016b2bd58d2d3bcb34c8cbdb712a93d108fa5bd4a70723ddf6e393dea8992bdb2d60a3c598bb2bc9cf71b3eccc384baa979443e9886453dfb9772bddd357cbdd77a033dd64a203c7cc045bd865e903cde2deabc89e163bbe251c93d3b835d3d608ba13db600c4bd19a0223cbe07be3d2099363dec18003d3fdc4f3de5d454bc39cbd73c5cca0dbda57d753c5dde32bec217efbc7ab127bc67cd85bde1f8bdbd6928b13d7060663dc5c9aebce8cb9ebdeccfb83dd6c0d53c0d5ec43dd18952bd8304f0bd700594bdad62353de8c962bdf0eca0bdfe1d0d3dea2fb2bde5f2ff3aea1f193e7c70193dc4aaddbd582591bc100db53db76a27bdcef39dbd0f10e9bc8a7e41bdbee3cfbd3223283ca85d53bc53fa49bd5641dc3d70faea3c8d9b593da20b5f3df34574bda41909bd501c0a3d59e8493cc8c941bdda7486bd16acabbd237023bd926f82bd6b729e3d133188bd6f523b3dea7c85bda248553d14e73bbdfcc3313e37b3913dbf0e7e3db4322fbedfc1e23d1ee6deba741530bbd2a2ee3daea8d0bdcf68c0bd0cfe4fbce05425be7ec2993c8b55a2bea1dd3b3c321220bd7d5e74bdde3881bdc7bc3c3df9bd55bd45efcd3da03cd2bdc472083d06b9023c3af5a9bd3d9d15bec7601b3ef0bef63dac88f1bdd90e8e3b748a26bdadc6ec3b7e182e3c5fdc8abcd320973d9641c33c11d9e0bca9f6f83c81b9143d6a33c33db6548fbdc527863c9790663c228a41bca22c1c3b2daadf3c18ac663ca1acd7bc3b3d913d3c2c683ded91e73d6970a9bc5107293e1fe579bdfb5df8bca70648beed09d6bd2f3e60bd61da433d6ca04bbca81a47bd63ce85bdba29a13cdb6c86bc4a1d143efc27113ed8e6173d6dea963cd743ac3d7c2d37bc9443c3bc488db8bd0dbaa2bd587c09bc50fde43da10ac8bc40b2ebbd1bcb50bd789cf4bbc02d1ebdc0175bbd622a7c3d98b2283decf0bb397b5e2bbcf519973cfd17973df19cc4bd0aa3f1bdd48b9ebdda4bdfbd2fbcc5bd99ab633dc90b58bddb4ebf3cb2d7843c297ea2bd0694d53c60f2393dfed66fbb8c43fcbcf042ab3d94267c3c081d093df69b3dbb669b763d3e91b7bdaaee7fbcc884ab3ded51a6bd7c70b7bcd8bc683dc005f6bc843ed53d32e8b73dcf3e57bdf7b7c4bd63cbbf3cf74a933de818983b670827bd9edb373dd763b03b7581263d181deeb9243387bd7e82a5bc71bda93c50c38ebdb2ed48bd6e51973d7106bdbc5d2d49bdc1b2be3dbee125bd75c6ebbc0282d03a8059a6bdec25b53b080f97bdeb316a3da788a2bd41a92d3ddb68893dff62ecbd3ea5873b912653bdfc7f443d6be0c03cc68edf3d1b7815bbb93410bedc5fd0bbb2c9a43d0bb8b1bc5368053c40d512bb8018933e6e9fd0bd4688d33de159dfbd8fc83e3d0898653d65d85abbd3c0883cacdaad3e680718bedd3a213ed98a9cbb5226163df7ee03bd1b9a413d783ead3c3fcacfb93541bf3dd1807ebb411416be8b2a983dbe84db3d8984483ce5e816bdda8c663e738922bcb5253c3dd134cd3df064ca3a3dcc77bcf080273ddaf2883c91a39abb691b16bdd4270b3e695b9fbdd023df3cb57d8cbd7eb12fbdf9bc85bdad4f7f3d3c60773da1372ebdbb167b3d749d063d2fc5afbd2b392b3d55df533ca15b2b3e540728be2db001bd8a946dbe1e7596bd7f6a8c3d98c44a3ce95549bb54a74d3dc32aa83de838bb3c2900b23df1c931bb0893c9bb9d20d23c46940c3dfd053abc61ee12bc722107bd4140eebdf62dc9bc518ad13d8e1757bddc59123ca066103e994b38bd402b953d7c818f3de40cbeb8a7bc8839da52373993f4313acdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000d671c0bc5cdd723defaa32bcc496bdbdeabd913bd2ea81bd1e7aab3d89e5d13c106e083c7fa7153de736893cff99fa3ce450f93d92e0cf3c2e99923dc229fcbd107dd7bd19d2b93ee2c59ebefada7bbe5a15b5bdcc78ccbd95a9083d93062a3eafa83b3d8fa6543dc183843da707883d7850e33d85460abd886c0b3e863bafba3cf1e6bd6f8887bae5d23bbe5ed0b53db3ba00bebaffd6bd8be3263cc3e8ad3df5b90a3c93b4b23d494720bdf7f5563d74f1833d7fc6af3c2cf0533da31257bd49bda7ba87499ebc95a4dbbafb3338bd2c7a1c3da86daabdbe83093c79ab673dd33afabcd3d5793e09ff763cd9bbef3df5431b3e4d73e9bb1f689dbd866666bd0d0ba53bd119c4bc9a0e53bef2c639bd372ec23d2db80bbdfb003c3d44dd8e3d97d0b53db2418cba7570e1bc38192f3e2eb1a53d11d423bd4f679abcec0787bd6e5d4fbe1d6d91bd290eb7bd6428b13ccc1c033ec05992bc7bd92f3d807a273d9fe8a03a8af7683d64b8edbc85d4773d02fbc4bc6e7bfd3c7d2b67bd52e7cdbde57323bc31e1643bcefea13cab2bc2bc09d9063c65fa10bdacd4433d6945843d924fc13adacc7cbdff99ac3c07e1d23a64398c3ee05abdbc2d4a94bd1844c5bc6388423da1cceb3cecbb93bd50bf97bd6f28a83b46bb36bc6975e73b2457823ca0d4393d2ae3e1bcf0e7a7bd0a01693c53de783efdee483c78d4d6bba9fe9bbc7e0adb3ae498b43c970c3cbd53564ebdbade38bdeafc85bdb83160bcea9c223d5230a53d2041f1bcac2c6ebdd964463c241cc33d6f059ebc86c6d33bdca2a0bd67293cbb518195bd3538053d499d25bd795d0bbdc633073bb9989c3d2f66213d262aa33de47f873d1f24213d9878dc3d0b5e1f3c9ef427bda2f5a5bd1df13e3d3094df3d9fccaebd93566e3d000eea3cdda7c5bb238d73bd1562073d9521993d309ac1bca7dc123d2e8f313d1ff2913d9ad8433daee3b9bd4f3eadbd837dec3d831e913d2b2cf23b8a09bb3d0b439e3c9c2f853bc3d3983d2b45b93c6c231f3d9a516f3ba18a2abca4f29b3be80b133df6273b3c2a38bdbdfd161b3e40f842bdb8cee4bcb9c3ae3cc241303db5cc21bc2d4b41bd5a7693bd8174753c91f1b63c0f80593d91595b3c537d313dbf24253d6d68ec3aac21183dc1a74bbc5639af3d1ef4533da58cab3d6a5c94bd47bc20bd1b37743d80a6aa3dcad5afbc758282be8645cc3c8226fdbc83145cbc3c084e3d92dfbc3c520772bdb194643e70fa2b3e3967713d418cc83ce6a4143d995ec8bb8b8378bd86aa72bcb262a53daf17073d18621f3d0dc865bd665f923c31098cbdc978813ddf83a23c3e97343ece70473cc8e038bd03a29d3cec6bdb3b65954cbd144e1b3d7c979dbccfee673ca20ead3d344a2f3e763b0e3ddacc783cd1e1053e4705b7bb8afaa6bdb8e7a93dcabe0abd4d306d3cb8d014bd7596b9bb3f9fb7bde9e26e3de5f0eb3df6cb84bcf7daa03d3c06883d5fc02e3efbadf0bd9f8729be1ba41f3da159ebbc145e08bd0345ed3c8fe3363d78f58c3d6cc8993ca378703d5cf28d3d6139e43bf5705dbcb98870bce8de83bba56db5bc9ff921bdeef2a83d957bf73bb448d63dc974a3bb2d60af3ddca18cbba749063e451e853d6716c23c4b16a8bbf915a73deaf4b2bcbbf98dbd53980d3c0e94e43c0a3bc63c5cc127becd8e28bc0950683dc779043db0f441bd05c098bb8a1be03df84cbdbccfca973ecbd82abd3f16143edcee403a974bffbe4f71a13bdd7d3fbcf69d103deb849fbe8898d63c33d82d3d7f42f83ca7dd72bc2a185dbda0261d3ed16d1ebe4f70893d35e2db3c5b7d75bc53378a3d8cf10f3d18c9ebbce386af3d2fc32f3df3d5a0bef33bddbdda1f3a3b2b5db8bde05172bc150be1bd3640683d206e8a3d7516e73b7f2c8f3ad7a6593c5d73673c06a0f63ba6bc593df9a12c3d87ee1f3d279670be07b4c3bdd137f93d933e9d3d3f65e93b9ab8d63d81e1013c9471ddbc008f523ee7ee2abe858a82bd832db73a0850103e886ae83dabfb893cc44f19bd63efa4be578a513cee3f0fbd44251c3e3d1ad0bd0f034bbe6db8adbab89badbd5fec8a3c8802d7bd0618003dd99b96bc90b5d33d3a51b43d28dd243cb82551bded9f23be5b2f2cbe7bc61b3da9bf8bbc2a9fc6bd955116bc27f29dbc80623b3d7d36363c58e0c53dd456233d831d513c0b422d3d0c0e893c21b5a43c481844bd30c8f4bd620cccbdbd405ebd65acf73de177b13c27c4463dff5de9bdbbe07cbd633f963d5395843def20f6b9237da8bc0159ab3d5b28bd3de39b113dd8f850bc6100f3bd26c2e33caf1409bd987f283e245e49bd839154bd1da0a0bd2b2f643ca0070c3d412ba7ba21f2473debc69a3c926e8a3da116893e1aac08bc5935503a7a3239bea140febcd70ea9bb1436a13d11d520bdb4368bbd2e1b70bc5a3706bef90364bd1d691a3dfff4d33c146f373d0919fc3af662a03c3bf8283da17206bd39b982bdc1e761bd974787bcc683813c4581c2bd515bc8bd63b5e73d1c32f6bdf8e317be69b8e13c742383bdc853813d9ecd8e3da8dd81bd7368313dbd17533d663a53be893ff73c72a7123a882ff33d626127bee01de8bdbcb1373c60e24ebdb8bf0cbda197963cd18efdbbabca67bd9564853c166754bde36c1d3d8fc58bbc2b10f0bd14655cbd1e90c6bcb3ce79bd7ff20ebeec28fabd049a77bde2e10dbe32670dbd2106953c11fad8bd0a50953d1e2aa3bd463d653cc3abed3c5d39903de2a441bd89588a3cf2041a3c69f211bc3969d8bd92fd01be116b383c7e4344becf0333be6a05a0bd38631a3e82cf31bceb5649bd2009cabdeca07ebc0c8e3dbc730a07be3cd2a63d28fc22bdb40cac3dcfcc34beb04c05beb21c083c9cbec1bd0392473c0e3841bd049edbbd8ae455bb2bebd0bdaf2883bcae89f2bd35e4093d3e444ebe7de090bb064c03bd0d908ebc062babbe0bb3d1bdf3c5d23cceb9efbc78ea843ca6e49c3d2fa90ebd91f553bd166e65bd32e7f93df3213cbd31f2203da9d4563c4063323df929873c211d293c62533abe838cc7bd7c537b3cfd929cbd25d202bdba1804be5a47fabdd7737f3d9f8f9fbd3b7de9bd88bd1a3da228febcfe8e663d91608cbdc489563d4c2cdc3df78367be7e8e51bd021ab9bb7fb8e73bae5423bb88e4ccbc8b3b2fbdf172abbb566452bc687a0dbce1aa4dbd0a0e19bd7cbc9ebd18d682bd1e2535bd05fef4bc22156abed05e343a6eec903989c50238d1a278bacdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000008ecba9bc9c9490bc64cebdbd60ff28be12169d3cc34629bc1a529f3d5556a7bd37f81bbdf0c4183cf2994c3d322ae6bc23df63bd093eb9bc1152e3bb1cac283ec61ca53de8e078bda2e3b53cef528bbd1fe1c93c2697a03c2b0592bb84dc613df3a482bc0e5db83b6b133f3df1588c3dae812f3dc68294bd1341883d6013e43a4ebe9cbdda5a953d431e44bd7f2af03cb241783d3a524bbb8267813e9b52103d1252d23b2ca3bdbb3329743d41194c3d259684bd4a18d43bb358c4bc1686d63baba33ebda7a72e3dd8d7183cc61b73be668fb13b2e617cbc1ae27d3ed8f738bd828ef63d35d286bcd95ac03d1c9ee53c8dc7d43cd0e5bfbdb394e5bcaf231f3cca57d03c5035523dcd9782bdb63cc33c537afc3cbcb6f63c408834be134be53da99d6bbc6eaf5ebcaad1833d4ec7c33db902a43b8d5020be5a0084bc2584893d78e862bd3cdd40beb2b67e3dda1e27bd4026cc3df7fe3e3c7ac1783eb86544bd9cbd98bc11d5573d24c84bbd2a11c73d88244ebb2514c1bd8c1123bd476d593da22720bd085e23bcd159613da4722fbd8428e33c582d8bbc44b7f93d9a4b18bd44edcc3d369aa8bcec41bd3c4b74863d3b3e19bcf11e9fbd5c0a9f3dd5ba123d48e6db3b01542abd5b15103d874f6ebdff558cbc7ef4013c592cb3bb029c933db0dd0abcc16e02be79a6bf3d6fbd79bd8a0f973cd63dadbd152f83bda69279bd8f58a1bda35787ba6adf703c3379c03c2030c13cd5bd143db39af63ca6a6cc3c2fb9a7bd3ea3b33df7173e3c109ae83d4612fd3b0a2ecfbc9d82a93d6b0f7d3dedf4023c51d3c83bd4506fbd37b2afbc4a5a363c12c382bde58f373d7fd5f33c7b2a65bdb5bfd13d8e4fa9bcf8d278bd49451f3d8e6450bde4ab8cbdb961033e40c2263d9aabc43b0e58413ba8f99ebdb18034bd88e3c7bcac40b13a05b0193d167f8e3c103f02bd15011d3da46d683d06a7d2bc0eb44cbd5bc652be2e4406bd710e8abd9dd624bda8f3abbdb6f9e3bdacbec03ccca481bdfda3183dc55a61bc4a43a23d3c1d623c657f493d170a093d2f368d3cef520dbecdc8d0bd00109d3c8a99ddbcaf435c3d8136193bc86f21be00a2f73c3c90c5bd4beb353ccb4fd3ba663d44bd985cfe3d183e353d26e3743b0d47763de9b9573d0dfe06beb60ac33d00e547be77620fbe5d9d5e3dffcd0dbe6e296ebccd520abe0d7350beddd28a3cd2f814bd3c38133e8979273e07cbc03ccef63bbe13a982bd53e624bd3a7a14be4cfe29bdf04ca1bd802d173c271be9bdb0ddfcbc4f31ccbd972524be5844513d1531b13d84f2a13da40ce93d8f0e9fbbc93bef3d94850dbcd030ecbb25c854bdffcfc2bd198247bc06324cbd823b3c3d24d6cd3cc92f05bdce5235bdde23dc3d5b2654bdd4ecf03d6e2d373cbb01293d5668233c2d4d293d86c9adbc3f59c43d9d896c3d0d0dbb3b38896abd73712dbdb952d43bb17895bd6c5ee1bdc0169dbd667c19bda25ac0bdfd72083c3fcd903cab45143d91db263d85dbadbd5c12d23c3d48b23cd4a4c23a6c32b13d1b5f8abc2a4ab5bb2fe2c3bdf52c85bdc377d23c702a0d3e8bcbe73bd6c92b3de744043c199ba83d84cd0bbdae8546bc64ad70ba324387bd98b167bc3c9d21bd9fdc19be4d2b51bca7c426bd33b6fc3c877fd5bcb55d473c94a7423dfdaf83bc80532c3ddcfebcbd426e07bd0fcf3f3df6a7803ee65f863cd35a763de6c5fa3c20e719bd39128f3df5e4493c0915c93d89e2a53cf4bb46bd170a9ebc62d852bd71ba36bddbea633db06dda3ca8da23bd887b543df924f33dbbe2003c002bc03d665ce13c0c4d11b8f7b1523d51529c3da5634f3c62bf973c55bb833dc8eca2b9e36e243dea568dbca6c90abdc63f0b3e1b9233bd27d25bbd9e810cbd6331ac3d9f43b4be3b29b3bdd62dd3bd43033fbd6b57edbddb9f61bc448e7a3c8a9abfbcb0fc313d839448bd2d917cbd206d053db3ecaabdd0864e3db21b8c3d18a9e2bc8c88023d31bdc03c951648be50825fbe978d7f3d4bb0923bb54968bd500284bc75a104bdb64000bdf4ab3abdcf82d8bc8c357d3c8fdfc93d943812be8b53b5bd325e923cf316123e05bfa83d2a35b5bdd5dd7e3d0509923b43fb5cbeda1e8cbcce8fd2bb69bfc4bd42dd793d160a35bc02f081bcf00c9abdbdd4763c7dcd85bc67fff8bd1ef69ebcee631cbd8ecd33bd70aa93bde4a8093c04430b3e1b7c4d3d04c0113dfe6974bd0229b7bd777861bd1bb4ee3de4da07bd5c5337bd16c629bdb65276bca68690bd8a6a26bd25051fbe40c7893d41e1ebbcc19b223e79e9b83d48ccc4bd2d20cbbc914538bd83a9f2bd81ca453db31f973cdfcbd6bd5c0060bd35a2693dc266c43d918c4cbdb398dabd8278243d1590ba3d51f8303e27b487bc63066cbc0267babddb9fdcbc827a81bd8df0333e7ce897bc6be096bce95c513c3ae81dbe8e9d83bbd1ae0dbd25569a3d6a3a933d50bef73ce5a28439fdeb60bdd10a81bc2d67a1bbe866c23cd996da3b0ac499bd0347fb3d1fe83d3d7c06ae3d2bf2793c610affbc47f3663cc311d13c991aa9bc61e494bd132dfe3cdf40cabdd2713d3dca2ea93c62351bbcd157433da36f363d2fe4dabc4e229f3dd42d333c183c8d3c64a01b3d457d563c9eb7833dc234a03c710b1ebd8330313b3aa6f2bd2912da3ccd11eb3ce739533d982bcf3c8137023c42c887bd50040fbe3428f6bb0642b5be8abe9cbb36135f3d970d0e3d085a6e3dd8d82e3d2512ca3df82fbebd8f7d51bd3312fcbbb5ae0c3d0f8f843ade3f363d3c73b63ec41355bd5f0328bc2b188e3c77bc563d356c853d3921bb3c09c7bf3c2350903d84ded03d42f4e03b53e8bebdb9f130bbb3c01f3d8723783c316b24bdf03c2dbdf1041fbd7309cdbacc35343d0edde9bd4f86b3bc7e506c3da4e214bc45d5de3c87ab813e65c257be893dd6badebe2fbe6aef403e03654fbd49d96ebdebba353d8d670cbd60d8173ddf191bbef87705bd4cfa753c06568a3d491e00bec93cab3c99a0103acfaf01bee8459c3c752c96bcf51c6e3c92a9733c6b0e07bc959b633d4a38bf3c1ca5c5bc67160a3cb25eed3b7e87a53e784d01be2957de3ccbeb8abdf2ea64be250925be77a1a0bd41fc62ba37d6003d60dca33d9e24f23c3419cabcadfaa8bce6d419bd50a3df3cbc4f91bd7dc62b3e73676b3d1f06a93c9a59e13df37c6e3d41ba92bd6fd93c3cdd99e9bdf572873d1621293d61759fbdd6e848b8dddc1439db40a8b8f4fe9b39cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000006cca85ba771fd43bcb59d03c182a543db160633d5f3491bc36d65d3d9959163d92dbda3cf33645bc5927f03b6306a9bcc133463c5e6540bc2eb6b23b9708863dd61b7d3ddbe70d3e3fcaf5bc3199b53d163510beace5103ed6bd593db2bf313d9d966fbdf8530c3decb9a8bb363aa4bd5ba0fabc010b893d35add4bd27bb063e7e5d3f3c766ffc3c1960783d6254203ce77494bc882f4e3de4c1ff3dd3338a3d3d386abd9b48aa3cdd258b3cbb4ceb3c2721103d88de5bbda3baac3b7bac1b3e1639ae3c2d46d93c6dd7603c8486ee3c3aa4e5bc13bc713db569723c916605bc5fb0843d2aa7043ce397a23d1dd197bd7a1c9ebb14a10d3c671daf3d56b6a9ba377d97bdd69052bd8515203e80bd843d15f18dbdaab8233ef902b13c8835b83ce9ff903b9a8415bd2229de3c8b9ddabbd3545b3b32630a3d7742233dbc92333d814574bd453d0b3dc08fc6bc415d8b3cf51d933d64eb0f3e0e13f13a55af0cbe4075b73c50fa4ebc7d808d3dc3dc3d3d2af22b3d02eb50bc173648bc935bac3c0b9f60bc421c283d7fc617bc18bba53cc72f4bbde285c03dc9ee803c30f7af3b86b2f0bd8742e03c307d7d3e91083ebd91ed843d2ef1d5bb8064b43d8eb7a0bc1a77b5bdf906373dab6547bd776395bcbe9f2fbef7aababd278d7d3dd540cb3c226e95bc0eabd33dd34de7bc4763553db53ac0bdcaf9113d4237013d96c23ebcc2fa383d606d313df54495bdfb2b91bd6feaa43d517a183edda5a7bce7588bbd37878b3c250fc8bccaebe93d12c2333e2444ac3d2a2e1dbbcc778e3d387d3c3db1240a3c54c57e3d2fe246bb73b528bc76ed633c80868f3d24ad3ebd97744f3dade04fbd7a6c683b751cfa3cbbf6e6bcf14a1c3e7eaba7ba0c7424be6d1e10bd8c31423dd0c11cbde30fb0bd7ca0253dd2d6d5bdcf4b103db609cfb9c7da01bd6ecbfb3cb4eaa53d0673a9bcefe403bde4b3ff3d8215643d73ebddbd4c1abb3d27fa55bc2abf12bc3a8645bda993663d89aa883c353e0a3d011ee0bc2eb192bba086c9bc24451d3d1d9cd13b61e57bbdf73c263e9c1641bdeb8bc2bc37a1913c910437bd72b6a93db2ec29bd0cabd1bb48ec8dbded7b42bccad850bc42bc8f3a0094913d0b652dbdf0bdf73cc0852fbd7ef2243d01d091bd6f26b73d6f8ec93c8bda09bd33e63abd4f7fbe3c3d3666bdcdf0dfbdd5f99fbefe6db1bc35ba4bbcc8bb7f3df709ae3b708f533cab7e753c64d615bd36ee163e3522fbbd0fb894bd761039bd5f540e3d7f7f4fbd83613e3de084a6bdbc01c4bc2d5317bdfa555e3e5c118a3c87de853c849b8e3d6ca0ff3b0805ce3dfc7690bd7aff3b3d13af68bde4a85bbde1c0a9bdd873203c5ecc8e3cdb950cbb3a8f5bbd5e5191bb5ae42d3d2f671fbaa2fe103eb4ea88bccdb1013cdb6b64bcdb638ebc0c84cebd85db7b3c711a94bd1471d8bd23f819bdb26df63cf55cbbbdcb1b55be7d1886bc607bbbbc32d480bdc749713e985834bd049dfebbff5b6a3e2af8733eb813e0bdbec306bd79d36ebcc87ff03c4616bb3d522809bdcf2e7bbd16b6aabd224c56bd0a95a03c0a2da9bd3069a53eb823523daa497b3d5360553e5f6b233d446a1cbed66aff3b2f3f0cbdf761f3bc3b8c1e3bd7b2553c787b23bd9931993c105b1abcab51903cd5af36bc36a2563ba7e114bb4f2eb93db0f6283b02fab03d76fdc1bc07805abdc992bebdf1ce893b0871743d1606ca3c0cf29dbd3f4fe2bc8a487abcad3c13bdc54486bdf69398bc30c61abd6ea3393d2e0d2d3b93b42f3ca0f32bbd4c307bbd6bb1273ebc6fb03d6328793d5fa28f3c7fdf1fbcc20e793d3d14063d1eff90bc0f1a693d3055323d9cea8ebc049aa23d77bf283d52a5bd3d2f95bcbdd4561fbded7101bdea2d9a3d9f1af9bb5cb21c3ce960bc3c494d72beb29345bb2bf03e3b22fe23bc656b36bcf67a033d1c0cb53d7eb7153d8f506c3d94547bbdcc0aa4bdae0405bc3a1cc03dfcde333ebbbe2d3de66a3dbdb8c64cbef0294f3e1d0aa7bd71e827bd8ecce03deabff2bc0e9e353c590f15bd6cd5403d22f54abb925f97bd8e50783dfcc9c33d8fd9a2bdf9fa1bbcd4162f3d32615dbd46e058bdb4e0c6bd574664bc25a3fe3c6797a93b8721523db0c62bbd19ea523d4c61dfbdd72af8bd8c8aff3b83cf82bc0a00a23dc058f73a35c352bdefa8edbd1615ba3a2c93cb3b180383bd806cdabadfaf8cbc0f7c073d7a3fc4bc5320b8bd32400ebe60838fbba3620c3dc75669bcdcc632bd737b613c013125bd13a73dbe2d33b6bcf66315bd384789bd6a62193d1255c9bd6890af3c7bf29ebdbc50dc3d8ceab43d321517bce11b5ebda8801cbdde46cabb5bd56dbc5ec4bebd7780cabaf1ec52bd5537ae3df22f91bd5a0fa6bd74eb1dbd948549bdb83087bdb9799cbc2edadf3c356a3fbd338da6bd10dd683dc52543bc5d027fbc8f83d2bc71487b3cdba7f0bb458924bd1c526b3ebab31ebd0cc9bfbc5c3516bd8392b2bc1fc97bbd8000693df8039e3c83fe9cbde85aa9bb625ad7bb15b794bd8c27f73b981713bdb41a4b3d11b368bd78c4643eb269473c1f7f073d362586bd96e4143d7765bf3968698d3d10ea03bd94ed653d8cb32ab84b28ba3c4e04ac3d088687bbf274f63a666f6fbd37bc4abedb24ef3d0c9762bdb34c05baaac1efbdaeb3fcbc9dec18bda4b16dbbfc0f00bd2c36bb3cffa961bd230d663de8285bbc9529c53b36a6ae3d5119abbced2facbda74cc5bc9ed3aebc9af4203d22b602bc42a80cb85c3ea43c3951be3c797e543d052369bcba01b3bc3e0d6f3d614ccc3d58e9a2bd9e4bdd3ce42cfc3c1f0b0dbd45999f3dd0a692bc5c450dbe1db03dbd28eb91bdaf6af93c669fb1bd9908853dad35a0bc5c01033d3b687b3d1c0ccc3c1872e3bc66b8d63b1fe2173baf04883e3560a1bdf98e733d2820d33d40bbb83cfe96213a7ea737bd387ea63d5e82043eeb23233c7a9119bdbdcd24bb9eb5b13c670486bd0c4bebbd16fdbfbbc6a19ebdc5340cbd3156543b6e578a3dc16a81bc90bae038fd0f283dfbe5203d312f113daad418be921baa3b64d2a53d3da7973a5e2963bd3e7809be63a80bbe91ee80bdb0ccfc3dcbbf8e3c89c5a4bd74d6013cc8b62bbd7c41d9bc0ffe51bd2c1b623da5e904bd94191e3c3380aebb2730c1bc364c483d7f10ccbcd89abc3dfde610bea3af083e2719d13c6087833d37e44ebdeaead83dd66bf83bc5d2a93d1b811f3bc09b783867bc853938865b393c0ae939cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000007d318a3ce846003a7f4bfc3a51b3bebd3362123b938ccd3c3cc1923d559929bd86d6123dcbf179bc1ae4e6bca65f1d3d7273c2bc3281f03b90375a3dfe2fdabce5b7ec3c2dd7093d8c3f3bbd9781fcbb10a993bc99c5593d5cf29bbdcace1e3cd7b64d3d1584883d80bf7c3d06ab953a45a2e5bc3e99303eef521b3b8b47953d941a143de73059bc98979d3c9e0ac5bdce8343bdc6adb73c8be88f3ceae5033d4205b8bc13991dbdc553d63c3ab4c73cebce2a3b9ada2c3dddbab53dcffa50bd5cd22e3dc9b116bec30d88bd5739fd3d3560c3bcaf2d3fbd587ee73d7412853d378c383df34e363da712203dc7d622bb6db1febdb273253daf3a203e561de23df745d0ba768580bdee64b4bc744626bda66b993d4bf9153d6cc1213c228691bd68b9913d2f69d6ba60d25f3a5effa93db08c0d3eed843f3e96fc5abeb98c903c678840bdc892ccbc1b2776bdd38f28bc8e0c483c70493cbdd108c33b3fa9a03dae985b3c662e5ebdf811b3bddc6eab3c180118bd04ba273cc3ac053e5ee55c3d329d5cbd603957bd88bb05bcd4f150bd2b96c6bd92a461be67ac043e52b0abbc4de48f3d15c1b5bc09a57ebd08411bbd50236dbdfe9d4f3d7bcab43db7d48e3a18c6703b7f270abd03778bbc207887bd1f7ff8bd724007bdda96ebbc04eb89bb7381ec3c8b007e3def4ea7bdcc0e0fbbe0f199bd2e50e93d5ae2013e011c293e7a7619bdd7012fbd59c24b3b931db2bd43ee46bca31172bd7a967f3d7edd963dc7f7ffbcefde1abd5789233d4dc7793ddc05803baeb4ab3c15698d3d2fad0ebc5201ec3c329821bc6e6d00bdd30485bc59629b3c803305bbfa64593cdbd93f3c26eff33cdbe5afbdbab7c6bcaa8d8bbccdea923d40cd8b3dd472803c059e32bd52cc323dced789bd9e1fe4bd0c4cb63d6fb7523b177de5bc548b78bceae9da3d3fd97abca81c5f3c97b9b7bc664c373d1767c23d6382263b874500bdd324ef3c79b577bc167c80bdccd53dbd4f68fb3ce52aa4bc6a49dcbc46c29b3cdf21d03c6450483db7fda33c8194a13d923f813c3566393d66d7173d388cb2bda065cebb1136153ae01b0dbe266484bcea66833b25714dbda984a83d7edb1a3c70a9673d740fa9bdd99e3cbc015a1e3cf3b9343df204b83d9ebdd83d0fd752bb4a2ac4bd2caf9b3ef58ae0bd9f6813be58550e3ef4e823bd9eec3a3d7fe65ebc83a830bea22f19bcbd412bbcda2f62bd7377e33d2c673d3e21b33c3d54c506bec6f4b83cfd6fce3d8cbd89bd491b2fbe75f07a3c58b003bdd5873c3daf1c99bcb424573d84d7ba3dd8d5973dd8cff5ba08d72f3d98daa03d0ab89a3da7846fbd911086bd755f40bc319fe63c6e9e2ebc4e00483d1852523dd6dbb4bd55881fbdb2e44cbd756319bd185a79bde1c0913d7240e8bc59b7dbbcc3632f3e56d80bbd695d87bddda9bc3d4afd9cbdbbf8ebbdd527ef3da2412ebe1bcb26be57e9873e953683bd11d78e3d72ae79bb829499bd9ce5d13dd3cf213f0e158d3ed2b749be209833bd3f998b3df2e7a13c5fc3a7bd3224343c11bd74bdc30dbf3d7a9d92bd7150eabd4a2d7e3e4578543d861279bdcf8c28bdec37a63e4c80403db9df06be8a9eb2bb1bbf723c1bb8a63d6e1a163cab903dbc727dbb3d338873bd7d385cbddc1f8f3c92341c3d5b5659bdb65e0fbd18f860bd658a2c3cd3b990bdf41456bc64da89bc1bfd8c3d9ab4733c18537d3d23b5953a145947bc601748bce396e1bc79ff00bdadac40bc5a42c53be88582bb1fb52ebd742b9abd9e4d323e682cfe3b14bf0a3d85396b3d05dbad3ceda0ec396b14963bb56234bcdaba923c1f2e2f3d02b2e7bc21ee8cbc9aae1cbdd768533c821151bc1a2ab9bcd3e13cbd3fee9d3bbe09c43dce54f93d22d650bdf761c4bcb38f4dbe191dd5bdca41f4bd4df021beb01ab23d7115c4bd1a83b23c726b343df885fd3c388b60bd70f2dc3c141e28be06dea9bd8690b9bd87f65e3d51470f3d53fa2cbd92f7a7bdf4b0b6bda971e6bdceca303e8c11b23c89cd893d80ae04be2526c33d3dd6823d0b98683eaab51cbe05c98f3d56e4143dc46b65bcbc312c3dd738333dc90d70bdb93d413d3c6c433c818ea43d9fb3953c200b313d80e801bda5fb57bdfcc4293cfdb0c1bdd28f443dc1e5863d1518473e3e4b3b3dc9ae893dc3ce4abd5cf9a03c9a8e323cfb49b2bda248223cc32e583cd2f7863d70c7a53d102200bd3adaa9bc50f215bd12cd13bd805de3bd9e8737be70425c3cb4e5153e396f6cbde6b3eb3d47c29fbdf8383cbd87df30bd8317db3d95df813d4b5424bdc727bfbdb0fac13c410e433ef0bfc6bdc12785bc0a524dbc4361743c8883263db7c2853c8094ea3c85ba493d3a4d983c24e8c9bbd293453d901cd43c6521e5bdb5c7fbbdf652a83c460d6b3c4c1a09bd1196f53c3a51cbbc1cc6163d7743f23c84a9073e738527bde96b1fbddae3103d845aa8baf1c7bc3d496a9dbd7888753d4603bf3dbaac86bd15b2fc3dcec8283d2de8873ded8cb73cdd1feebca138963d62fd543c7ff277bdc3400d3d840347bc27bcd23d7677313b9f84ecbd175582bc1b7ccc3cc052493da86a44bc38c3823c0515e33c11622cbd4d487bbcd37a053d8218013de89d073d1c66493d339a9b3dbf603d3b6b2c32bd2a378abdbf2ca93ac2c8c0bbec8443bc19d57abd72e5123ce362583dd5571a3d01e684bdcf476abdc7a45fbd474357bdfc27093e6d90ab3da03a173cc7c9e53ad8288fbd11dddebd8768cbb923bc713b1e7a01bdb572b8bd48ea26bdde9956bc869131bd4887a33dad2006bd752e0dbd6234853e54b50ebd9524f33d45dc88bd319cc4bbf7081b3effce19bd75fa283cbafd803c72c374bdc1f10c3d78552bbd5c3cbabd75752f3d7158acbc00328e3dc8e4a03de77bf93cc879cebc13556fbd44e0ecbc0661133e1f94863d62432cbd15789dbd268187bc10aca63d84796b3c52d1153edbc6bdbd7019c83c97762fbc3be2b5bca8037dbda8c38ebd0c1305bd006c07bd7fafc5bd5175983b60d535be6daa74bd433a953d187506bd94add9bd9dec913de9deee3d9d4a4e3d8e232f3e8a22ba3cc299993cb6ae8a3de5918cbd5400373ccee62c3d67b0103d09ffaabde1c0a7bc3ded24bd97a9583dd6b684bd8d97f63c35ba07bee1ac7e3d9edd663d0316dcbde96f77bd39e3c3bc30e4a4bbd09015be6930dc3c8e054e3d9302e73b99c41fb8203426bd8044ef3c692105ba88d571b841c7de396cc83b3acdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000c094d43d50b0bdbb0cdaa33ce71aa3bc6a21ba3c578bb0bd2e326bbd33371b3d0432143cb86d43bd6e34e63cb6aba9bdc1c00d3bcf0c123cee70613d64a03ebd5d2ddf3de0deeabd36cc863d7532513c6380063c63780abc09b8b1bdd22877bd72a6dbbdb40400be0e67d0bddb82473af3c458bde484b03d6462a4bd40ed323df93c7a3dece329bdbb5213be69adf53ce83344bc3e121abc4e4a3abd182b3ebd3cd088bd151f92bd8129ab3d899ca4bdf211073e3cad7fbba79298bd0019a7bd9dc8a0bcae256dbd9395b43c730a01bdbaecb03d0b8236bd42beabbc25f0fc3bebba103ef54e8f3d3df36c3cd51b31bcb2a9aabcaaaa883da8a62f3cb200533cfa7a0bbd6d34a1be0988a4bd78df01be536fc8bdb8b744be7b69dbbb51d8833b509c3d3dedb4453e1d63013c56dca33ca5d2003dd531983b8930f1bbbecc5f3d27a6643d075038bd9c9e15beb27b3a3e088dfbbc3e80edbb8c63213c2919d3bcc363f43d4434d73c5f173fbe50ba2b3de1d2f33c6946c63d34d7663d55c9e63d68ac25bd321e963de303963c96b5a839e4138b3ce120d8bcb4b60b3caa4fa53dfdd5ecbddbac4dbc315c50bc396dbabd70214abda8a8f23d119a043c62ad113c4a6550be1bea143e555774bd587802bdc6070d3e2683ab3d7774e13c697a593cfe98f5bddb8458becf62f0bbce9826bcc30e313de9f8293ef81c55bdf614853dd59e2f3dc734c2bc972250bd4137503ce1650e3dba73233cad644fbd410060bc18d4183d114f16bca898e23dce91d63c3808dbbca71c5b3d655533bdb137523d2218bfbd216701be28e69dbd0c0001bd98bb6dbc1ec889bb2adc0fbca302913c83fcbe3d28d4773d9f855e3c2163793dc7f3163d610e363de88da73b5c7eccbb373ceabd977a44be8c9bb0bd9f5b563cccc7793dc561a0bce5fe883c5bc889bda440773dbcf5b63d1aaddfbc225bab3c401eff3d9020573dbdcd813cece382bdc2428c3bcdeaccbd2414c8bd0ba521be2ac789bd6e97daba43c4bf3dc0a4963d4b6af4bc20a3a1bbac57f5bd4a01513e1c0a2a3d1afa223d650f03be011e913d7a2eabbd56e7afbd1cdf86bdf742763ce7190ebdf15982bc9095f6bce5d33a3d80aca1bd61c033bd45f3c8bc6a6b25bd201b85bc6a938d3c6dd4a73c74c10cbe6daca6bdc3eaabbd313077bc8514253bda508dbd7324b13b691fb13dfa6103be88e0123db278633c2b48f3bcb8fb0ebd4b2503be9abc89be936d21bebda90abddfb733be66ef7cbd39ed69bd2aac45bd4ca9b1bd8af2663eaf54513e18a5ce3d656a553ee5c4c73d201521be6cf9483efd0bc93a3eb0a5bd5bb585be9554403c731ecf3c32d5cabb0a9350bd107c483caad9a53c8c83b6bbac67153c5e6447bab00bcd3d297be13d5a3f1e3cd6d3373dc5f0d23c8c85e8bc490f7c3c3a2443bcd45bf43c23891ebd4743703d0b223ebdd37da0bc950a393e79c707bd82f438bd90bb513d4e64ee3c83482b3d547b8abdb5518abe9ac78abd15a5babb5413973bc8de97bd50f0bbbc1e4efd3c3c5e6338cbc9bd3cca66ad3d2c9488bdf1333c3d4a30dabd11a2cdbd071c9b3d0aab973d7d209dbd78e11f3daed1013e5d35bb3df955943c88d231bd895dd1bce41f35bd0e18a3bcd62214be45392ebd9f8b56bd4b6b1f3c89f2a1bd597df93c00ea01be275fccbd023e0abe8f65b0bd34c2b2bd628bf9bc38a8f9bdd47093bdf1051bbefd80953d67c27cbde68d13be4f8fc13c246df83c6befafbc391bd93c6b46673cee12b8bd37d60dbd0151a63c0e931cbd4862783d493612bd8c66a8bcd0cba9bdf30f0ebeff31b23d3d5372bd8f7f7cbc0dea30bd70db74bd905fc83d7649c93d7b5e10bde8070fbd96c926bd232bf0bb3d04d6bc631eca3d3f0364bda0d09dbd3b1dc9bdbba6833d5209f3bb61a28b3c8f831dbcb3b4a6bd3895df3c4bd007bdb97dd53cfeac963d89f5b9bd155112bd86abac3dbe0f143dd61fbc3d735d14be1a0c65bee18d6dbcc4481f3d298d653e63c27fbda54800be5f9a17bee848babcc27a8e3dcaef9e3dccc773bdf6d691bdee96fabccbd8f3bcf01ee7bcea1717bc3f341fbd69d75c3d6e518cbcfcf38f3b079c36bde9fc0fbb2909853dd20d253e42fefe3d169d203eb00b89bd94de13bdd41de1bbd11afebb3225363dcfc589bd450ce63c437d16bdc811913c86ffa03dc26498bde123ed3b07eb87bb285aa73cbe32243df5e66fbdd4ec063d1f6d3abd9335f2bbbd1664bc36864f3ba09085bd2769723ae45c79bd8165a53d2781d83d5988d0bdcd754f3dc46ae73d26ba253cadc246bbd0fd68bddd12723b7d62b6bd84b506bcbb02fc3c1ba5cabc31f207bdb1c99bbbbeb3fd3c07a5a33d48ce93bcf94b9cbd3e85443d9815223da89dc23c359b8dbdf84263bd3b4939bddef887bd9982983cec07f3bc674a06bd65972ebd9d7bcebd92ed103d0f015e3daeedabbb42aef7bc05ffbcbb746dabbc1d0b8e3da11efabd89c5213e672eefbc4e8e0a3d9fd9a4bdde9bb5bddee9553ce06c23bc3a5403be93b6a8bdfb9672bdbd9680bdecc0bf3d9c0c8f3cf11e1f3d9daafe3d29bb9fbdd252e9bc3ac46b3e45b72abd8212183dae214fbdc0a9b7bb34f7acbd79d717bd01ba5dbdac23b5bdd090243e8688293d408c193d76e4b7bce25041be94ff41bc98f87ebd60ad903def56923cc879e7bddb71ad3c786e5bbca5bce7bbb9aba0bdb4c3383cbcbeeabc31cbf5bc0d25a3bd7682a9bc38343ebd3a858e3d1670c53e6cf119beeb91c93d6ff9f0bd7c865ebde0ae4d3d13ba92bcfe66f83b61aa27beb02de8bdab3a223b9cf728bd925d81ba6cd04c3c4c4de3bcc581d23db782413d8a86c0bd0d3e153d9f1eddbb155aca3b67fe01bd0a1c1e3d8066b5bd4a0690bcfce5b0bdf4cc7e3a2fc9debd4d7612be9e438fbd9430033e0155f4bd869d263db81139bd577a93bdcfe8fb3c70332ebd05d94a3b4a4485bd6db4c43d34124e3c5905b93d964cdbbc30bc053a2e7756bdfaa984bdd5de743d4584033d76e72bba1fdc503d933d203c19ad02bdc85087bc9dc94dbb814dc3bd58194ebd3537be3cc078763cef2ba0bdd8b651bd8e7c1ebd6fe55f3d183e013c4383dcbc40b417bcac47183d06cadf3c17c6cebc187d0dbe8f9fd2bcd25f5ebdf70a96bcd8e5d33bb5570f3d3828d0bd21607bbd85fe04bd31e2493ddb6b033df95d9bbc85b1233dac4008bc1fc8b43cbb0a353ccc9081b65eb6ad390dbb80399a4325b9cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000009625a93ce20d8cbd632117bc8970563d2b1cdebd147280bce4d08ebd2ecb193c77aaf63b43f5d5bc9677b03db8a3c73d2129f1bc3eeb01bd7fb78f3d2c8d89bd781d3ebd5d4c15bb850ce73c07d66b3d6307f33d44378e3c54dcf1bda4af54bdfa550b3e8629a53df8fda03daff0283d6a73f83c0ca3d93d25f2c03dc4898abdb5a64dbd030c3c3d969ae53bbe21183d9e7cde3d80774c3d12d00ebdf6c256bb365e1d3d58b227bd138b6bbc793d853ddd43b0bc606d773d21fa64bcea87ffbb8413823d6ace4e3be4d420be4befef3ca11c40bee560ad3b2bc8363be80a8f3cb9e1bbbc714338be530903bec7d0d23d328c8fbc0b0837bdb59260beed641a3dbfa2d1bdb57ae3bd38d01bbec8678dbe11ae343d2bd21e3ea553cb3df1583a3ee77bdb3daacb673d602cf1bce94583bd9851833d12b4d0bdc3904ebe3b529c3d5fc3babd2ea49dbd5fc2a53c77cbd33c52993bbcaf82573cecb8f7ba91e1f1bb602c07be0af7acbda733a03bf35f1fbe8e49633ce621bc3d4c8965bc135a04baed2c943c2816b83d20ca9a3dd166bbbc9bc4f7bd346a113e25809fbcb7eccdbcef93d53daf3aab3a116ebb3d618f253dd0cf023dd8e04f3da190fc3c71c1ccbd41f8c13c17a642be9482633d69a2a1bd8277103d8c7af63c1f1aa7bc79c446bd1ebcbf3d89c31bbc1920543c054f833efa1b063ded66b5bc6c47a13d31da20be922d7cbcfc416cbda5a3d1bb9d26ba3b4b6e753c13d976ba99a059bc800f6cbc89da44bc208b563dd33e033d021cdd3ca4021c3d703da6bd727b813c302b92bd1fff07bd8b791cbdbee224bd582285bd069b12bc8cc9bd3b11ef9d3cbfe9f33cef9603bd07e4523c9bbf273daf5c3abc5cee02bba4c1c5ba231ed33dd7ba263daa73debd4bd1133a3e96cbbc41d984bd527408bd1496623ae87d71bd31aaaf3b08c037bd69eca4bbbca5773d6f6d1f3dd46edf3c419090bc1103993db9e78f3d20ef19beb39e963dfeb396bc9e77dabdd7460dbc82af403c776141385a60033d74d0bc3da343ba3d1a8ec33dd3cae33d5c787cbcdbf8a53b8e98833c117eaa3df68a6f3c6ead083c746031bdc14390bc3e4034bd94729f3ba173cbbd4b4998bc844ce43da31c6d3c88888c3d3883c13d802612be4413863c6999c73c17c2cb3d475ca8bd968e16bdcbaec5bd4b9291bae50601be94dac13c784edabdf627903d0070d23d4187523c1aa65abc1c945cbcd8538c3e9887b53a52cac83c32a78abec4c6c4bddde922bd3b3cc3bdc9b8b7bd71cfb13d2c6cd83c10a80a393008b5bdaff43f3ccde7febd58fbb7bd2c4bbbbc2b871ebebeb00bbcc9f8793d0dfa8ebde3a82c3d41fd263dbabe9bbccd3e653d5fb1aebc1bf5543d7cd9a93df2df1f3dfea382bcafbf5a3c2edcd13c7700b1bc4a18bdba8e7bb5bc9c3e76beef35403dd8531b3c66e3f4ba36b205bd5f38ccbc98d765bdd9a1bcbcefd9013ecbb6ffbd636acebc19368fbd51774b3c0136ad3c1daf393e13b909beedeb92be8825933e15aea1bccfcfbdbded7a97bd106380bc4a14ca3c5e3ef9bd4d67a83ce1c7ae3c8d5c4c3d053d5b3d628e893d9b63233e6240eebca8967b3dfc256fbd6c833c3db0958dbd4198313deed6043df07a5dbd1c6c8b3c0934e5395b6a85bd3567903de1963d3ce69f15bcc95260bd910886bd308f663e5e7de93ccc67e0bcd03d52bc4904e43dff016d3c31ee973de4c07f3c05df13bed6e003bdcff38a3adea8843cf418aa3d197a8bbdf87210bdef9a45bd2b6465bd5c33123da084f83d0d3a0b3cf4448b3d9bbe303b2b6cd03c9b2b16bc0afc3ebddad15fbb7c72ba3c9a1e963db6d7c4bd9f9d433d912f53bd0bb327bec434813d9758cb3c608a1b3da8f567bc8647fbbd0a12fd3dd587013d919dc43be0a7043e488e543e03601bbeef98013d9a63e13b3a5453bd323ad7bd9ec7e5bd4b1fab3c98501b3e6f2774bdc181a73d38ab893d74b40e3d62e5f4bd79e08b3dd202af3a3ba4f0bd0688a0bdbed0cebdff88d13d7324a3bd845405be525450bd16b58abd88113abe4b6a88bdc3f71ebd1425b6bcce0f523dfa5e6bbdf8a12cbcc1170dbc9174a33c2adf7ebd91907d3ca6b464bd96711abc6ddda6bd25dd14bb5c8c83bb3d4965bdc1b1cabc9dc0bbbaa10dc8bdd895bfbd66d953bd216efabcca20923db6f6013e936600bcd2bdd03d50856d3ccc10c8bc1e79a5bc8b79863d0ee99e3d8e4d103b21bb8c3d2ada633d801d4a3d8dd1de3d8da8c83c22e38d3df6a3613dd884773e5acdab3cdb8d0e3ed9614d3d4e7ac93b044dd13def96393e8329913d4ecdb43dde90c33df885883db6c2073dd288f43cd9d974ba529bfd3cf4de5e3d822b9b3db7dc1d3d094f113d899e803c8b36913bd4d99a3ded5dcc3d3e9e603dca12e53d3f7bd03d655a943da1ee903dcf91313c6cfc1a3c7c25fcbc335b0dbd828614bdc32617bb343b1fbdba7c863ce2df55bd9a9c043dad4f4dbd975a82bd163d833dd705ee3d80f073bd485918bd2e1acc3dea7edebbf46474bd17a18e3dc74c30bef126c2b9d6c8a5bd07310bbd9e96dbbd491805bcdd0409bdeccf57bda922503c242c5c3d596e77bdfadf8fbde422abbd2c43c93cea78733c4be368bd95a57bbdd17e05bd364f5bbd7f1c70bdbdb6a2bd7cd99d3c4ccb3bbde9c8efbb29e703bd1c81003d6e91a03b07b6d43d9034223e99a7333dfd16193c7d632ebdef598c3dc1751ebed4de753d027fadbd1fac873ced50993c76b0f6bd742f913d07de36bdeb262dbe0c0a1d3ed9ffb5bdc34595bd84625a3d6411b7bb92ee623d612cc0bd325341bee48687bd3a3489bd42160e3aa2e8b43d0a0253bd6112fb3ce3b4d43be3db57bd9450c93d2cb86d3da55b9d3d3ca4853d15af2cbd6ea9743d42e6b2bd2d5b1dbe4731873c3f94a93df571f33d0edc1dbce7835abd17678abc8df0513c99429ebc1c5697bca26c2fbcbc5a8dbdb1f19dbdd87e803b202d51bd94b8213ebddd5b3d0ab56f3d086e5fbd43f80bbdac9a29bd334e8c3b5313443d5c5fa7bdeaae52bcb3e2c13cc57d4abd0f7fd23c3aa7dbbd03cfd3bd51da8c3c2ea06bbef61daebd97f2aabc31156abd10ab0abec00319bdca7ce8bdf650103acdd9b6bc87bfb5bc3ca2373c666cae3deb42a9bc1d9249bd3a97e3bc465c453df6499abd39f79c3d7420c13d5ff30d3c5f3cb7bd8e3b10bbba0dc6bc0d41923cd5f24ebc34a35cbcf70d3a3c455f3f39c18793b8ecb891b871d19bb7cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000b9da97bc6842613d69db023cd5dcbe3cba3f2a3d621513bddfbf7bbc96adb63dca9ea83c1b5631bd8bbbdd3c234af8bd1a77a93c6cbdc0bb7db822bdd6d2943c8bbc203dc668c73d4d46183d1f3a033d59d7a8bc57f218be8e36bcbc4064153db37c83bd6c88bb3d47ac55bc01271a3dced068bd4aa1423e2e10fdbcc8e814bee5e83e3c83fc81bc3769613d1ee0723ddf499dbd3d9fc3bde9150dbbff8cc8bb2901febc9d47e03dae100f3df0aeff3ccdc2e23db339563ca9d470bde093a83dd58c1cbe8c28b43d3394993cba80a8bc30b8273e5071a5bd5af660bdc159473d35026c3b5eca053e964a07bd96fc18be1acc95bd4bea143e3346aebdfdd7aa3dcd04fe3d791c94bdbb8d4d3dcf8d0cbefd6b1cbeea05b33d210d8c3ca883413d9cb21e3db09c98bd42b1d9bdd0b9b1bd9f52acbd43e6e1bd93e5c8bd25b9063da2ecf43b7e338fbdfa2eefbc435490bc8cac8abd2d555b3d587926bc39e18d3c720f4abde2f6f63d2fa788bb5e2c29bdf4fd563d3e9f85bd97d210bd4c820f3e705f2fbd90725039a6a6fe3dc586b2bce3f5d13dc391503d7aa73dbee7a928bdabc1a33b94ce20bdb5b53cbc64d647bd6a82fabcd4a542bc3fb6a8bda3ac493ddad5503d298984bdb05eb53e21fca1bc5e16dfbd8be761bdefa701bed1c2c0bc9b3c00ba692511bd0f3a5b3d3b0e60bd40ab5f3b378344bdfbe1a6bdfbc0b23cef9209bc7f9806bbf76ddfbdaef3063cd34debbc67848a3c398e1ebd9d6f103c764c9abce7210fbeaae119bdc64b47bcc3ce623ca9cf523bf52292bde7b8f0bc2391a6bd46572cbd8faa653d09b8bbbd7f06513b128172bc36adf6bbc19fc9bbe33186bd2d87ec3cc94013bdc3cdf4bc4e0606bc58f47a3d5e66a93bd3d38b3c0662f6bd7ef3963b398b963dd4f111bef39751ba56fcbdbdfd06efbc75fba0bc9a9933bb6a8e08bd0be42cbd488673bd4999b93cd073803d8ae1e43a2a50d43ca7910b3d6e1bf9bb6f0eafbd905e043da70165bdb6295e3c0484c0bbb7b6a6bca864703dd7d9553d6a6b9d3c7fb1fabb12ca14bd0df31d3db47f1ebd3e875c3c22962bbdc7b7babd712c05bde196b8bca2c3683c653dd3bd032c08bb91b3bbbb76d03cbdda03bdbd2d8cb33b7e1435bd8881d8bdf46fdf3c4677c3bc06b264bd5236dbbd63d060bc1e6764bdd0e221bd147db53d3b314ebd63ef75bd39d092bd11232ebdeede56bd336515bd49e7fabd959d0ebe62fe393eef479dbd7e8f63be62d1ef3d210cefbc5bcbe0bddfeb7c3d031fbbbdfc75d4bc75513fbcae5006be1d1df23d1b6a7cbd8364583da74aeabd2a8b313e0dfdf3bbcfe999bd7ca6c7bbadfa15bde01e07ba1d5aed3b17a7f9bc49bd7abb5354edbcdeb2153c154eb9bc69ad83bc4cf636bd090c8d3cc770243d3ba926be006fc53de1dc19be24c7043c7af4a6bc9ba6603ce851efbb675069bd7a74383eea754d3d42041b3d6cd114bde72df1bdf09f78bd2bb4e73c610333bc57a9743d41c914be8e702f3ac3a43abd0c1d1a3de50d91b87f68b6bd16031d3de4c905be43820c3eba7fc8bdaf87debd9515473ef82eedbd4c339a3d3f42d83cc22ce43d48feb2bdd3e641be7b00383c8ed0e8bc0c5753bd22b1803a9d9ee13bb7e5b8bd4010093e2c5dadbbf5a3e2bb66e9a93df4df9fbdada8d2bc1307b3bcb028813ddda8273e060a9d3d3a77f43d326cccbcbd59543bbdae0dbda9f0263cedfd6b3d051d4dbc3cf7e6ba72322b3cf2f7f0b9177203bc1d294dbcb201903d43d808be9c0c99bd36f2bfbcfa0d17bea1dcab3a75f9a2bc20c02abd03a1aebbff5185bc86c9f73c22673f3bd54b413d4a8bb9bc94a2cbbd34e5be3c710edcbdc968003c482eaf3d8e781fbcac9cdcbdfb5c7e3db9d3e23ceeb8d3bd213f473bba621cbe1692033d61633b3eb39cfdbbd91bbebdea52e4bdb2d49dbdff9ef0bdbb28a13d8307673d18d35d3ddae498bc11031abef6a4d0bb34b8473e14fee13d132aa53e0d372cbb9fe0593bff98c7bdf8fc0e3e2d04a3bc207cf43cc5410a3ecff71dbe3af81f3e0180c2bc6a8d14be770c3c3d7155beba8df7aebc4681623d017580bd213b803da41d1a3d10bd983d59d1b6bd9266353daf7c873c4a9740be7ce845bdab6c9cbde8b795bdc806d7bd96170fbce202b4bc00395ebe6bff973c354d86bdec718bbcf88fe5bc9356193cc35363bd2534933d051cbf3dd78089be0e0414bd4bd59ebd7774bb3d8e952a3dcb6c10bd3368f83bd32f793e07b9f63cdd0c0a3d2ed40d3dfe06c63d1eb8c33c8730d23dd20861be7127af3d7723103e72bd2dbe545188bc81501a3d9fb8a2bdbb2cafbc46a524bb034563bd3fad0c3b1f8a2abc730fb5bd2dff2a3d454c163db16920bdfbffc43dd94204bdfd334ebeb2f3c8bc75d6adbd7422e33b93e8c9bc86f3ad3d0073e33dafadeabcbce3083eaa86bf3d854ea13c5a9f2dbc4ebd933cd35e9dbd650a293ecf60b2bd3da29e3da3ca74bdb7527a3cc8192a3d3d1c1cbd4b24febc8fb8533d2a1a41bcb23f4ebe8092b13ce67e8c3dba9b7dbd82c9693e86dab23c5fa1313d0a99f63cecba573c3f7120baf32e0a3dabf530bc2ace4dbd54fded3c5020243d6dd1343df681553dd30279bda356e1bd667250bd7011b6bd9052c03d64969a3d9280033c80c2863dd49d8e39c83b813bf8fde0bc42e609bc91183a3d2dfb4d3b9f6287bdad42943d20fc083dc8253a3d555b183ca429de3d5d0b173edc5f573db4fd8a3dc919323b3e1d563d5446f3bbb152ddbd53ee2abb1c59cbbdc17888bdab82c43cda4156bebcf491bd17af28be55ed933de383b53d816da23a14a0f53d6a4297bc643882bb314f16bd627a2c3d4923b8bcd553abbba3ba983d2506afbd8b9b413d6bee5f3e7608233d8b2fd2bd01bf64bdedf70a3d1acabc3d8d76a1bca542c93df428ef3d617283bb4ba216bc8209d2bc6c6dacbca8325a39ff4308bd7582813dce4f21bdba54473dfa34163d13e03fbdec10f03d412b59bd9599ba3cbc4e9e3b6cf82dbd2245b6bd3c305c3d26fb463e38db6dbd1344c03dbe439dbdc33a3f3c054c0fbe465345bd16f680bd46a7063e5545e8bc975947bc90b12c3dcef79cbd18d99abda55e363d0b2f053d2ef90cbb414fb8bc6418e13d6275c7bd43ac293e8f517a3d1b8c643ade0ad0bdf62a97bcf521f53d0fdeeebb7b66e33d19b4753d0fcd22bc15ace9bb3e52db3babd333bda8db9abc6d178db97514b4b9fcf5c7b8a6db1139cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000939685bd0a01203c15d1ecbd31f9713d83d8543dfdbe773dd51526bd66cb8fbdbc64273d18b0203ca78c163e6798a23d4a89c4bc065e263b77eb8dbd8910dc3cc380a8beab2f2fbe64562e3e868276bdffa268bcceb5ac3bcfd257bd148c153eaf1c8ebc801f1cbd06acaebdf7cb68be41b526bd6b5e35bd9bdd2ebd3d3d8bbdad32a6bd1fad8dbd7fce6b3c4ae1ac3db9f221be798c16bdb8cd6e3d5d241e3c8afed93cc25813bc216b143db42b913dbbe470bdcd244ebd5f6c883b130ea0bdae95643c61239bbd58d12ebe51b5743b329a893d31bdb63c2b52883d25932dbdeff502bdc1105abdb54a1abda46e633dd2780f3d222b61bd2a0493bdd272d7bcf5dabe3d375b4abe604643be9b752abca274e0bc59debebddfb729be2dfed33d2a95d33b56c97f3d45f87f3dad51683d18480f3dc609c0bd1388f4bd5911c8bdf7eef53ddab1063ec2eeb93d2802d43cc1fcffbd5b37edbd5e7aa1bc9c57353d5cdeaebc0a4ebabd31ab303c771d843de9b98abcec64b8bdf57787bdfa9a16bd7061083c063e34bba77c833dd1bf6d3cacf8e43ceaea81bb50b66d3dca9e013be545adbcec2d193c3822abbcd198263deb33023cbabd00bd22d55bbd9a82d0bc664be13c291f5a3d10262ebc0dbacfba22ca4d3daeb0703ddee37a3d03842bbdaf4b56bc0e6c0dbd9c84213d1ff6173cf37c24bdebf728bd5dbd2cbdcd5c8b3c43c4603c248553bcb28023bb8c39873a499a98bdb2e7b53d289a32bd6595a5bc4106f1bcc92adb3b085eadbc7d45903db1e948bd64c91e3d5a3117bd1117913c8c481ebda73ec13bbfcb2d3c022a583d0b1cabbc00d0883d8975a4bdc494843dc77f3b3c2639f4bb9e9502bd854c96bd6144babb12a3e7bcb941853cddce56bdf2f900bdd0bcebbb9fb82a3e70af703eec4220bd823192bd91e0873d683e363d0e71f8bc521fbdbc144db4bd7ce4973b4763dbbbc38c8dbc1467933ca23d4bbdb4aef4bc150b9fbd24619cbde68a133ef0b737bd28ae76bd2cac87bc669b583d4113583c932155baa4d825bdff9bce3cc4db233dadcbc03cac3fa8bc6d54863c315fd33cd8180fbe3067d33d6dacbebc0d9025bc7ecffabdec9ae33c6b80333c88eb803c2b61803d1d1589bc6fb0883ea69fd33d47f010bd553d34bcab8287bd3b5405bd9dc1b23dfa37163d1db9b2bd0c01923d5204973e01f1a43d16518a3e6aca98bd85e8033e973e90bc7398993db43f263d89f2cb3dfe70a2bccf55a6bdaa1dbb3b87cfca3a8bd10abc8979c23ca1dc67bddae22dbdba443ebd8c9f3c3d1ad259bcc0a881bc36003abd11295a3d52d93c3ddaf5d2bd7c0c5d3a3daa053ee4724e3db15f32bb1c37b2bc52b3d0bbfe7124bc6ab38d3dd8cd1ebd30ee0a3c74d6acbb60a9203ee97f21bc1c5ae13c9f6e3fbc3ed42ebc8d44843cff3958bbe229aa3db8d303be6ce52ebdaed408bb6c10a6bb2b900abef81c4bbe4d2b8b3d747c433df4caf6baeb640ebee0c5df3b490ae53ce2888d3a5ad0aabd57f9ed3d758f993dae8612bd14a642bc1daf153be361dabc1f83ff3c38248b3b4b90593c224b363d886c88bc0648d83b0f8e9c3c8894973d317ea83d1bcb283d7bf6143de3cad23db4d3f9bc593778bc42198fbc7b4dd5bcc2bcbcbc33ba5d3e4052f2bc0819c5bc111447bc5fb46d3c4fe834bdb124b2bbb2b25fbd089c813cce078abdcf789e3c69a82dbd8e7f5cbd557fabbd4e1c69bdb1d7e03c1847efbd138b9cbc05a65ebd724d08be34dedfbda02c1abd31223bbd876b80bcb15a0fbec6781dbe1c6a123ef74e1d3b4d5930bcb9be28bdd51c91bc94ce0cbd97158a3c2f0f67bd7f376bbda37aad38e2cd7a3ce50091bd017d923d0b7e30bd9eb4573d963532bd84c7df3d1dbcf33dd634bbbd8b86663ea5de64bc3249b53c63be42bd508a3dbdeb1d9fbba7eff93b5790a8bccc0eed3cd20144bd1f432cbdc131cb3d411400bd69d12bbd105334bdc97675bd54eb6e3d326837bd4c1648bdbc9d993ef9ad1b3e3e44f0bddff81e3e9a5b133eada7f13dbc728fbddcfd8cbdf0594fbdea3ee23d2246383e0533873bef2d98bce66c943df61fba3b2c34bebcb249423d7eba9bbc6fb520be8b9e19bdd714023d7a95233e9f911cbc844f793db81aafbdd1c20bbc0527ed3bc3587abcf0fa09bdb6a3563d59edac3cad7a28bd3c8ef73d6456c23c50fb86bcd9093a3c0e5757bc5c4eecbc86bc52bd52aa07bc0437b3bdc87b9aba3856a73d91ec463d0b5edc3cf953293c65457c3d7030333dd2c2443d0582323cdfcf873d2fa94dbc5a3ec63db3316bbddf781fbd5362c33c535ab23d7984f0bbb52c043e766293bc25763b3c387b123d9d8e3abc3bc0b6bccd385fbc8b4de4bc17e2f93d4f11833d61948cbb4bde32bc36fa58bdd33207bd939844bc48e7a8ba5e77dcbc3ace0f3ce48834bc318407bd11f3013b826034bd18e7f93dab0f96bcb46b5cbdcf71ad3b7198983c626ce93d87c16b3b53fe17bc63343bbd76d7033e5a918cbdd859ad3ce77702be70800fbcc8c2723cde349b3e6f0b72bd924b47be6ce4963d2445a63d0a2642bd34fe00be424ce0bc79e29cbdc96c14be37fa633e8f8a51bcf52b3c3c03b64e3dab8040bdc770eebc1d0d443d164abd3c57ed9a3bd6bf943cdb20b5bdbf150bbd9aba05bed062403dd9be29bcdc55883dc631983dfc969fbc30cd8a3d389c02be71906cbda809d1bc528b503e188c03bdbae208bdc4b7cdbc4233b3bc2351143d889dc3bb83e6ab3a2229293b823e14be116ed33c034fc1bc23ba31be83f3763ec1b9d03ccc9bb4bdbad0aebdecc9773c2f70de3d3ad24abd334ea5bd372c61bd190addbc43f650bd76b0b0bd008fc2bd2d87373d14dae1bc0613fd3d79be853cf58baebdad83c83d4790c73d13906d3dcc28a5bdaa2685bd779c0e3d4946d13b68283fbdb2b8983df9f302bdd605303c2c75a3bdd39bdfbbf91f44bd717d89bc3e72e5bcfb30803bf7fd7f3d311f573b76c4e6bc5c53bbba7f38613bc0a8c5bb585b443bef73853de0e5e8bc219732bd250f09bcb6b698bd4aaebf3dc05836bd157536ba09da9f3d1c771c3e11ce793cb2bb63bd27a947bcf439f9bc7c57c9bca2e89ebbbbf4603d4739803b8dce8abdb6cea73d047d8cbcdeaab4bd76034abdbaa186bd3a53903db01db5bd68f794bddb5f37ba0c51b8bb888cc7bbd710013cf6bfc1bc1a31bd3dcc9fd13cddf5c6bd7d30113ceda9873873663fb9955341b91020fbb8cdcccc3d000000000000000000000000cdcccc3a610b363b000000000000000022d1723b9cdab6bd95d8f8bb9083c2bd94b45b3dc7eadf3d0a79c63cfbc6343d092d8abd81af37be4e61e73bca082bbd3907623a663a9cbd881e333c1c1b13bd39a4c6bd95b9f2bd583b41be615529be628f93bd802dc3bd33f16cbda1bf50be1203003e0f2d903e15ee10bd2daddb3c9c76c1bdf9d586bcd676ea3c1ce50cbd9789b63c498fb63daa9427bee786213ccc6f0f3d5455103b2bb6bcbd4fb9a8bd850ac9bb8b3681bc3354953de8c73fbd2312013c363722bd1befdf3ce0ec55bd5c347c3dd5b222bdeeba5dbd55db58bdd889003ef239f43dd81b36bd4958a0bd3d4d73bcc5c131be005d01bd1cac5fbc0718bebdf66ec7bdef7fe7bc8cd411bd37f869be3465e1bd47eff2bcd0f3aabd12d198be0e274ebe070b2a3dd99bf5bd317f423ee977273e9b84dabd73994bbd74a413be118b51bdd2efc6bd8198adbdcb308c3c47d3593ddba6313d311a943cf2a4d3bcdbfe3fbc2f604cbda9d49bbc1584debc813dcf3b778030bea8c749bc7d2303bd7de8a6bda4158abdabb2c2bdd17001bd1f10073c6027883b2b08883c2e79423d556ce53d5487e23c9e1e08bc58f613bdc26681bcdd2c9abc7bb8bdbc93200fbd884f78bca0f96fbd743b49bd97764bbd324e2cbdd9ee61bcfab0173daa87e3bc2231273dbe3aa93d13239cbbfe208d3dff822d382e559f3c11341abdbde529be083390bdf0d3e3bcfda812bd072db73c418ceabb2732633bc59f793b1a7f363c9f808f3cb1847d3edaac1d3ddb6a53bc4ee7ec3c84954e3d87f18ebbde44bcbd48a61f3bb7b18a3c6a96393d16e0f6bc84b0123dd24f103d7ba32dbd9e8162bc47589f3c4b30ca3cee59ba3b9e41ca3c9033c6bb39a6283cda96403e208a993c76acb3bc50adc03b15eb0e3df757b8bcc0e1ebbd1056493e4887713c9b32fdbc2f588dbd9d0cf63ba029f83c111547bc232d993c15efd8bcda4f973dbc69ba3deb30063d51111b3cabf1f03d088be239c3608f3da10a3e3ebbe1c03c6cd1963cc80abf3b8193ec3c9353573ce7904b3cd55198bc991584bc0dade3ba983369bc100d89bb71b2ac3a71bfd23c50f498bd75730ebe26cfc6bb2f3d273b1bfeafbd86ff393cc2c0dd3c836a413ef29e413dd10c95bd8ead4fbc3b8005beba0c1b3d41a3b3bda3baf0bca906833c682d483efb6f093e91a86e3d09479d3ddb49113c288241bde1e7eaba993ea33ed4e420bd0ceeb9bcbd926f3efef761bdb860193e2d8ef33d43773ebdf910393ebe1f19bdf4869abb4e3b523e1e7e7dbca39727bdee41893ce9d5223c6ee8373de6031fbd9ba891bc71575c3d847408bdda63bbbdbba9c5bc6c3664bd8d8716bde19881bb9ec4b03cb054693cc8d101bd54ac1bbd43ddb63de9de0d3dc2d469bcc9bbc5bd71ec74bd9e7b6c3976cafe3baecb07bd299e16bd54e5c3bc00c8ffba2c0d1abed63a86bd79da1fb928b91dbd919a30bc79ddefbdd75e973d6e87903cc246283d2a2c3abdbb9f29be031770bd88e8983ea357c53d5d71bebdaf366ebd737b8c3c9a890d3d6b0089bbc7b729bd5d1546bc5923abbbe01a2f3eacec233cbb5783bd2fa1073dd5e9c1bcf55ac1bc176742be960e333b9a57893cc5501b3ca5c7fc3da51fa53de2a64e3b45cdc83d1c20d3bc48865abd97f2b5bcccbe123e65d6f33c155e80bb26bc953c0c3c7c3dd9364d3d7698b2bca44aeebc4cb4393d00e865bc985f83bd774e1ebe2f0c483d3ec86dbc19b20abd566010bc9b4a0e3e53a7e8bc894894bc6fbf44bc33c85f3ed1d477bd51cb8bbb4319aabdb4633d3d143dc0bc805a53bdd06aa4bdf38f6d3df1ade5bc2b41b5bc330ad43c9a928f3c5fc9463b963a833bd5d6883d1ed0373e6301f13c7c4eb6b9c58b0fbe8e314d3dde16ff3d805d74bdf05580bafb4931bc31980c3e9df4b83d413f4bbddb292bbe8ae3253b2e057dbdb837a13cc3f5093d99de113d8b9ac83d55817d3dfb3b293ddb3fb3bdd04e683b88687d3c0329bbbd71f942bd372a9c3dac9b063e4c354abe2bd51bbd4c21113da9048c3cb3afd6bdd9dc0dbebe71afbdb9038c3e82dc813dc3fc5abd7b7406bd63fe5d3d7fc10fbc4a4b8b3d91ad20bdb20293bdaf90c4bd5329da3b2b0bd43b91a9ff3d68cf37bd60e692bcc58ff6bc18656d3e7928cebb8a116a3eb48b7b3d585577bb133b303d1863d53c6c36babc5efee5bc6945143d47b355bcff99983c6e359fbc4ee56fbd5f068cbd811833be5486e83b458770bc262f08be34bbbabd5eb2dd3abf33903d1421b4bd6fc39ebc1fa107be3b5d223d1add4a3df0768bbc00c0fc3cc6a5a63d038e113d706c563d9d3bf0bd6afee0bbd54586bd02fa30bd0f4dccbd309b533dcd904a3da5470e3b214983bd373188bd115c9abd69eac1bbb897b6bdfab8093d22fa94bcd386d2bba68595bdb87753bd817283bcb7b80abd9e54013c6f32ef3cdf969d3c9f5ad03c0e4aad3c4585ca3ddcb91d3d7b2425bd6918bbbc3e84c3bcbd63583d1c10c03cd0bcb73ca064debcf6f0adbc6adb023ec31da13b4d8e2ebe2c88d33da400533d23e9023d2852443e71f5afbd435057bea1506c3bcd6d93be28b68cbd8b73f9bb7ae063bd9461fdbd10f29c3b238d86bb48fb9e3c06f5c23d10558ebb67c78b3bf5ac92bd8ec068bd02a3fabc2acbee3c64c636bebe8668bd930d973d0a17f7bcfbf11d3d91f30e3d17c3583d078b1f3dc545c0bbe8c8503c0992bfbd2ba8453e92d595bb9232b33cddd18f3c7f4e95bd068f073dda5c76bc3edb043e72a0de3dc4dc5b3d6f86dc3b7f8caabeb45e883e388de2bc02a23a3cbb473f3e137983bdef0e8b3dd0dee7bdaf10b7becf6dcfbde98348bdd87bde3d49bd1cbdf2e8dabce6120f3e6bb2e83d5f39c33d4ebe2dbe86fb31bd8022ddbd35eae33a203fa1bc83d2b03dd162393ddcb788bca4a85ebcc8088ebb3961f53b126bb33d226395bc46641d3d1b05c03d840ec13c52a834bc3b278a3c8903aa3b3d7b5a3d23bc6ebd4831463c74aace3cc84c9f3caef3ebbba1ede6bb94b27bbc42a1343e9e079b3dfb63223d3cd98abb64f908be0852043e5446f43c4458703c1dd10bbe889c693c9dfd7fbde1765e3d685234bd4ea8e9bc0d89433c2800edbc75b8febda7fe4b3c8f5312bdee405a3dfb7b073ea4b1cabcf55057bc89747ebcd9618d3d7aa73abd9e4509be435a1bbda4ce99bd71c37abc3c341ebc517430bc60e12a3ea77adbbcb1f4593c5919373be36b8338c9fcf238e80898b7351815b5cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000004b60923efc692bbda2675a3c59fb4a3c6d8e623d67d3933d17fe39bc236f253c6a4851bcb674c0bb48207e3ef0eb193e6a8fa8bd7570e73ce070383cbe2a63bd779682be2ac100be223483bd8c193abedb1f2fbdce0aa4bc71bf803d66373bbddc740fbdaa38fd3dbad9503ee3c60ebdd4124ebdad0790bd91b8acbcc977b5bd6045843aac97cd3d91750ebcca6fa63dc8f68539584c10bd9398133c77da35bcde06a1bb075abcbd72771abd4fabe33d58d15b3d25176fbdf38f82b989808bbd25084bbd7db095bd4a0443bd9bf144bda13b6bbe355898bd686de8bcf477553c8bca46bd159bed3bcb31ca3db3ea84bdd1f8453c1eb09abde0fbd63cbfaf2bbd127650bdbda83cbcfff454bdb00621bd869a20be3d12d5bdbe117cbdca0576bbc9614cbd8b7c25be5591d33c7ac7e73d362d7ebd775af3bcf7957f3d9c9a9bbdcac66dbc114ea73a148cc1bb70ae2d3c1578f7bc35d8c73d1a83eb3c930e0ebd3137a6bc6a52d93dfacc8c3c655989bbc910293d90099dbd1d2b593d826c05becdbf553cf9acd73cfd3b89bc7963123c2d4c90bd567a923ce56e90bc5b6f0d3d178c8dbd0ef816bd0fa7223d6f38e8bce33e18bdc84c8ebdbd80063c65e2723c39cea03c5367603d43d957bdbad0e13caf87aebd4715ae3d4dca843d5d846f3b32e24dbdf3d89cbc046ba93d997035bd0d5820bd1ffdc0bce4cd0f3dfdb3b4bd149452ba4b250bbb7e72de3b4727d4bc1f8adfbb7ba6f0bbfec6603dd370033c1695c6bccd78fcbc22db253c7b3d3dbcf4aa4a3c51567abbed0b4f3d9af830bbb757d6bb7c3ddbbc47be213d6b3750bdd504e73c6a4672bbbc7bc4bcc513edbc46cc9a3dccdcfe3ce5c604bd7e6b093d3838983d0127083d1ada95bca08d8dbc29d947bcfccdc6bc3bcf8fbdb61bc23df52a933b2777bbbd307cff3c1ba588bb4ec57a3c46593e3d20da59bc2e2ea1bd3f056a3d546265bcd9ce64bc4dd6853cd11a7f3b0cc7b13c78303cbd2f19c93dd71324bdb463d23cab120f3d3a2d463d606dd63c6393c4bc78c54fbc6c5085bd8dc9053cb0c5d3bcf47217bd300e9fbdc2aedb3bc7c1ac3d2dc2173d0c4c6abd135522beef3ca33c293ab03b4885ad3ccb0600bd6da33e3c85d4913d282987bdef958f3e61a010bea7d6d23d23df5ebcae8592bd573b9e3dfb8abd3d0ed88c3d9a7f3fbdd7604e3cfcb8c7bdc265ee3d5fcc173ad10a5c3e49dd203d0dd6bcbd333abc3db34aa5bc938234bcfeb194bd283607bd52c688bd66bbc2bc4182f0bc165348bdaed409bd5d039d3d7221b23b854871bd3168443ddc02a33ccbca48bcafeae03bd3bcbe3dd76fa33dd957af3dd2fe2abc05b366bd09e830bdd454ed3cd148aa3d11f111bd3cf373bcfec1833c60eb89bd04748f3e518a1b3a97285a3c831a803d1ba199bc2521a63b889f6fbd1517a83cfc1a39bd1e5c8cbbcabf7bbd312e11bd09d07c3efb2e1d3cf23fdabd870adb3c25a304bd69b0dbb71289e1bdefdb463da03827bd125f91bdc0c186bdd4116fbdc893cdbc2842443cef5a3fbda1d6663c4d9281bd8e90473de6f152bda2fd0abc4324ecbbdd524abcfa0ce8bc211619bc2cbf933c099a59bc85c1a43c970c293df65f253d100ffabc255e903d4c80043e78df24bb608be5bcf5b6bf3d3a754abb2a4fcabcc4908cbc2834d1bcca63d53da32e3cbd9e4091bcc73b5a3d6bd1a73d6c1556bd2e804c3c9b4f9fbd330db53da893a53b6ba3cb3d9f657a3e2ae873bdcee60abdece3ed3c00a27c3d8690c23c960a09bcea32533d2177323ec341073dd6ad9bbc7c4ac5bcc90a263d79353b3c9d66bdbde561a9bd5d019a3d851b61bc0d7bf2bc64498fbd071987bd38bbd53a6a9be2bdad59703c27edb4bdf603823e226d59bd683974bde01824bee6d14d3da7479ebdcc6dbfbd63bba5bbb2e507bd63f390bb47f2aebc290062bd74e117be9f57c2bd0e43603d9abee83bb47aa53d6bcc403d7c535a3ea63dfe3ccfbb483d6b90f73d8d7318bc7861fb3d9b1620bd6b72e2bcf7c793bd36a732bef9ba463d1649483e004a2dbec22a92bdec6bb8bbce8d183cc17bf43c9a4614bc5f86c73bbd8355bd520a56bc44e7e93d53f9debc17b5ab3dca19ffbcb918083ecb37e6bcfbe7d6bc66ba923745de653d9b24fabcf8f96bbcedb94cbd90db123d14eb333deb44e23be8e1343cd5dd0a3b2bb097bca17cb63babae58bdb8267cbd32280e3c31ee3b3da280a4bd02e3dfbd5146103e310180bd03387fbdd0edddbcc40d6a3de175c2bd8d6d68bd7507b73def4798bbe2bcfd3b829752bc9c01d33d6e1055bd629160be74b9bbbc9c92b53d3efae53c46d429bcc38cf6bc81e5b1bce0c8eb3ce190a0bdf71f523d6c29373b1c5c8dbb078100be53aa82bd06c5c4bbb35c2ebd3da56dbc8a987bbc6a75843d95e17f3cd330a33d589da2bd6f8ca9bd4a852ebd3df31d3dab5d1e3b823fd33d4a19b9bdeb90d4bcf1f8193d5b8b063e8961903d6727d73cbaa234bd4bbd5e3c3a338ebd1860abbd943809bd18e955bdb4fc943c1badff3d61210d3d844428bd5223193d192a8fbb5bb94dbe519071bed08291bc76d1dabd08f76ebdf6a846be9e99d73bb7cb14bc9243d5bdb186013e0c03163d0e47b63cf9a47bbb86e66c3cf6f9fc3c105d92bcb27b973c5b14ebbd02fd03bdd36194bda18380bd6abeeb3ce5cae13d670ad7bd0d2a04be433bfebc5cb12a3de1d1b23dd43ebebd2327b5bd2a2ae7bd8496bf3d8a26423d103eb1bdbf68823d7762ef3b8d191a39e2b4dcbdafecc5bd9b570b3ec41c833d0add473dbff4f1b9b7c0563eba2a0bbd85e30abc201e58bdb6d57ebd95ac80bc74c9a83dfbb58b3df321db3dc12d6ebcb54f6dbb31d9623df6515cbd35b39fbd86a98bbd9653333dc60536bd726e80bd5bbfeb3c042c983bbd6010bde57fa43c2eb9be3bcd52033d6dfd93bcdb20d2bcefab28be9fcababcdb40d5bc2f75453b31ac1a3db3e7b33c123b813d43cbc1bdd65045bd68eb0bbc5d90a8bc5c3d10bb041e95bca52c233ce5ea91bc5fd998bcaf629d3d679fcabce10335bc1a7bbabd69ab66bd2f4b653de16f1dbdc2861e3c7d8f6c3daaf89dbc306cef3cfcee9cbbf302afbceaa3973dfc00dbbd7e78cf3cc85c70bdcb78e6bcbf92ad3d7c929fbd817e4fbdd03f8d3ca20b66bcf8546b3ca1404bbdb1b68abc6a885ebb0795c43ad9737fbc58c5143ddf5fe03c30a11dbce37ec0bcfdd5d3b99c3e45b919bc7d39c0753d38cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000633ca93dda61093defd316bd3b18ccbd05b0783a6f1f82bb836c973dbf124abc0f2aa9bdabb524bdbf71ff3d077a73bdebee9ebc13863a3cc7eea7bd7df66fbd7c5f0a3e90841cbec251cabec80e86be6689003ecb79aebb0c75c5bddca324be3e3761bcc6ef513e55f527bc0c3e9dbc8c1756bbc93754bd8889e6bd9c2228bdb9c125bc8a29a93db15a643e20ab5abd7cd8193d5d5b6b3d9a1e463c8e6dbabd9cafe93c95ed09be5227a03de111773b7050ec3c7af4d0bd600e0cbef10f033cb62e39be6e52493c55160bbdd205ff3c55319ebdc031cbbcce08eb3bfbf890bbc2f4873d338fba3b5ac7613ddf9298bcbe7205bca931dabcc262adbd835c113d8c8125bede9320beb2af94bc3ce49e3d8cc7eabdaad9bd3c21e39ebd4b65633c44a3bdbcdc1c5e3e8d8ba1bd803474bd688a8ebc12b301bc5fce0bbe339a81bd7c40883dddbb173dcbc9823bdb499abb0819883db79398bdc723433d7573b23c03b996bc087440befec08b3dcbef03bdb44fb23ce8819abd8aaeafbd27dd9e3b1c948d3b0026d33b6b784a3b942665bbcb0483bc175479bc1ddc66bc3991353c28dac9bca6c61c3ccd07233c578d79bc21c485bd64b0f73b754438bb4d154abdab78493be1e731bd1ddf3bbc5cff27bc053b58be578d09bdc8a5213d6592d8bc452939bd99074a3d0e8b16bd81ec05bd500659bdadc177bdcba771bdbb736bbd2d147a3c61e8f1ba3fa1033dd8ed953cc71889bd27b6ec3d078c8bbcc01f243ba189bcbbc9f88cbdce07b5bcc5ca1a3c608277bdcc35c7bd161ba5bbdde99dbda8bcb43d931131bc21b9fb3c0b16ad3db327103d62b6db3c39d302bdf116533d6d7897bd022d8f3cbafecf3b4652403dbdefb8bc927495bc2a1288bd6b26ce3cde99bd3dac92b7bcba1689bcb5f4c63eae3c9f3c221b6fbd5c3fd93ad7697c3e53b113bdc8fdb5bc4bb04b3df7d743bd7ea4f5bc8de9e7bd5cbea0bd5898ecbcc627073c6088c23daed5a23d6682c03d79b225bc3cb56b3debaad2bcd1887e3d63dc10bb70d267bd3bca6abc12049ebc80939c3a5621833bb5de803dc5f42d3d0cfbbd3d3c15563dce78473d8e1493bd0bb084bde81ef93bf6cc933b89e835bdecbf3c3db1d82bbd8a5e283e56520e3e9c4ed3bd71f12abc89c6b9bdcbd987bd907e2cbe18a0133d581a78bd237a80bec5f636befc4f41bc6375d9bc789262bea19faf3caa69563e7d42d5bd742910bd7972ab3ccd22eebd3a55b0bd6ab38639d9440b3dac8987bd9b3d9abd1e639dbd72ea9bbdeef52e3d6392543d310aedbd25718a3b1f8599bd6abba63d5a43c1bb507c01bdff42a8bb16bd333e1591db3b5dd7293d4a12e23cab634fba69fa90bc3032913d40653fbbc175d2bca5b5c83c410fc5bccc328d3d8e65983d8150eebdbdc2153ee1a747bd536f71bdbe6f933c12eb9c3efb1038bda6bf433c3157d03cf0388c3e0736d6bd3f4f41bd7ce3063efe34fabccddc9fbd29825dbdbb5603bcf8a380bdaa49d8bd147e09bc54e913bdb9cc813c7f6403bc7aab70bd2f7936bae139ea3b4041063ec1cc203ca3100b3dc15aa03b1737593d1dedc33c6d9fb1bcae006b3d1732043d455fe63beb9cfebbf82e70bdc5bcee3a124ca1bc3e5702bcff66abbd6ddf9bbdc8d668bee6e651bda46a97bc0cbaa93b6b4734bc14c4a23dbb991dbe930c15bdbb2f34bd1d5d0e3d96ec81bdeae4b53d9d3954bd7d9b8b3c87e741bd7cf3a73da6af283ea89b123d64b3ef3dbd02f23ca735edbce527973e78afbabd819d953d518509bd494a42beec5b81bde48948bd1ef2193c840c903c8b2021bccf280dbe0791aebd25dc473c1c8d253d1ddd9fbdd67b1bbd3f63bc3ec1f93fbd455d1bbeb27455bdfe8593bc92b2ad3d0a73263d427babbd1e54e43d6b641f3ed11f67bb11f87dbdc157f53bb568ad3ca7fda03bde582fbd6fd3b9bba9776ebd4f6f6abd01e4ca3bb3fdb03c638ec73c5f30ac3d014325bd804fbc3ccb1f343d3ca3c7bc5621603db724d93d7a57713cc48680bd3b0ba1bd51633b3ef56ef33cc85d003ebca682bd3e7b8e3dfb17113c0abb9bbd2c0cab3ccc38573d4d0f4d3c81ea1cbd2fc27ebd72992cbd56596d3dfae1873d1214ef3dd680283eabd0ecbc5ba9f3bdf84684bdc426d33c17c330bd4dec493de332ac3df03683bd80b8273c175a91bc9feda83bfa47cf3b3a87c53dbcfd2d3ca164923c791a66bd3bb4693e3fcb56bdc6fb00bd11a711bd3115423de407d93d84848bbdfbec72bd5965333ca1b0d9bc54daafbc09e584bdfa62e0bd2bbb8ebcf3c72b3b19b981bd8d2b7c3da0fb8c3d0e6ffcbc0e53e53c455d453cb6b45fbd572bd9bc9aea13bd64debcbb5766383d357f683d206aeabce8b53a3d53bd6a3b2376afba14ea90bddc89123de97f44be572f153cee0e65bc43d4583c339e4b3c7a8951bddda896bad4c22ebdba5d75bca299e53d95848fbcef779bbc47811abd8a95393e387f28bc1e00483dfc68babbf08bcdbd8dc5a7bd21ed223d754599bd932c00be422fddbdec858fbd0eeaa7b9046909bd8392c8bd81bd9abbf468133ea67f88bedf14403d7b8eb83d0eb2bb3c84f4ad3ec71cb4bc401d94bca9d8903cf8d7d5bd484496bc4f8fe7bcb73290bce636083da5cbe9bd50216cbccf9422be12b165bd225e963cc0748c3dd6fe84bbc9962cbddc2eb9bc76276eba5a8d0c3dfba184bdfc43253dc688923d5ae75d3da50f23bdcd063b3d12a4423d2fca2cbc1ce79a3dffc11139cee8123dbfed593cb5a682bd36c1983d72b06abc475770bea7a63fbdb0612b3ca63d833b1e4930bd8681893d1257d13d590a40bd7eda313ed7380fbb713027bdfceef0bd8b70f13d6012913e49bd0ebd46b2873d8a26313e67c51fbef3fe09bcdee8e0bbe59a13bd948e99bd178e863cad66283d8ae80abe7198e2bc0a9f27bd681e0f3ddf41d2bdc4b6a6bdf2b1e73b75da04bd8ea4863bb543fabc6c834cbc390923bd218855bccc4975bde8d259bdfe393dbd93e78abbc085843c62938cbb34fb0bbd5ec2a63c946800beab4b003dc9e3433c9288c6bdd7c104bdd9cbf33c09c8d6bdb08577bd3e0a43b92c728fbd8728dcbcae3912bc7ce793bbea1c40bc9c0135bd8c66273d1dc81f3efba7afbbdbddd0bda2da0ebc2742033c7219d43c03efe13c2af3ddbda941b3bc88e02fbc648b4fbc0139cfbb47a60a3c810f99bcc5e392bcaa4ddcbcad0689bdde50753d523abeb9257b193760cf03394ce02cb9cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000008c654a3cb5251f3d21cbabbdc2f07c3dea2796bc70f126bc7f660e3dacf089bbec655d3d22471f3cc36cf93cc9d7673caaa6a1bd950f803c8dbbd53ccc5857bd3e4563bc21dc07be1cdad23d7e46b33c0c4f0bbcffd2fdbd91e0a6bd9c3d223e9380873e9226803d87dee8bdb3369ebcbe482e3ca9f7f33d0a808b3d6eeff4bc552eb4bcc445a03c66f5f73c61d1a13dceed813c8da2c63d0c54873d818235bc23be86bdafdea9bd4491183d8023e73dfb9974bc60cf2f3d8a92b63c0ebbe0bdf517423dcf4bb4bccbf1f5bc151d933baf18013d4be3143cac8f3ebc07ef073ce639893ccacc743de2596bbcc4ceecbc5be5b13dc62797bc3602443e52965e3d7d7b5abc4ffd813d2069dd3d312fa0ba26b779bd2113d83dad865b3e70558e3ba5f50cbd1811c4bdfe25c33da0cd573d36bae6bd366a453e1c3de03d43c2b23ea7724b3bb5183b3d657649bd329211bc45d811bd9be5ecbc5450a4bd20f0613dde65663e7f2a043c6daf703d2ac2cf3d3ac072bd3d70373dd485103d6ae1053e65da43bc1557e23cec59ddbca7145abd2e8ac7badf25043df669cabcc7c5a83cde89babc8a13b5bc792c9e3be242d03c9dd76bbd417f253da4d9e73c2ea84bbd1929633c0e6807bde5b6a63de726debc853b9abcca17f93b805096bc52b436bdf7d5183de3dec2bb7e5b58bd8134833d5cf1083dd2eee5ba0d00603ddc6dcebdd458933b977c1b3d6044503c3d9ecdbc939fb5bbbccb013bc1273a3c7fab123d403d6a3d645625bb3fdabdbbb2ad38bd0cd185bc09a0463c7425ee3b931655bdd22ec3bdbdab5f3e820a4b3dd295093d201dfbbb3faab63cb79cb2bb8a6b953c4db692bd1ff8893de38bd73c5d7a0fbdc2e3b7bb71768ebcc1303abcd470ca3bec3288bd3ab2fbbd795dd13ec0b342bc2c41133e29a6d7bbee946b3c98c47c3d520c1b3d809cef3da02649bc1cca3fbe5cfad1bc4d3f313dbcc2d83cb0e53dbd1894893db8e5493e08b6d0bdd65a523c995d143d285caf3ec557383eb5bb5dbda53e1dbbcd692abd7a061cbc9e42983d38d1fbbb01590abd23f6c8bb89b101bd43cecd3c0230153d512e803c7c21b2bcfb63ad3cca261ebc704a383ded08a2bcc703f13d6479bc3cd84f1d3df095013e3550debc52d2963dd9338abc2c4168bdb748d73df2cdc63da914023e7cb73a3df3efd53dd4ccdf3b226b8fbd13b2bbbd886d81bd3d14eebd0ccdc5b91f138c3e314929bd4c3a9abd0ccdb4bd9b641fbe615b9d3bfdfe1c3db4f8b0bcac1197bd357de6bd5d36443eb73efd3d5fc3c53c98264abc751e853d9fcc323da629783d6ee4483d9ca0393decd300bc1c80bcbd1b731c3cf8afaa3cf361bf3cf4578a3c41638abcdf81e2bb8a1fcf3b95029b3c2fd73abd844268bbcf8021bd56f95e3d2cbc9bbca445fc3cca7af039951b003dd69906bc6cfeda3bc84d303c3565133d40d7a4bc1d9fd23b33c3ee3b6b2bf03c44c79e3cb240593d54fccc3cdf69723d1736133defb4353d26309b3d8c4cc43def718f3ceea0f0baa41a263ac2e1e23c4990ab3bb2d0093da09b243d49e2dabc0ddd903c7367733c22cec13c9542b7bc06f613bdfea37fbdbc1615bd91c1193c5737223b1189b93ceefd333c332e49bccacffebc54bb6dbd048015bd7db1c7bcc65f91bc527451bb7da2963cf74351bdbf9c063d26855abce5019b3ba5d631bdd6a4503df0f22b3d525f58bd806772bc0bc95f3cbfee253ea5a0d73d530bf5bdc363f43b7309963d45163d3d2675ecbd5b6acc3a5317b7bc95a6ce3db6f0833de8ca1a3cc09aaabdb5b76d3d7600773c933d18bdf344a2bd667e383d5352a93d8df6ae3cf24f13bc47c923bd9359f0bd2e9b1dbca6e1853d04cac8bc4d7c25bd71b58b3c3a59c43ae6c5e73c5df6b9bda4fd55bc617e0cbd5219ad3da7921bbd0318233c74ac5aba553c2e3db288a1bdeb49353e33c988bd370c393dc0b18f3d8cb8cabcee80893d91a911be271586bdb881543daafc6fbddbd75fbdf46ec4bd0d7b6ebc8455d63d5cb43abe2ceb8dbdcbf7563e1e57263ecd0fbdbd7acd593df7616a3dbdf6b8bdee99cfbd3fe1c2bd186b463deb179e3dde8aba3d051bfdbd6f24013d9842d2bd9b146e3ee076ecbdaa6fc03c99c374bda6033f3ec3712ebe1f6766bcc823233cc2f8ff3b41920f3c2f374d3cd44f1b3cd50db63a364947bde4c47c3d632aa9bac206af3c85c328bd4e3684bde77af23cf36eb5bd50ef73bdc4902fb82e3b373d6cf4bdbd436323bc9bf8fdb946488b39443f213dc55e783d12706dbd91e3d43b288325bdca2645bdc346843db7b4a1bd2dbcc23df8b411becf3e47bcebbd163de74d2abd1f51403dccdde4bbfbce83bca9da41bc00fd05bd4995073b1161e13b11b2b2bb68eb5cbdb4af033d3b71dc3bec9aab3c93811a3cf6fd62bdd07600bca017a83d3623a9ba2f3611beac93983ac90dea3d4e2974bdae760fbd052d7bbddf37143d2b5f943d61c53cbcec42a03c82e967bc6188aabccc3307bee0d90e3e99a0f7bd01f544bd25eabbbddbdb4dbdfe1e003d815ba4bc0887c63d9241de3da6c6ddbcbdd1b23c26cf213dd91715bd5fa842ba8669043d12fcfd3dfb1f593d18894d3d23b998bd6694293b9f3c6abc5ab499bc238c55bb9f0fd93c0bf68d3c2a7f4d3d4bd5283daaf62fbcc41854bbf65c5d3ca3169cbbd1bc66baa86b563b277cbc3c52628bbb3cee353d31a2a03927d2b23e48043d3c0db6343d9515e7bd60c0623dcd3701bd7329803c94a5813ac36fb6bc7a6ce9bb7f71343de8ff49bc57d8fb3db637e9bd99fcc83cb7f9c4bc4208753d692676bd547c473e535e933ea0c730be2e68313ca17847bd7502e2bdaca327bc71598b3eb08af2bcbf17fcbc7c00f5bbe170bcbd0e90a83c323301bd3b84a23b90f674bc8967a1bd9a3909bc6e857a3e37732dbd33342ebc52e50cbddfb9fabc58a4bd3d01d0ed3cf4d1a1bbf30e8d3cef1b1ebc9ecb283dc50b0bbb451a3c3d2d5109bdd61dec3b993822bd6e46df3c01bc983c47c7283c432c8bbc3f2674bdc1fc883d2ae8e3bcd51ebf3b4f02a33b520c06bbab2b20bb76a6d2bcf98a193d98c5aa3c147154bc28a055bceb960dbd923513bd2480d1bdf824bb3dcd64c6bd85e7b13ea8420dbcaf38a13ca65dea3b7491ff3ce680c9bcf8483fbb6f25853ce2f6ff3aaf7c163d7a0f3b3be0c59a3de6b2383d3ce6613d13898c3b5d980bbd6d6c403e732e2db93008a7b98706c2b9f6d2a0b9cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000ba00733ee5abb23d7c00b5bdd86298bd78fa4bbd7977c53977a4813dea4d4f3ce0a7923caef6b1bbb37a8a3c01c9743c70d4a23da018263decb078bdcbd0a1bd4e1d0a3e22e66f3db2394b3d62ffccbb6c4ba83d8e22bbbd46fddbbdaca34d3ec29dfd3ccc3f99bc1f21ecbd59264c3d162dd33d65b62e3e699906bd4f512cbdcd4f233d4935493c63a67dbd758acd3bf0319abd36f654bcc8700fbefd1e0cbd86b952bd120286bd8dae9bbdef828f3decb6573df262253d8099f73cc3ad51bd7b3f0a3ee57b393e401adb3b6d2c533cfe4d4abb9a63debcffd0c0bc709e19ba0eb7463c478c9ebbcff353bd86ce0bbdef4d133e90bf0a3e996e53bd52920bbd83e21cbe16dbccbc081c303d22a4e0bcb92899bd5384683d5f0f793d997708bdf4e73abd161b20be1777023ee12b633ea4f328bc015e40bdabdb14bed351043d2b5b103da454193d9cf1aabcb85122bb94b3b13c672a8cbc9598813aaf159f3c8d5194bc35ba013e06c4d93d99d3983c698f853d592eb83d7ef1943de35c31bd2764ad3dee79af3d83e928bdae5bd5bc069f7fbc0384adbcb963a5bcb77a633d80bdc0bbf9ecbf3be44f2f3c4f58f93cc7f8073d095a4e3d965666bd05d4acbcb5dee9bb9bdf70bd605f7b3dc9f7a0bc1c5a95bafba1aa3c38d698bdbe891f3dc697abbc1dfb55bcbd0a303de9ce52bd945b853d8887b13d30bd32bd1269aebd784834bb76aaae3c0b7047bc0248a33a5bfe0dbdd99c92bcebff7e3b66bc53bc0a8c813c6c52b6bced2f0abd84512b3d55b21e3d2368cc3caac38b3cb0c5b7b9fabf87bdfc86cfbc438bb43d41405e3cb8618b3c78ee00b9fc01ecbc43e28c3b911c7fbdacd0473e79e3a23cb499203d100e1f3d00e0703d15b52c3cca28b93c790c083cf03cc83af1dc2a3f231da53eabdd733eb1d3f33c472e0bbcb92764bb2af3c43ce545123e001eaebcd47ca6bd51e612bcd01aa3bcd8614bbc1cdbdfbda66f413e6d5aff3d136c133e4000b1bc68b191bcf930f23c87426abc0b5ca7bdefca94bb44decebb60e64d3d662a913ab30cae3ce43785bce54d3ebb5dac473d8b6806bd21deb4bcb0814c3c8be7c8bc5cf2b3bc84d7213aea8fa03c1da7b33be12f843efaacee3c26caf8bb1ef7363c19367a3c54bf01bd58aa65bc813a44bdd513383c5cf56dbbdc5e933e22b901bee164173e307c5f3ea23ae7bd8b3f35bdc493f13da7fec03db36885bc7725383de7ca273d76c8733ef4f3983dc1679e3d73212e3d43ce3c3dbfe522bda32d2e3d67ed213df572abbd31a10fbefad8d53d87ea503ddd458b3d4744c83b514c76bd8c4da23caf92cabbdb97c9bc9a21aabc7ba1963ce48273bcf5841d3cd37fd13c523c603cb1df093cf486b8bb17a082bcf73750bdf15ebc3d772233bd682a143da8d3163d93d19eba8a01a5bc0ba1d7b8798303bca3f6b5bb3aaf913de968a5bbdf5f033d72432e3d5108a8bcb226ddbaa58757bdcdfca9ba3418ea3cd780c0bc3a81263effa7bcbdb2074d3d6b611abdd8150d3c54aa763ce4b18c3c83b0993c9bd6dcbc413e543d7b02d13c11412dbde6ab113d8d5df93ca9774d3c0f7162bb6215903d216684ba91444a3d5f18f53b89baa83c3e6f0d3dc89f6cbc5ee888bcf86b2c3df5d192bb64b671bd8c3cdf3c58f6803c7aeee2bc5b70c93c736f48bdbe189cbd836946bc0f358a3c53f2ea3dd173583de23c493d98223abdce0958bd2576f7bd3e38d23d3d2a453c2b800ebe9389e23a7438f9bd1804e9bd3597413b3b0e0b3e59d5e0bc6ed1083bc9b6fe3d2d4eab3a28454fbdf041843d8b56e8ba9e71a53d3dd19a3ca1cdd23da0e95e3e608dedbb39906fbd30a669bdf40c57bd223da6bc52cb153d931871bb62eab7bdf0ea9a3cfca86dbc986a7cbcc8f105bdadf74abd37eee4bc181ba23dcea96a3ddff68a3d50cfb23d92d2143d119d913c8f69a53d1d29a23c2c6e8bbce9beab3d841fa93ced72013d9b288fbdbc25cbbb1654c03dd7bb303ef65876bc851bf43d6671cf3d641a043e7bb5c7bddb9a6cbdfe11a8bd813b223efdd91ebe652d4ebdca469b3eab384d3e3ef2a33d6a7c09be949c3dbd689b4e3d27d7b4bdb899e3bd28926cbcf99c8b3d29b3bbbc4d45ee3c3a82b83d299df83c6f7dcb3cb1625d3e51546b3c6a36d53c63cc893c2b4b9dbc722aa0bb7801d13bf15df93b5d4ae3bccddd2ebc3e442cbc062218bd9a7099bce5d512bdf8c8c03cbe5278bd1ef0ccbc3d4a413de5ed0b3d10e408bd583affbce3beb63c18cd22bc7694c9bbd92985ba0ca86bbd6deec53c456cb2bd2e18083c9cb16c3d4eb3b0bc3e1d16bd3ef5ce3de5d2c43c2e44b43dd4edb33dda16b03cfa0d293c8ea34b3b8c2e3fbcfb5f493c2c41d1bc3e2a18bd31cee4bd31b454bddb1cea3cfce9ccbc2578fe3b318cb93caead903d3f00343da4d7bc3c1e5979bde2b32bbda49bd7bcd61e173e96e1203cbefb403d17f7d2ba80dc323c0f98c43c0949b33cddf42ebdab09b3ba9ae96c3c25a3f6bd8c1ae53d56ff30bd999ab6bd3cf5693e9376ae3d076b6f3ed845053ed9d4083d55ae80bc7442063cd256a8bba197b93a4c4ebd3d2263983c6e002f3c4fbe213d4947db3d7e0b413d4966243ef156af3c5ea5cc3c216bc5bc15cf0ebdee7ad9bc525ea7bcba3130bd2a3a553daa6774bbf4e3c3bcb234963b2217873b839c943caa091a3c3839e93c98cc5a3c524841bd22d7f2bd4a1f5b3e79ba80bdd8ff4f3e98a70e3e0d1b5e3db8c131bc47435abce8b054bde48f373ccc2bf8bc53f1bc3dfb884ebdcbf8ff3b90efedbd53e2253ecd115f3e95fbc03ee0e892bd1f12f93dccfce23b23300abef97300bb46a2863ef2768dbee1df313db2551a3eb793463dc20f27bde2d89dbc7aa22f3d83b965bccfa480bc1ce8d23bfa55ddbce56f5abd2bec95bcdc2024be982081bd91de8abc40255cbc2a52143d0d5aabbd8dbde33a307715bc75a2903c9f188f3cc162103dc1e2ac3d89ad22bc842c943b84dc9e3b6dd3683de9d8ee3ce7a7d23c662e4cbd73b1853d09f8073d458a103d23548fbc1e58143d32bdd7bcee24cd3b5f25823d08864f3d5aa2503d4c45b1bcc0e73bbc428db23d4f81553a57ed633dab51dabdfbdebe3d63b434bdf74caabd35511a3c09a642bbd8607bbc2e8191bc9709003d4def123dd3bc2f3cabf9cd3b58f1973bd634e7bca49460bd44072d3ddb85e8bd8b78403d25a3ca3ad53a21bcffeb3db93db751b9dd09b4384c0c1eb9cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000004fe9b93da214133e2bc9743dad7a963c39580dbed61f9fbcae318fbd135c0ebed7161dbdb69fd33cc84eac3cf366793c3d465b3c5ebcdf3b286270ba1dc7a5bb80cd46bd1840f63dbb786bbdf97a76bd1b5021bc4bc6b0bd3e518e3ecd70623e1330f03d0ae1a1bd6d80f63db0c8ab3e63171f3cf2f4743d950737bdea0071bd1ac887bdbb07653d879566bdd42838bde65efe3cbfcb253de8d0703c8321663d7e9920bd9285a5bde35a6a3ba1f526be4970b6bd027f0f3acb1eb2bc4b4ef5bce488493d85743dbd79e834bd74d3f8bc7012bf3c052d93bcf1f1cc3df13a003e7b24283d3c0bc4bcd43c173dd33695bc6b4d8abcc042cbbd1abe58bdbc1f35bdcf83ee3cd3bbc8bd7ee8edbcee0086bcd604f3bd00fd3fbede1c743dd027533e5e7bfbbde8f0e8bdf61736bcb715adbd0056a53dce1840bead56533e21a7f03ca97a1abd81bb81bccb3c8bbc0afaa1bb497390bd7b78debd60985bbdb6a5c2bd701313bee7ed323d6c8fb6bd4d256b3e4136d9bdfd27eabd7608d2bde5267cbd84bb243d1c4641bd190ed6bcae480ebdb97ac03c0fd8edbcdaa83a3d04fe53bc6f304c3ce283febcefa5ddbb874bea3c6e153fbd994a413b0c1f04bd907b51bd253b65bc987384bce179a9bca1d7a4bb007184bbef06343c148f29bd2f5819bd67114ebd5e344cba9445f83c53bc473bdadb5a3c2919d7bc4f6986bda23108bd8e45f3bc52c5aebcaeea78bbc2b6c9ba02d323bd7ac00fbda013223d3042513c6c91163de256b53acb914a3d04b06abc95f4debcfc64253c950d683ca8ad07bb150ea83bc5661c3dad11eeb9269440bc96e791ba3d4abfbb45abb73c9aee56bc5675b1bd2fe2e43c830147bd6e21fabd895d223d373572bcfd5780bae862d7bb939d44be3c9755bdb968c8bd83eca33b3ddd543e855401bdf39f523d2306023e9998163cfa78943c607a153dc987bb3d9b4dd93c29b7053da21d39bd5d9e70ba77e946bd7eaf9abccd6cae3d3433dcbc7c16403ebfe05fbcc4be98bdc903d73c13a3b93c03af0abcd4e683bcdd4ad2bc13f45e3bfce7bdbcf28c463c50490b3dc0a39abb004e5bbd2538e13b1d7e093d34c746bd68fd71bc11234ebdb6dc8ebcb768e5bb7ec5db3e2d7dfa3d295ef03d11b3803de8ddeb3cd8bca53c2d2f8d3daf4e9ebb6e83553c865fde3d38f6973dc2dc823eeb25883d0b5972bcb08306beae3b41bd50b4553e3c81bebddc3546bd9e04febdd09b7a3e4713c7bd0fbf6fbdbaea17bda649033c3306afbd1abffdbb38258b3ef91580bd8c4ccc3d3c069abde86a5c3d64e8ae3dd687393a1be1cabb89a5533d1634033eebe11c3e0694503dd752313db913163d926871b99774953ce13017bbc19de93caa2c8f3b96ca9e3bc6aa263c86cadbbd91f1d2bcca31a13c48a14a3df7b1e93c5d0894bc0fd7713b8dfa44bb18d5393d39d40c3ce76d453ca5643d3d83f9e7bcab7eedbcf89e72bbbb22bbbcff799f399b80753c1af714bd11be88bcb3ea0b3eddca2c3ed463633db34fd83c2469403ccbbdd4badda9553cba0e7ebbb577e13a93f183bcebb9d23caa83943ccc682ebc6b8c44bce512083c9ef6263d99198f3db71ceebded16d4bce4019bbb11890ebc177e4e3c25b5a6bbfadd853d2ea4bb3bd0483d3d7d1c283d9bdc06bd186989bc8b855cbca77ddcbc09c7b3bdbbcd52bb3662393ca6caa53af947293d43a414bc8b3452bd34d14ebd95b15b3d40d6b1bdf425d53c4c0d9d3e2f5fa8bda61febbc3fbdf8bc7e5ec53c338630bdc32baabc8931203d1855733a637f2abde18383bc7067b4bccc0633bd0542d1bd3990a3bcb00b543d4479bbbdf74282bd542b98bcdd612ebc3565cabdf15c913dc9e21e3c3031acbc11672e3dacd4dabb7608d9bc5308f8bc071ea7bcdf90b9bdef7e68bd7dc4bf3bed66143e2d8c73bd1970d4bb204c4bbd248f0cbd336ca53d70cbb2bddf960b3d0c78d13d10a8b23d72aecc3c0e98c6bc3fce1dbd37dcae3ba085503e0474863df7b825be141d87bc9a8005be96bba83b9f4c8bbd4d7deb3dfb0c8e3da31e903cbf4aa43dcb2166bdf06a893d25bbb7bd22f2c1bd1f0b343dfe7e49bdee85203e9882e33ca5b1e1bc072a5bbd50ba33bdd35d973c42f519bd2719963a57accb3c3ee236b9bedeb2bc8269213cea6abebb8a47a2bc0f33e43b640073bd0dd62f3df4b55fbc1a5103bdb456c3bd18e912bd223d06bd2c2c313d8a8f483aff7993bc03008cbd20534e3dfff7e8bcb8c546bd7ef0bcbbc36771bd46c82c3dffde1b3db507b9bb0f53a1bd8dfd2cbd6de085bd38d698bc8d962ebd0ffe093e13246ebdf9509b3d007980bdd7a651bdd7e4c7b9a69582bb5cb2973ccd6f983c4ceefebc3422ab3c0a0aacbd881338bd13f69fbc21ef9dbcd1442bbd76f815bdf5ff893ca5bb3d3c1e2a08bc52ea523d8a29bbbcba703dbcd253b1bd54e0123cbc137ebd842624bec3f5aebc2a702e3bc2f0f43cab522f3d0914b43c920a1dbcf3717e3b3467e33c30d4593d88456b3e57a13bbdb13c8dbe23a671bd72668c3c13ada83c56840cbe5422643eba3b073dba5239bd14cdcb3d0a25b2bcaa2d363c3a440a3de86090bc8b9061bd0410523dbfd2a23c430b473e34a008bc7c756c3cfbd0d53c82d4093da37fa13b41be493cc363eabba65fe73bad84633cced5aebb7a4b8abcdefd493b302d533c7a349a3c13a50cbc3d72f5bc174ac0bd5b42e43b0bf28dbc57d8c13de986fc3d8e6b373ca5b649bd730c84bd6a0dcf3cbed524bda6dac6b9a5e487bc03b832bc2bd91b3e0acea9bb1bd2013da4dfd8bd584b173dda471dbdb478793d4f3e0c3f4896003dcebb453e6fde253e689038bd731988be2da5de3d31b0c63c7e2cfc38a4e106bdaf50e7bbf2c8e0bcbc2a553c7cfe8cbcfb0c12bd0a0cbabc15c07f3e8728583d51217e3c5d1f12bcf82c203de12096bda52e19beb28d3abdc228723cc5ef16bd9d6ef9bbd9546f3c10b2a33cc2d52a3c98c1483c8cdd80bcc739f6bc6da39e3d6026bb3c307e803dc883f93c1903823d12bc2cbde994a7bdd4f141bce3fb22bd920215bcc87e8dba517ca23c57468bbc0d68083b21fe84bc5f8e373e62770ebdbcd48ebd18c692bd19373e3ddc21ef3cc39deb3c9ba7adbdd489eabb24324ebda3d9163b0f7f93bb5ce20b3d2e39c73b05ecf9bba7304dbcf8266e3863fa973c3d2732bc4c3a3d3c4a4fc93c4fb1473d73cc67bd29ebfe3c25e1c9387e3180b91e0e95b9728f8db9cdcccc3d000000000000000000000000cdcccc3a610b363b00000000000000008226b5bd11c58bbd7b888ebdbbb90fbed91e35bd8380ec3ce02db3bc7289a4bb3af5e0bcab1fed3c1d23ab3c62640dbd4494493c508562bd71bb60bde8a69cbc29a89dbd07565dbcb9dd413cc10958bebc190a3eec50103e26e94ebe8ffb60bcc677b23cd551943d14eba03c3b0aabbdfb40ba3b10b6abbd93d85cbca12762bdb3ff26bdce2e12bd15e334bc22ef6bbd62a94cbcfc85193d13a0583d6313c9bc5e2f273c5a8d003e42d23cbe1f96ed3c25e0b53ce7799bbcb97a0dbc7d60b03bbd30f1bd814793bcdfa551bdfcb5ec3c1fa5613d0951bd3dfa5895ba884927bd946c8bbc4611323dcddc19bd50ef86bd2b57ca3d2e05dfbbadb68bbcc57fc73d42a0a93cdaf689bd100508bd47dd903db111c9bdab2147bee72c103edbd0323e6af502bd4b20eebd02c82abe73c7123e8d538a3ec961a63d08bb1fbe2203773e7f309a3b68dc5bbc1f2b92bc2539343cc8782b3d93ac9c3ded3609bec19877bc6bc4febdc1ecc03db90bae3dc10184bdf13e4d3d9600bbbdb13405bdbf0c033de6a88abcafb47d3ca72afbbc5901eebacc0e6ab9bfe0bf3cccfaa1bdaa4601bd214888bcdf30d1bcd146c43c0212703b4d221e3dbe3f96bc2f16a1bc6a5817bd849a1e3d50b02fbc02875fbbaa9fa7bdd58bee3c0620d03b46c68a3cf0462cbd4ac196bda0386a3c7aa647bce9fa02bd2386623dc667c3bccdfcbdbc54807abc31e2953c642ba5bc875213bbac5d7bbc2bc033bcfd47613b20ae503b92ec8e3ccf9265bdbcbd1f3d9f12edbb40f661bd22f4943c69ee853b5eaa67bd51363c3c3a38213eaf49863b921f94bc7239cbbcf8d8843a8ebacb3cea7e123a8e53c53b4c01403d4cb03f3d12b7f63c8497cd3c757f133c43abd9bc7d38a7bcc7ad613c084b01bed7a0d23d3f709c3dcc525f3c099ce23d15a6ffbdffa7eabcf8f2acbc2f428f3d11e3dfbdf07e6e3d429c57bcfc552e3e541628bdd52d8d3df2ce183eef0c333ccbe0d2bc0c5734bddc698e3c95fe82bc79ec48bd0d12833d94492abb59d7ca3a46e7d13c8c5c25bdd791e83aa866f73d44bc123dd67c78bd62301a3d4015a9bbbba899b9d43039bc7d465e3ca334b53dfd3b74bdfedeb03b30bc62bac0a1fc3d390169bcbe58b53d53ffbfbc7bf9a63cfe7e80bdfcf0663dbc1b29bb3e1fecbd4ac23f3dcb88d9bc88df3dbd8a91ffbbcf2c373ee32dfe3b9a4a293d511e033edb86233d0c96553ec20988bc5e4042bee9b86b3ea0d5af3e6602b43c3efbb73cdecc12bc5639303b923b23bd3137953d0a21083d1be347bd0cfa0bbc7eeb423d9dad01bd6eb82c3de822133cd11ba2bd44bcb1bd6a83ba3e557140bd47f18e3b3500ca3cd506473c5a21423cf35c013c04a88f37eb955e3c661fa13c6336a4bdaf298abd761e68bbe3140e3ee9e2f4bcab248e3b34b3d23c7f244e3dec0e78bd2bf51fbcf4cc033d1265a63cb900733db46680bdcb78f63b44a702bd871198bc4d1d703ddafa6abd3141bf3b02cad03d98d955bda401d1bc03e6e33d2db096bc7090933c292bf73cd04e083c4f33ca3b37c7ccbcfd01ccbba44a87bbcc82663ce4a1023aba051f3c35d90ebce24b823ad0ef21bccad9033d839d8d3c2c6cd23c1d81acbb7cc4cbbc912ee8bc1317cc3c114acb3c14ccacbd8e4e49bd973ab6bb43a448bd37d1e8bdf742f8bb69cd73baaf4ce03d22fe393d3aadafbc282a573cbee652bdc82caebdd97195bcfa4e80bca64eb8bd478eae3d961f5f3d66f48b3d1c7df2bbc88932bba8c2ed3cf1b9933dd6d8b7bd33e4cfbd7f49973da210b5bd28635bbcdd4f5fbdeb9c30bc326482bc2dc0c13dcc5c83bc321188ba02ff8abc0c4007bd663022bd4ccfcebbbf531e3cc87c1fbd1ac12b3c92717c3c71ad49bc7dc3723cb9615cbd41e4c7bc06734a3d42cee5bd33ce4bbd5749debc42881e3d14ac023d29e71abd5ac465bd767917bdbf9f93bcdc2c1fbdb2a49e3d8cf523bef19b25bbe41444bdbd70c9bd325c893cbc88893e2d81363e9c102bbd431b373c4039febcdeb8e0bd24df8ebddc345fbd075e993e5ba2213ed213803de6b5b4be99358abdf8a0aebd718038be2eb6a8bd8cdd96bdb75583bb52382abd9add11be6b0309bda8b9efbd8da639bd349566bdc00b9ebde285cf3d219d99bd90d2083d4538c6bcec6403bd2521b5bb2d5bb9bc43e58d3df4af9f3b0a87173cbdf6f43c1aec4bbdf8c651bd7ac1ba3caa16fcbcfe15523dd34f0bbdd66412bdc554f7bccbd6ab3c1dab21bdbabe913cb55b7e3dfa8ea7bc1b6a9bbc733547bc6ac7093dfc3a97bb0db665bd22ea3c3c6fbe183d99bc603bf1a1ae3dd780c1bdc15067be962655bd44d8a1bcdbddac3d988df1bb9deffbbcc032ed3c6767bfbca0dc78bda649dabcb87531bd02d9d8bb554f7abdfc589e3ddc0f10bd8776603c4e826b3d36eea1bd7e69603d5e2bd03d25cbc23b8a1f573d6b44df3ccc74a53c63061cbc717b523c0b25443cd7e6bf3b3423b0bcf73e2f3d562a06bd644eadbc6920d33b74a06c3e93b31d3ef98c3c3e49735d3dd1ab263d5b6d8abcb1f526bbf1d116bdfdc528bdbf2b093d1e17cbbc59b3d4bc89d9b1bc3f2de83c9e1057bde1bdea3cedb423be0560853e9efa8b3d4a91413d822b22bda90d863c331a103bf46360bdb1b0843cf51ac83c0b7a8ebbdbca2abde80f913b9bb486bcab74e5bb6ed4663d979951bce5fc94bab67615bd14343c3ea33a27be585765bdb0695fbd76e7323d7f6e89bcd711bb3c4797b63a7b06013dfc7dbb3c0d16293d2d1baebc13b63e3ec77708bcdd37473de1704bbe049106bd4969e8bdf52e9c3d0b943ebc37aedc3d7073623e153c24bd4fe166bdd7a8333e1c8020be01467dbe92ee0b3e7733d33dc3317c3bb00196bc98df6a3c7883563def06c33c1cb481bc48271a3c162c85bd959974bb5bd0e53c73ba443b2964be3d39fe873db6decbbd8626e4bb4cfc0a3cda567c3cd6db073c03af91bcd6e8be3dca1d933c5152393c181e5dbca1a7c43c586c0cbcbf55183c478b14bd09afd3bb8f9ca4bc17a2423dab02073ea510a73bdae0abbce2b33f3b5bef433d653e7a3d1a840ebb9689cdbc54521e3c2a24debb84d905bc28d4a43a5f6725bc3dde47bdda4cf53b083ac6bd944cab3ee8cec43b5413993bcf3a8dbc9cd80cbc3865063d2ef278bcce7bae3bc4710c3c252d04bd3dca23bbd6a6313dde54013d7d1d3e3d8bfbb13be16e643d64a0b23daf92ceb9fd23a0b9cc3ef8b809685036cdcccc3d000000000000000000000000cdcccc3a610b363b0000000000000000
+
+//!TEXTURE ngu_dense_constants
+//!SIZE 67 1
+//!FORMAT rgba32f
+//!FILTER NEAREST
+//!BORDER CLAMP
+143a8dbd2c0c2ebd7eb01e3b166883bb8b0a34bd7b3c8ebd0ae1683d316850bb8133303e3367973e4b4c2f3d59cf223d42ed053da64f3e3dac29a939d881f93c6857d93d3fe5d2bd85364b3d954734bd2930b1be312185bd5eb6b43e1ad27ebe411c693e2c602c3f1812d6bd7341efbe5aa7323ef788333e22326fbe4f8594be9023b13e7290b0bdbc24ef3d6bb18b3cecaaf9bc2261e6bd04da213f62c58d3e04e863be3e3c8f3ee42854bec8f9163f1ea18e3d6bebe83b5717bcbec40bb53ecbcdb33d3e79e4bc1d6c7d3dfed6af3cf3a5a03eb354c0bdecdaa83e9e4887bc3f6646bde78b35bdfb4d6abda2b732be973d6abd0757d6bd1c0f05be32780cbec8a704bdfcf2b53c0f4f9d3b42200fbdd73dd2bd0b26803d32659b3d5095aa3be49eb0bdc68ec73b830f04beaac6523daa2745bc97a66c3c63904f3aae09253d08508fbd8809af3d8cc572bb2f7c063d2c621cbf807d393e0a58b83ec56a263e1c6f1abf13a7c43d4a48f6be2d8819bf081585bd4608a43dd31c363e47bc613e1089763d25f072bd0595ba3c04d775bdbbbc0fbe910df8be5c49ec3e65e8633e3b389abda23b1cbf5e7722bff831fe3dd804da3d6004d3bdeb6b803e492c1cbe60dde93cb8c03bbd535bc13cb1de8b3c474a0a3c97e834be2dec423e1ad935be3e2d8f3b4c092cbe201f83becb73b73e66a3e93ca70469b99036983d2d7905bc7ff67dbbaedd0c3c10f3003d00b18a3d3eff08be8af1463d91dd443d3859c93c1523363e9a72bb3db3c404bedbfa033c23176c3c8c94fb3c097905bd38bcb23c9b8e3d3d1526f53cf64b043d6b4ad43b7bc1d9be654e203e0c9691be20b90cbf89bdf23e0733c53d29929fbd552ddf3eca269abd5bd224bd693c693ed02880bcb502023c9eeb3ebe59108abd128795bd8637f4beba3bf1bec96ca6bd4ceb0c3f8cfb063f5aa9b6bef2e8ec3e63c3a7be6cb8a9bdd61b11be0df952bea511373c309fd6bce2a67c3e2b73a63b92234ebb6ff343beadfc023fc056093e6b8a6f3d29ab4d3e7e8b953e6a3062bebe05c3bd54f2cd3cd668ec3cad9768be95f73e3d2442acbc5969143c41c7afbcf2bca1bd348970bd42eccb3df70218bdad2a94bda6a83abdd09a16be8ebd1fbc49d6acbd308295bb9f136e3dac735cbbc86f07bd027e70bd3c8480bdf1a01cbd9f95523d566aa6bda790c53e4b42693ebfb6653e626ff33d057220bd0edcfc3e1e7c013ec5fcd63d2a7d08bec350573e05aa703d8439453dd089d13d70e8643d9c2dd53d9f58923e5b8d24bfbd6238be4108b13e5a850c3fb981a83e618622bf5e19863e204c8e3e8be8493e1be29dbe28a5553dc90c9a3de4c0183ba68393bd69c049be01fe933ec545073ea703fc3c0064d0bec259c73e6486ccbd8292203eb906a3be875d303e778098bc85fd503d56e7babdc78ddd37000000000000000000000000cdcccc3a610b363b0000000000000000008020440000b5430000000000000000

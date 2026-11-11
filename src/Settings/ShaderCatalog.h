@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
-inline constexpr int ShaderCount = 23, ShaderParameterLimit = 12;
+inline constexpr int ShaderCount = 26, ShaderParameterLimit = 12;
 
 struct ShaderParameterInfo
 {
@@ -202,6 +202,24 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"Radius 3 with anti-ringing. Highest RAVU quality, slowest.",
      0,
      {}},
+    {"ngu_chroma_cubici2.glsl",
+     L"NGU Sharp VeryHigh Cubici2 (prototype)",
+     L"Chroma",
+     L"Experimental first-stage Cubici2 port from captured madVR constants. Verification prototype only.",
+     0,
+     {}},
+    {"ngu_sharp_veryhigh_chroma_stage1.glsl",
+     L"NGU Sharp VeryHigh chroma stage 1",
+     L"Chroma",
+     L"Experimental VeryHigh Cubici2 plus 28-layer Cubic22 chain for the 640x360 reference geometry.",
+     0,
+     {}},
+    {"ngu_sharp_veryhigh_chroma_dual_core.glsl",
+     L"NGU Sharp VeryHigh chroma Cb+Cr core",
+     L"Chroma",
+     L"Experimental dual-plane VeryHigh Cubici2 plus 28-layer chain; both dense outputs are target-exact for the captured reference.",
+     0,
+     {}},
 };
 
 struct ShaderConfig
@@ -213,7 +231,7 @@ struct ShaderConfig
 struct UserShaderSettings
 {
     ShaderConfig shaders[ShaderCount];
-    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20};
+    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20, 23, 24, 25};
 };
 
 // Index of RAVU Zoom AR R2; shaders added later join the chain after it.
