@@ -5,7 +5,7 @@ struct VSOut { float4 position : SV_Position; };
 VSOut VSMain(uint vertex : SV_VertexID) { VSOut output; float2 uv = float2((vertex << 1) & 2, vertex & 2); output.position = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0); return output; }
 float4 FetchAdd(float2 position) { int width, height; AddTex.GetDimensions(width, height); int2 pixel = (int2)floor(position * float2(width, height)); pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1)); return AddTex.Load(int3(pixel, 0)); }
 float4 FetchNN(float2 position) { int width, height; NNTex.GetDimensions(width, height); int2 pixel = (int2)floor(position * float2(width, height)); pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1)); return NNTex.Load(int3(pixel, 0)); }
-float4 PSMain(float4 position : SV_Position) : SV_Target0 { float4 v0 = float4(position.xy / float2(3840.0, 2160.0), 0.0, 1.0);float4 DL2 = float4(0.5,-0.5,0,0);
+float4 PSMain(float4 position : SV_Position) : SV_Target0 { float4 v0 = float4(position.xy / (U[1].xy * 2.0), 0.0, 1.0);float4 DL2 = float4(0.5,-0.5,0,0);
   float4 r0_init = float4(0,0,0,0);
   float4 r1_init = float4(0,0,0,0);
   float4 r2_init = float4(0,0,0,0);

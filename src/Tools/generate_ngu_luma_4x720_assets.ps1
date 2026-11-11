@@ -78,6 +78,11 @@ $highLayers = 243..248 | ForEach-Object {
 }
 Join-Capture $highLayers 'luma_4x720_high_layer_constants.bin' 1776
 
+Copy-Capture 'const_snapshot_draw_00249_PS_2100_ba9671a7.f32' `
+    'luma_4x720_dense_constants.bin' 816
+Copy-Capture 'const_snapshot_draw_00250_PS_564_500335c8.f32' `
+    'luma_4x720_add_constants.bin' 32
+
 Get-ChildItem $output -File |
     Where-Object Name -Like 'luma_4x720_*' |
     Sort-Object Name |

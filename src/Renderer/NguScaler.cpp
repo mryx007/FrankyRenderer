@@ -41,6 +41,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig SuperResStrength3 = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720LowCore = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720HighCore = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720DenseAdd = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -81,6 +82,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720LowCore;
     case NguScalerStage::VeryHighLuma4x720HighCore:
         return &Luma4x720HighCore;
+    case NguScalerStage::VeryHighLuma4x720DenseAdd:
+        return &Luma4x720DenseAdd;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -520,6 +523,20 @@ struct NguScaler::NativeLuma4x720High
     std::array<ComPtr<ID3D11Texture2D>, 3> highScratchTextures;
     std::array<ComPtr<ID3D11RenderTargetView>, 3> highScratchViews;
     std::array<ComPtr<ID3D11ShaderResourceView>, 3> highScratchShaderViews;
+};
+
+struct NguScaler::NativeLuma4x720DenseAdd
+{
+    ComPtr<ID3D11PixelShader> dense;
+    ComPtr<ID3D11PixelShader> add;
+    ComPtr<ID3D11Buffer> denseConstants;
+    ComPtr<ID3D11Buffer> addConstants;
+    ComPtr<ID3D11Texture2D> denseTexture;
+    ComPtr<ID3D11RenderTargetView> denseView;
+    ComPtr<ID3D11ShaderResourceView> denseShaderView;
+    ComPtr<ID3D11Texture2D> addTexture;
+    ComPtr<ID3D11RenderTargetView> addView;
+    ComPtr<ID3D11ShaderResourceView> addShaderView;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -3502,6 +3519,194 @@ bool NguScaler::CopyNativeLuma4x720HighLayer(int feature,
     return true;
 }
 
+bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU 720p 4x dense/add requires a GPU";
+        return false;
+    }
+    if (nativeLuma4x720DenseAdd_ && gpu == gpu_)
+        return true;
+    if (!PrepareNativeLuma4x720High(gpu))
+        return false;
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU 720p 4x dense/add requires the D3D11 backend";
+        return false;
+    }
+
+    const auto denseCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense.cso", 0);
+    const auto addCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add.cso", 0);
+    const auto denseConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_dense_constants.bin", 816);
+    const auto addConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_add_constants.bin", 32);
+    if (denseCso.empty() || addCso.empty() ||
+        denseConstants.empty() || addConstants.empty())
+    {
+        error_ = "NGU 720p 4x dense/add assets are unavailable";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLuma4x720DenseAdd>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreatePixelShader(denseCso.data(),
+                                         static_cast<SIZE_T>(denseCso.size()),
+                                         nullptr,
+                                         &state->dense)) ||
+        FAILED(device->CreatePixelShader(addCso.data(),
+                                         static_cast<SIZE_T>(addCso.size()),
+                                         nullptr,
+                                         &state->add)))
+    {
+        error_ = "NGU 720p 4x dense/add shaders could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(denseConstants, state->denseConstants) ||
+        !createConstants(addConstants, state->addConstants))
+    {
+        error_ = "NGU 720p 4x dense/add constants could not be created";
+        return false;
+    }
+
+    auto createTexture = [&](UINT width,
+                             UINT height,
+                             DXGI_FORMAT format,
+                             ComPtr<ID3D11Texture2D>& texture,
+                             ComPtr<ID3D11RenderTargetView>& renderTarget,
+                             ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!createTexture(2562,
+                       1442,
+                       DXGI_FORMAT_R16G16B16A16_FLOAT,
+                       state->denseTexture,
+                       state->denseView,
+                       state->denseShaderView) ||
+        !createTexture(5120,
+                       2880,
+                       DXGI_FORMAT_R16_UNORM,
+                       state->addTexture,
+                       state->addView,
+                       state->addShaderView))
+    {
+        error_ = "NGU 720p 4x dense/add surfaces could not be created";
+        return false;
+    }
+
+    nativeLuma4x720DenseAdd_ = std::move(state);
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720DenseAdd;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
+                                           int sourceWidth,
+                                           int sourceHeight)
+{
+    if (!nativeLuma4x720DenseAdd_ || !nativeLuma4x720High_ ||
+        !nativeLuma4x720Low_ ||
+        !RunNativeLuma4x720High(sourceRgb, sourceWidth, sourceHeight))
+        return false;
+
+    auto& low = *nativeLuma4x720Low_;
+    auto& high = *nativeLuma4x720High_;
+    auto& state = *nativeLuma4x720DenseAdd_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    ID3D11ShaderResourceView* denseInputs[3] = {
+        high.convertShaderViews[0].Get(),
+        high.convertShaderViews[1].Get(),
+        high.convertShaderViews[2].Get()};
+    ID3D11RenderTargetView* denseOutput = state.denseView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.dense.Get(),
+                  state.denseConstants.Get(),
+                  low.rasterizer.Get(),
+                  denseInputs,
+                  3,
+                  &denseOutput,
+                  1,
+                  2562,
+                  1442,
+                  nativeLumaSplit_->pointSampler.Get());
+
+    ID3D11ShaderResourceView* addInputs[2] = {
+        low.scaleYShaderView.Get(), state.denseShaderView.Get()};
+    ID3D11RenderTargetView* addOutput = state.addView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.add.Get(),
+                  state.addConstants.Get(),
+                  low.rasterizer.Get(),
+                  addInputs,
+                  2,
+                  &addOutput,
+                  1,
+                  5120,
+                  2880,
+                  nativeLumaSplit_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720Dense(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720DenseAdd_ ||
+        !CopyTextureToTarget(
+            gpu_, nativeLuma4x720DenseAdd_->denseTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x dense output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma4x720Add(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720DenseAdd_ ||
+        !CopyTextureToTarget(
+            gpu_, nativeLuma4x720DenseAdd_->addTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x add output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -3518,6 +3723,7 @@ void NguScaler::Reset()
     nativeSuperResStrength3_.reset();
     nativeLuma4x720Low_.reset();
     nativeLuma4x720High_.reset();
+    nativeLuma4x720DenseAdd_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

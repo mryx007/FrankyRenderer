@@ -410,6 +410,60 @@ int main(int argc, char** argv)
             std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - highStart).count() / frames;
 
+        request.stage = NguScalerStage::VeryHighLuma4x720DenseAdd;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x dense/add capability");
+        Require(ngu.PrepareNativeLuma4x720DenseAdd(d3d->gpu), ngu.LastError());
+        Require(ngu.RunNativeLuma4x720DenseAdd(sourceView.Get(), 1280, 720),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+
+        auto dense = CreateTexture(device,
+                                   2562,
+                                   1442,
+                                   DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                   D3D11_BIND_RENDER_TARGET);
+        auto add = CreateTexture(device,
+                                 5120,
+                                 2880,
+                                 DXGI_FORMAT_R16_UNORM,
+                                 D3D11_BIND_RENDER_TARGET);
+        ComPtr<ID3D11RenderTargetView> denseView, addView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    dense.Get(), nullptr, &denseView)),
+                "dense RTV");
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    add.Get(), nullptr, &addView)),
+                "add RTV");
+        Require(ngu.CopyNativeLuma4x720Dense(denseView.Get()), ngu.LastError());
+        Require(ngu.CopyNativeLuma4x720Add(addView.Get()), ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto denseActual = Download(device, context.Get(), dense.Get());
+        const auto addActual = Download(device, context.Get(), add.Get());
+        int denseMaximum = 0, addMaximum = 0;
+        const int denseDifferent = CountWords(
+            denseActual,
+            ReadBytes(root / "draw_00249_PS_2100_ba9671a7_rt0_2562x1442_f113.bin",
+                      size_t(2562) * 1442 * 8),
+            denseMaximum);
+        const int addDifferent = CountWords(
+            addActual,
+            ExtractL16(ReadBytes(root / "draw_00250_PS_564_500335c8_rt0_5120x2880_f81.bin",
+                                 size_t(5120) * 2880 * 8),
+                       size_t(5120) * 2880),
+            addMaximum);
+        const auto denseAddStart = std::chrono::steady_clock::now();
+        for (int frame = 0; frame < frames; ++frame)
+            Require(ngu.RunNativeLuma4x720DenseAdd(sourceView.Get(), 1280, 720),
+                    ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const double denseAddMilliseconds =
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - denseAddStart).count() / frames;
+        const bool denseAddPass =
+            denseDifferent == 0 && denseMaximum == 0 &&
+            addDifferent == 0 && addMaximum == 0;
+
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
@@ -417,6 +471,9 @@ int main(int argc, char** argv)
         std::printf("LowLayer different=%d maximum=%d\n", lowLayerDifferent, lowLayerMaximum);
         std::printf("Core %.3f ms/frame\n", milliseconds);
         std::printf("HighCore %.3f ms/frame\n", highMilliseconds);
+        std::printf("Dense different=%d maximum=%d\n", denseDifferent, denseMaximum);
+        std::printf("Add different=%d maximum=%d\n", addDifferent, addMaximum);
+        std::printf("DenseAddCore %.3f ms/frame\n", denseAddMilliseconds);
 
         if (!actualPrefix.empty())
         {
@@ -439,17 +496,23 @@ int main(int argc, char** argv)
                                std::to_wstring(feature) + L".bin",
                            highActual[feature]);
             }
+            WriteBytes(actualPrefix + L"dense.bin", denseActual);
+            WriteBytes(actualPrefix + L"add.bin", addActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
                           scaleYDifferent == 0 && scaleYMaximum == 0 &&
                           initialDifferent == 0 && initialMaximum == 0 &&
                           lowLayerDifferent == 0 && lowLayerMaximum == 0 &&
-                          highPass;
+                          highPass && denseAddPass;
         std::printf("%s native NGU 720p VeryHigh 4x luma core\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        addView.Reset();
+        add.Reset();
+        denseView.Reset();
+        dense.Reset();
         for (size_t feature = 0; feature < 3; ++feature)
         {
             highViews[feature].Reset();
