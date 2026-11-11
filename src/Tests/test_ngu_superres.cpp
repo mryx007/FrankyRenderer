@@ -417,8 +417,20 @@ int main(int argc, char** argv)
                     "1080p strength-3 capability");
 
             const auto root1080 = std::filesystem::path(root1080Env);
+            int frameBase = 146;
+            if (const char* frameBaseEnv = std::getenv("NGU_1080_FRAME_BASE"))
+                frameBase = std::atoi(frameBaseEnv);
+            Require(frameBase >= 0 && frameBase <= 99990, "1080p frame base");
+            const auto frameFile =
+                [&](const char* prefix, int offset, const char* shader, const char* suffix)
+            {
+                char index[8];
+                std::snprintf(index, sizeof(index), "%05d", frameBase + offset);
+                return root1080 /
+                       (std::string(prefix) + "_" + index + "_" + shader + suffix);
+            };
             const auto source1080Bytes =
-                ReadBytes(root1080 / "input_00146_PS_520_4a9505a4_s0.bin",
+                ReadBytes(frameFile("input", 0, "PS_520_4a9505a4", "_s0.bin"),
                           size_t(1920) * 1080 * 8);
             auto source1080 = CreateTexture(
                 device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
@@ -429,7 +441,7 @@ int main(int argc, char** argv)
                     "1080p source SRV");
 
             const auto original1080Bytes =
-                ReadBytes(root1080 / "input_00148_PS_284_e8e2a8eb_s0.bin",
+                ReadBytes(frameFile("input", 2, "PS_284_e8e2a8eb", "_s0.bin"),
                           size_t(960) * 540 * 4);
             auto original1080 = CreateTexture(
                 device, 960, 540, DXGI_FORMAT_B8G8R8A8_UNORM,
@@ -440,7 +452,7 @@ int main(int argc, char** argv)
                     "1080p original SRV");
 
             const auto main1080Bytes =
-                ReadBytes(root1080 / "input_00149_PS_4412_c39b49cf_s0.bin",
+                ReadBytes(frameFile("input", 3, "PS_4412_c39b49cf", "_s0.bin"),
                           size_t(1920) * 1080 * 8);
             auto main1080 = CreateTexture(
                 device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
@@ -451,7 +463,7 @@ int main(int argc, char** argv)
                     "1080p main original SRV");
 
             const auto base1080Bytes =
-                ReadBytes(root1080 / "input_00153_PS_4576_b7830945_s0.bin",
+                ReadBytes(frameFile("input", 7, "PS_4576_b7830945", "_s0.bin"),
                           size_t(1920) * 1080 * 8);
             auto base1080 = CreateTexture(
                 device, 1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
@@ -515,7 +527,7 @@ int main(int argc, char** argv)
             int downX1080Maximum = 0;
             const int downX1080Differences = CountWords(
                 downX1080Actual,
-                ReadBytes(root1080 / "draw_00146_PS_520_4a9505a4_rt0_960x1080_f36.bin",
+                ReadBytes(frameFile("draw", 0, "PS_520_4a9505a4", "_rt0_960x1080_f36.bin"),
                           size_t(960) * 1080 * 8),
                 downX1080Maximum);
             Require(ngu.RunNativeSuperResDownY1080(
@@ -529,7 +541,7 @@ int main(int argc, char** argv)
             int downY1080Maximum = 0;
             const int downY1080Differences = CountWords(
                 downY1080Actual,
-                ReadBytes(root1080 / "draw_00147_PS_520_4ee2414c_rt0_960x540_f36.bin",
+                ReadBytes(frameFile("draw", 1, "PS_520_4ee2414c", "_rt0_960x540_f36.bin"),
                           size_t(960) * 540 * 8),
                 downY1080Maximum);
             Require(ngu.RunNativeSuperResDiff1080(
@@ -543,7 +555,7 @@ int main(int argc, char** argv)
             int diff1080Maximum = 0;
             const int diff1080Differences = CountWords(
                 diff1080Actual,
-                ReadBytes(root1080 / "draw_00148_PS_284_e8e2a8eb_rt0_960x540_f112.bin",
+                ReadBytes(frameFile("draw", 2, "PS_284_e8e2a8eb", "_rt0_960x540_f112.bin"),
                           size_t(960) * 540 * 4),
                 diff1080Maximum);
             Require(ngu.RunNativeSuperResToRgbMain1080(
@@ -558,7 +570,7 @@ int main(int argc, char** argv)
             int main1080Maximum = 0;
             const int main1080Differences = CountWords(
                 main1080Actual,
-                ReadBytes(root1080 / "draw_00149_PS_4412_c39b49cf_rt0_1920x1080_f36.bin",
+                ReadBytes(frameFile("draw", 3, "PS_4412_c39b49cf", "_rt0_1920x1080_f36.bin"),
                           size_t(1920) * 1080 * 8),
                 main1080Maximum);
             Require(ngu.RunNativeSuperResDownX1080(
@@ -582,7 +594,7 @@ int main(int argc, char** argv)
             int base1080Maximum = 0;
             const int base1080Differences = CountWords(
                 base1080Actual,
-                ReadBytes(root1080 / "draw_00153_PS_4576_b7830945_rt0_1920x1080_f36.bin",
+                ReadBytes(frameFile("draw", 7, "PS_4576_b7830945", "_rt0_1920x1080_f36.bin"),
                           size_t(1920) * 1080 * 8),
                 base1080Maximum);
             std::printf("1080 DownX different=%d maximum=%d\n",
@@ -659,7 +671,7 @@ int main(int argc, char** argv)
                 Download(device, context.Get(), scheduler1080Output.Get());
             scheduler1080Differences = CountWords(
                 scheduler1080Actual,
-                ReadBytes(root1080 / "draw_00153_PS_4576_b7830945_rt0_1920x1080_f36.bin",
+                ReadBytes(frameFile("draw", 7, "PS_4576_b7830945", "_rt0_1920x1080_f36.bin"),
                           size_t(1920) * 1080 * 8),
                 scheduler1080Maximum);
             scheduler1080Ran = true;
