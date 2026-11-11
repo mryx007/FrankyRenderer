@@ -1,6 +1,7 @@
 param(
     [string]$CaptureRoot = 'E:\OpenMadVR\artifacts_20261031\openmadvr\ngu_chroma_capture\chroma_1080_full6',
-    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\Shaders\Ngu')
+    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\Shaders\Ngu'),
+    [string]$UvProbe = 'E:\OpenMadVR\work\ps4412_uv_full_1080.bin'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,19 +51,22 @@ function Write-UvLut([string]$Name, [int]$Horizontal, [int]$Vertical, [int]$Text
     Write-Asset $Name $bytes
 }
 
-function Write-MainUvLut1080([string]$Name) {
+function Write-MainUvLut1080([string]$Name, [string]$ProbePath) {
+    if (-not (Test-Path -LiteralPath $ProbePath)) {
+        throw "missing D3D9 1080p UV probe: $ProbePath"
+    }
+    $probe = [IO.File]::ReadAllBytes($ProbePath)
+    if ($probe.Length -ne (1920 * 1080 * 16)) {
+        throw "D3D9 1080p UV probe has an unexpected size"
+    }
     $textureWidth = 4096
     $floats = [single[]]::new($textureWidth * 2)
-    $uv0 = [single](0.5 / 1920.0)
-    $uv2 = [single](2.0 + (0.5 / 1920.0))
-    $stride = [single]3840.0
     for ($x = 0; $x -lt 1920; ++$x) {
-        $t = [single]($x / $stride)
-        $oneMinus = [single](1.0 - $t)
-        $floats[$x * 2] = [single](($uv0 * $oneMinus) + ($uv2 * $t))
+        $floats[$x * 2] = [BitConverter]::ToSingle($probe, $x * 16)
     }
     for ($y = 0; $y -lt 1080; ++$y) {
-        $floats[(1920 + $y) * 2 + 1] = [single](($y + 0.5) / 1080.0)
+        $floats[(1920 + $y) * 2 + 1] =
+            [BitConverter]::ToSingle($probe, ($y * 1920) * 16 + 4)
     }
     $bytes = [byte[]]::new($floats.Length * 4)
     [Buffer]::BlockCopy($floats, 0, $bytes, 0, $bytes.Length)
@@ -132,4 +136,4 @@ Write-ScaleTable 'superres_1080_down_y_table.bin' 540 1080 `
 # borrowed from the 720p assets.
 Write-UvLut 'superres_1080_down_x_uv_lut.bin' 960 1080 2040
 Write-UvLut 'superres_1080_down_y_uv_lut.bin' 960 540 1500
-Write-MainUvLut1080 'superres_1080_uv_lut.bin'
+Write-MainUvLut1080 'superres_1080_uv_lut.bin' $UvProbe
