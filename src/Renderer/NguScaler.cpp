@@ -43,6 +43,8 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Luma4x720HighCore = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720DenseAdd = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720TailYcbcr = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720TailDownX = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720TailDownY = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -87,6 +89,10 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720DenseAdd;
     case NguScalerStage::VeryHighLuma4x720TailYcbcr:
         return &Luma4x720TailYcbcr;
+    case NguScalerStage::VeryHighLuma4x720TailDownX:
+        return &Luma4x720TailDownX;
+    case NguScalerStage::VeryHighLuma4x720TailDownY:
+        return &Luma4x720TailDownY;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -546,6 +552,22 @@ struct NguScaler::NativeLuma4x720Tail
 {
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> ycbcr;
+    ComPtr<ID3D11PixelShader> downX;
+    ComPtr<ID3D11Buffer> downXConstants;
+    ComPtr<ID3D11Texture2D> downXTable;
+    ComPtr<ID3D11ShaderResourceView> downXTableView;
+    ComPtr<ID3D11Texture2D> downXUvLut;
+    ComPtr<ID3D11ShaderResourceView> downXUvLutView;
+    ComPtr<ID3D11PixelShader> downY;
+    ComPtr<ID3D11Buffer> downYConstants;
+    ComPtr<ID3D11Texture2D> downYTable;
+    ComPtr<ID3D11ShaderResourceView> downYTableView;
+    ComPtr<ID3D11Texture2D> downYUvLut;
+    ComPtr<ID3D11ShaderResourceView> downYUvLutView;
+    ComPtr<ID3D11PixelShader> ssimRt;
+    ComPtr<ID3D11Buffer> ssimRtConstants;
+    ComPtr<ID3D11PixelShader> ssimFinal;
+    ComPtr<ID3D11Buffer> ssimFinalConstants;
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
@@ -3740,7 +3762,35 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl", 32 * 1024);
     const auto ycbcrCso =
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.cso", 0);
-    if (shaderText.empty() || ycbcrCso.empty())
+    const auto downXCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x.cso", 0);
+    const auto downXConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_constants.bin", 32);
+    const auto downXTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_table.bin", 184320);
+    const auto downXUvLut =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_uv_lut.bin", 61440);
+    const auto downYCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y.cso", 0);
+    const auto downYConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_constants.bin", 32);
+    const auto downYTable =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_table.bin", 103680);
+    const auto downYUvLut =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_uv_lut.bin", 61440);
+    const auto ssimRtCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt.cso", 0);
+    const auto ssimRtConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt_constants.bin", 32);
+    const auto ssimFinalCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final.cso", 0);
+    const auto ssimFinalConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final_constants.bin", 32);
+    if (shaderText.empty() || ycbcrCso.empty() || downXCso.empty() ||
+        downXConstants.empty() || downXTable.empty() || downXUvLut.empty() ||
+        downYCso.empty() || downYConstants.empty() || downYTable.empty() ||
+        downYUvLut.empty() || ssimRtCso.empty() || ssimRtConstants.empty() ||
+        ssimFinalCso.empty() || ssimFinalConstants.empty())
     {
         error_ = "NGU 720p 4x tail assets are unavailable";
         return false;
@@ -3775,9 +3825,123 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         FAILED(device->CreatePixelShader(ycbcrCso.data(),
                                          static_cast<SIZE_T>(ycbcrCso.size()),
                                          nullptr,
-                                         &state->ycbcr)))
+                                         &state->ycbcr)) ||
+        FAILED(device->CreatePixelShader(downXCso.data(),
+                                         static_cast<SIZE_T>(downXCso.size()),
+                                         nullptr,
+                                         &state->downX)) ||
+        FAILED(device->CreatePixelShader(downYCso.data(),
+                                         static_cast<SIZE_T>(downYCso.size()),
+                                         nullptr,
+                                         &state->downY)) ||
+        FAILED(device->CreatePixelShader(ssimRtCso.data(),
+                                         static_cast<SIZE_T>(ssimRtCso.size()),
+                                         nullptr,
+                                         &state->ssimRt)) ||
+        FAILED(device->CreatePixelShader(ssimFinalCso.data(),
+                                         static_cast<SIZE_T>(ssimFinalCso.size()),
+                                         nullptr,
+                                         &state->ssimFinal)))
     {
         error_ = "NGU 720p 4x tail shader objects could not be created";
+        return false;
+    }
+
+    D3D11_BUFFER_DESC constantDesc = {};
+    constantDesc.ByteWidth = static_cast<UINT>(downXConstants.size());
+    constantDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA constantData = {};
+    constantData.pSysMem = downXConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->downXConstants)))
+    {
+        error_ = "NGU 720p 4x tail down-X constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(downYConstants.size());
+    constantData.pSysMem = downYConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->downYConstants)))
+    {
+        error_ = "NGU 720p 4x tail down-Y constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(ssimRtConstants.size());
+    constantData.pSysMem = ssimRtConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->ssimRtConstants)))
+    {
+        error_ = "NGU 720p 4x tail SSIM RT constants could not be created";
+        return false;
+    }
+    constantDesc.ByteWidth = static_cast<UINT>(ssimFinalConstants.size());
+    constantData.pSysMem = ssimFinalConstants.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->ssimFinalConstants)))
+    {
+        error_ = "NGU 720p 4x tail SSIM final constants could not be created";
+        return false;
+    }
+
+    D3D11_TEXTURE2D_DESC tableDesc = {};
+    tableDesc.Width = 6;
+    tableDesc.Height = 3840;
+    tableDesc.MipLevels = 1;
+    tableDesc.ArraySize = 1;
+    tableDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    tableDesc.SampleDesc.Count = 1;
+    tableDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    tableDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA tableData = {};
+    tableData.pSysMem = downXTable.data();
+    tableData.SysMemPitch = 6 * 8;
+    if (FAILED(device->CreateTexture2D(
+            &tableDesc, &tableData, &state->downXTable)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->downXTable.Get(), nullptr, &state->downXTableView)))
+    {
+        error_ = "NGU 720p 4x tail down-X table could not be created";
+        return false;
+    }
+    tableDesc.Height = 2160;
+    tableData.pSysMem = downYTable.data();
+    if (FAILED(device->CreateTexture2D(
+            &tableDesc, &tableData, &state->downYTable)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->downYTable.Get(), nullptr, &state->downYTableView)))
+    {
+        error_ = "NGU 720p 4x tail down-Y table could not be created";
+        return false;
+    }
+
+    D3D11_TEXTURE2D_DESC uvDesc = {};
+    uvDesc.Width = 3840;
+    uvDesc.Height = 2;
+    uvDesc.MipLevels = 1;
+    uvDesc.ArraySize = 1;
+    uvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+    uvDesc.SampleDesc.Count = 1;
+    uvDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    uvDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA uvData = {};
+    uvData.pSysMem = downXUvLut.data();
+    uvData.SysMemPitch = 3840 * 8;
+    if (FAILED(device->CreateTexture2D(
+            &uvDesc, &uvData, &state->downXUvLut)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->downXUvLut.Get(), nullptr, &state->downXUvLutView)))
+    {
+        error_ = "NGU 720p 4x tail down-X UV LUT could not be created";
+        return false;
+    }
+    uvData.pSysMem = downYUvLut.data();
+    if (FAILED(device->CreateTexture2D(
+            &uvDesc, &uvData, &state->downYUvLut)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->downYUvLut.Get(), nullptr, &state->downYUvLutView)))
+    {
+        error_ = "NGU 720p 4x tail down-Y UV LUT could not be created";
         return false;
     }
 
@@ -3840,6 +4004,147 @@ bool NguScaler::RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input,
                   1,
                   5120,
                   2880,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailDownX(ID3D11ShaderResourceView* input,
+                                            ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880))
+    {
+        error_ = "NGU 720p 4x tail down-X requires exact 5120/3840 surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, state.downXTableView.Get(), state.downXUvLutView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.downX.Get(),
+                  state.downXConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  3,
+                  targets,
+                  1,
+                  3840,
+                  2880,
+                  state.pointSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailDownY(ID3D11ShaderResourceView* input,
+                                            ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail down-Y requires exact 3840x2880/2160 surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, state.downYTableView.Get(), state.downYUvLutView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.downY.Get(),
+                  state.downYConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  3,
+                  targets,
+                  1,
+                  3840,
+                  2160,
+                  state.pointSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailSsimRt(ID3D11ShaderResourceView* input,
+                                             ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail SSIM RT requires exact 4K surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[2] = {
+        input, state.downYUvLutView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.ssimRt.Get(),
+                  state.ssimRtConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
+                  targets,
+                  1,
+                  3840,
+                  2160,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
+                                                ID3D11ShaderResourceView* source,
+                                                ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(
+            rt, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160) ||
+        !ViewMatchesTexture(
+            source, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x tail SSIM final requires exact 4K surfaces";
+        return false;
+    }
+
+    auto& state = *nativeLuma4x720Tail_;
+    ID3D11ShaderResourceView* inputs[3] = {
+        rt, source, state.downYUvLutView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.ssimFinal.Get(),
+                  state.ssimFinalConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  3,
+                  targets,
+                  1,
+                  3840,
+                  2160,
                   state.pointSampler.Get());
     error_ = "";
     return true;

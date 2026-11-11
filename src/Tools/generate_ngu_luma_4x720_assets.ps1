@@ -27,6 +27,20 @@ function Copy-Capture([string]$name, [string]$outputName, [int]$bytes) {
     [IO.File]::WriteAllBytes((Join-Path $output $outputName), $data)
 }
 
+function Copy-CapturePrefix([string]$name, [string]$outputName, [int]$bytes) {
+    $source = Join-Path $capture $name
+    if (-not (Test-Path -LiteralPath $source)) {
+        throw "Missing capture asset: $source"
+    }
+    $data = [IO.File]::ReadAllBytes($source)
+    if ($data.Length -lt $bytes) {
+        throw "$name has $($data.Length) bytes, expected at least $bytes"
+    }
+    $prefix = [byte[]]::new($bytes)
+    [Array]::Copy($data, $prefix, $bytes)
+    [IO.File]::WriteAllBytes((Join-Path $output $outputName), $prefix)
+}
+
 function Join-Capture(
     [string[]]$names,
     [string]$outputName,
@@ -82,6 +96,18 @@ Copy-Capture 'const_snapshot_draw_00249_PS_2100_ba9671a7.f32' `
     'luma_4x720_dense_constants.bin' 816
 Copy-Capture 'const_snapshot_draw_00250_PS_564_500335c8.f32' `
     'luma_4x720_add_constants.bin' 32
+Copy-CapturePrefix 'const_snapshot_draw_00252_PS_1200_ea811ad5.f32' `
+    'luma_4x720_tail_down_x_constants.bin' 32
+Copy-Capture 'scale_update_20_0x21521480b20_0x2152147fcc0.bin' `
+    'luma_4x720_tail_down_x_table.bin' 184320
+Copy-CapturePrefix 'const_snapshot_draw_00253_PS_1176_487f5b4d.f32' `
+    'luma_4x720_tail_down_y_constants.bin' 32
+Copy-Capture 'scale_update_21_0x2152147dfe0_0x21521481700.bin' `
+    'luma_4x720_tail_down_y_table.bin' 103680
+Copy-CapturePrefix 'const_snapshot_draw_00254_PS_1208_b99fedc2.f32' `
+    'luma_4x720_tail_ssim_rt_constants.bin' 32
+Copy-CapturePrefix 'const_snapshot_draw_00255_PS_1052_f4319416.f32' `
+    'luma_4x720_tail_ssim_final_constants.bin' 32
 
 Get-ChildItem $output -File |
     Where-Object Name -Like 'luma_4x720_*' |

@@ -42,6 +42,8 @@ enum class NguScalerStage
     VeryHighLuma4x720HighCore,
     VeryHighLuma4x720DenseAdd,
     VeryHighLuma4x720TailYcbcr,
+    VeryHighLuma4x720TailDownX,
+    VeryHighLuma4x720TailDownY,
     VeryHighLuma1080Core,
 };
 
@@ -177,6 +179,15 @@ class NguScaler
     bool PrepareNativeLuma4x720Tail(pl_gpu gpu);
     bool RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input,
                                      ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailDownX(ID3D11ShaderResourceView* input,
+                                     ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailDownY(ID3D11ShaderResourceView* input,
+                                     ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailSsimRt(ID3D11ShaderResourceView* input,
+                                      ID3D11RenderTargetView* output);
+    bool RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
+                                         ID3D11ShaderResourceView* source,
+                                         ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;

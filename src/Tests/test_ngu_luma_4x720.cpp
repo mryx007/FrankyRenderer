@@ -171,6 +171,12 @@ int main(int argc, char** argv)
         request.stage = NguScalerStage::VeryHighLuma4x720TailYcbcr;
         Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
                 "720p 4x tail YCbCr capability");
+        request.stage = NguScalerStage::VeryHighLuma4x720TailDownX;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x tail down-X capability");
+        request.stage = NguScalerStage::VeryHighLuma4x720TailDownY;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x tail down-Y capability");
 
         const auto sourceBytes =
             ReadBytes(root / "input_00224_PS_460_bfe50921_s0.bin", size_t(1280) * 720 * 8);
@@ -486,11 +492,16 @@ int main(int argc, char** argv)
                                    5120,
                                    2880,
                                    DXGI_FORMAT_R16G16B16A16_UNORM,
-                                   D3D11_BIND_RENDER_TARGET);
+                                   D3D11_BIND_RENDER_TARGET |
+                                       D3D11_BIND_SHADER_RESOURCE);
         ComPtr<ID3D11RenderTargetView> ycbcrView;
+        ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
         Require(SUCCEEDED(device->CreateRenderTargetView(
                     ycbcr.Get(), nullptr, &ycbcrView)),
                 "tail YCbCr RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    ycbcr.Get(), nullptr, &ycbcrShaderView)),
+                "tail YCbCr SRV");
         Require(ngu.RunNativeLuma4x720TailYcbcr(
                     ycbcrInputView.Get(), ycbcrView.Get()),
                 ngu.LastError());
@@ -502,6 +513,151 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_00251_PS_536_057fb11f_rt0_5120x2880_f36.bin",
                       size_t(5120) * 2880 * 8),
             ycbcrMaximum);
+
+        auto downX = CreateTexture(device,
+                                   3840,
+                                   2880,
+                                   DXGI_FORMAT_R16G16B16A16_UNORM,
+                                   D3D11_BIND_RENDER_TARGET |
+                                       D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> downXView;
+        ComPtr<ID3D11ShaderResourceView> downXShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    downX.Get(), nullptr, &downXView)),
+                "tail down-X RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    downX.Get(), nullptr, &downXShaderView)),
+                "tail down-X SRV");
+        const auto downXExpected =
+            ReadBytes(root / "draw_00252_PS_1200_ea811ad5_rt0_3840x2880_f36.bin",
+                      size_t(3840) * 2880 * 8);
+        Require(ngu.RunNativeLuma4x720TailDownX(
+                    ycbcrShaderView.Get(), downXView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto downXActual = Download(device, context.Get(), downX.Get());
+        int downXMaximum = 0;
+        const int downXDifferent =
+            CountWords(downXActual, downXExpected, downXMaximum);
+
+        auto downY = CreateTexture(device,
+                                   3840,
+                                   2160,
+                                   DXGI_FORMAT_R16G16B16A16_UNORM,
+                                   D3D11_BIND_RENDER_TARGET |
+                                       D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> downYView;
+        ComPtr<ID3D11ShaderResourceView> downYShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    downY.Get(), nullptr, &downYView)),
+                "tail down-Y RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    downY.Get(), nullptr, &downYShaderView)),
+                "tail down-Y SRV");
+        Require(ngu.RunNativeLuma4x720TailDownY(
+                    downXShaderView.Get(), downYView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto downYActual = Download(device, context.Get(), downY.Get());
+        int downYMaximum = 0;
+        const int downYDifferent = CountWords(
+            downYActual,
+            ReadBytes(root / "draw_00253_PS_1176_487f5b4d_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8),
+            downYMaximum);
+
+        auto ssimRt = CreateTexture(device,
+                                    3840,
+                                    2160,
+                                    DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                    D3D11_BIND_RENDER_TARGET |
+                                        D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> ssimRtView;
+        ComPtr<ID3D11ShaderResourceView> ssimRtShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    ssimRt.Get(), nullptr, &ssimRtView)),
+                "tail SSIM RT RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    ssimRt.Get(), nullptr, &ssimRtShaderView)),
+                "tail SSIM RT SRV");
+        Require(ngu.RunNativeLuma4x720TailSsimRt(
+                    downYShaderView.Get(), ssimRtView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto ssimRtActual = Download(device, context.Get(), ssimRt.Get());
+        int ssimRtMaximum = 0;
+        const int ssimRtDifferent = CountWords(
+            ssimRtActual,
+            ReadBytes(root / "draw_00254_PS_1208_b99fedc2_rt0_3840x2160_f113.bin",
+                      size_t(3840) * 2160 * 8),
+            ssimRtMaximum);
+
+        auto ssimFinal = CreateTexture(device,
+                                       3840,
+                                       2160,
+                                       DXGI_FORMAT_R16G16B16A16_UNORM,
+                                       D3D11_BIND_RENDER_TARGET);
+        ComPtr<ID3D11RenderTargetView> ssimFinalView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    ssimFinal.Get(), nullptr, &ssimFinalView)),
+                "tail SSIM final RTV");
+        Require(ngu.RunNativeLuma4x720TailSsimFinal(
+                    ssimRtShaderView.Get(),
+                    downYShaderView.Get(),
+                    ssimFinalView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto ssimFinalActual =
+            Download(device, context.Get(), ssimFinal.Get());
+        int ssimFinalMaximum = 0;
+        const int ssimFinalDifferent = CountWords(
+            ssimFinalActual,
+            ReadBytes(root / "draw_00255_PS_1052_f4319416_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8),
+            ssimFinalMaximum);
+
+        const auto targetSsimRtBytes =
+            ReadBytes(root / "input_00255_PS_1052_f4319416_s2.bin",
+                      size_t(3840) * 2160 * 8);
+        const auto targetSsimSourceBytes =
+            ReadBytes(root / "input_00255_PS_1052_f4319416_s0.bin",
+                      size_t(3840) * 2160 * 8);
+        auto targetSsimRt = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16G16B16A16_FLOAT,
+            D3D11_BIND_SHADER_RESOURCE,
+            targetSsimRtBytes.data());
+        auto targetSsimSource = CreateTexture(
+            device,
+            3840,
+            2160,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            D3D11_BIND_SHADER_RESOURCE,
+            targetSsimSourceBytes.data());
+        ComPtr<ID3D11ShaderResourceView> targetSsimRtView;
+        ComPtr<ID3D11ShaderResourceView> targetSsimSourceView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetSsimRt.Get(), nullptr, &targetSsimRtView)),
+                "target SSIM RT SRV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetSsimSource.Get(), nullptr, &targetSsimSourceView)),
+                "target SSIM source SRV");
+        Require(ngu.RunNativeLuma4x720TailSsimFinal(
+                    targetSsimRtView.Get(),
+                    targetSsimSourceView.Get(),
+                    ssimFinalView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto targetInputFinalActual =
+            Download(device, context.Get(), ssimFinal.Get());
+        int targetInputFinalMaximum = 0;
+        const int targetInputFinalDifferent = CountWords(
+            targetInputFinalActual,
+            ReadBytes(root / "draw_00255_PS_1052_f4319416_rt0_3840x2160_f36.bin",
+                      size_t(3840) * 2160 * 8),
+            targetInputFinalMaximum);
 
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
@@ -515,6 +671,16 @@ int main(int argc, char** argv)
         std::printf("DenseAddCore %.3f ms/frame\n", denseAddMilliseconds);
         std::printf("TailYcbcr different=%d maximum=%d\n",
                     ycbcrDifferent, ycbcrMaximum);
+        std::printf("TailDownX different=%d maximum=%d\n",
+                    downXDifferent, downXMaximum);
+        std::printf("TailDownY different=%d maximum=%d\n",
+                    downYDifferent, downYMaximum);
+        std::printf("TailSsimRtProbe different=%d maximum=%d\n",
+                    ssimRtDifferent, ssimRtMaximum);
+        std::printf("TailSsimFinalProbe different=%d maximum=%d\n",
+                    ssimFinalDifferent, ssimFinalMaximum);
+        std::printf("TailSsimFinalTargetInputs different=%d maximum=%d\n",
+                    targetInputFinalDifferent, targetInputFinalMaximum);
 
         if (!actualPrefix.empty())
         {
@@ -540,6 +706,12 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"dense.bin", denseActual);
             WriteBytes(actualPrefix + L"add.bin", addActual);
             WriteBytes(actualPrefix + L"tail_ycbcr.bin", ycbcrActual);
+            WriteBytes(actualPrefix + L"tail_down_x.bin", downXActual);
+            WriteBytes(actualPrefix + L"tail_down_y.bin", downYActual);
+            WriteBytes(actualPrefix + L"tail_ssim_rt_probe.bin", ssimRtActual);
+            WriteBytes(actualPrefix + L"tail_ssim_final_probe.bin", ssimFinalActual);
+            WriteBytes(actualPrefix + L"tail_ssim_final_target_inputs.bin",
+                       targetInputFinalActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
@@ -547,11 +719,29 @@ int main(int argc, char** argv)
                           initialDifferent == 0 && initialMaximum == 0 &&
                           lowLayerDifferent == 0 && lowLayerMaximum == 0 &&
                           highPass && denseAddPass &&
-                          ycbcrDifferent == 0 && ycbcrMaximum == 0;
-        std::printf("%s native NGU 720p VeryHigh 4x luma tail\n",
+                          ycbcrDifferent == 0 && ycbcrMaximum == 0 &&
+                          downXDifferent == 0 && downXMaximum == 0 &&
+                          downYDifferent == 0 && downYMaximum == 0;
+        std::printf("%s native NGU 720p VeryHigh 4x luma tail prefix\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        targetSsimSourceView.Reset();
+        targetSsimSource.Reset();
+        targetSsimRtView.Reset();
+        targetSsimRt.Reset();
+        ssimFinalView.Reset();
+        ssimFinal.Reset();
+        ssimRtShaderView.Reset();
+        ssimRtView.Reset();
+        ssimRt.Reset();
+        downYShaderView.Reset();
+        downYView.Reset();
+        downY.Reset();
+        downXShaderView.Reset();
+        downXView.Reset();
+        downX.Reset();
+        ycbcrShaderView.Reset();
         ycbcrView.Reset();
         ycbcr.Reset();
         ycbcrInputView.Reset();
