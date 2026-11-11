@@ -44,13 +44,13 @@ ComPtr<ID3D11Texture2D> CreateInput(ID3D11Device* device,
     desc.Height = height;
     desc.MipLevels = 1;
     desc.ArraySize = 1;
-    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     D3D11_SUBRESOURCE_DATA initial = {};
     initial.pSysMem = bytes.data();
-    initial.SysMemPitch = width * 4;
+    initial.SysMemPitch = width * 8;
     ComPtr<ID3D11Texture2D> texture;
     Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
             "create input");
@@ -127,13 +127,13 @@ int main(int argc, char** argv)
         constexpr UINT width = 640;
         constexpr UINT height = 360;
         const auto input =
-            ReadBytes(root / "input_00090_PS_260_cdfc6b55_s0.bin",
-                      size_t(width) * height * 4);
+            ReadBytes(root / "input_00006_PS_260_cdfc6b55_s0.bin",
+                      size_t(width) * height * 8);
         const auto expectedCb =
-            ReadBytes(root / "draw_00090_PS_260_cdfc6b55_rt0_640x360_f81.bin",
+            ReadBytes(root / "draw_00006_PS_260_cdfc6b55_rt0_640x360_f81.bin",
                       size_t(width) * height * 8);
         const auto expectedCr =
-            ReadBytes(root / "draw_00090_PS_260_cdfc6b55_rt1_640x360_f81.bin",
+            ReadBytes(root / "draw_00006_PS_260_cdfc6b55_rt1_640x360_f81.bin",
                       size_t(width) * height * 8);
 
         auto d3dParams = pl_d3d11_default_params;
