@@ -534,6 +534,15 @@ int main(int argc, char** argv)
                 ReadBytes(root1080 / "draw_00149_PS_4412_c39b49cf_rt0_1920x1080_f36.bin",
                           size_t(1920) * 1080 * 8),
                 main1080Maximum);
+            Require(ngu.RunNativeSuperResDownX1080(
+                        main1080OutputSrv.Get(), downX1080View.Get()),
+                    ngu.LastError());
+            Require(ngu.RunNativeSuperResDownY1080(
+                        downX1080Srv.Get(), downY1080View.Get()),
+                    ngu.LastError());
+            Require(ngu.RunNativeSuperResDiff1080(
+                        original1080Srv.Get(), downY1080Srv.Get(), diff1080View.Get()),
+                    ngu.LastError());
             Require(ngu.RunNativeSuperResToRgbBase1080(
                         base1080Srv.Get(), main1080OutputSrv.Get(),
                         diff1080Srv.Get(), baseOutput1080View.Get()),
