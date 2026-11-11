@@ -480,7 +480,12 @@ struct PlaceboBackend::State
             description.format != PixelFormat::RGB48 || description.bottomUp ||
             image.num_planes != 1)
         {
-            error = "ngu_sharp currently requires a 1280x720 top-down RGB48 source";
+            error = "ngu_sharp currently requires a 1280x720 top-down RGB48 source: got " +
+                    std::to_string(description.width) + "x" +
+                    std::to_string(description.height) + " format " +
+                    std::to_string(static_cast<int>(description.format)) +
+                    (description.bottomUp ? " bottom-up" : " top-down") +
+                    " planes " + std::to_string(image.num_planes);
             return false;
         }
         if (!nguSource)
@@ -1645,6 +1650,16 @@ struct PlaceboBackend::State
                 }
             }
         } processed{image, mixFrames, image};
+
+        struct RestoreDescription
+        {
+            VideoFrame& value;
+            VideoFrame original;
+            ~RestoreDescription()
+            {
+                value = original;
+            }
+        } descriptionRestore{description, description};
 
         if (settings.nativeNguSharp)
         {

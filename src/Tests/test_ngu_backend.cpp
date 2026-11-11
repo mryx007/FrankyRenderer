@@ -119,6 +119,24 @@ int main(int argc, char** argv)
         std::printf("NGU backend RGB different=%d maximum=%d diff_gt_1_pixels=%d\n",
                     different, maximum, overOne);
         Require(maximum <= 1 && overOne == 0, "NGU backend RGB acceptance");
+
+        uint64_t capturedId = 0;
+        const HRESULT captured = backend.CaptureUpload(
+            frame, rgb48.data(), rgb48.size(), capturedId);
+        if (FAILED(captured))
+            throw std::runtime_error("NGU stored-frame capture: " + backend.LastError());
+        std::vector<uint8_t> storedPixels;
+        const HRESULT storedRender =
+            backend.RenderOffscreen(3840, 2160, storedPixels);
+        if (FAILED(storedRender))
+            throw std::runtime_error("NGU stored-frame render: " + backend.LastError());
+        int storedMaximum = 0, storedOverOne = 0;
+        const int storedDifferent =
+            CompareRgb(storedPixels, expected, storedMaximum, storedOverOne);
+        std::printf("NGU backend stored RGB different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    storedDifferent, storedMaximum, storedOverOne);
+        Require(storedMaximum <= 1 && storedOverOne == 0,
+                "NGU stored-frame RGB acceptance");
         std::printf("PASS_PRODUCT ngu_sharp backend RGB48 -> 4K\n");
         return 0;
     }

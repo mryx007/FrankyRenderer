@@ -1531,8 +1531,14 @@ int wmain(int argc, wchar_t** argv)
                 !CompareNguRgb(pixels, expected, different, maximum, overOne) ||
                 maximum > 1 || overOne != 0)
             {
-                printf("FAIL_PRODUCT ngu_sharp DirectShow RGB different=%d maximum=%d diff_gt_1_pixels=%d\n",
-                       different, maximum, overOne);
+                printf("FAIL_PRODUCT ngu_sharp DirectShow RGB different=%d maximum=%d diff_gt_1_pixels=%d actual=%u,%u,%u expected=%u,%u,%u\n",
+                       different, maximum, overOne,
+                       pixels.empty() ? 0u : pixels[0],
+                       pixels.size() < 2 ? 0u : pixels[1],
+                       pixels.size() < 3 ? 0u : pixels[2],
+                       expected.empty() ? 0u : expected[0],
+                       expected.size() < 2 ? 0u : expected[1],
+                       expected.size() < 3 ? 0u : expected[2]);
                 return 1;
             }
         }
