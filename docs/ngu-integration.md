@@ -115,9 +115,10 @@ PS_4576 output exactly at `0.156 ms/frame` on the validation geometry. The
 PS_520 X/Y scale, PS_1412 and all 15 low-resolution PS_3588 layers with every
 checked stage exact at `1.278 ms/frame`. Three PS_4920 four-output upsamplers,
 three PS_912 quadrant converters and all six high-resolution PS_3588 layers are
-also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`. The
-latest product AX is
-`63E62A59B954A861C8D48922E29788451FF32976CA247B8719A841D93093BA34`.
+also exact; the complete 720p 4x luma core executes at `3.430 ms/frame`.
+PS_2100 dense and PS_564 add now extend that path exactly to the native
+`5120x2880` luma surface in `10.337 ms/frame`. The latest product AX is
+`5F3B8EFBA83B307362F4C28178C4EC1BA7F874418E0912BD47E7FAD0669F9DF3`.
 
 This is not yet a selectable complete scaler. Backend/source-surface binding,
 real DirectShow playback, the combined chroma-plus-SuperRes-plus-luma chain,
