@@ -111,8 +111,10 @@ and the SuperChromaRes strength-3 primitive chain are covered by stage-exact
 tests. A one-call strength-3 scheduler now owns and reuses the captured X/Y/diff
 surfaces, validates every external format/geometry, and produces the target
 PS_4576 output exactly at `0.156 ms/frame` on the validation geometry. The
-latest product AX is
-`E8EA4A362263BE1D0D7B81D372AF89FA7E809DC2197E83960AA78B7428788D5B`.
+1280x720 VeryHigh 4x luma low core now also runs natively through PS_460,
+PS_520 X/Y scale, PS_1412 and all 15 low-resolution PS_3588 layers with every
+checked stage exact at `1.278 ms/frame`. The latest product AX is
+`567D7ED7F22EEA0B06436A288C61836C7197E26B8C69B7D4192224DC8F145A1E`.
 
 This is not yet a selectable complete scaler. Backend/source-surface binding,
 real DirectShow playback, the combined chroma-plus-SuperRes-plus-luma chain,
