@@ -93,6 +93,7 @@ std::vector<uint8_t> Download(ID3D11Device* device,
             "map staging texture");
     const UINT pixelBytes = desc.Format == DXGI_FORMAT_R16_UNORM ? 2
                            : desc.Format == DXGI_FORMAT_R16G16_UNORM ? 4
+                           : desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
                                                                : 8;
     const size_t rowBytes = size_t(desc.Width) * pixelBytes;
     std::vector<uint8_t> bytes(rowBytes * desc.Height);
@@ -131,6 +132,34 @@ int CountWords(const std::vector<uint8_t>& actual,
             ++different;
             maximum = std::max(maximum, std::abs(int(left) - int(right)));
         }
+    }
+    return different;
+}
+
+int CountPixelDifferences(const std::vector<uint8_t>& actual,
+                          const std::vector<uint8_t>& expected,
+                          int& maximum,
+                          int& overOne)
+{
+    Require(actual.size() == expected.size() && actual.size() % 4 == 0,
+            "final comparison size");
+    maximum = 0;
+    overOne = 0;
+    int different = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (size_t channel = 0; channel < 4; ++channel)
+        {
+            const int delta =
+                std::abs(int(actual[offset + channel]) -
+                         int(expected[offset + channel]));
+            if (delta)
+                ++different;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
     }
     return different;
 }
@@ -177,6 +206,9 @@ int main(int argc, char** argv)
         request.stage = NguScalerStage::VeryHighLuma4x720TailDownY;
         Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
                 "720p 4x tail down-Y capability");
+        request.stage = NguScalerStage::VeryHighLuma4x720Full;
+        Require(ProbeNguScaler(request) == NguScalerSupport::Ready,
+                "720p 4x full-path capability");
 
         const auto sourceBytes =
             ReadBytes(root / "input_00224_PS_460_bfe50921_s0.bin", size_t(1280) * 720 * 8);
@@ -201,6 +233,12 @@ int main(int argc, char** argv)
                                    720,
                                    DXGI_FORMAT_R16_UNORM,
                                    D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        auto splitCbCr = CreateTexture(device,
+                                       1280,
+                                       720,
+                                       DXGI_FORMAT_R16G16_UNORM,
+                                       D3D11_BIND_RENDER_TARGET |
+                                           D3D11_BIND_SHADER_RESOURCE);
         auto scaleX = CreateTexture(device,
                                     5120,
                                     720,
@@ -221,9 +259,17 @@ int main(int argc, char** argv)
                                       720,
                                       DXGI_FORMAT_R16G16B16A16_FLOAT,
                                       D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
-        ComPtr<ID3D11RenderTargetView> splitView, scaleXView, scaleYView, initialView, lowLayerView;
+        ComPtr<ID3D11RenderTargetView> splitView, splitCbCrView, scaleXView, scaleYView,
+            initialView, lowLayerView;
+        ComPtr<ID3D11ShaderResourceView> splitCbCrShaderView;
         Require(SUCCEEDED(device->CreateRenderTargetView(split.Get(), nullptr, &splitView)),
                 "split RTV");
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    splitCbCr.Get(), nullptr, &splitCbCrView)),
+                "split CbCr RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    splitCbCr.Get(), nullptr, &splitCbCrShaderView)),
+                "split CbCr SRV");
         Require(SUCCEEDED(device->CreateRenderTargetView(scaleX.Get(), nullptr, &scaleXView)),
                 "scale X RTV");
         Require(SUCCEEDED(device->CreateRenderTargetView(scaleY.Get(), nullptr, &scaleYView)),
@@ -233,6 +279,7 @@ int main(int argc, char** argv)
         Require(SUCCEEDED(device->CreateRenderTargetView(lowLayer.Get(), nullptr, &lowLayerView)),
                 "low layer RTV");
         Require(ngu.CopyNativeLuma4x720SplitY(splitView.Get()), ngu.LastError());
+        Require(ngu.CopyNativeLuma4x720SplitCbCr(splitCbCrView.Get()), ngu.LastError());
         Require(ngu.CopyNativeLuma4x720ScaleX(scaleXView.Get()), ngu.LastError());
         Require(ngu.CopyNativeLuma4x720ScaleY(scaleYView.Get()), ngu.LastError());
         Require(ngu.CopyNativeLuma4x720Initial(initialView.Get()), ngu.LastError());
@@ -240,6 +287,7 @@ int main(int argc, char** argv)
         pl_gpu_finish(d3d->gpu);
 
         auto splitActual = Download(device, context.Get(), split.Get());
+        auto splitCbCrActual = Download(device, context.Get(), splitCbCr.Get());
         auto scaleXActual = Download(device, context.Get(), scaleX.Get());
         auto scaleYActual = Download(device, context.Get(), scaleY.Get());
         auto initialActual = Download(device, context.Get(), initial.Get());
@@ -253,6 +301,12 @@ int main(int argc, char** argv)
                                  size_t(1280) * 720 * 8),
                        size_t(1280) * 720),
             splitMaximum);
+        int splitCbCrMaximum = 0;
+        const int splitCbCrDifferent = CountWords(
+            splitCbCrActual,
+            ReadBytes(root / "input_00257_PS_1284_386cc8d7_s0.bin",
+                      size_t(1280) * 720 * 4),
+            splitCbCrMaximum);
         const int scaleXDifferent = CountWords(
             scaleXActual,
             ExtractL16(ReadBytes(root / "draw_00225_PS_520_4a9505a4_rt0_5120x720_f81.bin",
@@ -710,20 +764,6 @@ int main(int argc, char** argv)
         const int targetSharpenDifferent = CountWords(
             targetSharpenActual, sharpenArExpected, targetSharpenMaximum);
 
-        const auto targetChromaXInputBytes =
-            ReadBytes(root / "input_00257_PS_1284_386cc8d7_s0.bin",
-                      size_t(1280) * 720 * 4);
-        auto targetChromaXInput = CreateTexture(
-            device,
-            1280,
-            720,
-            DXGI_FORMAT_R16G16_UNORM,
-            D3D11_BIND_SHADER_RESOURCE,
-            targetChromaXInputBytes.data());
-        ComPtr<ID3D11ShaderResourceView> targetChromaXInputView;
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    targetChromaXInput.Get(), nullptr, &targetChromaXInputView)),
-                "target chroma-X SRV");
         auto chromaX = CreateTexture(device,
                                      3840,
                                      720,
@@ -739,7 +779,7 @@ int main(int argc, char** argv)
                     chromaX.Get(), nullptr, &chromaXShaderView)),
                 "chroma-X SRV");
         Require(ngu.RunNativeLuma4x720TailChromaX(
-                    targetChromaXInputView.Get(), chromaXView.Get()),
+                    splitCbCrShaderView.Get(), chromaXView.Get()),
                 ngu.LastError());
         pl_gpu_finish(d3d->gpu);
         const auto chromaXActual = Download(device, context.Get(), chromaX.Get());
@@ -750,20 +790,6 @@ int main(int argc, char** argv)
                       size_t(3840) * 720 * 8),
             chromaXMaximum);
 
-        const auto targetChromaYInputBytes =
-            ReadBytes(root / "input_00258_PS_1284_dc97a0d0_s0.bin",
-                      size_t(3840) * 720 * 8);
-        auto targetChromaYInput = CreateTexture(
-            device,
-            3840,
-            720,
-            DXGI_FORMAT_R16G16B16A16_UNORM,
-            D3D11_BIND_SHADER_RESOURCE,
-            targetChromaYInputBytes.data());
-        ComPtr<ID3D11ShaderResourceView> targetChromaYInputView;
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    targetChromaYInput.Get(), nullptr, &targetChromaYInputView)),
-                "target chroma-Y SRV");
         auto chromaY = CreateTexture(device,
                                      3840,
                                      2160,
@@ -779,7 +805,7 @@ int main(int argc, char** argv)
                     chromaY.Get(), nullptr, &chromaYShaderView)),
                 "chroma-Y SRV");
         Require(ngu.RunNativeLuma4x720TailChromaY(
-                    targetChromaYInputView.Get(), chromaYView.Get()),
+                    chromaXShaderView.Get(), chromaYView.Get()),
                 ngu.LastError());
         pl_gpu_finish(d3d->gpu);
         const auto chromaYActual = Download(device, context.Get(), chromaY.Get());
@@ -834,6 +860,9 @@ int main(int argc, char** argv)
             mergeMaximum);
 
         std::printf("Split different=%d maximum=%d\n", splitDifferent, splitMaximum);
+        std::printf("SplitCbCr different=%d maximum=%d\n",
+                    splitCbCrDifferent,
+                    splitCbCrMaximum);
         std::printf("ScaleX different=%d maximum=%d\n", scaleXDifferent, scaleXMaximum);
         std::printf("ScaleY different=%d maximum=%d\n", scaleYDifferent, scaleYMaximum);
         std::printf("Initial different=%d maximum=%d\n", initialDifferent, initialMaximum);
@@ -866,9 +895,44 @@ int main(int argc, char** argv)
         std::printf("TailMergeProbe different=%d maximum=%d\n",
                     mergeDifferent, mergeMaximum);
 
+        auto fullFinal = CreateTexture(device,
+                                       3840,
+                                       2160,
+                                       DXGI_FORMAT_B8G8R8A8_UNORM,
+                                       D3D11_BIND_RENDER_TARGET |
+                                           D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> fullFinalView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    fullFinal.Get(), nullptr, &fullFinalView)),
+                "full final RTV");
+        Require(ngu.PrepareNativeLuma4x720Full(d3d->gpu), ngu.LastError());
+        const auto fullStart = std::chrono::steady_clock::now();
+        Require(ngu.RunNativeLuma4x720Full(
+                    sourceView.Get(), 1280, 720, fullFinalView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const double fullMilliseconds =
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - fullStart).count();
+        auto fullFinalActual = Download(device, context.Get(), fullFinal.Get());
+        int fullFinalMaximum = 0, fullFinalOverOne = 0;
+        const int fullFinalDifferent = CountPixelDifferences(
+            fullFinalActual,
+            ReadBytes(root / "draw_00266_PS_1352_6992f6f0_rt0_3840x2160_f21.bin",
+                      size_t(3840) * 2160 * 4),
+            fullFinalMaximum,
+            fullFinalOverOne);
+        std::printf("FullFinal different=%d maximum=%d diff_gt_1_pixels=%d %.3f ms/frame\n",
+                    fullFinalDifferent,
+                    fullFinalMaximum,
+                    fullFinalOverOne,
+                    fullMilliseconds);
+        const bool fullFinalPass = fullFinalMaximum <= 1 && fullFinalOverOne == 0;
+
         if (!actualPrefix.empty())
         {
             WriteBytes(actualPrefix + L"split.bin", splitActual);
+            WriteBytes(actualPrefix + L"split_cbcr.bin", splitCbCrActual);
             WriteBytes(actualPrefix + L"scale_x.bin", scaleXActual);
             WriteBytes(actualPrefix + L"scale_y.bin", scaleYActual);
             WriteBytes(actualPrefix + L"initial.bin", initialActual);
@@ -904,6 +968,7 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"tail_merge_probe.bin", mergeActual);
         }
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
+                          splitCbCrDifferent == 0 && splitCbCrMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
                           scaleYDifferent == 0 && scaleYMaximum == 0 &&
                           initialDifferent == 0 && initialMaximum == 0 &&
@@ -911,11 +976,17 @@ int main(int argc, char** argv)
                           highPass && denseAddPass &&
                           ycbcrDifferent == 0 && ycbcrMaximum == 0 &&
                           downXDifferent == 0 && downXMaximum == 0 &&
-                          downYDifferent == 0 && downYMaximum == 0;
+                          downYDifferent == 0 && downYMaximum == 0 &&
+                          chromaXDifferent == 0 && chromaXMaximum == 0 &&
+                          chromaYDifferent == 0 && chromaYMaximum == 0 &&
+                          mergeDifferent == 0 && mergeMaximum == 0 &&
+                          fullFinalPass;
         std::printf("%s native NGU 720p VeryHigh 4x luma tail prefix\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
         ngu.Reset();
+        fullFinalView.Reset();
+        fullFinal.Reset();
         mergeView.Reset();
         merge.Reset();
         targetMergeChromaView.Reset();
@@ -925,13 +996,9 @@ int main(int argc, char** argv)
         chromaYShaderView.Reset();
         chromaYView.Reset();
         chromaY.Reset();
-        targetChromaYInputView.Reset();
-        targetChromaYInput.Reset();
         chromaXShaderView.Reset();
         chromaXView.Reset();
         chromaX.Reset();
-        targetChromaXInputView.Reset();
-        targetChromaXInput.Reset();
         targetSharpenInputView.Reset();
         targetSharpenInput.Reset();
         sharpenArView.Reset();
@@ -981,6 +1048,9 @@ int main(int argc, char** argv)
         scaleY.Reset();
         scaleXView.Reset();
         scaleX.Reset();
+        splitCbCrShaderView.Reset();
+        splitCbCrView.Reset();
+        splitCbCr.Reset();
         splitView.Reset();
         split.Reset();
         sourceView.Reset();

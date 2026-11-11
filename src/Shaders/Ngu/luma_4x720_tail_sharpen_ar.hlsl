@@ -60,7 +60,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 r31_init = float4(0,0,0,0);
   float4 e1 = U0;
   float4 w1 = float4(e1.x, e1.y, r0_init.z, r0_init.w);
-  float4 e2 = (w1.xyxy * DL5.zzzz + v0.xyxy);
+  float4 e2 = mad(w1.xyxy, DL5.zzzz, v0.xyxy);
   float4 w2 = float4(w1.x, w1.y, e2.z, e2.w);
   float4 w3 = SourceTex.Sample(SourceSampler, w2.zwzw);
   float4 e4 = (U0.xyxy + v0.xyxy);
@@ -72,7 +72,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w7 = float4(w6.x, w6.y, w6.z, e7.w);
   float4 e8 = DL2.yyzw;
   float4 w8 = float4(e8.x, r3_init.y, e8.z, r3_init.w);
-  float4 w9 = (w7.xyxy * DL5.xxyx + v0.xyxy);
+  float4 w9 = mad(w7.xyxy, DL5.xxyx, v0.xyxy);
   float4 w10 = SourceTex.Sample(SourceSampler, w9);
   float4 w11 = SourceTex.Sample(SourceSampler, w9.zwzw);
   float4 e12 = ((-float4(U0.x, U0.x, U0.y, U0.w)) + v0.xxyw);
@@ -207,7 +207,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w79 = float4(w78.x, w78.y, e79.z, w78.w);
   float4 e80 = DL2.yyzw;
   float4 w80 = float4(e80.x, w75.y, e80.z, w75.w);
-  float4 w81 = (w79.xyxy * DL7.xyzy + v0.xyxy);
+  float4 w81 = mad(w79.xyxy, DL7.xyzy, v0.xyxy);
   float4 w82 = SourceTex.Sample(SourceSampler, w81);
   float4 w83 = SourceTex.Sample(SourceSampler, w81.zwzw);
   float4 e84 = (w66.xxxx + (-w82.xxxx));
@@ -228,7 +228,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w91 = float4(w89.x, e91.y, w89.z, e91.w);
   float4 e92 = (w91.xxxx < 0.0) ? w91.ywzw : DL2.wxzw;
   float4 w92 = float4(e92.x, e92.y, w91.z, w91.w);
-  float4 w93 = (w84.xyxy * DL7.yzxz + v0.xyxy);
+  float4 w93 = mad(w84.xyxy, DL7.yzxz, v0.xyxy);
   float4 w94 = SourceTex.Sample(SourceSampler, w93.zwzw);
   float4 w95 = SourceTex.Sample(SourceSampler, w93);
   float4 e96 = ((-w16.xxxx) + w94.xxxx);
@@ -237,7 +237,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w97 = float4(r10_init.x, r10_init.y, e97.z, r10_init.w);
   float4 e98 = (abs(w96.wwww) + DL5.wwww);
   float4 w98 = float4(w96.x, w96.y, w96.z, e98.w);
-  float4 w99 = (w98.xyxy * DL5.yzzx + v0.xyxy);
+  float4 w99 = mad(w98.xyxy, DL5.yzzx, v0.xyxy);
   float4 w100 = SourceTex.Sample(SourceSampler, w99);
   float4 w101 = SourceTex.Sample(SourceSampler, w99.zwzw);
   float4 e102 = ((-w94.xxxx) + w100.xxxx);
@@ -349,7 +349,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w156 = float4(w155.x, w155.y, w155.z, e156.w);
   float4 e157 = (w146.zzzz + w152.zzzz);
   float4 w157 = float4(w154.x, w154.y, w154.z, e157.w);
-  float4 e158 = (w156.zzzz * w146.zzzz + w156.wwww);
+  float4 e158 = mad(w156.zzzz, w146.zzzz, w156.wwww);
   float4 w158 = float4(w156.x, w156.y, e158.z, w156.w);
   float4 e159 = w101.xxxx;
   float4 w159 = float4(e159.x, w146.y, w146.z, w146.w);
@@ -361,7 +361,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w162 = float4(w161.x, e162.y, w161.z, w161.w);
   float4 e163 = max(abs(w162.yyyy), abs(w160.wwww));
   float4 w163 = float4(w95.x, w95.y, e163.z, w95.w);
-  float4 w164 = (w160.xyxy * DL5.xzzy + v0.xyxy);
+  float4 w164 = mad(w160.xyxy, DL5.xzzy, v0.xyxy);
   float4 w165 = SourceTex.Sample(SourceSampler, w164);
   float4 w166 = SourceTex.Sample(SourceSampler, w164.zwzw);
   float4 e167 = (w163.xxxx + (-w165.xxxx));
@@ -485,18 +485,18 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w227 = float4(e227.x, w220.y, w220.z, w220.w);
   float4 e228 = (w227.zzzz < 0.0) ? w227.xxxx : w226.wwww;
   float4 w228 = float4(w226.x, w226.y, w226.z, e228.w);
-  float4 e229 = (w228.wwww * w225.zzzz + w228.zzzz);
+  float4 e229 = mad(w228.wwww, w225.zzzz, w228.zzzz);
   float4 w229 = float4(w228.x, w228.y, e229.z, w228.w);
   float4 e230 = (w189.wwww + w225.zzzz);
   float4 w230 = float4(w229.x, w229.y, w229.z, e230.w);
   float4 e231 = w166.xxxx;
   float4 w231 = float4(e231.x, w227.y, w227.z, w227.w);
-  float4 e232 = (w230 * DL5 + v0);
+  float4 e232 = mad(w230, DL5, v0);
   float4 w232 = float4(e232.x, e232.y, w225.z, w225.w);
   float4 w233 = SourceTex.Sample(SourceSampler, w232);
   float4 e234 = w233.xxxx;
   float4 w234 = float4(w231.x, w231.y, w231.z, e234.w);
-  float4 w235 = (w230.xyxy * DL7.yxzx + v0.xyxy);
+  float4 w235 = mad(w230.xyxy, DL7.yxzx, v0.xyxy);
   float4 w236 = SourceTex.Sample(SourceSampler, w235);
   float4 w237 = SourceTex.Sample(SourceSampler, w235.zwzw);
   float4 e238 = ((-w233.xxxx) + w236.xxxx);
@@ -626,7 +626,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w301 = float4(w300.x, e301.y, w300.z, w300.w);
   float4 e302 = (w293.xxxx < 0.0) ? w301.yyyy : w301.xxxx;
   float4 w302 = float4(e302.x, w301.y, w301.z, w301.w);
-  float4 e303 = (w302.xxxx * w299.zzzz + w302.zzzz);
+  float4 e303 = mad(w302.xxxx, w299.zzzz, w302.zzzz);
   float4 w303 = float4(e303.x, w302.y, w302.z, w302.w);
   float4 e304 = (w303.wwww + w299.zzzz);
   float4 w304 = float4(w303.x, e304.y, w303.z, w303.w);
@@ -666,7 +666,7 @@ float4 PSMain(VSOut input) : SV_Target0 {
   float4 w321 = float4(w320.x, e321.y, w320.z, w320.w);
   float4 e322 = exp2(w319.zzzz);
   float4 w322 = float4(w321.x, w321.y, e322.z, w321.w);
-  float4 e323 = (w322 * DL4.zzzz + DL4.wwww);
+  float4 e323 = mad(w322, DL4.zzzz, DL4.wwww);
   float4 w323 = float4(e323.x, e323.y, e323.z, w319.w);
   float4 e324 = (DL8.x * w312.xzzw.x + DL8.y * w312.xzzw.y + DL8.zzzz);
   float4 w324 = float4(e324.x, w322.y, w322.z, w322.w);

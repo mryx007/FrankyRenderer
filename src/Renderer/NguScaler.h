@@ -44,6 +44,7 @@ enum class NguScalerStage
     VeryHighLuma4x720TailYcbcr,
     VeryHighLuma4x720TailDownX,
     VeryHighLuma4x720TailDownY,
+    VeryHighLuma4x720Full,
     VeryHighLuma1080Core,
 };
 
@@ -157,6 +158,7 @@ class NguScaler
                                int sourceWidth,
                                int sourceHeight);
     bool CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output);
+    bool CopyNativeLuma4x720SplitCbCr(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720ScaleY(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720Initial(ID3D11RenderTargetView* output);
@@ -197,6 +199,11 @@ class NguScaler
     bool RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
                                      ID3D11ShaderResourceView* chroma,
                                      ID3D11RenderTargetView* output);
+    bool PrepareNativeLuma4x720Full(pl_gpu gpu);
+    bool RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
+                                int sourceWidth,
+                                int sourceHeight,
+                                ID3D11RenderTargetView* finalOutput);
     void Reset();
 
     const pl_hook* Hook() const;

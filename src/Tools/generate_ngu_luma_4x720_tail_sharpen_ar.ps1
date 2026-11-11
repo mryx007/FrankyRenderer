@@ -31,6 +31,42 @@ $body = $body.Replace(
 $body = $body.Replace(
     'U0.xxyw',
     'float4(U0.x, U0.x, U0.y, U0.w)')
+$body = $body.Replace(
+    'float4 e2 = (w1.xyxy * DL5.zzzz + v0.xyxy);',
+    'float4 e2 = mad(w1.xyxy, DL5.zzzz, v0.xyxy);')
+$body = $body.Replace(
+    'float4 w9 = (w7.xyxy * DL5.xxyx + v0.xyxy);',
+    'float4 w9 = mad(w7.xyxy, DL5.xxyx, v0.xyxy);')
+$body = $body.Replace(
+    'float4 w81 = (w79.xyxy * DL7.xyzy + v0.xyxy);',
+    'float4 w81 = mad(w79.xyxy, DL7.xyzy, v0.xyxy);')
+$body = $body.Replace(
+    'float4 w93 = (w84.xyxy * DL7.yzxz + v0.xyxy);',
+    'float4 w93 = mad(w84.xyxy, DL7.yzxz, v0.xyxy);')
+$body = $body.Replace(
+    'float4 w99 = (w98.xyxy * DL5.yzzx + v0.xyxy);',
+    'float4 w99 = mad(w98.xyxy, DL5.yzzx, v0.xyxy);')
+$body = $body.Replace(
+    'float4 e158 = (w156.zzzz * w146.zzzz + w156.wwww);',
+    'float4 e158 = mad(w156.zzzz, w146.zzzz, w156.wwww);')
+$body = $body.Replace(
+    'float4 w164 = (w160.xyxy * DL5.xzzy + v0.xyxy);',
+    'float4 w164 = mad(w160.xyxy, DL5.xzzy, v0.xyxy);')
+$body = $body.Replace(
+    'float4 e229 = (w228.wwww * w225.zzzz + w228.zzzz);',
+    'float4 e229 = mad(w228.wwww, w225.zzzz, w228.zzzz);')
+$body = $body.Replace(
+    'float4 e232 = (w230 * DL5 + v0);',
+    'float4 e232 = mad(w230, DL5, v0);')
+$body = $body.Replace(
+    'float4 w235 = (w230.xyxy * DL7.yxzx + v0.xyxy);',
+    'float4 w235 = mad(w230.xyxy, DL7.yxzx, v0.xyxy);')
+$body = $body.Replace(
+    'float4 e303 = (w302.xxxx * w299.zzzz + w302.zzzz);',
+    'float4 e303 = mad(w302.xxxx, w299.zzzz, w302.zzzz);')
+$body = $body.Replace(
+    'float4 e323 = (w322 * DL4.zzzz + DL4.wwww);',
+    'float4 e323 = mad(w322, DL4.zzzz, DL4.wwww);')
 
 $header = @'
 Texture2D<float4> SourceTex : register(t0);

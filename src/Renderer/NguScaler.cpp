@@ -45,6 +45,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Luma4x720TailYcbcr = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720TailDownX = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720TailDownY = {nullptr, 1280, 720};
+    static constexpr StageConfig Luma4x720Full = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -93,6 +94,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720TailDownX;
     case NguScalerStage::VeryHighLuma4x720TailDownY:
         return &Luma4x720TailDownY;
+    case NguScalerStage::VeryHighLuma4x720Full:
+        return &Luma4x720Full;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -582,6 +585,34 @@ struct NguScaler::NativeLuma4x720Tail
     ComPtr<ID3D11ShaderResourceView> chromaYTableView;
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
+
+    ComPtr<ID3D11Texture2D> ycbcrTexture;
+    ComPtr<ID3D11RenderTargetView> ycbcrView;
+    ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
+    ComPtr<ID3D11Texture2D> downXTexture;
+    ComPtr<ID3D11RenderTargetView> downXView;
+    ComPtr<ID3D11ShaderResourceView> downXShaderView;
+    ComPtr<ID3D11Texture2D> downYTexture;
+    ComPtr<ID3D11RenderTargetView> downYView;
+    ComPtr<ID3D11ShaderResourceView> downYShaderView;
+    ComPtr<ID3D11Texture2D> ssimRtTexture;
+    ComPtr<ID3D11RenderTargetView> ssimRtView;
+    ComPtr<ID3D11ShaderResourceView> ssimRtShaderView;
+    ComPtr<ID3D11Texture2D> ssimFinalTexture;
+    ComPtr<ID3D11RenderTargetView> ssimFinalView;
+    ComPtr<ID3D11ShaderResourceView> ssimFinalShaderView;
+    ComPtr<ID3D11Texture2D> sharpenArTexture;
+    ComPtr<ID3D11RenderTargetView> sharpenArView;
+    ComPtr<ID3D11ShaderResourceView> sharpenArShaderView;
+    ComPtr<ID3D11Texture2D> chromaXTexture;
+    ComPtr<ID3D11RenderTargetView> chromaXView;
+    ComPtr<ID3D11ShaderResourceView> chromaXShaderView;
+    ComPtr<ID3D11Texture2D> chromaYTexture;
+    ComPtr<ID3D11RenderTargetView> chromaYView;
+    ComPtr<ID3D11ShaderResourceView> chromaYShaderView;
+    ComPtr<ID3D11Texture2D> mergeTexture;
+    ComPtr<ID3D11RenderTargetView> mergeView;
+    ComPtr<ID3D11ShaderResourceView> mergeShaderView;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -3199,6 +3230,18 @@ bool NguScaler::CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output)
     return true;
 }
 
+bool NguScaler::CopyNativeLuma4x720SplitCbCr(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma4x720Low_ ||
+        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitCbCrTexture.Get(), output))
+    {
+        error_ = "NGU 720p 4x split CbCr output is unavailable";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
 bool NguScaler::CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output)
 {
     if (!nativeLuma4x720Low_ ||
@@ -3803,9 +3846,9 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     const auto sharpenArConstants =
         LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar_constants.bin", 4096);
     const auto chromaXCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x.cso", 0);
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x.cso", 0);
     const auto chromaYCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y.cso", 0);
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y.cso", 0);
     const auto mergeCso =
         LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge.cso", 0);
     const auto chromaXConstants =
@@ -4048,6 +4091,87 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
             state->downYUvLut.Get(), nullptr, &state->downYUvLutView)))
     {
         error_ = "NGU 720p 4x tail down-Y UV LUT could not be created";
+        return false;
+    }
+
+    auto createIntermediate = [&](UINT width,
+                                  UINT height,
+                                  DXGI_FORMAT format,
+                                  ComPtr<ID3D11Texture2D>& texture,
+                                  ComPtr<ID3D11RenderTargetView>& renderTarget,
+                                  ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!createIntermediate(5120,
+                            2880,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->ycbcrTexture,
+                            state->ycbcrView,
+                            state->ycbcrShaderView) ||
+        !createIntermediate(3840,
+                            2880,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->downXTexture,
+                            state->downXView,
+                            state->downXShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->downYTexture,
+                            state->downYView,
+                            state->downYShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            state->ssimRtTexture,
+                            state->ssimRtView,
+                            state->ssimRtShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->ssimFinalTexture,
+                            state->ssimFinalView,
+                            state->ssimFinalShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->sharpenArTexture,
+                            state->sharpenArView,
+                            state->sharpenArShaderView) ||
+        !createIntermediate(3840,
+                            720,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->chromaXTexture,
+                            state->chromaXView,
+                            state->chromaXShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->chromaYTexture,
+                            state->chromaYView,
+                            state->chromaYShaderView) ||
+        !createIntermediate(3840,
+                            2160,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            state->mergeTexture,
+                            state->mergeView,
+                            state->mergeShaderView))
+    {
+        error_ = "NGU 720p 4x tail intermediate surfaces could not be created";
         return false;
     }
 
@@ -4359,6 +4483,84 @@ bool NguScaler::RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
                   state.mergeConstants.Get(), state.rasterizer.Get(),
                   inputs, 2, targets, 1, 3840, 2160,
                   state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeLuma4x720Full(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU 720p 4x full path requires a GPU";
+        return false;
+    }
+    if (nativeLuma4x720Tail_ && nativeLuma4x720DenseAdd_ &&
+        nativeLumaFinal_ && gpu == gpu_)
+    {
+        cached_.quality = NguQuality::VeryHigh;
+        cached_.stage = NguScalerStage::VeryHighLuma4x720Full;
+        cached_.sourceWidth = 1280;
+        cached_.sourceHeight = 720;
+        hasCached_ = true;
+        return true;
+    }
+    if (!PrepareNativeLuma4x720DenseAdd(gpu) ||
+        !PrepareNativeLuma4x720Tail(gpu) ||
+        !PrepareNativeLumaFinal(gpu))
+        return false;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720Full;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
+                                       int sourceWidth,
+                                       int sourceHeight,
+                                       ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ ||
+        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
+        !nativeLumaFinal_ || !sourceRgb || !finalOutput ||
+        sourceWidth != 1280 || sourceHeight != 720 ||
+        !ViewMatchesTexture(
+            finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
+    {
+        error_ = "NGU 720p 4x full request is outside the verified path";
+        return false;
+    }
+
+    auto& low = *nativeLuma4x720Low_;
+    auto& denseAdd = *nativeLuma4x720DenseAdd_;
+    auto& tail = *nativeLuma4x720Tail_;
+    if (!RunNativeLuma4x720DenseAdd(sourceRgb, sourceWidth, sourceHeight) ||
+        !RunNativeLuma4x720TailYcbcr(
+            denseAdd.addShaderView.Get(), tail.ycbcrView.Get()) ||
+        !RunNativeLuma4x720TailDownX(
+            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(
+            tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(
+            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+        !RunNativeLuma4x720TailSsimFinal(
+            tail.ssimRtShaderView.Get(),
+            tail.downYShaderView.Get(),
+            tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(
+            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !RunNativeLuma4x720TailChromaX(
+            low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
+        !RunNativeLuma4x720TailChromaY(
+            tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
+        !RunNativeLuma4x720TailMerge(
+            tail.sharpenArShaderView.Get(),
+            tail.chromaYShaderView.Get(),
+            tail.mergeView.Get()) ||
+        !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(), finalOutput))
+        return false;
     error_ = "";
     return true;
 }
