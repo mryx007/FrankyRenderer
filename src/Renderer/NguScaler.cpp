@@ -27,6 +27,9 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig LumaInitial = {nullptr, 1920, 1080};
     static constexpr StageConfig LumaLayers = {nullptr, 1920, 1080};
     static constexpr StageConfig LumaDense = {nullptr, 1920, 1080};
+    static constexpr StageConfig LumaScaleX = {nullptr, 1920, 1080};
+    static constexpr StageConfig LumaScaleY = {nullptr, 3840, 1080};
+    static constexpr StageConfig LumaAdd = {nullptr, 3840, 2160};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -38,6 +41,12 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &LumaLayers;
     case NguScalerStage::VeryHighLumaDense1080:
         return &LumaDense;
+    case NguScalerStage::VeryHighLumaScaleX1080:
+        return &LumaScaleX;
+    case NguScalerStage::VeryHighLumaScaleY1080:
+        return &LumaScaleY;
+    case NguScalerStage::VeryHighLumaAdd1080:
+        return &LumaAdd;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -101,6 +110,87 @@ std::string LoadBundledText(const wchar_t* relative, size_t maximum)
         return {};
     return text;
 }
+
+void DrawD3D11Pass(ID3D11Device* device,
+                   ID3D11VertexShader* vertex,
+                   ID3D11PixelShader* pixel,
+                   ID3D11Buffer* constants,
+                   ID3D11RasterizerState* rasterizer,
+                   ID3D11ShaderResourceView* const* inputs,
+                   UINT inputCount,
+                   ID3D11RenderTargetView* const* outputs,
+                   UINT outputCount,
+                   UINT width,
+                   UINT height)
+{
+    ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(context.GetAddressOf());
+    if (!context)
+        return;
+
+    ID3D11RenderTargetView* oldTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+    ID3D11DepthStencilView* oldDepth = nullptr;
+    context->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, oldTargets, &oldDepth);
+    ID3D11RasterizerState* oldRasterizer = nullptr;
+    context->RSGetState(&oldRasterizer);
+    UINT viewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+    std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> oldViewports = {};
+    context->RSGetViewports(&viewportCount, oldViewports.data());
+    ID3D11VertexShader* oldVertex = nullptr;
+    ID3D11PixelShader* oldPixel = nullptr;
+    ID3D11ShaderResourceView* oldInputs[3] = {};
+    ID3D11Buffer* oldConstant = nullptr;
+    D3D11_PRIMITIVE_TOPOLOGY oldTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    context->VSGetShader(&oldVertex, nullptr, nullptr);
+    context->PSGetShader(&oldPixel, nullptr, nullptr);
+    context->PSGetShaderResources(0, inputCount, oldInputs);
+    context->PSGetConstantBuffers(0, 1, &oldConstant);
+    context->IAGetPrimitiveTopology(&oldTopology);
+
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->RSSetState(rasterizer);
+    D3D11_VIEWPORT viewport = {};
+    viewport.Width = static_cast<float>(width);
+    viewport.Height = static_cast<float>(height);
+    viewport.MaxDepth = 1.0f;
+    context->RSSetViewports(1, &viewport);
+    context->OMSetRenderTargets(outputCount, outputs, nullptr);
+    context->VSSetShader(vertex, nullptr, 0);
+    context->PSSetShader(pixel, nullptr, 0);
+    context->PSSetShaderResources(0, inputCount, inputs);
+    context->PSSetConstantBuffers(0, 1, &constants);
+    context->Draw(3, 0);
+    ID3D11ShaderResourceView* nullInputs[3] = {};
+    ID3D11Buffer* nullConstant = nullptr;
+    context->PSSetShaderResources(0, inputCount, nullInputs);
+    context->PSSetConstantBuffers(0, 1, &nullConstant);
+
+    context->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, oldTargets, oldDepth);
+    context->RSSetState(oldRasterizer);
+    if (viewportCount)
+        context->RSSetViewports(viewportCount, oldViewports.data());
+    context->VSSetShader(oldVertex, nullptr, 0);
+    context->PSSetShader(oldPixel, nullptr, 0);
+    context->PSSetShaderResources(0, inputCount, oldInputs);
+    context->PSSetConstantBuffers(0, 1, &oldConstant);
+    context->IASetPrimitiveTopology(oldTopology);
+    for (auto*& target : oldTargets)
+        if (target)
+            target->Release();
+    if (oldDepth)
+        oldDepth->Release();
+    if (oldRasterizer)
+        oldRasterizer->Release();
+    if (oldVertex)
+        oldVertex->Release();
+    if (oldPixel)
+        oldPixel->Release();
+    for (UINT i = 0; i < inputCount; ++i)
+        if (oldInputs[i])
+            oldInputs[i]->Release();
+    if (oldConstant)
+        oldConstant->Release();
+}
 } // namespace
 
 struct NguScaler::NativeLumaInitial
@@ -124,6 +214,18 @@ struct NguScaler::NativeLumaDense
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeLumaScaleAdd
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> scaleX;
+    ComPtr<ID3D11PixelShader> scaleY;
+    ComPtr<ID3D11PixelShader> add;
+    ComPtr<ID3D11Buffer> scaleXConstants;
+    ComPtr<ID3D11Buffer> scaleYConstants;
+    ComPtr<ID3D11Buffer> addConstants;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -824,6 +926,194 @@ bool NguScaler::RunNativeLumaDense(ID3D11ShaderResourceView* const inputs[3],
     return true;
 }
 
+bool NguScaler::PrepareNativeLumaScaleAdd(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU native scale/add requires a GPU";
+        return false;
+    }
+    if (nativeLumaScaleAdd_ && gpu == gpu_)
+        return true;
+    Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU native scale/add requires the D3D11 backend";
+        return false;
+    }
+    const std::string scaleText = LoadBundledText(L"shaders\\Ngu\\luma_1080_scale_x.hlsl", 256 * 1024);
+    const auto scaleXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_x.cso", 0);
+    const auto scaleYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_y.cso", 0);
+    const auto addCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add.cso", 0);
+    const auto scaleXConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_x_constants.bin", 2 * sizeof(float) * 4);
+    const auto scaleYConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_y_constants.bin", 2 * sizeof(float) * 4);
+    const auto addConstants =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add_constants.bin", 2 * sizeof(float) * 4);
+    if (scaleText.empty() || scaleXCso.empty() || scaleYCso.empty() || addCso.empty() ||
+        scaleXConstants.empty() || scaleYConstants.empty() || addConstants.empty())
+    {
+        error_ = "NGU native scale/add assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(scaleText.data(),
+                            scaleText.size(),
+                            "NGU_Luma1080_Scale",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU native scale vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLumaScaleAdd>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(scaleXCso.data(),
+                                         static_cast<SIZE_T>(scaleXCso.size()),
+                                         nullptr,
+                                         &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(scaleYCso.data(),
+                                         static_cast<SIZE_T>(scaleYCso.size()),
+                                         nullptr,
+                                         &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(addCso.data(),
+                                         static_cast<SIZE_T>(addCso.size()),
+                                         nullptr,
+                                         &state->add)))
+    {
+        error_ = "NGU native scale/add shader objects could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(scaleXConstants, state->scaleXConstants) ||
+        !createConstants(scaleYConstants, state->scaleYConstants) ||
+        !createConstants(addConstants, state->addConstants))
+    {
+        error_ = "NGU native scale/add constants could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU native scale/add rasterizer state could not be created";
+        return false;
+    }
+
+    nativeLumaScaleAdd_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLumaScaleX1080;
+    cached_.sourceWidth = 1920;
+    cached_.sourceHeight = 1080;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaScaleX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaScaleAdd_ || !input || !output)
+    {
+        error_ = "NGU native X scale request is invalid";
+        return false;
+    }
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    DrawD3D11Pass(device,
+                  nativeLumaScaleAdd_->vertex.Get(),
+                  nativeLumaScaleAdd_->scaleX.Get(),
+                  nativeLumaScaleAdd_->scaleXConstants.Get(),
+                  nativeLumaScaleAdd_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  3840,
+                  1080);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaScaleY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaScaleAdd_ || !input || !output)
+    {
+        error_ = "NGU native Y scale request is invalid";
+        return false;
+    }
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    DrawD3D11Pass(device,
+                  nativeLumaScaleAdd_->vertex.Get(),
+                  nativeLumaScaleAdd_->scaleY.Get(),
+                  nativeLumaScaleAdd_->scaleYConstants.Get(),
+                  nativeLumaScaleAdd_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  3840,
+                  2160);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaAdd(ID3D11ShaderResourceView* scale,
+                                 ID3D11ShaderResourceView* dense,
+                                 ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaScaleAdd_ || !scale || !dense || !output)
+    {
+        error_ = "NGU native add request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[2] = {scale, dense};
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    DrawD3D11Pass(device,
+                  nativeLumaScaleAdd_->vertex.Get(),
+                  nativeLumaScaleAdd_->add.Get(),
+                  nativeLumaScaleAdd_->addConstants.Get(),
+                  nativeLumaScaleAdd_->rasterizer.Get(),
+                  inputs,
+                  2,
+                  &output,
+                  1,
+                  3840,
+                  2160);
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -831,6 +1121,7 @@ void NguScaler::Reset()
     nativeLumaInitial_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
+    nativeLumaScaleAdd_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};
