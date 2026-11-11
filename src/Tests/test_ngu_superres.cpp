@@ -419,7 +419,13 @@ int main(int argc, char** argv)
             const auto root1080 = std::filesystem::path(root1080Env);
             int frameBase = 146;
             if (const char* frameBaseEnv = std::getenv("NGU_1080_FRAME_BASE"))
-                frameBase = std::atoi(frameBaseEnv);
+            {
+                char* end = nullptr;
+                const long parsed = std::strtol(frameBaseEnv, &end, 10);
+                Require(frameBaseEnv[0] && end && !*end && parsed >= 0 && parsed <= 99990,
+                        "1080p frame base");
+                frameBase = static_cast<int>(parsed);
+            }
             Require(frameBase >= 0 && frameBase <= 99990, "1080p frame base");
             const auto frameFile =
                 [&](const char* prefix, int offset, const char* shader, const char* suffix)
