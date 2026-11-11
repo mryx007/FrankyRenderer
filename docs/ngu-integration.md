@@ -244,6 +244,12 @@ Backend dispatch now covers the captured 1920x1080 RGB48 path as well as
 1280x720. Both select native schedulers and both are within the declared
 one-LSB final boundary.
 
+The captured-input 1920x1080 strength-3 composition now has a same-frame final
+oracle. Capture draw 921-928 and draw 953 PS_1352 produce
+`maximum=1`, `diff_gt_1_pixels=0`; the test selects the frame with
+`NGU_1080_FRAME_BASE=921`. Earlier `maximum=21/40` results were cross-frame
+comparisons and are no longer acceptance evidence.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -269,13 +275,13 @@ product integration, not another transport redesign:
 |---|---|---|
 | Build | Full FrankyRenderer build passes with the generic native-scaler resolver | Repeat release packaging for the selected distribution |
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
-| VeryHigh 1080p luma | Captured-input scheduler and Backend RGB48 path pass | Same-frame 1080p PS_1352 oracle; the available post3/fresh captures are rejected |
+| VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
 | `ngu_sharp` peer | Generic resolver, experimental Image/Plane Upscaler choice and fail-closed Backend contract pass | Production YUV source binding and final playback acceptance |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
 The shortest critical path is therefore: real decoder/YUV binding, production
-SuperChromaRes strength-3 input generation, the missing same-frame 1080p oracle,
-then full DirectShow/format/lifecycle/performance acceptance. No missing mapping
-may be replaced by a guessed fallback while those gates are open.
+SuperChromaRes strength-3 input generation, then full
+DirectShow/format/lifecycle/performance acceptance. No missing mapping may be
+replaced by a guessed fallback while those gates are open.
