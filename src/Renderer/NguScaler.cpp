@@ -317,6 +317,7 @@ struct NguScaler::NativeLumaFinal
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11Buffer> constants;
+    std::array<float, 16> constantsData{};
     ComPtr<ID3D11Texture2D> weightTexture;
     ComPtr<ID3D11ShaderResourceView> weightView;
     ComPtr<ID3D11SamplerState> clampSampler;
@@ -1522,7 +1523,7 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
 
     D3D11_BUFFER_DESC constantDesc = {};
     constantDesc.ByteWidth = static_cast<UINT>(finalConstants.size());
-    constantDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    constantDesc.Usage = D3D11_USAGE_DEFAULT;
     constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     D3D11_SUBRESOURCE_DATA constantData = {};
     constantData.pSysMem = finalConstants.data();
@@ -1531,6 +1532,7 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
         error_ = "NGU native final constants could not be created";
         return false;
     }
+    std::memcpy(state->constantsData.data(), finalConstants.data(), sizeof(state->constantsData));
 
     D3D11_TEXTURE2D_DESC weightDesc = {};
     weightDesc.Width = 32;
@@ -1603,6 +1605,51 @@ bool NguScaler::RunNativeLumaFinal(ID3D11ShaderResourceView* input,
         error_ = "NGU native final request is invalid";
         return false;
     }
+    ID3D11ShaderResourceView* inputs[3] = {input, dither, nativeLumaFinal_->weightView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeLumaFinal_->vertex.Get(),
+                  nativeLumaFinal_->pixel.Get(),
+                  nativeLumaFinal_->constants.Get(),
+                  nativeLumaFinal_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  &output,
+                  1,
+                  3840,
+                  2160,
+                  nativeLumaFinal_->clampSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get());
+    error_ = "";
+    return true;
+}
+
+void NguScaler::ResetDitherPhase()
+{
+    dither_.Reset();
+}
+
+bool NguScaler::RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
+                                            ID3D11ShaderResourceView* dither,
+                                            ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaFinal_ || !input || !dither || !output)
+    {
+        error_ = "NGU native final request is invalid";
+        return false;
+    }
+    const NguDither::Phase phase = dither_.NextPhase();
+    nativeLumaFinal_->constantsData[9] = phase.y;
+    nativeLumaFinal_->constantsData[10] = phase.z;
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->UpdateSubresource(nativeLumaFinal_->constants.Get(),
+                               0,
+                               nullptr,
+                               nativeLumaFinal_->constantsData.data(),
+                               0,
+                               0);
+    context->Release();
     ID3D11ShaderResourceView* inputs[3] = {input, dither, nativeLumaFinal_->weightView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeLumaFinal_->vertex.Get(),

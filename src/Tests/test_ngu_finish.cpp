@@ -183,6 +183,15 @@ int main(int argc, char** argv)
         device->GetImmediateContext(&context);
 
         NguScaler ngu;
+        NguDither ditherPhases;
+        const auto firstPhase = ditherPhases.NextPhase();
+        const auto secondPhase = ditherPhases.NextPhase();
+        Require(firstPhase.y == 41.0f / 32767.0f, "first dither y");
+        Require(firstPhase.z == 18467.0f / 32767.0f, "first dither z");
+        Require(secondPhase.y == 6334.0f / 32767.0f, "second dither y");
+        Require(secondPhase.z == 26500.0f / 32767.0f, "second dither z");
+        ditherPhases.Reset();
+        Require(ditherPhases.NextPhase().y == firstPhase.y, "dither reset");
         const bool prepared = ngu.PrepareNativeLumaFinish(d3d->gpu);
         Require(prepared, ngu.LastError());
 
@@ -299,16 +308,33 @@ int main(int argc, char** argv)
             finalMaximum,
             finalOverOne);
 
+        ngu.ResetDitherPhase();
+        const bool dynamicFinalRan =
+            ngu.RunNativeLumaFinalNextPhase(finalInputSrv.Get(), ditherSrv.Get(), finalView.Get());
+        Require(dynamicFinalRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto dynamicFinalActual = Download(device, context.Get(), finalOutput.Get());
+        int dynamicFinalMaximum = 0, dynamicFinalOverOne = 0;
+        const int dynamicFinalDifferent = CountPixelDifferences(
+            dynamicFinalActual,
+            ReadBytes(root / "draw_31727_PS_1352_6992f6f0_rt0_3840x2160_f21.bin", size_t(3840) * 2160 * 4),
+            dynamicFinalMaximum,
+            dynamicFinalOverOne);
+
         std::printf("UpX different=%d maximum=%d\n", xDifferent, xMaximum);
         std::printf("UpY different=%d maximum=%d\n", yDifferent, yMaximum);
         std::printf("Merge different=%d maximum=%d\n", mergeDifferent, mergeMaximum);
         std::printf("Final different=%d maximum=%d diff_gt_1_pixels=%d\n",
                     finalDifferent, finalMaximum, finalOverOne);
+        std::printf("FinalDynamic different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    dynamicFinalDifferent, dynamicFinalMaximum, dynamicFinalOverOne);
         const bool pass = xDifferent == 0 && yDifferent == 0 && mergeDifferent == 0 &&
-                          finalMaximum <= 1 && finalOverOne == 0;
+                          finalMaximum <= 1 && finalOverOne == 0 &&
+                          dynamicFinalMaximum <= 1 && dynamicFinalOverOne == 0;
         for (const auto& [name, bytes] :
              {std::pair{L"upx", xActual}, std::pair{L"upy", yActual},
-              std::pair{L"merge", mergeActual}, std::pair{L"final", finalActual}})
+              std::pair{L"merge", mergeActual}, std::pair{L"final", finalActual},
+              std::pair{L"final_dynamic", dynamicFinalActual}})
         {
             std::ofstream file(actualPrefix + name + L".bin", std::ios::binary);
             file.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));

@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/NguDither.h"
 #include <libplacebo/shaders/custom.h>
 #include <memory>
 #include <string>
@@ -100,6 +101,10 @@ class NguScaler
     bool RunNativeLumaFinal(ID3D11ShaderResourceView* input,
                             ID3D11ShaderResourceView* dither,
                             ID3D11RenderTargetView* output);
+    void ResetDitherPhase();
+    bool RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
+                                     ID3D11ShaderResourceView* dither,
+                                     ID3D11RenderTargetView* output);
     bool PrepareNativeSuperResPrimitives(pl_gpu gpu);
     bool RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
                                 ID3D11RenderTargetView* output);
@@ -135,6 +140,7 @@ class NguScaler
     NguScalerRequest cached_ = {};
     std::string error_;
     bool hasCached_ = false;
+    NguDither dither_;
     std::unique_ptr<NativeLumaInitial> nativeLumaInitial_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
