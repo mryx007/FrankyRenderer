@@ -42,6 +42,7 @@ static bool hardware = false;
 static bool measureTest = false;
 static bool startupTest = false;
 static bool mpcbeOwnerTest = false;
+static bool nguTest = false;
 
 // MPC-BE's allocator presenter aggregates the renderer and forwards interface
 // requests to its non-delegating IUnknown. Exercise that ownership as well as
@@ -93,9 +94,13 @@ static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
 static DXGI_FORMAT textureFormat = DXGI_FORMAT_P010;
 static UINT textureBind = D3D11_BIND_DECODER;
 static std::atomic<HRESULT> sourceFailure = S_OK;
+static constexpr int NguWidth = 1280;
+static constexpr int NguHeight = 720;
 
 static DWORD FourCC()
 {
+    if (nguTest)
+        return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
            : textureFormat == DXGI_FORMAT_P016 ? MAKEFOURCC('P', '0', '1', '6')
                                                : MAKEFOURCC('P', '0', '1', '0');
@@ -103,6 +108,8 @@ static DWORD FourCC()
 
 static long SampleBytes()
 {
+    if (nguTest)
+        return NguWidth * NguHeight * 6;
     return 64 * 64 * 3 / (textureFormat == DXGI_FORMAT_NV12 ? 2 : 1);
 }
 
@@ -645,7 +652,8 @@ class PatternStream final : public CSourceStream
             return S_OK;
         }
         D3D11_TEXTURE2D_DESC desc = {};
-        desc.Width = desc.Height = 64;
+        desc.Width = nguTest ? NguWidth : 64;
+        desc.Height = nguTest ? NguHeight : 64;
         desc.MipLevels = 1;
         desc.ArraySize = 2;
         desc.Format = textureFormat;
@@ -683,9 +691,10 @@ class PatternStream final : public CSourceStream
         info->dwPictAspectRatioX = 1;
         info->dwPictAspectRatioY = 1;
         info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        info->bmiHeader.biWidth = info->bmiHeader.biHeight = 64;
+        info->bmiHeader.biWidth = nguTest ? NguWidth : 64;
+        info->bmiHeader.biHeight = nguTest ? -NguHeight : 64;
         info->bmiHeader.biPlanes = 1;
-        info->bmiHeader.biBitCount = textureFormat == DXGI_FORMAT_NV12 ? 12 : 24;
+        info->bmiHeader.biBitCount = nguTest ? 48 : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
         info->bmiHeader.biCompression = p010.Data1;
         info->bmiHeader.biSizeImage = SampleBytes();
         mt->SetSampleSize(SampleBytes());
@@ -758,7 +767,19 @@ class PatternStream final : public CSourceStream
             if (FAILED(hr))
                 return hr;
         }
-        if (textureFormat == DXGI_FORMAT_NV12)
+        if (nguTest)
+        {
+            auto data = reinterpret_cast<uint16_t*>(bytes);
+            for (int y = 0; y < NguHeight; ++y)
+                for (int x = 0; x < NguWidth; ++x)
+                {
+                    const size_t offset = (size_t(y) * NguWidth + x) * 3;
+                    data[offset] = static_cast<uint16_t>(x * 65535 / (NguWidth - 1));
+                    data[offset + 1] = static_cast<uint16_t>(y * 65535 / (NguHeight - 1));
+                    data[offset + 2] = static_cast<uint16_t>((x + y) * 32767 / (NguWidth + NguHeight - 2));
+                }
+        }
+        else if (textureFormat == DXGI_FORMAT_NV12)
         {
             std::fill_n(bytes, 64 * 64, static_cast<BYTE>(90));
             for (int i = 64 * 64; i < 64 * 64 * 3 / 2; i += 2)
@@ -1071,10 +1092,17 @@ int wmain(int argc, wchar_t** argv)
             hardware = true;
     for (int i = 1; i < argc; i++)
     {
+        if (wcscmp(argv[i], L"--ngu") == 0)
+            nguTest = true;
         if (wcscmp(argv[i], L"--nv12") == 0)
             textureFormat = DXGI_FORMAT_NV12;
         if (wcscmp(argv[i], L"--p016") == 0)
             textureFormat = DXGI_FORMAT_P016;
+    }
+    if (nguTest && hardware)
+    {
+        puts("FAIL --ngu currently accepts the CPU RGB48 graph path only");
+        return 1;
     }
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--srv") == 0)
@@ -1200,6 +1228,17 @@ int wmain(int argc, wchar_t** argv)
     Check(renderer.As(&config), "settings interface");
     PlaceboSettings settings;
     Check(config->GetSettings(&settings), "read settings");
+    if (nguTest)
+    {
+        wcscpy_s(settings.upscaler, L"ngu_sharp");
+        strcpy_s(settings.scaling.filters[0].filter, "ngu_sharp");
+        strcpy_s(settings.scaling.filters[2].filter, "ngu_sharp");
+        const int scalerCount =
+            int(sizeof(ScalerChoices) / sizeof(ScalerChoices[0]));
+        for (int i = 0; i < scalerCount; ++i)
+            if (!strcmp(ScalerChoices[i].name, "ngu_sharp"))
+                settings.chromaScaler = i + 1;
+    }
     if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0))
     {
         auto inactive = settings;
@@ -1423,6 +1462,20 @@ int wmain(int argc, wchar_t** argv)
         }
         Check(config->GetStatus(&status), "status");
     } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    if (nguTest)
+    {
+        if (FAILED(sourceFailure.load()) || status.rendered < 5)
+        {
+            printf("FAIL_PRODUCT ngu_sharp DirectShow rendered=%llu source=%08lX\n",
+                   static_cast<unsigned long long>(status.rendered),
+                   static_cast<unsigned long>(sourceFailure.load()));
+            return 1;
+        }
+        Check(control->Stop(), "stop NGU graph");
+        printf("PASS_PRODUCT ngu_sharp DirectShow RGB48 graph rendered=%llu\n",
+               static_cast<unsigned long long>(status.rendered));
+        return 0;
+    }
     if (rtxTest)
     {
         __int64 processed = 0;
