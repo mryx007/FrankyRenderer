@@ -51,11 +51,16 @@ void WriteBytes(const std::wstring& path, const std::vector<uint8_t>& bytes)
     Require(bool(file), "finish binary");
 }
 
-ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device, DXGI_FORMAT format, UINT bind, const void* initial = nullptr)
+ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device,
+                                      DXGI_FORMAT format,
+                                      UINT bind,
+                                      const void* initial = nullptr,
+                                      int width = Width,
+                                      int height = Height)
 {
     D3D11_TEXTURE2D_DESC desc = {};
-    desc.Width = Width;
-    desc.Height = Height;
+    desc.Width = width;
+    desc.Height = height;
     desc.MipLevels = 1;
     desc.ArraySize = 1;
     desc.Format = format;
@@ -64,7 +69,7 @@ ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device, DXGI_FORMAT format, 
     desc.BindFlags = bind;
     D3D11_SUBRESOURCE_DATA data = {};
     data.pSysMem = initial;
-    data.SysMemPitch = Width * (format == DXGI_FORMAT_R16_UNORM ? 2 : 8);
+    data.SysMemPitch = width * (format == DXGI_FORMAT_R16_UNORM ? 2 : 8);
     ComPtr<ID3D11Texture2D> texture;
     Require(SUCCEEDED(device->CreateTexture2D(&desc, initial ? &data : nullptr, &texture)), "create texture");
     return texture;
@@ -85,9 +90,9 @@ std::vector<uint8_t> Download(ID3D11Device* device,
     context->CopyResource(staging.Get(), source);
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     Require(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "map staging texture");
-    std::vector<uint8_t> bytes(Half4Bytes);
-    const size_t rowBytes = size_t(Width) * Components * sizeof(uint16_t);
-    for (int y = 0; y < Height; ++y)
+    const size_t rowBytes = size_t(desc.Width) * Components * sizeof(uint16_t);
+    std::vector<uint8_t> bytes(rowBytes * desc.Height);
+    for (UINT y = 0; y < desc.Height; ++y)
         std::memcpy(bytes.data() + size_t(y) * rowBytes,
                     static_cast<const uint8_t*>(mapped.pData) + size_t(y) * mapped.RowPitch,
                     rowBytes);
@@ -278,10 +283,49 @@ int main(int argc, char** argv)
         const bool layersPass =
             std::all_of(layerDifferences.begin(), layerDifferences.end(), [](int value) { return value == 0; });
 
+        auto denseTexture = CreateTexture(
+            device,
+            DXGI_FORMAT_R16G16B16A16_FLOAT,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+            nullptr,
+            1922,
+            1082);
+        ComPtr<ID3D11RenderTargetView> denseView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(denseTexture.Get(), nullptr, &denseView)),
+                "create dense RTV");
+        const bool densePrepared = ngu.PrepareNativeLumaDense(d3d->gpu);
+        Require(densePrepared, ngu.LastError());
+        const bool denseRan = ngu.RunNativeLumaDense(currentInputs.data(), denseView.Get());
+        Require(denseRan, ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto denseActual = Download(device, context.Get(), denseTexture.Get());
+        const auto denseExpected = ReadBytes(
+            (root / "draw_31722_PS_2100_ba9671a7_rt0_1922x1082_f113.bin").wstring(),
+            size_t(1922) * 1082 * 8);
+        int denseMaximum = 0;
+        const int denseDifferences = CountDifferences(denseActual, denseExpected, denseMaximum);
+        constexpr int DenseBenchmarkFrames = 20;
+        const auto denseBenchmarkStart = std::chrono::steady_clock::now();
+        for (int frame = 0; frame < DenseBenchmarkFrames; ++frame)
+        {
+            const bool benchmarkDense = ngu.RunNativeLumaDense(currentInputs.data(), denseView.Get());
+            Require(benchmarkDense, ngu.LastError());
+        }
+        pl_gpu_finish(d3d->gpu);
+        const double denseMilliseconds =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - denseBenchmarkStart)
+                .count() /
+            DenseBenchmarkFrames;
+        std::printf("dense different_half_components=%d maximum_half_code_delta=%d %.3f ms/frame\n",
+                    denseDifferences,
+                    denseMaximum,
+                    denseMilliseconds);
+
         std::ofstream summary(summaryPath);
         Require(bool(summary), "write summary");
         const bool pass =
-            layersPass && std::all_of(differences.begin(), differences.end(), [](int value) { return value == 0; });
+            layersPass && denseDifferences == 0 &&
+            std::all_of(differences.begin(), differences.end(), [](int value) { return value == 0; });
         summary << "{\n"
                 << "  \"status\": \"" << (pass ? "PASS_PRODUCT" : "FAIL_PRODUCT") << "\",\n"
                 << "  \"geometry\": [1920, 1080],\n"
@@ -297,6 +341,9 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < layerMaximum.size(); ++i)
             summary << (i ? ", " : "") << layerMaximum[i];
         summary << "],\n"
+                << "  \"dense_different_half_components\": " << denseDifferences << ",\n"
+                << "  \"dense_maximum_half_code_delta\": " << denseMaximum << ",\n"
+                << "  \"dense_ms_per_frame\": " << denseMilliseconds << ",\n"
                 << "  \"native_ms_per_frame\": " << milliseconds << "\n"
                 << "}\n";
         for (size_t i = 0; i < differences.size(); ++i)
@@ -308,6 +355,8 @@ int main(int argc, char** argv)
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT",
                     milliseconds);
         ngu.Reset();
+        denseView.Reset();
+        denseTexture.Reset();
         rawViews.fill(nullptr);
         for (auto& set : rawLayerViews)
             set.fill(nullptr);

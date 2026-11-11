@@ -26,6 +26,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Chroma = {"ngu_sharp_veryhigh_chroma_full.glsl", 640, 360};
     static constexpr StageConfig LumaInitial = {nullptr, 1920, 1080};
     static constexpr StageConfig LumaLayers = {nullptr, 1920, 1080};
+    static constexpr StageConfig LumaDense = {nullptr, 1920, 1080};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -35,6 +36,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &LumaInitial;
     case NguScalerStage::VeryHighLumaLayers1080:
         return &LumaLayers;
+    case NguScalerStage::VeryHighLumaDense1080:
+        return &LumaDense;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -113,6 +116,14 @@ struct NguScaler::NativeLumaLayers
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     std::array<ComPtr<ID3D11Buffer>, 15> constants;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeLumaDense
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11Buffer> constants;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -630,12 +641,196 @@ bool NguScaler::RunNativeLumaLayer(ID3D11ShaderResourceView* const inputs[3],
     return true;
 }
 
+bool NguScaler::PrepareNativeLumaDense(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU native dense scaler requires a GPU";
+        return false;
+    }
+    if (nativeLumaDense_ && gpu == gpu_)
+        return true;
+    Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU native dense scaler requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\luma_1080_dense.hlsl", 256 * 1024);
+    const auto pixelBytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense.cso", 0);
+    const auto constantBytes =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense_constants.bin", 51 * sizeof(float) * 4);
+    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty())
+    {
+        error_ = "NGU native dense assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(shaderText.data(),
+                            shaderText.size(),
+                            "NGU_Luma1080_Dense",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU native dense vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLumaDense>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(pixelBytecode.data(),
+                                         static_cast<SIZE_T>(pixelBytecode.size()),
+                                         nullptr,
+                                         &state->pixel)))
+    {
+        error_ = "NGU native dense shader objects could not be created";
+        return false;
+    }
+
+    D3D11_BUFFER_DESC constantDesc = {};
+    constantDesc.ByteWidth = static_cast<UINT>(constantBytes.size());
+    constantDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA constantData = {};
+    constantData.pSysMem = constantBytes.data();
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants)))
+    {
+        error_ = "NGU native dense constant buffer could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU native dense rasterizer state could not be created";
+        return false;
+    }
+
+    nativeLumaDense_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLumaDense1080;
+    cached_.sourceWidth = 1920;
+    cached_.sourceHeight = 1080;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaDense(ID3D11ShaderResourceView* const inputs[3],
+                                   ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaDense_ || !inputs || !inputs[0] || !inputs[1] || !inputs[2] || !output)
+    {
+        error_ = "NGU native dense request is not prepared or has unsupported inputs";
+        return false;
+    }
+    pl_d3d11 d3d = pl_d3d11_get(gpu_);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU native dense D3D11 device is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11DeviceContext> context;
+    d3d->device->GetImmediateContext(context.GetAddressOf());
+    if (!context)
+    {
+        error_ = "NGU native dense D3D11 context is unavailable";
+        return false;
+    }
+
+    ID3D11RenderTargetView* oldTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+    ID3D11DepthStencilView* oldDepth = nullptr;
+    context->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, oldTargets, &oldDepth);
+    ID3D11RasterizerState* oldRasterizer = nullptr;
+    context->RSGetState(&oldRasterizer);
+    UINT viewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+    std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> oldViewports = {};
+    context->RSGetViewports(&viewportCount, oldViewports.data());
+    ID3D11VertexShader* oldVertex = nullptr;
+    ID3D11PixelShader* oldPixel = nullptr;
+    ID3D11ShaderResourceView* oldInputs[3] = {};
+    ID3D11Buffer* oldConstant = nullptr;
+    D3D11_PRIMITIVE_TOPOLOGY oldTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    context->VSGetShader(&oldVertex, nullptr, nullptr);
+    context->PSGetShader(&oldPixel, nullptr, nullptr);
+    context->PSGetShaderResources(0, 3, oldInputs);
+    context->PSGetConstantBuffers(0, 1, &oldConstant);
+    context->IAGetPrimitiveTopology(&oldTopology);
+
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->RSSetState(nativeLumaDense_->rasterizer.Get());
+    D3D11_VIEWPORT viewport = {};
+    viewport.Width = 1922.0f;
+    viewport.Height = 1082.0f;
+    viewport.MaxDepth = 1.0f;
+    context->RSSetViewports(1, &viewport);
+    context->OMSetRenderTargets(1, &output, nullptr);
+    context->VSSetShader(nativeLumaDense_->vertex.Get(), nullptr, 0);
+    context->PSSetShader(nativeLumaDense_->pixel.Get(), nullptr, 0);
+    context->PSSetShaderResources(0, 3, inputs);
+    context->PSSetConstantBuffers(0, 1, nativeLumaDense_->constants.GetAddressOf());
+    context->Draw(3, 0);
+    ID3D11ShaderResourceView* nullInputs[3] = {};
+    ID3D11Buffer* nullConstant = nullptr;
+    context->PSSetShaderResources(0, 3, nullInputs);
+    context->PSSetConstantBuffers(0, 1, &nullConstant);
+
+    context->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, oldTargets, oldDepth);
+    context->RSSetState(oldRasterizer);
+    if (viewportCount)
+        context->RSSetViewports(viewportCount, oldViewports.data());
+    context->VSSetShader(oldVertex, nullptr, 0);
+    context->PSSetShader(oldPixel, nullptr, 0);
+    context->PSSetShaderResources(0, 3, oldInputs);
+    context->PSSetConstantBuffers(0, 1, &oldConstant);
+    context->IASetPrimitiveTopology(oldTopology);
+    for (auto*& target : oldTargets)
+        if (target)
+            target->Release();
+    if (oldDepth)
+        oldDepth->Release();
+    if (oldRasterizer)
+        oldRasterizer->Release();
+    if (oldVertex)
+        oldVertex->Release();
+    if (oldPixel)
+        oldPixel->Release();
+    for (auto*& input : oldInputs)
+        if (input)
+            input->Release();
+    if (oldConstant)
+        oldConstant->Release();
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
         pl_mpv_user_shader_destroy(&hook_);
     nativeLumaInitial_.reset();
     nativeLumaLayers_.reset();
+    nativeLumaDense_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};
