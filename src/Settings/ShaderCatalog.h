@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
-inline constexpr int ShaderCount = 27, ShaderParameterLimit = 12;
+inline constexpr int ShaderCount = 28, ShaderParameterLimit = 12;
 
 struct ShaderParameterInfo
 {
@@ -226,6 +226,12 @@ inline constexpr ShaderInfo ShaderCatalog[] = {
      L"Experimental VeryHigh chroma core plus parallel scale, both combines and RealignSuperXbrChroma at the captured geometry.",
      0,
      {}},
+    {"ngu_sharp_veryhigh_luma_1080_core.glsl",
+     L"NGU Sharp VeryHigh luma core",
+     L"Image Upscaling",
+     L"Experimental 1080p VeryHigh Cubici1, 15-layer Cubic11 and dense network verified target-exact.",
+     0,
+     {}},
 };
 
 struct ShaderConfig
@@ -237,7 +243,7 @@ struct ShaderConfig
 struct UserShaderSettings
 {
     ShaderConfig shaders[ShaderCount];
-    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20, 23, 24, 25, 26};
+    int order[ShaderCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27};
 };
 
 // Index of RAVU Zoom AR R2; shaders added later join the chain after it.
