@@ -278,6 +278,14 @@ struct NguScaler::NativeLumaInitial
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeLumaSplit
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -340,6 +348,12 @@ struct NguScaler::NativeLumaFinal
 
 struct NguScaler::NativeLumaVeryHigh1080
 {
+    ComPtr<ID3D11Texture2D> splitLumaTexture;
+    ComPtr<ID3D11RenderTargetView> splitLumaView;
+    ComPtr<ID3D11ShaderResourceView> splitLumaShaderView;
+    ComPtr<ID3D11Texture2D> splitCbCrTexture;
+    ComPtr<ID3D11RenderTargetView> splitCbCrView;
+    ComPtr<ID3D11ShaderResourceView> splitCbCrShaderView;
     std::array<ComPtr<ID3D11Texture2D>, 3> initialTextures;
     std::array<ComPtr<ID3D11RenderTargetView>, 3> initialViews;
     std::array<ComPtr<ID3D11ShaderResourceView>, 3> initialShaderViews;
@@ -472,6 +486,123 @@ bool NguScaler::PrepareValidation(pl_gpu gpu, const NguScalerRequest& request)
     gpu_ = gpu;
     cached_ = request;
     hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeLumaSplit(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU luma split requires a GPU";
+        return false;
+    }
+    if (nativeLumaSplit_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU luma split requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\luma_1080_split.hlsl", 64 * 1024);
+    const auto pixelCso =
+        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_split.cso", 0);
+    if (shaderText.empty() || pixelCso.empty())
+    {
+        error_ = "NGU luma split assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_Luma1080_Split",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU luma split vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeLumaSplit>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    {
+        error_ = "NGU luma split shader objects could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU luma split sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU luma split rasterizer could not be created";
+        return false;
+    }
+
+    nativeLumaSplit_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaSplit(ID3D11ShaderResourceView* source,
+                                   int width,
+                                   int height,
+                                   ID3D11RenderTargetView* luma,
+                                   ID3D11RenderTargetView* cbcr)
+{
+    if (!nativeLumaSplit_ || !source || width <= 0 || height <= 0 || !luma || !cbcr)
+    {
+        error_ = "NGU luma split request is invalid";
+        return false;
+    }
+    ID3D11RenderTargetView* outputs[2] = {luma, cbcr};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeLumaSplit_->vertex.Get(),
+                  nativeLumaSplit_->pixel.Get(),
+                  nullptr,
+                  nativeLumaSplit_->rasterizer.Get(),
+                  &source,
+                  1,
+                  outputs,
+                  2,
+                  static_cast<UINT>(width),
+                  static_cast<UINT>(height),
+                  nativeLumaSplit_->pointSampler.Get());
     error_ = "";
     return true;
 }
@@ -1785,7 +1916,8 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
         error_ = "NGU VeryHigh luma requires the D3D11 backend";
         return false;
     }
-    if (!PrepareNativeLumaInitial(gpu) ||
+    if (!PrepareNativeLumaSplit(gpu) ||
+        !PrepareNativeLumaInitial(gpu) ||
         !PrepareNativeLumaLayers(gpu) ||
         !PrepareNativeLumaDense(gpu) ||
         !PrepareNativeLumaScaleAdd(gpu) ||
@@ -1817,6 +1949,23 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
                SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
                SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
+
+    if (!create(1920,
+                1080,
+                DXGI_FORMAT_R16_UNORM,
+                state->splitLumaTexture,
+                state->splitLumaView,
+                state->splitLumaShaderView) ||
+        !create(1920,
+                1080,
+                DXGI_FORMAT_R16G16_UNORM,
+                state->splitCbCrTexture,
+                state->splitCbCrView,
+                state->splitCbCrShaderView))
+    {
+        error_ = "NGU VeryHigh luma split textures could not be created";
+        return false;
+    }
 
     for (size_t i = 0; i < state->initialTextures.size(); ++i)
     {
@@ -1901,24 +2050,35 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* source,
-                                          ID3D11ShaderResourceView* reconstructionSource,
+bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
                                           int sourceWidth,
                                           int sourceHeight,
                                           ID3D11RenderTargetView* finalOutput,
                                           bool advanceDither)
 {
-    if (!nativeLumaVeryHigh1080_ || !source || !reconstructionSource || !finalOutput ||
+    if (!nativeLumaVeryHigh1080_ || !sourceRgb || !finalOutput ||
         sourceWidth != 1920 || sourceHeight != 1080)
     {
         error_ = "NGU VeryHigh luma request is outside the verified 1080p path";
         return false;
     }
 
+    if (!RunNativeLumaSplit(sourceRgb,
+                            sourceWidth,
+                            sourceHeight,
+                            nativeLumaVeryHigh1080_->splitLumaView.Get(),
+                            nativeLumaVeryHigh1080_->splitCbCrView.Get()))
+    {
+        return false;
+    }
+
     std::array<ID3D11RenderTargetView*, 3> initialViews = {};
     for (size_t i = 0; i < initialViews.size(); ++i)
         initialViews[i] = nativeLumaVeryHigh1080_->initialViews[i].Get();
-    if (!RunNativeLumaInitial(source, sourceWidth, sourceHeight, initialViews.data()))
+    if (!RunNativeLumaInitial(nativeLumaVeryHigh1080_->splitLumaShaderView.Get(),
+                              sourceWidth,
+                              sourceHeight,
+                              initialViews.data()))
         return false;
 
     std::array<ID3D11ShaderResourceView*, 3> current = {};
@@ -1939,13 +2099,14 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* source,
                 current[i] = nativeLumaVeryHigh1080_->layerShaderViews[set][i].Get();
     }
     if (!RunNativeLumaDense(current.data(), nativeLumaVeryHigh1080_->denseView.Get()) ||
-        !RunNativeLumaScaleX(source, nativeLumaVeryHigh1080_->scaleXView.Get()) ||
+        !RunNativeLumaScaleX(nativeLumaVeryHigh1080_->splitLumaShaderView.Get(),
+                              nativeLumaVeryHigh1080_->scaleXView.Get()) ||
         !RunNativeLumaScaleY(nativeLumaVeryHigh1080_->scaleXShaderView.Get(),
                              nativeLumaVeryHigh1080_->scaleYView.Get()) ||
         !RunNativeLumaAdd(nativeLumaVeryHigh1080_->scaleYShaderView.Get(),
                           nativeLumaVeryHigh1080_->denseShaderView.Get(),
                           nativeLumaVeryHigh1080_->addView.Get()) ||
-        !RunNativeLumaUpX(reconstructionSource,
+        !RunNativeLumaUpX(nativeLumaVeryHigh1080_->splitCbCrShaderView.Get(),
                           nativeLumaVeryHigh1080_->upXView.Get()) ||
         !RunNativeLumaUpY(nativeLumaVeryHigh1080_->upXShaderView.Get(),
                           nativeLumaVeryHigh1080_->upYView.Get()) ||
@@ -2412,6 +2573,7 @@ void NguScaler::Reset()
     if (hook_)
         pl_mpv_user_shader_destroy(&hook_);
     nativeLumaInitial_.reset();
+    nativeLumaSplit_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

@@ -74,6 +74,12 @@ class NguScaler
 
     bool PrepareValidation(pl_gpu gpu, const NguScalerRequest& request);
     bool PrepareNativeLumaInitial(pl_gpu gpu);
+    bool PrepareNativeLumaSplit(pl_gpu gpu);
+    bool RunNativeLumaSplit(ID3D11ShaderResourceView* source,
+                            int width,
+                            int height,
+                            ID3D11RenderTargetView* luma,
+                            ID3D11RenderTargetView* cbcr);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -108,8 +114,7 @@ class NguScaler
     bool RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
                                        ID3D11RenderTargetView* output);
     bool PrepareNativeLumaVeryHigh1080(pl_gpu gpu);
-    bool RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* source,
-                                   ID3D11ShaderResourceView* reconstructionSource,
+    bool RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
                                    int sourceWidth,
                                    int sourceHeight,
                                    ID3D11RenderTargetView* finalOutput,
@@ -143,6 +148,7 @@ class NguScaler
   private:
     bool PrepareOwnedDither();
     struct NativeLumaInitial;
+    struct NativeLumaSplit;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -157,6 +163,7 @@ class NguScaler
     bool hasCached_ = false;
     NguDither dither_;
     std::unique_ptr<NativeLumaInitial> nativeLumaInitial_;
+    std::unique_ptr<NativeLumaSplit> nativeLumaSplit_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;

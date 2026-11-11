@@ -334,25 +334,81 @@ int main(int argc, char** argv)
             ownedFinalOverOne);
 
         const auto schedulerSourceCapture =
-            ReadBytes(root / "input_31706_PS_1412_aad01c2f_s0.bin", size_t(1920) * 1080 * 8);
-        std::vector<uint16_t> schedulerSource(size_t(1920) * 1080);
-        for (size_t i = 0; i < schedulerSource.size(); ++i)
-            std::memcpy(
-                &schedulerSource[i], schedulerSourceCapture.data() + i * 8, sizeof(uint16_t));
+            ReadBytes(root / "input_31703_PS_460_bfe50921_s0.bin", size_t(1920) * 1080 * 8);
         auto schedulerSourceTexture = CreateTexture(
             device,
             1920,
             1080,
-            DXGI_FORMAT_R16_UNORM,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
             D3D11_BIND_SHADER_RESOURCE,
-            schedulerSource.data());
+            schedulerSourceCapture.data());
         ComPtr<ID3D11ShaderResourceView> schedulerSourceView;
         Require(SUCCEEDED(device->CreateShaderResourceView(
                     schedulerSourceTexture.Get(), nullptr, &schedulerSourceView)),
                 "scheduler source SRV");
+        Require(ngu.PrepareNativeLumaSplit(d3d->gpu), ngu.LastError());
+        auto schedulerSplitLuma = CreateTexture(
+            device,
+            1920,
+            1080,
+            DXGI_FORMAT_R16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerSplitLumaView;
+        ComPtr<ID3D11ShaderResourceView> schedulerSplitLumaSrv;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerSplitLuma.Get(), nullptr, &schedulerSplitLumaView)),
+                "scheduler split luma RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    schedulerSplitLuma.Get(), nullptr, &schedulerSplitLumaSrv)),
+                "scheduler split luma SRV");
+        auto schedulerSplitCbCr = CreateTexture(
+            device,
+            1920,
+            1080,
+            DXGI_FORMAT_R16G16_UNORM,
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> schedulerSplitCbCrView;
+        ComPtr<ID3D11ShaderResourceView> schedulerSplitCbCrSrv;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    schedulerSplitCbCr.Get(), nullptr, &schedulerSplitCbCrView)),
+                "scheduler split CbCr RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    schedulerSplitCbCr.Get(), nullptr, &schedulerSplitCbCrSrv)),
+                "scheduler split CbCr SRV");
+        Require(ngu.RunNativeLumaSplit(schedulerSourceView.Get(),
+                                       1920,
+                                       1080,
+                                       schedulerSplitLumaView.Get(),
+                                       schedulerSplitCbCrView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto schedulerSplitLumaActual =
+            Download(device, context.Get(), schedulerSplitLuma.Get());
+        auto schedulerSplitLumaCapture =
+            ReadBytes(root / "draw_31703_PS_460_bfe50921_rt0_1920x1080_f81.bin",
+                      size_t(1920) * 1080 * 8);
+        std::vector<uint8_t> schedulerSplitLumaExpected(size_t(1920) * 1080 * 2);
+        for (size_t i = 0; i < size_t(1920) * 1080; ++i)
+            std::memcpy(
+                schedulerSplitLumaExpected.data() + i * 2,
+                schedulerSplitLumaCapture.data() + i * 8,
+                2);
+        int schedulerSplitLumaMaximum = 0;
+        const int schedulerSplitLumaDifferent = CountComponents(
+            schedulerSplitLumaActual,
+            schedulerSplitLumaExpected,
+            schedulerSplitLumaMaximum);
+        auto schedulerSplitCbCrActual =
+            Download(device, context.Get(), schedulerSplitCbCr.Get());
+        int schedulerSplitCbCrMaximum = 0;
+        const int schedulerSplitCbCrDifferent = CountComponents(
+            schedulerSplitCbCrActual,
+            ReadBytes(root / "input_31724_PS_1284_386cc8d7_s0.bin",
+                      size_t(1920) * 1080 * 4),
+            schedulerSplitCbCrMaximum);
         Require(ngu.PrepareNativeLumaVeryHigh1080(d3d->gpu), ngu.LastError());
         const bool schedulerRan = ngu.RunNativeLumaVeryHigh1080(
-            schedulerSourceView.Get(), xInputView.Get(), 1920, 1080, finalView.Get(), false);
+            schedulerSourceView.Get(), 1920, 1080, finalView.Get(), false);
         Require(schedulerRan, ngu.LastError());
         pl_gpu_finish(d3d->gpu);
         auto schedulerFinalActual = Download(device, context.Get(), finalOutput.Get());
@@ -451,6 +507,10 @@ int main(int argc, char** argv)
                     ownedFinalDifferent, ownedFinalMaximum, ownedFinalOverOne);
         std::printf("SchedulerFinal different=%d maximum=%d diff_gt_1_pixels=%d\n",
                     schedulerFinalDifferent, schedulerFinalMaximum, schedulerFinalOverOne);
+        std::printf("SchedulerSplitY different=%d maximum=%d\n",
+                    schedulerSplitLumaDifferent, schedulerSplitLumaMaximum);
+        std::printf("SchedulerSplitCbCr different=%d maximum=%d\n",
+                    schedulerSplitCbCrDifferent, schedulerSplitCbCrMaximum);
         std::printf("SchedulerAdd different=%d maximum=%d\n",
                     schedulerAddDifferent, schedulerAddMaximum);
         std::printf("SchedulerUpX different=%d maximum=%d\n",
@@ -464,6 +524,8 @@ int main(int argc, char** argv)
                           dynamicFinalMaximum <= 1 && dynamicFinalOverOne == 0 &&
                           ownedFinalMaximum <= 1 && ownedFinalOverOne == 0 &&
                           schedulerFinalMaximum <= 1 && schedulerFinalOverOne == 0 &&
+                          schedulerSplitLumaDifferent == 0 && schedulerSplitLumaMaximum == 0 &&
+                          schedulerSplitCbCrDifferent == 0 && schedulerSplitCbCrMaximum == 0 &&
                           schedulerAddDifferent == 0 && schedulerAddMaximum == 0 &&
                           schedulerUpXDifferent == 0 && schedulerUpXMaximum == 0 &&
                           schedulerUpYDifferent == 0 && schedulerUpYMaximum == 0 &&
@@ -474,6 +536,8 @@ int main(int argc, char** argv)
               std::pair{L"final_dynamic", dynamicFinalActual},
               std::pair{L"final_owned", ownedFinalActual},
               std::pair{L"final_scheduler", schedulerFinalActual},
+              std::pair{L"final_scheduler_split_y", schedulerSplitLumaActual},
+              std::pair{L"final_scheduler_split_cbcr", schedulerSplitCbCrActual},
               std::pair{L"final_scheduler_upx", schedulerUpXActual},
               std::pair{L"final_scheduler_upy", schedulerUpYActual},
               std::pair{L"final_scheduler_merge", schedulerMergeActual}})
