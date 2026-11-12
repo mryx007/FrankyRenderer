@@ -103,6 +103,26 @@ def main(out=OUT, source=SOURCE):
         "Source: https://github.com/mryx007/FrankyRenderer\n", encoding="utf-8",
     )
     shutil.copytree(ROOT / "Shaders", out / "shaders", dirs_exist_ok=True)
+    # NGU loads generated CSOs beside the source HLSL. The source tree alone
+    # does not contain those build artifacts, so overlay the built shader tree.
+    compiled_shaders = source / "shaders"
+    if compiled_shaders.is_dir():
+        shutil.copytree(compiled_shaders, out / "shaders", dirs_exist_ok=True)
+    required_ngu_assets = (
+        "Ngu/luma_1080_split.cso",
+        "Ngu/ngu_chroma_split.cso",
+        "Ngu/luma_4x720_upsample.cso",
+        "Ngu/superres_asm_main.cso",
+    )
+    missing_ngu_assets = [
+        path for path in required_ngu_assets
+        if not (out / "shaders" / path).is_file()
+    ]
+    if missing_ngu_assets:
+        raise ValueError(
+            "Packaged NGU shader assets are incomplete: " +
+            ", ".join(missing_ngu_assets)
+        )
 
     licenses = out / "licenses"
     licenses.mkdir(exist_ok=True)

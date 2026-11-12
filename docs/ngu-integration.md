@@ -412,7 +412,8 @@ declared PS_4620 layer tolerance at layer 8. The 720p combined final retains two
 pixels above one pending exact target dither-surface replay. P210/P216 and the
 real-player lifecycle matrix are still open.
 
-A nightly ZIP was assembled for artifact inspection, but a package-local
-DirectShow smoke currently returns `E_FAIL` before rendering. The development
-AX remains the verified artifact; the renamed-runtime ZIP is not a packaged
-acceptance claim until that failure is resolved.
+The package overlay now copies generated NGU CSO assets in addition to source
+HLSL. The expanded nightly ZIP passes RGB48 DirectShow and P010 lifecycle
+smoke. DirectShow P010 1080 same-frame final remains `maximum=4`, matching the
+development AX, so the remaining gap is product behavior rather than package
+assembly.
