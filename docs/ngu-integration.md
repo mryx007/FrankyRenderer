@@ -321,9 +321,11 @@ Cubici2, layer and dense shaders derive raster dimensions from their inputs, and
 the scheduler selects the 960x540 geometry only after validating its views.
 Native 1080p PS_1672 matches all four captured float outputs exactly; the Cb/Cr
 28-layer cascades reach PS_2672 with `maximum_abs` `3.28422e-05` and
-`3.15905e-05`. The 720p regression is unchanged. This is core support, not the
-complete 1080p chroma chain: combine, Realign, PS_396 and SuperChromaRes still
-need their 1920x1080 surface scheduler and same-frame acceptance.
+`3.15905e-05`. The 1080p regression now starts from packed UV and runs native
+split, X/Y scale, dense networks, PS_564/PS_644, Realign, PS_396 and the
+connected strength-3 scheduler. PS_4576 is `maximum=5`, `diff_gt_8=0`; the
+720p regression is unchanged. SuperRes diff/main/base originals remain captured
+inputs, so this is not final decoder or playback acceptance.
 
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
@@ -352,7 +354,8 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, 1080 equivalent, Backend/DirectShow |
+| Native 1080p chroma | packed UV runs through native PS_4576 at `maximum=5`, no value above 8 | One-call product scheduler, production SuperRes originals, luma/playback |
+| Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, Backend/DirectShow |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |

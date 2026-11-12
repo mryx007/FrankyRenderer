@@ -401,6 +401,8 @@ struct NguScaler::NativeChromaScale
     ComPtr<ID3D11PixelShader> scaleY;
     ComPtr<ID3D11Buffer> scaleXConstants;
     ComPtr<ID3D11Buffer> scaleYConstants;
+    ComPtr<ID3D11Buffer> scaleXConstants1080;
+    ComPtr<ID3D11Buffer> scaleYConstants1080;
     ComPtr<ID3D11SamplerState> sampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
@@ -439,6 +441,7 @@ struct NguScaler::NativeChromaCombines
     ComPtr<ID3D11PixelShader> combine1;
     ComPtr<ID3D11PixelShader> combine2;
     ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11Buffer> constants1080;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -447,6 +450,7 @@ struct NguScaler::NativeChromaRealign
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11Buffer> constants1080;
     ComPtr<ID3D11SamplerState> pointSampler;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
@@ -1355,7 +1359,14 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x.cso", 0);
     const auto scaleYCso =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y.cso", 0);
-    if (shaderText.empty() || scaleXCso.empty() || scaleYCso.empty())
+    const auto scaleXConstants1080 =
+        LoadBundledBytes(
+            L"shaders\\Ngu\\ngu_chroma_scale_x_constants_1080.bin", 48);
+    const auto scaleYConstants1080 =
+        LoadBundledBytes(
+            L"shaders\\Ngu\\ngu_chroma_scale_y_constants_1080.bin", 48);
+    if (shaderText.empty() || scaleXCso.empty() || scaleYCso.empty() ||
+        scaleXConstants1080.empty() || scaleYConstants1080.empty())
     {
         error_ = "NGU chroma scale assets are unavailable";
         return false;
@@ -1425,6 +1436,20 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
         error_ = "NGU chroma Y scale constants could not be created";
         return false;
     }
+    initial.pSysMem = scaleXConstants1080.data();
+    if (FAILED(device->CreateBuffer(
+            &bufferDesc, &initial, &state->scaleXConstants1080)))
+    {
+        error_ = "NGU 1080p chroma X scale constants could not be created";
+        return false;
+    }
+    initial.pSysMem = scaleYConstants1080.data();
+    if (FAILED(device->CreateBuffer(
+            &bufferDesc, &initial, &state->scaleYConstants1080)))
+    {
+        error_ = "NGU 1080p chroma Y scale constants could not be created";
+        return false;
+    }
 
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
@@ -1457,24 +1482,33 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
 bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
                                       ID3D11RenderTargetView* output)
 {
+    const bool is720 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 360);
+    const bool is1080 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 540);
     if (!nativeChromaScale_ || !input || !output ||
-        !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360) ||
-        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 360))
+        (!is720 && !is1080))
     {
-        error_ = "NGU chroma X scale request is outside the verified 720p path";
+        error_ = "NGU chroma X scale request has unsupported geometry";
         return false;
     }
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaScale_->vertex.Get(),
                   nativeChromaScale_->scaleX.Get(),
-                  nativeChromaScale_->scaleXConstants.Get(),
+                  (is1080
+                       ? nativeChromaScale_->scaleXConstants1080.Get()
+                       : nativeChromaScale_->scaleXConstants.Get()),
                   nativeChromaScale_->rasterizer.Get(),
                   &input,
                   1,
                   &output,
                   1,
-                  1280,
-                  360,
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 540 : 360,
                   nativeChromaScale_->sampler.Get());
     error_ = "";
     return true;
@@ -1483,24 +1517,33 @@ bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
 bool NguScaler::RunNativeChromaScaleY(ID3D11ShaderResourceView* input,
                                       ID3D11RenderTargetView* output)
 {
+    const bool is720 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 360) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
+    const bool is1080 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1920, 540) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
     if (!nativeChromaScale_ || !input || !output ||
-        !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 360) ||
-        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720))
+        (!is720 && !is1080))
     {
-        error_ = "NGU chroma Y scale request is outside the verified 720p path";
+        error_ = "NGU chroma Y scale request has unsupported geometry";
         return false;
     }
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaScale_->vertex.Get(),
                   nativeChromaScale_->scaleY.Get(),
-                  nativeChromaScale_->scaleYConstants.Get(),
+                  (is1080
+                       ? nativeChromaScale_->scaleYConstants1080.Get()
+                       : nativeChromaScale_->scaleYConstants.Get()),
                   nativeChromaScale_->rasterizer.Get(),
                   &input,
                   1,
                   &output,
                   1,
-                  1280,
-                  720,
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 1080 : 720,
                   nativeChromaScale_->sampler.Get());
     error_ = "";
     return true;
@@ -2041,8 +2084,12 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
     const auto constantBytes =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants.bin",
                          2 * sizeof(float) * 4);
+    const auto constantBytes1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants_1080.bin",
+                         2 * sizeof(float) * 4);
     if (shaderText.empty() || combine1Bytecode.empty() ||
-        combine2Bytecode.empty() || constantBytes.empty())
+        combine2Bytecode.empty() || constantBytes.empty() ||
+        constantBytes1080.empty())
     {
         error_ = "NGU chroma combine assets are unavailable";
         return false;
@@ -2102,6 +2149,13 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
         error_ = "NGU chroma combine constants could not be created";
         return false;
     }
+    constantData.pSysMem = constantBytes1080.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->constants1080)))
+    {
+        error_ = "NGU 1080p chroma combine constants could not be created";
+        return false;
+    }
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
@@ -2124,13 +2178,20 @@ bool NguScaler::RunNativeChromaCombine1(
     ID3D11ShaderResourceView* nnInput,
     ID3D11RenderTargetView* output)
 {
+    const bool is720 =
+        addInput && nnInput && output &&
+        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+        ViewMatchesTexture(
+            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
+    const bool is1080 =
+        addInput && nnInput && output &&
+        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+        ViewMatchesTexture(
+            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
     if (!nativeChromaCombines_ || !addInput || !nnInput || !output ||
-        !ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(nnInput,
-                            DXGI_FORMAT_R16G16B16A16_FLOAT,
-                            642,
-                            362) ||
-        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720))
+        (!is720 && !is1080))
     {
         error_ = "NGU chroma combine 1 request is invalid";
         return false;
@@ -2139,14 +2200,15 @@ bool NguScaler::RunNativeChromaCombine1(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaCombines_->vertex.Get(),
                   nativeChromaCombines_->combine1.Get(),
-                  nativeChromaCombines_->constants.Get(),
+                  (is1080 ? nativeChromaCombines_->constants1080.Get()
+                          : nativeChromaCombines_->constants.Get()),
                   nativeChromaCombines_->rasterizer.Get(),
                   inputs,
                   2,
                   &output,
                   1,
-                  1280,
-                  720);
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 1080 : 720);
     error_ = "";
     return true;
 }
@@ -2157,15 +2219,22 @@ bool NguScaler::RunNativeChromaCombine2(
     ID3D11ShaderResourceView* nnInput,
     ID3D11RenderTargetView* output)
 {
+    const bool is720 =
+        addInput && cbInput && nnInput && output &&
+        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+        ViewMatchesTexture(
+            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 720);
+    const bool is1080 =
+        addInput && cbInput && nnInput && output &&
+        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+        ViewMatchesTexture(
+            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
+        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1920, 1080);
     if (!nativeChromaCombines_ || !addInput || !cbInput || !nnInput ||
-        !output ||
-        !ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(nnInput,
-                            DXGI_FORMAT_R16G16B16A16_FLOAT,
-                            642,
-                            362) ||
-        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 720))
+        !output || (!is720 && !is1080))
     {
         error_ = "NGU chroma combine 2 request is invalid";
         return false;
@@ -2174,14 +2243,15 @@ bool NguScaler::RunNativeChromaCombine2(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaCombines_->vertex.Get(),
                   nativeChromaCombines_->combine2.Get(),
-                  nativeChromaCombines_->constants.Get(),
+                  (is1080 ? nativeChromaCombines_->constants1080.Get()
+                          : nativeChromaCombines_->constants.Get()),
                   nativeChromaCombines_->rasterizer.Get(),
                   inputs,
                   3,
                   &output,
                   1,
-                  1280,
-                  720);
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 1080 : 720);
     error_ = "";
     return true;
 }
@@ -2210,7 +2280,11 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
     const auto constantBytes =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants.bin",
                          sizeof(float) * 4);
-    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty())
+    const auto constantBytes1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants_1080.bin",
+                         sizeof(float) * 4);
+    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty() ||
+        constantBytes1080.empty())
     {
         error_ = "NGU chroma Realign assets are unavailable";
         return false;
@@ -2265,6 +2339,13 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
         error_ = "NGU chroma Realign constants could not be created";
         return false;
     }
+    constantData.pSysMem = constantBytes1080.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->constants1080)))
+    {
+        error_ = "NGU 1080p chroma Realign constants could not be created";
+        return false;
+    }
     D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -2299,12 +2380,18 @@ bool NguScaler::RunNativeChromaRealign(
     ID3D11ShaderResourceView* input,
     ID3D11RenderTargetView* output)
 {
+    const bool is720 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) &&
+        ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool is1080 =
+        input && output &&
+        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1920, 1080) &&
+        ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080);
     if (!nativeChromaRealign_ || !input || !output ||
-        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(output,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            1280,
-                            720))
+        (!is720 && !is1080))
     {
         error_ = "NGU chroma Realign request is invalid";
         return false;
@@ -2312,14 +2399,15 @@ bool NguScaler::RunNativeChromaRealign(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaRealign_->vertex.Get(),
                   nativeChromaRealign_->pixel.Get(),
-                  nativeChromaRealign_->constants.Get(),
+                  (is1080 ? nativeChromaRealign_->constants1080.Get()
+                          : nativeChromaRealign_->constants.Get()),
                   nativeChromaRealign_->rasterizer.Get(),
                   &input,
                   1,
                   &output,
                   1,
-                  1280,
-                  720,
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 1080 : 720,
                   nativeChromaRealign_->pointSampler.Get());
     error_ = "";
     return true;
@@ -2422,25 +2510,38 @@ bool NguScaler::RunNativeChromaYCbCr(
     ID3D11ShaderResourceView* cbcrInput,
     ID3D11RenderTargetView* output)
 {
-    const bool hasRg16Input =
-        cbcrInput &&
-        ViewMatchesTexture(cbcrInput,
-                           DXGI_FORMAT_R16G16_UNORM,
-                           1280,
-                           720);
-    const bool hasRgba16Input =
-        cbcrInput &&
-        ViewMatchesTexture(cbcrInput,
+    const bool is720 =
+        yInput && cbcrInput && output &&
+        ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) &&
+        ViewMatchesTexture(output,
                            DXGI_FORMAT_R16G16B16A16_UNORM,
                            1280,
-                           720);
-    if (!nativeChromaYCbCr_ || !yInput || !cbcrInput || !output ||
-        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
-        (!hasRg16Input && !hasRgba16Input) ||
-        !ViewMatchesTexture(output,
+                           720) &&
+        (ViewMatchesTexture(cbcrInput,
+                            DXGI_FORMAT_R16G16_UNORM,
+                            1280,
+                            720) ||
+         ViewMatchesTexture(cbcrInput,
                             DXGI_FORMAT_R16G16B16A16_UNORM,
                             1280,
-                            720))
+                            720));
+    const bool is1080 =
+        yInput && cbcrInput && output &&
+        ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) &&
+        ViewMatchesTexture(output,
+                           DXGI_FORMAT_R16G16B16A16_UNORM,
+                           1920,
+                           1080) &&
+        (ViewMatchesTexture(cbcrInput,
+                            DXGI_FORMAT_R16G16_UNORM,
+                            1920,
+                            1080) ||
+         ViewMatchesTexture(cbcrInput,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            1920,
+                            1080));
+    if (!nativeChromaYCbCr_ || !yInput || !cbcrInput || !output ||
+        (!is720 && !is1080))
     {
         error_ = "NGU chroma YCbCr request is invalid";
         return false;
@@ -2455,8 +2556,8 @@ bool NguScaler::RunNativeChromaYCbCr(
                   2,
                   &output,
                   1,
-                  1280,
-                  720,
+                  is1080 ? 1920 : 1280,
+                  is1080 ? 1080 : 720,
                   nativeChromaYCbCr_->pointSampler.Get());
     error_ = "";
     return true;

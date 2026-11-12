@@ -4,8 +4,6 @@ Texture2D<float4> YInput : register(t0);
 Texture2D<float4> CbCrInput : register(t1);
 SamplerState PointSampler : register(s0);
 
-static const float2 RasterSize = float2(1280.0, 720.0);
-
 struct VSOut { float4 position : SV_Position; };
 
 VSOut VSMain(uint vertex : SV_VertexID)
@@ -19,6 +17,9 @@ VSOut VSMain(uint vertex : SV_VertexID)
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
+    int rasterWidth, rasterHeight;
+    YInput.GetDimensions(rasterWidth, rasterHeight);
+    const float2 RasterSize = float2(rasterWidth, rasterHeight);
     const float2 uv = position.xy / RasterSize;
     const float y = YInput.SampleLevel(PointSampler, uv, 0).x;
     const float2 cbcr = CbCrInput.SampleLevel(PointSampler, uv, 0).xy;

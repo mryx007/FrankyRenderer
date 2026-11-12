@@ -8,8 +8,6 @@ cbuffer NguChromaRealignParams : register(b0)
     float4 U0;
 };
 
-static const float2 RasterSize = float2(1280.0, 720.0);
-
 struct VSOut { float4 position : SV_Position; };
 
 VSOut VSMain(uint vertex : SV_VertexID)
@@ -209,6 +207,9 @@ float Quantize16(float value)
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
+    int rasterWidth, rasterHeight;
+    Input.GetDimensions(rasterWidth, rasterHeight);
+    const float2 RasterSize = float2(rasterWidth, rasterHeight);
     const float2 uv = position.xy / RasterSize;
     const float4 result = Evaluate(float4(uv, 0.0, 1.0));
     return float4(Quantize16(result.x), Quantize16(result.y), 0.0, 0.0);

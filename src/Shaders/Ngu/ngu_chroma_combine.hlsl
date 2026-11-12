@@ -9,8 +9,6 @@ cbuffer NguChromaCombineParams : register(b0)
     float4 U[2];
 };
 
-static const float2 RasterSize = float2(1280.0, 720.0);
-
 struct VSOut { float4 position : SV_Position; };
 
 VSOut VSMain(uint vertex : SV_VertexID)
@@ -32,11 +30,10 @@ float4 FetchAdd(float2 position)
     return AddInput.Load(int3(pixel, 0));
 }
 
-float4 FetchNn(float2 position)
+float4 FetchNn(int2 pixel)
 {
     int width, height;
     NnInput.GetDimensions(width, height);
-    int2 pixel = int2(floor(position * float2(width, height)));
     pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1));
     return NnInput.Load(int3(pixel, 0));
 }
@@ -57,16 +54,16 @@ float Quantize16(float value)
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
-    // D3D9 v0 is SV_Position plus half a pixel under the captured vertices.
-    const float2 uv = (position.xy + 0.5) / RasterSize;
-    const float2 grid = uv * U[1].xy;
-    const float2 fraction = frac(grid);
-    const float2 center = grid - fraction + 0.5;
-    const float4 nn = FetchNn(center * U[0].xy);
-
-    const float2 phase = frac(uv * U[1].xy) - 0.5;
-    const float2 y = (phase.y < 0.0) ? nn.xy : nn.zw;
-    const float selected = (phase.x < 0.0) ? y.x : y.y;
+    // E-124: target Cubicd2x maps output coordinate n to dense (n + 1) / 2.
+    // Even output coordinates select the positive half; odd select negative.
+    const int2 outputPixel = int2(position.xy);
+    const int2 densePixel = (outputPixel + 1) >> 1;
+    const float4 nn = FetchNn(densePixel);
+    const bool xPositive = (outputPixel.x & 1) == 0;
+    const bool yPositive = (outputPixel.y & 1) == 0;
+    const float selected =
+        xPositive ? (yPositive ? nn.w : nn.y)
+                  : (yPositive ? nn.z : nn.x);
     const float value = selected + FetchAdd(position.xy).x;
 
 #if defined(NGU_COMBINE_2)

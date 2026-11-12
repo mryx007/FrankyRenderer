@@ -424,7 +424,9 @@ void CompareWrittenTriangle(const std::vector<uint8_t>& actual,
                             UINT height,
                             bool upperLeftTriangle,
                             int maximumAllowedDifference,
-                            const char* name)
+                            const char* name,
+                            UINT virtualWidth = 1280,
+                            UINT virtualHeight = 720)
 {
     int different = 0;
     int maximum = 0;
@@ -434,8 +436,9 @@ void CompareWrittenTriangle(const std::vector<uint8_t>& actual,
         for (UINT x = 0; x < width; ++x)
         {
             if (upperLeftTriangle &&
-                uint64_t(x) * 720 + uint64_t(y) * 1280 >=
-                    uint64_t(width) * 720)
+                uint64_t(x) * virtualHeight +
+                        uint64_t(y) * virtualWidth >=
+                    uint64_t(width) * virtualHeight)
                 continue;
             const size_t pixel = size_t(y) * width + x;
             const uint16_t a = uint16_t(actual[pixel * 2]) |
@@ -1117,6 +1120,401 @@ int main(int argc, char** argv)
                 0.00004f,
                 "PS_2672 Cr scheduler dense");
 
+            if (core1080)
+            {
+                ComPtr<ID3D11ShaderResourceView> packedUvView;
+                auto packedUvTexture =
+                    CreateBgra8Input(
+                        d3d->device,
+                        ReadBytes(networkRoot /
+                                      "input_00006_PS_260_cdfc6b55_s0.bin",
+                                  size_t(960) * 540 * 4),
+                        960,
+                        540,
+                        packedUvView);
+                ComPtr<ID3D11RenderTargetView> cbView;
+                ComPtr<ID3D11ShaderResourceView> cbShaderView;
+                auto cbTexture =
+                    CreateL16Output(
+                        d3d->device, 960, 540, cbView, cbShaderView);
+                ComPtr<ID3D11RenderTargetView> crView;
+                ComPtr<ID3D11ShaderResourceView> crShaderView;
+                auto crTexture =
+                    CreateL16Output(
+                        d3d->device, 960, 540, crView, crShaderView);
+                Require(ngu.PrepareNativeChromaSplit(d3d->gpu),
+                        ngu.LastError());
+                Require(ngu.RunNativeChromaSplit(packedUvView.Get(),
+                                                 960,
+                                                 540,
+                                                 cbView.Get(),
+                                                 crView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto cbActual =
+                    Download(d3d->device, context.Get(), cbTexture.Get(), 2);
+                const auto crActual =
+                    Download(d3d->device, context.Get(), crTexture.Get(), 2);
+                const auto expectedCb1080 = ExtractL16(ReadBytes(
+                    networkRoot /
+                        "draw_00006_PS_260_cdfc6b55_rt0_960x540_f81.bin",
+                    size_t(960) * 540 * 8));
+                const auto expectedCr1080 = ExtractL16(ReadBytes(
+                    networkRoot /
+                        "draw_00006_PS_260_cdfc6b55_rt1_960x540_f81.bin",
+                    size_t(960) * 540 * 8));
+                const int splitCbDifferent =
+                    memcmp(cbActual.data(),
+                           expectedCb1080.data(),
+                           cbActual.size()) != 0;
+                const int splitCrDifferent =
+                    memcmp(crActual.data(),
+                           expectedCr1080.data(),
+                           crActual.size()) != 0;
+                std::printf("PS_260 1080 Cb different=%d Cr different=%d\n",
+                            splitCbDifferent,
+                            splitCrDifferent);
+                Require(splitCbDifferent == 0 && splitCrDifferent == 0,
+                        "1080p chroma split comparison");
+
+                Require(ngu.PrepareNativeChromaScale(d3d->gpu),
+                        ngu.LastError());
+                ComPtr<ID3D11RenderTargetView> cbScaleXView;
+                ComPtr<ID3D11ShaderResourceView> cbScaleXShaderView;
+                auto cbScaleXTexture =
+                    CreateL16Output(d3d->device,
+                                    1920,
+                                    540,
+                                    cbScaleXView,
+                                    cbScaleXShaderView);
+                Require(ngu.RunNativeChromaScaleX(
+                            cbShaderView.Get(), cbScaleXView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto cbScaleXActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             cbScaleXTexture.Get(),
+                             2);
+                DumpIfRequested(cbScaleXActual, "ps748_1080_cb_x.bin");
+                CompareWrittenTriangle(
+                    cbScaleXActual,
+                    ExtractL16(ReadBytes(
+                        networkRoot /
+                            "draw_00008_PS_748_721dd04e_"
+                            "rt0_1920x540_f81.bin",
+                        size_t(1920) * 540 * 8)),
+                    1920,
+                    540,
+                    true,
+                    1,
+                    "PS_748 X 1080",
+                    1920,
+                    1080);
+
+                ComPtr<ID3D11RenderTargetView> crScaleXView;
+                ComPtr<ID3D11ShaderResourceView> crScaleXShaderView;
+                auto crScaleXTexture =
+                    CreateL16Output(d3d->device,
+                                    1920,
+                                    540,
+                                    crScaleXView,
+                                    crScaleXShaderView);
+                Require(ngu.RunNativeChromaScaleX(
+                            crShaderView.Get(), crScaleXView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto crScaleXActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             crScaleXTexture.Get(),
+                             2);
+                DumpIfRequested(crScaleXActual, "ps748_1080_cr_x.bin");
+                CompareWrittenTriangle(
+                    crScaleXActual,
+                    ExtractL16(ReadBytes(
+                        networkRoot /
+                            "draw_00041_PS_748_721dd04e_"
+                            "rt0_1920x540_f81.bin",
+                        size_t(1920) * 540 * 8)),
+                    1920,
+                    540,
+                    true,
+                    1,
+                    "PS_748 Cr X 1080",
+                    1920,
+                    1080);
+
+                ComPtr<ID3D11RenderTargetView> cbScaleYView;
+                ComPtr<ID3D11ShaderResourceView> cbScaleYShaderView;
+                auto cbScaleYTexture =
+                    CreateL16Output(d3d->device,
+                                    1920,
+                                    1080,
+                                    cbScaleYView,
+                                    cbScaleYShaderView);
+                Require(ngu.RunNativeChromaScaleY(
+                            cbScaleXShaderView.Get(),
+                            cbScaleYView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto cbScaleYActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             cbScaleYTexture.Get(),
+                             2);
+                DumpIfRequested(cbScaleYActual, "ps748_1080_cb_y.bin");
+                CompareWrittenTriangle(
+                    cbScaleYActual,
+                    ExtractL16(ReadBytes(
+                        networkRoot /
+                            "draw_00009_PS_748_4085ea73_"
+                            "rt0_1920x1080_f81.bin",
+                        size_t(1920) * 1080 * 8)),
+                    1920,
+                    1080,
+                    false,
+                    2,
+                    "PS_748 Y 1080");
+
+                ComPtr<ID3D11RenderTargetView> crScaleYView;
+                ComPtr<ID3D11ShaderResourceView> crScaleYShaderView;
+                auto crScaleYTexture =
+                    CreateL16Output(d3d->device,
+                                    1920,
+                                    1080,
+                                    crScaleYView,
+                                    crScaleYShaderView);
+                Require(ngu.RunNativeChromaScaleY(
+                            crScaleXShaderView.Get(),
+                            crScaleYView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto crScaleYActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             crScaleYTexture.Get(),
+                             2);
+                DumpIfRequested(crScaleYActual, "ps748_1080_cr_y.bin");
+                CompareWrittenTriangle(
+                    crScaleYActual,
+                    ExtractL16(ReadBytes(
+                        networkRoot /
+                            "draw_00042_PS_748_4085ea73_"
+                            "rt0_1920x1080_f81.bin",
+                        size_t(1920) * 1080 * 8)),
+                    1920,
+                    1080,
+                    false,
+                    2,
+                    "PS_748 Cr Y 1080");
+
+                ComPtr<ID3D11RenderTargetView> combine1View;
+                ComPtr<ID3D11ShaderResourceView> combine1ShaderView;
+                auto combine1Texture =
+                    CreateL16Output(d3d->device,
+                                    1920,
+                                    1080,
+                                    combine1View,
+                                    combine1ShaderView);
+                Require(ngu.PrepareNativeChromaCombines(d3d->gpu),
+                        ngu.LastError());
+                Require(ngu.RunNativeChromaCombine1(
+                            cbScaleYShaderView.Get(),
+                            schedulerShaderView.Get(),
+                            combine1View.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto combine1Actual =
+                    Download(d3d->device,
+                             context.Get(),
+                             combine1Texture.Get(),
+                             2);
+                DumpIfRequested(combine1Actual, "ps564_1080.bin");
+                CompareUnormOutput(
+                    combine1Actual,
+                    ExtractL16(ReadBytes(
+                        networkRoot /
+                            "draw_00040_PS_564_500335c8_"
+                            "rt0_1920x1080_f81.bin",
+                        size_t(1920) * 1080 * 8)),
+                    1,
+                    2,
+                    1920,
+                    "PS_564 1080");
+
+                ComPtr<ID3D11RenderTargetView> combine2View;
+                ComPtr<ID3D11ShaderResourceView> combine2ShaderView;
+                auto combine2Texture =
+                    CreateRg16Output(d3d->device,
+                                     1920,
+                                     1080,
+                                     combine2View,
+                                     combine2ShaderView);
+                Require(ngu.RunNativeChromaCombine2(
+                            crScaleYShaderView.Get(),
+                            combine1ShaderView.Get(),
+                            crSchedulerShaderView.Get(),
+                            combine2View.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto combine2Actual =
+                    Download(d3d->device,
+                             context.Get(),
+                             combine2Texture.Get(),
+                             4);
+                DumpIfRequested(combine2Actual, "ps644_1080.bin");
+                CompareUnormOutput(
+                    combine2Actual,
+                    ReadBytes(networkRoot /
+                                  "draw_00073_PS_644_512f7798_"
+                                  "rt0_1920x1080_f34.bin",
+                              size_t(1920) * 1080 * 4),
+                    2,
+                    2,
+                    1920,
+                    "PS_644 1080");
+
+                ComPtr<ID3D11RenderTargetView> realignView;
+                ComPtr<ID3D11ShaderResourceView> realignShaderView;
+                auto realignTexture =
+                    CreateRgbaUnormOutput(d3d->device,
+                                          1920,
+                                          1080,
+                                          realignView,
+                                          realignShaderView);
+                Require(ngu.PrepareNativeChromaRealign(d3d->gpu),
+                        ngu.LastError());
+                Require(ngu.RunNativeChromaRealign(
+                            combine2ShaderView.Get(), realignView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto realignActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             realignTexture.Get(),
+                             8);
+                DumpIfRequested(realignActual, "ps1516_1080.bin");
+                CompareUnormOutput(
+                    realignActual,
+                    ReadBytes(networkRoot /
+                                  "draw_00074_PS_1516_11f763dd_"
+                                  "rt0_1920x1080_f36.bin",
+                              size_t(1920) * 1080 * 8),
+                    4,
+                    2,
+                    1920,
+                    "PS_1516 1080");
+
+                const auto yExpanded =
+                    ReadBytes(networkRoot /
+                                  "input_00075_PS_396_e3199f71_s0.bin",
+                              size_t(1920) * 1080 * 8);
+                std::vector<uint8_t> yPlane(size_t(1920) * 1080);
+                for (size_t pixel = 0; pixel < yPlane.size(); ++pixel)
+                    yPlane[pixel] = yExpanded[pixel * 8];
+                ComPtr<ID3D11ShaderResourceView> yInputView;
+                auto yInputTexture =
+                    CreateR8Input(
+                        d3d->device, yPlane, 1920, 1080, yInputView);
+                ComPtr<ID3D11RenderTargetView> ycbcrView;
+                ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
+                auto ycbcrTexture =
+                    CreateRgbaUnormOutput(d3d->device,
+                                          1920,
+                                          1080,
+                                          ycbcrView,
+                                          ycbcrShaderView);
+                Require(ngu.PrepareNativeChromaYCbCr(d3d->gpu),
+                        ngu.LastError());
+                Require(ngu.RunNativeChromaYCbCr(yInputView.Get(),
+                                                 realignShaderView.Get(),
+                                                 ycbcrView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto ycbcrActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             ycbcrTexture.Get(),
+                             8);
+                DumpIfRequested(ycbcrActual, "ps396_1080.bin");
+                CompareUnormOutput(
+                    ycbcrActual,
+                    ReadBytes(networkRoot /
+                                  "draw_00075_PS_396_e3199f71_"
+                                  "rt0_1920x1080_f36.bin",
+                              size_t(1920) * 1080 * 8),
+                    4,
+                    3,
+                    1920,
+                    "PS_396 1080 chained");
+
+                ComPtr<ID3D11ShaderResourceView> diffuseSourceView;
+                auto diffuseSourceTexture =
+                    CreateBgra8Input(
+                        d3d->device,
+                        ReadBytes(networkRoot /
+                                      "input_00148_PS_284_e8e2a8eb_s0.bin",
+                                  size_t(960) * 540 * 4),
+                        960,
+                        540,
+                        diffuseSourceView);
+                ComPtr<ID3D11ShaderResourceView> mainOriginalView;
+                auto mainOriginalTexture =
+                    CreateRgbaUnormInput(
+                        d3d->device,
+                        ReadBytes(networkRoot /
+                                      "input_00149_PS_4412_c39b49cf_s0.bin",
+                                  size_t(1920) * 1080 * 8),
+                        1920,
+                        1080,
+                        mainOriginalView);
+                ComPtr<ID3D11ShaderResourceView> baseOriginalView;
+                auto baseOriginalTexture =
+                    CreateRgbaUnormInput(
+                        d3d->device,
+                        ReadBytes(networkRoot /
+                                      "input_00153_PS_4576_b7830945_s0.bin",
+                                  size_t(1920) * 1080 * 8),
+                        1920,
+                        1080,
+                        baseOriginalView);
+                Require(ngu.PrepareNativeSuperResStrength3_1080(d3d->gpu),
+                        ngu.LastError());
+                ComPtr<ID3D11RenderTargetView> superResView;
+                ComPtr<ID3D11ShaderResourceView> superResShaderView;
+                auto superResTexture =
+                    CreateRgbaUnormOutput(d3d->device,
+                                          1920,
+                                          1080,
+                                          superResView,
+                                          superResShaderView);
+                Require(ngu.RunNativeSuperResStrength3_1080(
+                            ycbcrShaderView.Get(),
+                            diffuseSourceView.Get(),
+                            mainOriginalView.Get(),
+                            baseOriginalView.Get(),
+                            superResView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto superResActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             superResTexture.Get(),
+                             8);
+                DumpIfRequested(superResActual, "ps4576_1080.bin");
+                CompareUnormOutput(
+                    superResActual,
+                    ReadBytes(networkRoot /
+                                  "draw_00153_PS_4576_b7830945_"
+                                  "rt0_1920x1080_f36.bin",
+                              size_t(1920) * 1080 * 8),
+                    4,
+                    8,
+                    1920,
+                    "PS_4576 1080 chained");
+            }
+
             if (!core1080)
             {
             const int realignDraw = networkDrawBase + 64;
@@ -1481,7 +1879,7 @@ int main(int argc, char** argv)
         }
 
         std::puts(core1080
-                      ? "PASS_PRODUCT native 1080p PS_1672...PS_2672 chroma"
+                      ? "PASS_PRODUCT native 1080p chroma through PS_4576"
                       : "PASS_PRODUCT native PS_260/PS_748/PS_1672...PS_2672 chroma");
         return 0;
     }
