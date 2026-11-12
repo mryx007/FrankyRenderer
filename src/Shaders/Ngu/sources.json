@@ -195,10 +195,16 @@
     "role": "class-3 YCbCr pack; point-sampled Y and linearly sampled CbCr"
   },
   "ngu_class3_scale_x.hlsl": {
-    "sha256": "9E543A96A933B92B6691FF0F79CBFF71B090CFE9EAF908824EE297C070F2C383",
-    "evidence": "OpenMadVR E-155/E-156",
+    "sha256": "F9C8F3870B77CFD49233EBB85D810BD3330ED72B1D5CD3836D91B4D2B09C2A33",
+    "evidence": "OpenMadVR E-155/E-156/E-157",
     "target_shader": "PS_520_4a9505a4",
-    "role": "class-3 X scale from 1280x720 to 640x720 with 4x640 table"
+    "role": "class-3 X scale; 720p uses 4x640 and 1080p uses 4x960 target tables"
+  },
+  "superres_1080_class3_down_x_table.bin": {
+    "sha256": "1CE57BED1632712DAF82FD3D1E64F5B14A3D1CE083D164EB8D693BCDDA77CFC6",
+    "evidence": "OpenMadVR E-157",
+    "target_shader": "PS_520_4a9505a4",
+    "role": "runtime-updated 4x960 class-3 1080p X scale table"
   },
   "ngu_chroma_scale_x_class3.hlsl": {
     "sha256": "202F6CE2AF0C3A28693A218DD94AD59D468425E14F68F09BC573B3DA9F73F22D",

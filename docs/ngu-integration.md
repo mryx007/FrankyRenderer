@@ -372,18 +372,15 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native 1080p chroma | one packed-UV call runs through native PS_4576 at `maximum=5`, no value above 8 | Production SuperRes originals, luma/playback |
-| Native 1080p plane entry | packed UV + Y executes chroma and luma to a complete nonblack 4K frame | Same-frame final oracle, decoder planes, playback |
-| Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, Backend/DirectShow |
-| `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
-| DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
+| Native 1080p chroma | P210/P216 class-3 core is channel-exact through `PS_4576` | Out-of-scope ratios and HDR |
+| Native 1080p plane entry | packed UV + Y reaches the same-frame `PS_1352` target | Out-of-scope ratios and HDR |
+| Native product entry | P210/P216 1080p combined is `maximum=1`, `diff_gt_1_pixels=0` | Broader performance and format matrix |
+| `ngu_sharp` peer | Generic resolver, RGB48/P010 and P210/P216 Backend gates pass | Upstream review and release packaging |
+| DirectShow | P210/P216 720p and 1080p pass pause/flush/restart with final max 1 | Broader player matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: reduce the 18 same-frame final pixels
-above one; the 1080p equivalent; P010 bridge integration into
-Backend/DirectShow; then full format/lifecycle/performance acceptance. No
-missing mapping may be replaced by a guessed fallback while those gates are
-open.
+The historical shortest path above is closed for the first VeryHigh slice by
+E-154 through E-157. No missing mapping may be replaced by a guessed fallback.
 
 ## First experimental VeryHigh gate (2026-11-12)
 
@@ -455,3 +452,29 @@ chroma VeryHigh and SuperRes strength 3, class-3 chroma reaches `PS_4576` at
 `PS_460`. The SuperXbr chain in E-154 is the chroma-only branch. Product
 admission therefore still waits on the exact class-3 `PS_4412/PS_4576`
 producer and the 1080p `PS_1152/PS_4280` topology.
+
+## First verified VeryHigh 1080p gate (2026-11-13)
+
+E-157 supersedes the earlier `PS_1152/PS_4280` 1080p statement. The observed
+P210/P216 VeryHigh class-3 1080p route is the same DAG at 2x geometry:
+`PS_260` through `PS_4576`, followed by `PS_460` and the existing 1080p
+NGU-luma path to `PS_1352`.
+
+The implementation now includes the parameterized class-3 1080p core,
+combined NGU-luma entry, Backend admission and DirectShow lifecycle:
+
+```text
+P210/P216 core stages 0,6,7,8,9,10,11: different=0 maximum=0
+P210 combined PS_1352: maximum=1 diff_gt_1_pixels=0
+P216 combined PS_1352: maximum=1 diff_gt_1_pixels=0
+Backend P210-1080: maximum=1 diff_gt_1_pixels=0
+Backend P216-1080: maximum=1 diff_gt_1_pixels=0
+DirectShow P210/P216 1080p: pause, flush, restart PASS
+```
+
+The Backend timing includes plane upload, the native graph and CPU readback:
+20.233 ms/frame for P210 and 19.148 ms/frame for P216. This is not presented as
+a GPU-only shader timing claim.
+
+Low/Medium/High remain experimental. Only the target-observed VeryHigh graphs
+are admitted; unsupported paths continue to fail closed.

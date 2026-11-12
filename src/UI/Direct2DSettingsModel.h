@@ -32,7 +32,7 @@ inline constexpr D2DScalerPreset D2DScalerPresets[] = {
     {"lanczos", L"Lanczos reconstruction", 3},
     {"ewa_lanczos", L"EWA Lanczos (Jinc) reconstruction (slow)", 1},
     {"ewa_lanczossharp", L"Sharpened version of ewa_lanczos (slow)", 1},
-    {"ngu_sharp", L"Native NGU Sharp (experimental; 720p RGB input)", 1},
+    {"ngu_sharp", L"Native NGU Sharp (experimental; VeryHigh 720p/1080p)", 1},
     {"ewa_lanczos4sharpest", L"Very sharp version of ewa_lanczos, with anti-ringing (very slow)", 1},
     {"box", L"Box averaging (very fast)", 2},
     {"hermite", L"Hermite-weighted averaging (fast)", 2},

@@ -1390,7 +1390,7 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
     }
-    if (nguTest && (!hardware) &&
+    if (nguTest && !hardware && !explicitP210 && !explicitP216 &&
         (nguSourceWidth != 1280 || nguSourceHeight != 720))
     {
         puts("FAIL --ngu-1080 is a P010 GPU smoke; use --gpu");

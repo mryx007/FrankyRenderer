@@ -630,9 +630,11 @@ struct PlaceboBackend::State
             }
         }
         const bool prepared = class3Plane
-            ? nguCpuPlanes && sourceWidth == 1280 &&
-                  sourceHeight == 720 &&
-                  ngu.PrepareNativeNguClass3_720(d3d->gpu)
+            ? nguCpuPlanes &&
+                  ((sourceWidth == 1280 && sourceHeight == 720 &&
+                    ngu.PrepareNativeNguClass3_720(d3d->gpu)) ||
+                   (sourceWidth == 1920 && sourceHeight == 1080 &&
+                    ngu.PrepareNativeNguClass3_1080(d3d->gpu)))
             : decoderPlane
             ? ngu.PrepareNativeDecoderSource(d3d->gpu) &&
                   (sourceWidth == 1280 && sourceHeight == 720
@@ -713,13 +715,14 @@ struct PlaceboBackend::State
             error = "ngu_sharp decoder texture format is unsupported";
             return false;
         }
+        const bool supportedClass3Geometry =
+            (description.width == 1280 && description.height == 720) ||
+            (description.width == 1920 && description.height == 1080);
         if (class3Plane &&
-            (!nguCpuPlanes || description.width != 1280 ||
-             description.height != 720))
+            (!nguCpuPlanes || !supportedClass3Geometry))
         {
-            error = class3Plane && description.width == 1920
-                        ? "P210/P216 1080p class-3 is not yet implemented"
-                        : "P210/P216 requires uploadable CPU planes";
+            error = "P210/P216 requires uploadable CPU planes at "
+                    "1280x720 or 1920x1080";
             return false;
         }
         if (!PrepareNgu(description.width, description.height))
@@ -727,10 +730,16 @@ struct PlaceboBackend::State
         if (class3Plane)
         {
             TraceNgu("P210/P216: begin exact class-3 path");
-            const bool ran = ngu.RunNativeNguClass3_720(
-                nguCpuPlaneUvView.Get(),
-                nguCpuPlaneYView.Get(),
-                nguOutputView.Get());
+            const bool ran =
+                description.width == 1280
+                    ? ngu.RunNativeNguClass3_720(
+                          nguCpuPlaneUvView.Get(),
+                          nguCpuPlaneYView.Get(),
+                          nguOutputView.Get())
+                    : ngu.RunNativeNguClass3_1080(
+                          nguCpuPlaneUvView.Get(),
+                          nguCpuPlaneYView.Get(),
+                          nguOutputView.Get());
             TraceNgu("P210/P216: exact class-3 path complete");
             if (!ran)
             {

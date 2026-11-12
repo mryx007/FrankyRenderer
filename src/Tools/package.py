@@ -119,6 +119,7 @@ def main(out=OUT, source=SOURCE):
         "Ngu/ngu_chroma_scale_x_class3.cso",
         "Ngu/ngu_class3_scale_x.cso",
         "Ngu/ngu_class3_scale_y.cso",
+        "Ngu/superres_1080_class3_down_x_table.bin",
         "Ngu/luma_4x720_upsample.cso",
         "Ngu/superres_asm_main.cso",
     )

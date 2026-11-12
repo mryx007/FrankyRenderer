@@ -2,7 +2,7 @@
 Texture2D<float4> SourceTex : register(t0);
 Texture2D<float2> ScaleTex : register(t1);
 SamplerState PointSampler : register(s0);
-cbuffer Params : register(b0) { float4 U[1]; };
+cbuffer Params : register(b0) { float4 U[2]; };
 
 struct VSOut { float4 position : SV_Position; };
 
@@ -33,7 +33,7 @@ VSOut VSMain(uint vertex : SV_VertexID)
 
 float4 PSMain(VSOut input) : SV_Target0
 {
-    const float2 uv = input.position.xy / float2(640.0, 720.0);
+    const float2 uv = input.position.xy / U[1].xy;
     float3 result = 0.0;
     float tap = U[0].z;
     [loop]

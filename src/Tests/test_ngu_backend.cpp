@@ -4,6 +4,7 @@
 #include <libplacebo/colorspace.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -87,10 +88,12 @@ int main(int argc, char** argv)
 {
     try
     {
-        Require(argc == 2 || argc == 10,
+        Require(argc == 2 || argc == 10 || argc == 14,
                 "usage: test_ngu_backend <capture-root> "
                 "[p210-raw p210-capture p216-raw p216-capture "
-                "p210-raw2 p210-capture2 p216-raw2 p216-capture2]");
+                "p210-raw2 p210-capture2 p216-raw2 p216-capture2 "
+                "p210-1080-raw p210-1080-capture "
+                "p216-1080-raw p216-1080-capture]");
         Require(ResolveNativeScaler("ngu_sharp") == NativeScalerKind::NguSharp,
                 "native scaler resolver NGU");
         Require(ResolveNativeScaler("ewa_lanczos") == NativeScalerKind::None,
@@ -292,7 +295,7 @@ int main(int argc, char** argv)
         Require(p010Pixels[0] || p010Pixels[1] || p010Pixels[2],
                 "NGU P010 output is not black");
 
-        if (argc == 10)
+        if (argc == 10 || argc == 14)
         {
             const struct
             {
@@ -306,18 +309,27 @@ int main(int argc, char** argv)
                 {"P210-second", PixelFormat::P210, argv[6], argv[7]},
                 {"P216-second", PixelFormat::P216, argv[8], argv[9]},
             };
-            for (const auto& test : class3Cases)
+            auto runClass3 = [&](const char* label,
+                                 PixelFormat format,
+                                 const char* rawPath,
+                                 const char* capture,
+                                 int width,
+                                 int height,
+                                 bool benchmark = false)
             {
                 VideoFrame class3;
-                class3.width = 1280;
-                class3.height = 720;
-                class3.stride = 1280 * 2;
-                class3.format = test.format;
+                class3.width = width;
+                class3.height = height;
+                class3.stride = width * 2;
+                class3.format = format;
                 class3.matrix = PL_COLOR_SYSTEM_BT_709;
                 class3.levels = PL_COLOR_LEVELS_LIMITED;
                 class3.color = pl_color_space_bt709;
+                const size_t packedBytes =
+                    size_t(width) * height * 2 +
+                    size_t(width / 2) * height * 4;
                 const auto class3Bytes =
-                    ReadBytes(test.raw, size_t(1280) * 720 * 4);
+                    ReadBytes(rawPath, packedBytes);
                 Require(SUCCEEDED(backend.Upload(
                             class3,
                             class3Bytes.data(),
@@ -328,10 +340,10 @@ int main(int argc, char** argv)
                     backend.RenderOffscreen(3840, 2160, class3Pixels);
                 if (FAILED(class3Render))
                     throw std::runtime_error(
-                        std::string(test.label) +
+                        std::string(label) +
                         " backend render: " + backend.LastError());
                 const auto expectedClass3 = ReadBytes(
-                    FindFinalCapture(test.capture),
+                    FindFinalCapture(capture),
                     size_t(3840) * 2160 * 4);
                 int class3Maximum = 0;
                 int class3OverOne = 0;
@@ -343,12 +355,59 @@ int main(int argc, char** argv)
                 std::printf(
                     "NGU backend %s different=%d maximum=%d "
                     "diff_gt_1_pixels=%d\n",
-                    test.label,
+                    label,
                     class3Different,
                     class3Maximum,
                     class3OverOne);
                 Require(class3Maximum <= 1 && class3OverOne == 0,
                         "class-3 backend acceptance");
+                if (benchmark)
+                {
+                    const auto start = std::chrono::steady_clock::now();
+                    constexpr int benchmarkRuns = 3;
+                    for (int run = 0; run < benchmarkRuns; ++run)
+                    {
+                        std::vector<uint8_t> timedPixels;
+                        Require(SUCCEEDED(backend.RenderOffscreen(
+                                    3840, 2160, timedPixels)),
+                                "class-3 benchmark render");
+                    }
+                    const double elapsedMs =
+                        std::chrono::duration<double, std::milli>(
+                            std::chrono::steady_clock::now() - start)
+                            .count();
+                    std::printf(
+                        "NGU backend %s warm_avg_ms=%.3f runs=%d\n",
+                        label,
+                        elapsedMs / benchmarkRuns,
+                        benchmarkRuns);
+                }
+            };
+            for (const auto& test : class3Cases)
+            {
+                runClass3(test.label,
+                          test.format,
+                          test.raw,
+                          test.capture,
+                          1280,
+                          720);
+            }
+            if (argc == 14)
+            {
+                runClass3("P210-1080",
+                          PixelFormat::P210,
+                          argv[10],
+                          argv[11],
+                          1920,
+                          1080,
+                          true);
+                runClass3("P216-1080",
+                          PixelFormat::P216,
+                          argv[12],
+                          argv[13],
+                          1920,
+                          1080,
+                          true);
             }
         }
 

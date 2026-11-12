@@ -52,6 +52,8 @@ enum class NguScalerStage
     VeryHighClass3ChromaTail720,
     VeryHighChromaCoreClass3_720,
     VeryHighNguClass3_720,
+    VeryHighChromaCoreClass3_1080,
+    VeryHighNguClass3_1080,
 };
 
 enum class NguScalerSupport
@@ -351,11 +353,24 @@ class NguScaler
         ID3D11ShaderResourceView* packedUv,
         ID3D11ShaderResourceView* yInput,
         ID3D11RenderTargetView* ps4576Output);
+    bool PrepareNativeChromaCoreClass3_1080(pl_gpu gpu);
+    bool RunNativeChromaCoreClass3_1080(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* ps4576Output);
     bool CopyNativeChromaCoreClass3Stage720(
+        int stage,
+        ID3D11RenderTargetView* output);
+    bool CopyNativeChromaCoreClass3Stage1080(
         int stage,
         ID3D11RenderTargetView* output);
     bool PrepareNativeNguClass3_720(pl_gpu gpu);
     bool RunNativeNguClass3_720(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* finalOutput);
+    bool PrepareNativeNguClass3_1080(pl_gpu gpu);
+    bool RunNativeNguClass3_1080(
         ID3D11ShaderResourceView* packedUv,
         ID3D11ShaderResourceView* yInput,
         ID3D11RenderTargetView* finalOutput);
@@ -394,6 +409,19 @@ class NguScaler
     struct NativeLuma4x720Tail;
     struct NativeClass3ChromaTail720;
     struct NativeChromaCoreClass3_720;
+    bool PrepareNativeChromaCoreClass3(
+        pl_gpu gpu,
+        int chromaWidth,
+        int chromaHeight,
+        std::unique_ptr<NativeChromaCoreClass3_720>& state,
+        const char* geometry);
+    bool RunNativeChromaCoreClass3(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* ps4576Output,
+        int chromaWidth,
+        int chromaHeight,
+        NativeChromaCoreClass3_720& state);
     bool PrepareNativeChromaVeryHigh(
         pl_gpu gpu,
         int width,
@@ -442,6 +470,10 @@ class NguScaler
         ID3D11ShaderResourceView* original,
         ID3D11ShaderResourceView* downsample,
         ID3D11RenderTargetView* output);
+    bool RunNativeSuperResDiffClass3_1080(
+        ID3D11ShaderResourceView* original,
+        ID3D11ShaderResourceView* downsample,
+        ID3D11RenderTargetView* output);
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -457,6 +489,7 @@ class NguScaler
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh720_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh1080_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHighClass3_720_;
+    std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHighClass3_1080_;
     std::unique_ptr<NativeChromaCombines> nativeChromaCombines_;
     std::unique_ptr<NativeChromaRealign> nativeChromaRealign_;
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
@@ -479,5 +512,7 @@ class NguScaler
     std::unique_ptr<NativeLuma4x720Tail> nativeLuma4x720Tail_;
     std::unique_ptr<NativeClass3ChromaTail720> nativeClass3ChromaTail720_;
     std::unique_ptr<NativeChromaCoreClass3_720> nativeChromaCoreClass3_720_;
+    std::unique_ptr<NativeChromaCoreClass3_720> nativeChromaCoreClass3_1080_;
     std::unique_ptr<NativeNguFromPlanesResources> nativeNguClass3_720_;
+    std::unique_ptr<NativeNguFromPlanesResources> nativeNguClass3_1080_;
 };
