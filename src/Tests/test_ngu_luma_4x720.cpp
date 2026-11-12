@@ -62,7 +62,8 @@ ComPtr<ID3D11Texture2D> CreateTexture(ID3D11Device* device,
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
     desc.BindFlags = bind;
-    const UINT pixelBytes = format == DXGI_FORMAT_R16_UNORM ? 2
+    const UINT pixelBytes = format == DXGI_FORMAT_R8_UNORM ? 1
+                           : format == DXGI_FORMAT_R16_UNORM ? 2
                            : format == DXGI_FORMAT_R16G16_UNORM ? 4
                            : format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
                                                                : 8;
@@ -92,7 +93,8 @@ std::vector<uint8_t> Download(ID3D11Device* device,
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     Require(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)),
             "map staging texture");
-    const UINT pixelBytes = desc.Format == DXGI_FORMAT_R16_UNORM ? 2
+    const UINT pixelBytes = desc.Format == DXGI_FORMAT_R8_UNORM ? 1
+                           : desc.Format == DXGI_FORMAT_R16_UNORM ? 2
                            : desc.Format == DXGI_FORMAT_R16G16_UNORM ? 4
                            : desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? 4
                                                                : 8;
@@ -173,6 +175,8 @@ int main(int argc, char** argv)
         Require(argc == 3, "usage: test_ngu_luma_4x720 <capture-root> <actual-prefix>");
         const std::filesystem::path root(argv[1]);
         const std::wstring actualPrefix = std::filesystem::path(argv[2]).wstring();
+        const bool enforceCombinedFinalGate =
+            std::getenv("NGU_COMBINED_FINAL_GATE") != nullptr;
 
         auto d3dParams = pl_d3d11_default_params;
         auto d3d = pl_d3d11_create(nullptr, &d3dParams);
@@ -1049,6 +1053,154 @@ int main(int argc, char** argv)
             WriteBytes(actualPrefix + L"tail_chroma_y_probe.bin", chromaYActual);
             WriteBytes(actualPrefix + L"tail_merge_probe.bin", mergeActual);
         }
+        const auto packedUvBytes =
+            ReadBytes(root / "input_00141_PS_260_cdfc6b55_s0.bin",
+                      size_t(640) * 360 * 4);
+        auto packedUv = CreateTexture(device,
+                                      640,
+                                      360,
+                                      DXGI_FORMAT_B8G8R8A8_UNORM,
+                                      D3D11_BIND_SHADER_RESOURCE,
+                                      packedUvBytes.data());
+        ComPtr<ID3D11ShaderResourceView> packedUvView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    packedUv.Get(), nullptr, &packedUvView)),
+                "combined packed UV SRV");
+
+        const auto yExpanded =
+            ReadBytes(root / "input_00209_PS_396_e3199f71_s0.bin",
+                      size_t(1280) * 720 * 8);
+        std::vector<uint8_t> yPlane(size_t(1280) * 720);
+        for (size_t pixel = 0; pixel < yPlane.size(); ++pixel)
+            yPlane[pixel] = yExpanded[pixel * 8];
+        auto yTexture = CreateTexture(device,
+                                      1280,
+                                      720,
+                                      DXGI_FORMAT_R8_UNORM,
+                                      D3D11_BIND_SHADER_RESOURCE,
+                                      yPlane.data());
+        ComPtr<ID3D11ShaderResourceView> yView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    yTexture.Get(), nullptr, &yView)),
+                "combined Y SRV");
+
+        const auto combinedDiffBytes =
+            ReadBytes(root / "input_00212_PS_284_e8e2a8eb_s0.bin",
+                      size_t(640) * 360 * 4);
+        auto combinedDiff = CreateTexture(device,
+                                          640,
+                                          360,
+                                          DXGI_FORMAT_B8G8R8A8_UNORM,
+                                          D3D11_BIND_SHADER_RESOURCE,
+                                          combinedDiffBytes.data());
+        ComPtr<ID3D11ShaderResourceView> combinedDiffView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combinedDiff.Get(), nullptr, &combinedDiffView)),
+                "combined diff SRV");
+
+        const auto combinedMainBytes =
+            ReadBytes(root / "input_00213_PS_4412_c39b49cf_s0.bin",
+                      size_t(1280) * 720 * 8);
+        auto combinedMain = CreateTexture(device,
+                                          1280,
+                                          720,
+                                          DXGI_FORMAT_R16G16B16A16_UNORM,
+                                          D3D11_BIND_SHADER_RESOURCE,
+                                          combinedMainBytes.data());
+        ComPtr<ID3D11ShaderResourceView> combinedMainView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combinedMain.Get(), nullptr, &combinedMainView)),
+                "combined main SRV");
+
+        const auto combinedBaseBytes =
+            ReadBytes(root / "input_00217_PS_4576_b7830945_s0.bin",
+                      size_t(1280) * 720 * 8);
+        auto combinedBase = CreateTexture(device,
+                                          1280,
+                                          720,
+                                          DXGI_FORMAT_R16G16B16A16_UNORM,
+                                          D3D11_BIND_SHADER_RESOURCE,
+                                          combinedBaseBytes.data());
+        ComPtr<ID3D11ShaderResourceView> combinedBaseView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combinedBase.Get(), nullptr, &combinedBaseView)),
+                "combined base SRV");
+
+        Require(ngu.PrepareNativeChromaVeryHigh720Full(d3d->gpu),
+                ngu.LastError());
+        auto combinedChroma =
+            CreateTexture(device,
+                          1280,
+                          720,
+                          DXGI_FORMAT_R16G16B16A16_UNORM,
+                          D3D11_BIND_RENDER_TARGET |
+                              D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> combinedChromaView;
+        ComPtr<ID3D11ShaderResourceView> combinedChromaShaderView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    combinedChroma.Get(), nullptr, &combinedChromaView)),
+                "combined chroma RTV");
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combinedChroma.Get(), nullptr, &combinedChromaShaderView)),
+                "combined chroma SRV");
+        Require(ngu.RunNativeChromaVeryHigh720Full(
+                    packedUvView.Get(),
+                    yView.Get(),
+                    combinedDiffView.Get(),
+                    combinedMainView.Get(),
+                    combinedBaseView.Get(),
+                    combinedChromaView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        const auto combinedChromaActual =
+            Download(device, context.Get(), combinedChroma.Get());
+        int combinedChromaMaximum = 0;
+        const int combinedChromaDifferent = CountWords(
+            combinedChromaActual,
+            ReadBytes(root / "draw_00217_PS_4576_b7830945_rt0_1280x720_f36.bin",
+                      size_t(1280) * 720 * 8),
+            combinedChromaMaximum);
+        std::printf("CombinedChroma different=%d maximum=%d\n",
+                    combinedChromaDifferent,
+                    combinedChromaMaximum);
+        Require(ngu.PrepareNativeLuma4x720Full(d3d->gpu),
+                ngu.LastError());
+        auto combinedFinal =
+            CreateTexture(device,
+                          3840,
+                          2160,
+                          DXGI_FORMAT_B8G8R8A8_UNORM,
+                          D3D11_BIND_RENDER_TARGET |
+                              D3D11_BIND_SHADER_RESOURCE);
+        ComPtr<ID3D11RenderTargetView> combinedFinalView;
+        Require(SUCCEEDED(device->CreateRenderTargetView(
+                    combinedFinal.Get(), nullptr, &combinedFinalView)),
+                "combined final RTV");
+        Require(ngu.RunNativeLuma4x720Full(
+                    combinedChromaShaderView.Get(),
+                    1280,
+                    720,
+                    combinedFinalView.Get()),
+                ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        auto combinedFinalActual =
+            Download(device, context.Get(), combinedFinal.Get());
+        int combinedFinalMaximum = 0;
+        int combinedFinalOverOne = 0;
+        const int combinedFinalDifferent = CountPixelDifferences(
+            combinedFinalActual,
+            ReadBytes(root / "draw_00266_PS_1352_6992f6f0_rt0_3840x2160_f21.bin",
+                      size_t(3840) * 2160 * 4),
+            combinedFinalMaximum,
+            combinedFinalOverOne);
+        const bool combinedFullPass =
+            combinedFinalMaximum <= 1 && combinedFinalOverOne == 0;
+        std::printf(
+            "CombinedFull different=%d maximum=%d diff_gt_1_pixels=%d %s\n",
+            combinedFinalDifferent,
+            combinedFinalMaximum,
+            combinedFinalOverOne,
+            combinedFullPass ? "PASS" : "PENDING");
         const bool pass = splitDifferent == 0 && splitMaximum == 0 &&
                           splitCbCrDifferent == 0 && splitCbCrMaximum == 0 &&
                           scaleXDifferent == 0 && scaleXMaximum == 0 &&
@@ -1062,7 +1214,8 @@ int main(int argc, char** argv)
                           chromaXDifferent == 0 && chromaXMaximum == 0 &&
                           chromaYDifferent == 0 && chromaYMaximum == 0 &&
                           mergeDifferent == 0 && mergeMaximum == 0 &&
-                          fullFinalPass && superResFullPass;
+                          fullFinalPass && superResFullPass &&
+                          (!enforceCombinedFinalGate || combinedFullPass);
         std::printf("%s native NGU 720p VeryHigh 4x luma tail prefix\n",
                     pass ? "PASS_PRODUCT" : "FAIL_PRODUCT");
 
