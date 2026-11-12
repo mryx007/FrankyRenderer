@@ -425,3 +425,9 @@ On the P016 fixture, the presentation fix reduces the final residual from
 `maximum=114` over 1,437,693 pixels to `maximum=11` over seven pixels.
 PS_4620 layer 8 remains the first above-tolerance arithmetic boundary, so P016
 is still experimental.
+
+The 720p FinalStep residual is also closed at the dither-surface boundary.
+Replaying the captured target stage-5 texture with the byte-identical pre-final
+input passes at `maximum=1`. Independent product/target clock seeds still vary
+at two pixels; that variance is reported separately rather than treated as NGU
+arithmetic failure.

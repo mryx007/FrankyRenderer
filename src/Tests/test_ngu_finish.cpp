@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -221,6 +222,83 @@ int main(int argc, char** argv)
 
         const bool prepared = ngu.PrepareNativeLumaFinish(d3d->gpu);
         Require(prepared, ngu.LastError());
+
+        if (const char* surfaceInput = std::getenv("NGU_FINAL_SURFACE_INPUT"))
+        {
+            Require(ngu.PrepareNativeLumaFinal(d3d->gpu),
+                    ngu.LastError());
+            const char* surfaceDither =
+                std::getenv("NGU_FINAL_SURFACE_DITHER");
+            const char* surfaceExpected =
+                std::getenv("NGU_FINAL_SURFACE_EXPECTED");
+            Require(surfaceDither && surfaceExpected,
+                    "external FinalStep paths");
+            std::printf("ExternalFinal input=%s\n", surfaceInput);
+            std::printf("ExternalFinal dither=%s\n", surfaceDither);
+            std::printf("ExternalFinal expected=%s\n", surfaceExpected);
+            const auto finalInputBytes =
+                ReadBytes(surfaceInput, size_t(3840) * 2160 * 8);
+            const auto ditherBytes =
+                ReadBytes(surfaceDither, size_t(3840) * 2160 * 4);
+            const auto expectedFinal =
+                ReadBytes(surfaceExpected, size_t(3840) * 2160 * 4);
+            std::puts("ExternalFinal surfaces loaded");
+            auto finalInput = CreateTexture(
+                device,
+                3840,
+                2160,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                finalInputBytes.data());
+            auto ditherTexture = CreateTexture(
+                device,
+                3840,
+                2160,
+                DXGI_FORMAT_B8G8R8A8_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                ditherBytes.data());
+            auto finalOutput = CreateTexture(
+                device,
+                3840,
+                2160,
+                DXGI_FORMAT_B8G8R8A8_UNORM,
+                D3D11_BIND_RENDER_TARGET,
+                nullptr);
+            ComPtr<ID3D11ShaderResourceView> finalInputView;
+            ComPtr<ID3D11ShaderResourceView> ditherView;
+            ComPtr<ID3D11RenderTargetView> finalOutputView;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        finalInput.Get(), nullptr, &finalInputView)),
+                    "external FinalStep input SRV");
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        ditherTexture.Get(), nullptr, &ditherView)),
+                    "external FinalStep dither SRV");
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        finalOutput.Get(), nullptr, &finalOutputView)),
+                    "external FinalStep output RTV");
+            Require(ngu.RunNativeLumaFinal(finalInputView.Get(),
+                                           ditherView.Get(),
+                                           finalOutputView.Get()),
+                    ngu.LastError());
+            std::puts("ExternalFinal shader completed");
+            pl_gpu_finish(d3d->gpu);
+            const auto actualFinal =
+                Download(device, context.Get(), finalOutput.Get());
+            int finalMaximum = 0, finalOverOne = 0;
+            const int finalDifferent = CountPixelDifferences(
+                actualFinal,
+                expectedFinal,
+                finalMaximum,
+                finalOverOne);
+            std::printf(
+                "ExternalFinal different=%d maximum=%d "
+                "diff_gt_1_pixels=%d\n",
+                finalDifferent,
+                finalMaximum,
+                finalOverOne);
+            Require(finalMaximum <= 1 && finalOverOne == 0,
+                    "external FinalStep surface gate");
+        }
 
         const auto xInputBytes =
             ReadBytes(root / "input_31724_PS_1284_386cc8d7_s0.bin", size_t(1920) * 1080 * 4);
