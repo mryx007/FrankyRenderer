@@ -2516,7 +2516,8 @@ bool NguScaler::RunNativeChromaYCbCr(
 {
     const bool is720 =
         yInput && cbcrInput && output &&
-        ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) &&
+        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) &&
         ViewMatchesTexture(output,
                            DXGI_FORMAT_R16G16B16A16_UNORM,
                            1280,
@@ -2531,7 +2532,8 @@ bool NguScaler::RunNativeChromaYCbCr(
                             720));
     const bool is1080 =
         yInput && cbcrInput && output &&
-        ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) &&
+        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) ||
+         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1920, 1080)) &&
         ViewMatchesTexture(output,
                            DXGI_FORMAT_R16G16B16A16_UNORM,
                            1920,
@@ -2738,15 +2740,22 @@ bool NguScaler::RunNativeChromaFull(
         !packedUv || !yInput || !diffOriginal || !mainOriginal ||
         !baseOriginal || !output ||
         (!packedUvIsRgba16 && !packedUvIsBgra8) ||
-        !ViewMatchesTexture(yInput,
-                            DXGI_FORMAT_R8_UNORM,
-                            outputWidth,
-                            outputHeight) ||
-        !ViewMatchesTexture(
-            diffOriginal,
-            DXGI_FORMAT_B8G8R8A8_UNORM,
-            UINT(width),
-            UINT(height)) ||
+        (!ViewMatchesTexture(yInput,
+                             DXGI_FORMAT_R8_UNORM,
+                             outputWidth,
+                             outputHeight) &&
+         !ViewMatchesTexture(yInput,
+                             DXGI_FORMAT_R16_UNORM,
+                             outputWidth,
+                             outputHeight)) ||
+        (!ViewMatchesTexture(diffOriginal,
+                             DXGI_FORMAT_B8G8R8A8_UNORM,
+                             UINT(width),
+                             UINT(height)) &&
+         !ViewMatchesTexture(diffOriginal,
+                             DXGI_FORMAT_R16G16B16A16_UNORM,
+                             UINT(width),
+                             UINT(height))) ||
         (!mainIsRgba16 && !mainIsR8) ||
         (!baseIsRgba16 && !baseIsR8) ||
         !ViewMatchesTexture(output,
@@ -2991,8 +3000,10 @@ bool NguScaler::RunNativeNguFromPlanes(
 {
     if (state.width != UINT(width) || state.height != UINT(height) ||
         !packedUv || !yInput || !finalOutput ||
-        !ViewMatchesTexture(
-            yInput, DXGI_FORMAT_R8_UNORM, UINT(width), UINT(height)) ||
+        (!ViewMatchesTexture(
+             yInput, DXGI_FORMAT_R8_UNORM, UINT(width), UINT(height)) &&
+         !ViewMatchesTexture(
+             yInput, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height))) ||
         !ViewMatchesTexture(
             finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
     {
@@ -5185,6 +5196,14 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
     const bool baseIsR8 =
         baseOriginal &&
         ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+    const bool diffIsBgra8 =
+        diffOriginal &&
+        ViewMatchesTexture(
+            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
+    const bool diffIsRgba16 =
+        diffOriginal &&
+        ViewMatchesTexture(
+            diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 640, 360);
     if (!nativeSuperRes_ || !nativeSuperResStrength3_ || !source || !diffOriginal ||
         !mainOriginal || !baseOriginal || !output)
     {
@@ -5194,7 +5213,7 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
     if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
         (!mainIsRgba16 && !mainIsR8) ||
         (!baseIsRgba16 && !baseIsR8) ||
-        !ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
+        (!diffIsBgra8 && !diffIsRgba16) ||
         !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
     {
         error_ = "NGU SuperChromaRes strength-3 scheduler input format or geometry is unsupported";
@@ -5420,6 +5439,14 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
                                                 ID3D11ShaderResourceView* baseOriginal,
                                                 ID3D11RenderTargetView* output)
 {
+    const bool diffIsBgra8 =
+        diffOriginal &&
+        ViewMatchesTexture(
+            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 960, 540);
+    const bool diffIsRgba16 =
+        diffOriginal &&
+        ViewMatchesTexture(
+            diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 960, 540);
     if (!nativeSuperRes_ || !nativeSuperResStrength3_1080_ || !source || !diffOriginal ||
         !mainOriginal || !baseOriginal || !output)
     {
@@ -5429,7 +5456,7 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
     if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
         !ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
         !ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
-        !ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 960, 540) ||
+        (!diffIsBgra8 && !diffIsRgba16) ||
         !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080))
     {
         error_ = "NGU 1080p SuperChromaRes strength-3 scheduler input format or geometry is unsupported";

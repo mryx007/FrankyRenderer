@@ -2,6 +2,7 @@
 #include "Renderer/Backend.h"
 #include "Renderer/RenderOptions.h"
 #include <libplacebo/colorspace.h>
+#include <wrl/client.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +12,8 @@
 #include <iterator>
 #include <stdexcept>
 #include <vector>
+
+using Microsoft::WRL::ComPtr;
 
 namespace
 {
@@ -187,7 +190,67 @@ int main(int argc, char** argv)
         Require(maximum1080 <= 1 && overOne1080 == 0,
                 "NGU 1080 RGB acceptance");
 
-        std::printf("PASS_PRODUCT ngu_sharp backend RGB48 -> 4K\n");
+        VideoFrame p010;
+        p010.width = 1280;
+        p010.height = 720;
+        p010.stride = 1280 * 2;
+        p010.format = PixelFormat::P010;
+        p010.matrix = PL_COLOR_SYSTEM_BT_709;
+        p010.levels = PL_COLOR_LEVELS_LIMITED;
+        p010.color = pl_color_space_bt709;
+        const size_t yBytes = size_t(1280) * 720 * 2;
+        const size_t uvBytes = size_t(640) * 360 * 4;
+        std::vector<uint8_t> p010Bytes(yBytes + uvBytes);
+        for (int y = 0; y < 720; ++y)
+            for (int x = 0; x < 1280; ++x)
+            {
+                const uint16_t value =
+                    uint16_t((16 + (x * 219) / 1279) << 6);
+                const size_t offset = (size_t(y) * 1280 + x) * 2;
+                p010Bytes[offset] = uint8_t(value);
+                p010Bytes[offset + 1] = uint8_t(value >> 8);
+            }
+        for (size_t i = 0; i < uvBytes; i += 4)
+        {
+            const uint16_t neutral = 128 << 6;
+            std::memcpy(p010Bytes.data() + yBytes + i,
+                        &neutral,
+                        sizeof(neutral));
+            std::memcpy(p010Bytes.data() + yBytes + i + 2,
+                        &neutral,
+                        sizeof(neutral));
+        }
+        D3D11_TEXTURE2D_DESC p010Desc = {};
+        p010Desc.Width = 1280;
+        p010Desc.Height = 720;
+        p010Desc.MipLevels = 1;
+        p010Desc.ArraySize = 1;
+        p010Desc.Format = DXGI_FORMAT_P010;
+        p010Desc.SampleDesc.Count = 1;
+        p010Desc.Usage = D3D11_USAGE_DEFAULT;
+        p010Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA p010Data = {};
+        p010Data.pSysMem = p010Bytes.data();
+        p010Data.SysMemPitch = 1280 * 2;
+        ComPtr<ID3D11Texture2D> p010Texture;
+        Require(SUCCEEDED(backend.Device()->CreateTexture2D(
+                    &p010Desc, &p010Data, &p010Texture)),
+                "create P010 decoder texture");
+        Require(SUCCEEDED(backend.Import(p010, p010Texture.Get(), 0)),
+                "NGU P010 import");
+        std::vector<uint8_t> p010Pixels;
+        const HRESULT p010Render =
+            backend.RenderOffscreen(3840, 2160, p010Pixels);
+        if (FAILED(p010Render))
+            throw std::runtime_error(
+                "NGU P010 backend render: " + backend.LastError());
+        Require(p010Pixels.size() == size_t(3840) * 2160 * 4,
+                "NGU P010 output size");
+        Require(p010Pixels[0] || p010Pixels[1] || p010Pixels[2],
+                "NGU P010 output is not black");
+
+        std::printf(
+            "PASS_PRODUCT ngu_sharp backend RGB48 + P010 -> 4K\n");
         return 0;
     }
     catch (const std::exception& error)

@@ -88,6 +88,12 @@ struct PlaceboBackend::State
     ComPtr<ID3D11Texture2D> nguOutput;
     ComPtr<ID3D11RenderTargetView> nguOutputView;
     ComPtr<ID3D11ShaderResourceView> nguSourceView;
+    ComPtr<ID3D11Texture2D> nguPlaneYTexture;
+    ComPtr<ID3D11Texture2D> nguPlaneUvTexture;
+    ComPtr<ID3D11RenderTargetView> nguPlaneYView;
+    ComPtr<ID3D11RenderTargetView> nguPlaneUvView;
+    ComPtr<ID3D11ShaderResourceView> nguPlaneYShaderView;
+    ComPtr<ID3D11ShaderResourceView> nguPlaneUvShaderView;
     pl_tex nguOutputPlane = nullptr;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
@@ -459,8 +465,71 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        const bool prepared =
-            sourceWidth == 1280 && sourceHeight == 720
+        const bool nativePlane =
+            description.format == PixelFormat::P010 ||
+            description.format == PixelFormat::P016;
+        if (nativePlane)
+        {
+            D3D11_TEXTURE2D_DESC yDesc = {};
+            yDesc.Width = sourceWidth;
+            yDesc.Height = sourceHeight;
+            yDesc.MipLevels = 1;
+            yDesc.ArraySize = 1;
+            yDesc.Format = DXGI_FORMAT_R16_UNORM;
+            yDesc.SampleDesc.Count = 1;
+            yDesc.Usage = D3D11_USAGE_DEFAULT;
+            yDesc.BindFlags =
+                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            D3D11_TEXTURE2D_DESC uvDesc = yDesc;
+            uvDesc.Width = sourceWidth / 2;
+            uvDesc.Height = sourceHeight / 2;
+            uvDesc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+            bool recreate = !nguPlaneYTexture || !nguPlaneUvTexture;
+            if (!recreate)
+            {
+                D3D11_TEXTURE2D_DESC current = {};
+                nguPlaneYTexture->GetDesc(&current);
+                recreate = current.Width != yDesc.Width ||
+                           current.Height != yDesc.Height;
+            }
+            if (recreate)
+            {
+                nguPlaneYShaderView.Reset();
+                nguPlaneYView.Reset();
+                nguPlaneYTexture.Reset();
+                nguPlaneUvShaderView.Reset();
+                nguPlaneUvView.Reset();
+                nguPlaneUvTexture.Reset();
+                if (FAILED(d3d->device->CreateTexture2D(
+                        &yDesc, nullptr, &nguPlaneYTexture)) ||
+                    FAILED(d3d->device->CreateRenderTargetView(
+                        nguPlaneYTexture.Get(), nullptr, &nguPlaneYView)) ||
+                    FAILED(d3d->device->CreateShaderResourceView(
+                        nguPlaneYTexture.Get(),
+                        nullptr,
+                        &nguPlaneYShaderView)) ||
+                    FAILED(d3d->device->CreateTexture2D(
+                        &uvDesc, nullptr, &nguPlaneUvTexture)) ||
+                    FAILED(d3d->device->CreateRenderTargetView(
+                        nguPlaneUvTexture.Get(), nullptr, &nguPlaneUvView)) ||
+                    FAILED(d3d->device->CreateShaderResourceView(
+                        nguPlaneUvTexture.Get(),
+                        nullptr,
+                        &nguPlaneUvShaderView)))
+                {
+                    error = "NGU decoder plane surfaces could not be created";
+                    return false;
+                }
+            }
+        }
+        const bool prepared = nativePlane
+            ? ngu.PrepareNativeDecoderSource(d3d->gpu) &&
+                  (sourceWidth == 1280 && sourceHeight == 720
+                       ? ngu.PrepareNativeNgu720FromPlanes(d3d->gpu)
+                       : sourceWidth == 1920 && sourceHeight == 1080
+                           ? ngu.PrepareNativeNgu1080FromPlanes(d3d->gpu)
+                           : false)
+            : sourceWidth == 1280 && sourceHeight == 720
                 ? ngu.PrepareNativeLuma4x720Full(d3d->gpu)
                 : sourceWidth == 1920 && sourceHeight == 1080
                     ? ngu.PrepareNativeLumaVeryHigh1080(d3d->gpu)
@@ -490,11 +559,14 @@ struct PlaceboBackend::State
                     std::to_string(description.height);
             return false;
         }
-        if (
-            description.format != PixelFormat::RGB48 || description.bottomUp ||
-            image.num_planes != 1)
+        const bool nativePlane =
+            description.format == PixelFormat::P010 ||
+            description.format == PixelFormat::P016;
+        const bool rgb48 = description.format == PixelFormat::RGB48;
+        if ((!rgb48 && !nativePlane) || description.bottomUp ||
+            (rgb48 && image.num_planes != 1))
         {
-            error = "ngu_sharp currently requires a top-down RGB48 source: got " +
+            error = "ngu_sharp requires top-down RGB48, P010 or P016: got " +
                     std::to_string(description.width) + "x" + std::to_string(description.height) +
                     " format " +
                     std::to_string(static_cast<int>(description.format)) +
@@ -509,21 +581,61 @@ struct PlaceboBackend::State
         }
         D3D11_TEXTURE2D_DESC sourceDesc = {};
         nguSource->GetDesc(&sourceDesc);
-        if (sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
+        if (rgb48 && sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
         {
             error = "ngu_sharp source format is unsupported";
             return false;
         }
+        if (nativePlane &&
+            !((description.format == PixelFormat::P010 &&
+               sourceDesc.Format == DXGI_FORMAT_P010) ||
+              (description.format == PixelFormat::P016 &&
+               sourceDesc.Format == DXGI_FORMAT_P016)))
+        {
+            error = "ngu_sharp decoder texture format is unsupported";
+            return false;
+        }
         if (!PrepareNgu(description.width, description.height))
             return false;
-        if (nguSourceView)
+        if (nativePlane)
+        {
+            if (!nguPlaneYView || !nguPlaneUvView ||
+                !nguPlaneYShaderView || !nguPlaneUvShaderView)
+            {
+                error = "ngu_sharp decoder plane surfaces are unavailable";
+                return false;
+            }
+            const bool copied = ngu.RunNativeDecoderSourceCopy(
+                nguSource.Get(),
+                0,
+                description.width,
+                description.height,
+                nguPlaneYView.Get(),
+                nguPlaneUvView.Get());
+            const bool ran = copied &&
+                (description.width == 1280
+                     ? ngu.RunNativeNgu720FromPlanes(
+                           nguPlaneUvShaderView.Get(),
+                           nguPlaneYShaderView.Get(),
+                           nguOutputView.Get())
+                     : ngu.RunNativeNgu1080FromPlanes(
+                           nguPlaneUvShaderView.Get(),
+                           nguPlaneYShaderView.Get(),
+                           nguOutputView.Get()));
+            if (!ran)
+            {
+                error = ngu.LastError();
+                return false;
+            }
+        }
+        else if (nguSourceView)
         {
             ComPtr<ID3D11Resource> sourceResource;
             nguSourceView->GetResource(&sourceResource);
             if (sourceResource.Get() != nguSource.Get())
                 nguSourceView.Reset();
         }
-        if (!nguSourceView)
+        if (!nativePlane && !nguSourceView)
         {
             if (FAILED(d3d->device->CreateShaderResourceView(
                     nguSource.Get(), nullptr, &nguSourceView)))
@@ -532,12 +644,12 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        const bool ran =
-            description.width == 1280
+        const bool ran = nativePlane ||
+            (description.width == 1280
                 ? ngu.RunNativeLuma4x720Full(
                       nguSourceView.Get(), 1280, 720, nguOutputView.Get())
                 : ngu.RunNativeLumaVeryHigh1080(
-                      nguSourceView.Get(), 1920, 1080, nguOutputView.Get());
+                      nguSourceView.Get(), 1920, 1080, nguOutputView.Get()));
         if (!ran)
         {
             error = ngu.LastError();
@@ -676,6 +788,12 @@ struct PlaceboBackend::State
         if (d3d && nguOutputPlane)
             pl_tex_destroy(d3d->gpu, &nguOutputPlane);
         nguSourceView.Reset();
+        nguPlaneYShaderView.Reset();
+        nguPlaneUvShaderView.Reset();
+        nguPlaneYView.Reset();
+        nguPlaneUvView.Reset();
+        nguPlaneYTexture.Reset();
+        nguPlaneUvTexture.Reset();
         nguSource.Reset();
         nguOutputView.Reset();
         nguOutput.Reset();
@@ -2571,7 +2689,7 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
         if (FAILED(hr))
             return hr;
     }
-    if (rgb16)
+    if (rgb16 || semi)
         s.nguSource = s.copy;
     bool held = false;
     if (s.decoderMutex)

@@ -339,6 +339,12 @@ same-frame capture proves packed UV = SuperRes diff original and Y =
 main/base originals. A captured plane-entry run is fully nonblack; it remains
 a smoke test until paired with a same-frame PS_1352 oracle.
 
+Backend now accepts P010 for the declared 720p/1080p geometries and routes
+decoder plane views into the one-call NGU entry. The RGB48 numerical gates
+remain unchanged, and a Backend P010 smoke reaches a valid 4K output. A limited
+experience ZIP is prepared; P010 final-image, real DirectShow lifecycle and
+P016 hardware acceptance remain open.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
