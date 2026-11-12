@@ -494,6 +494,19 @@ struct NguScaler::NativeChromaVeryHigh720Full
     ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
 };
 
+struct NguScaler::NativeNgu720FromPlanes
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> expandPixel;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+    ComPtr<ID3D11Texture2D> yTexture;
+    ComPtr<ID3D11RenderTargetView> yView;
+    ComPtr<ID3D11ShaderResourceView> yShaderView;
+    ComPtr<ID3D11Texture2D> chromaTexture;
+    ComPtr<ID3D11RenderTargetView> chromaView;
+    ComPtr<ID3D11ShaderResourceView> chromaShaderView;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -2445,16 +2458,28 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
     const bool packedUvIsBgra8 =
         packedUv &&
         ViewMatchesTexture(packedUv, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
+    const bool mainIsRgba16 =
+        mainOriginal &&
+        ViewMatchesTexture(
+            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool mainIsR8 =
+        mainOriginal &&
+        ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+    const bool baseIsRgba16 =
+        baseOriginal &&
+        ViewMatchesTexture(
+            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool baseIsR8 =
+        baseOriginal &&
+        ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
     if (!nativeChromaVeryHigh720Full_ || !packedUv || !yInput ||
         !diffOriginal || !mainOriginal || !baseOriginal || !output ||
         (!packedUvIsRgba16 && !packedUvIsBgra8) ||
         !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
         !ViewMatchesTexture(
             diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
-        !ViewMatchesTexture(
-            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(
-            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        (!mainIsRgba16 && !mainIsR8) ||
+        (!baseIsRgba16 && !baseIsR8) ||
         !ViewMatchesTexture(
             output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
     {
@@ -2494,6 +2519,135 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
                                     mainOriginal,
                                     baseOriginal,
                                     output))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
+{
+    if (!PrepareNativeChromaVeryHigh720Full(gpu) ||
+        !PrepareNativeLuma4x720Full(gpu))
+        return false;
+    ID3D11Device* device = pl_d3d11_get(gpu)->device;
+    auto state = std::make_unique<NativeNgu720FromPlanes>();
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
+    const auto expandBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
+    if (shaderText.empty() || expandBytecode.empty())
+    {
+        error_ = "NGU full 720p L8 expansion assets are unavailable";
+        return false;
+    }
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_L8Expand",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr) ||
+        FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            expandBytecode.data(),
+            static_cast<SIZE_T>(expandBytecode.size()),
+            nullptr,
+            &state->expandPixel)))
+    {
+        error_ = "NGU full 720p L8 expansion shaders could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(
+            &rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU full 720p L8 expansion rasterizer could not be created";
+        return false;
+    }
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = 1280;
+    desc.Height = 720;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET |
+                     D3D11_BIND_SHADER_RESOURCE;
+    if (FAILED(device->CreateTexture2D(&desc, nullptr, &state->yTexture)) ||
+        FAILED(device->CreateRenderTargetView(
+            state->yTexture.Get(), nullptr, &state->yView)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->yTexture.Get(), nullptr, &state->yShaderView)))
+    {
+        error_ = "NGU full 720p Y surface could not be created";
+        return false;
+    }
+    if (FAILED(device->CreateTexture2D(&desc, nullptr, &state->chromaTexture)) ||
+        FAILED(device->CreateRenderTargetView(
+            state->chromaTexture.Get(), nullptr, &state->chromaView)) ||
+        FAILED(device->CreateShaderResourceView(
+            state->chromaTexture.Get(), nullptr, &state->chromaShaderView)))
+    {
+        error_ = "NGU full NGU 720p chroma surface could not be created";
+        return false;
+    }
+    nativeNgu720FromPlanes_ = std::move(state);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeNgu720FromPlanes(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeNgu720FromPlanes_ || !packedUv || !yInput || !finalOutput ||
+        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(
+            finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
+    {
+        error_ = "NGU full 720p plane request is invalid";
+        return false;
+    }
+    auto& state = *nativeNgu720FromPlanes_;
+    ID3D11RenderTargetView* yTarget = state.yView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.expandPixel.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &yInput,
+                  1,
+                  &yTarget,
+                  1,
+                  1280,
+                  720);
+    if (!RunNativeChromaVeryHigh720Full(packedUv,
+                                        yInput,
+                                        packedUv,
+                                        state.yShaderView.Get(),
+                                        state.yShaderView.Get(),
+                                        state.chromaView.Get()) ||
+        !RunNativeLuma4x720Full(state.chromaShaderView.Get(),
+                                1280,
+                                720,
+                                finalOutput))
         return false;
     error_ = "";
     return true;
@@ -4583,6 +4737,20 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
                                            ID3D11ShaderResourceView* baseOriginal,
                                            ID3D11RenderTargetView* output)
 {
+    const bool mainIsRgba16 =
+        mainOriginal &&
+        ViewMatchesTexture(
+            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool mainIsR8 =
+        mainOriginal &&
+        ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+    const bool baseIsRgba16 =
+        baseOriginal &&
+        ViewMatchesTexture(
+            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool baseIsR8 =
+        baseOriginal &&
+        ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
     if (!nativeSuperRes_ || !nativeSuperResStrength3_ || !source || !diffOriginal ||
         !mainOriginal || !baseOriginal || !output)
     {
@@ -4590,8 +4758,8 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
         return false;
     }
     if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        (!mainIsRgba16 && !mainIsR8) ||
+        (!baseIsRgba16 && !baseIsR8) ||
         !ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
         !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
     {
@@ -6646,6 +6814,7 @@ void NguScaler::Reset()
     nativeChromaRealign_.reset();
     nativeChromaYCbCr_.reset();
     nativeChromaVeryHigh720Full_.reset();
+    nativeNgu720FromPlanes_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

@@ -143,6 +143,11 @@ class NguScaler
         ID3D11ShaderResourceView* mainOriginal,
         ID3D11ShaderResourceView* baseOriginal,
         ID3D11RenderTargetView* output);
+    bool PrepareNativeNgu720FromPlanes(pl_gpu gpu);
+    bool RunNativeNgu720FromPlanes(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* finalOutput);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -311,6 +316,7 @@ class NguScaler
     struct NativeChromaRealign;
     struct NativeChromaYCbCr;
     struct NativeChromaVeryHigh720Full;
+    struct NativeNgu720FromPlanes;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -341,6 +347,7 @@ class NguScaler
     std::unique_ptr<NativeChromaRealign> nativeChromaRealign_;
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
     std::unique_ptr<NativeChromaVeryHigh720Full> nativeChromaVeryHigh720Full_;
+    std::unique_ptr<NativeNgu720FromPlanes> nativeNgu720FromPlanes_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;

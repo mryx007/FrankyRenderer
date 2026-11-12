@@ -303,6 +303,11 @@ pipeline reports `maximum=5` with 17 pixels above one, while the captured-input
 final path remains `maximum=1`, `diff_gt_1_pixels=0`. The combined gate is
 explicitly pending and fails under `NGU_COMBINED_FINAL_GATE=1`.
 
+`RunNativeNgu720FromPlanes` is the mergeable product entry: it accepts packed
+UV and Y, reuses them as the observed diff/main/base originals, expands L8 to
+RGB through a native transport shader, and executes the complete graph. Its
+same-frame final residual is `maximum=5`, 18 pixels above one.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -330,12 +335,12 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native chroma tail | Packed-UV entry reaches PS_4576 `maximum=6`; same-frame final is `maximum=5`, 17 pixels above one | Reduce final residual, 1080 equivalent, Backend/DirectShow |
+| Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, 1080 equivalent, Backend/DirectShow |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: reduce the 17 same-frame final pixels
+The shortest critical path is therefore: reduce the 18 same-frame final pixels
 above one; the 1080p equivalent; P010 bridge integration into
 Backend/DirectShow; then full format/lifecycle/performance acceptance. No
 missing mapping may be replaced by a guessed fallback while those gates are

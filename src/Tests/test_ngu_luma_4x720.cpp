@@ -1084,89 +1084,7 @@ int main(int argc, char** argv)
                     yTexture.Get(), nullptr, &yView)),
                 "combined Y SRV");
 
-        const auto combinedDiffBytes =
-            ReadBytes(root / "input_00212_PS_284_e8e2a8eb_s0.bin",
-                      size_t(640) * 360 * 4);
-        auto combinedDiff = CreateTexture(device,
-                                          640,
-                                          360,
-                                          DXGI_FORMAT_B8G8R8A8_UNORM,
-                                          D3D11_BIND_SHADER_RESOURCE,
-                                          combinedDiffBytes.data());
-        ComPtr<ID3D11ShaderResourceView> combinedDiffView;
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    combinedDiff.Get(), nullptr, &combinedDiffView)),
-                "combined diff SRV");
-
-        const auto combinedMainBytes =
-            ReadBytes(root / "input_00213_PS_4412_c39b49cf_s0.bin",
-                      size_t(1280) * 720 * 8);
-        auto combinedMain = CreateTexture(device,
-                                          1280,
-                                          720,
-                                          DXGI_FORMAT_R16G16B16A16_UNORM,
-                                          D3D11_BIND_SHADER_RESOURCE,
-                                          combinedMainBytes.data());
-        ComPtr<ID3D11ShaderResourceView> combinedMainView;
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    combinedMain.Get(), nullptr, &combinedMainView)),
-                "combined main SRV");
-
-        const auto combinedBaseBytes =
-            ReadBytes(root / "input_00217_PS_4576_b7830945_s0.bin",
-                      size_t(1280) * 720 * 8);
-        auto combinedBase = CreateTexture(device,
-                                          1280,
-                                          720,
-                                          DXGI_FORMAT_R16G16B16A16_UNORM,
-                                          D3D11_BIND_SHADER_RESOURCE,
-                                          combinedBaseBytes.data());
-        ComPtr<ID3D11ShaderResourceView> combinedBaseView;
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    combinedBase.Get(), nullptr, &combinedBaseView)),
-                "combined base SRV");
-
-        Require(ngu.PrepareNativeChromaVeryHigh720Full(d3d->gpu),
-                ngu.LastError());
-        auto combinedChroma =
-            CreateTexture(device,
-                          1280,
-                          720,
-                          DXGI_FORMAT_R16G16B16A16_UNORM,
-                          D3D11_BIND_RENDER_TARGET |
-                              D3D11_BIND_SHADER_RESOURCE);
-        ComPtr<ID3D11RenderTargetView> combinedChromaView;
-        ComPtr<ID3D11ShaderResourceView> combinedChromaShaderView;
-        Require(SUCCEEDED(device->CreateRenderTargetView(
-                    combinedChroma.Get(), nullptr, &combinedChromaView)),
-                "combined chroma RTV");
-        Require(SUCCEEDED(device->CreateShaderResourceView(
-                    combinedChroma.Get(), nullptr, &combinedChromaShaderView)),
-                "combined chroma SRV");
-        Require(ngu.RunNativeChromaVeryHigh720Full(
-                    packedUvView.Get(),
-                    yView.Get(),
-                    combinedDiffView.Get(),
-                    combinedMainView.Get(),
-                    combinedBaseView.Get(),
-                    combinedChromaView.Get()),
-                ngu.LastError());
-        pl_gpu_finish(d3d->gpu);
-        const auto combinedChromaActual =
-            Download(device, context.Get(), combinedChroma.Get());
-        int combinedChromaMaximum = 0;
-        const int combinedChromaDifferent = CountWords(
-            combinedChromaActual,
-            ReadBytes(root / "draw_00217_PS_4576_b7830945_rt0_1280x720_f36.bin",
-                      size_t(1280) * 720 * 8),
-            combinedChromaMaximum);
-        std::printf("CombinedChroma different=%d maximum=%d\n",
-                    combinedChromaDifferent,
-                    combinedChromaMaximum);
-        if (!actualPrefix.empty())
-            WriteBytes(actualPrefix + L"combined_chroma.bin",
-                       combinedChromaActual);
-        Require(ngu.PrepareNativeLuma4x720Full(d3d->gpu),
+        Require(ngu.PrepareNativeNgu720FromPlanes(d3d->gpu),
                 ngu.LastError());
         auto combinedFinal =
             CreateTexture(device,
@@ -1179,10 +1097,9 @@ int main(int argc, char** argv)
         Require(SUCCEEDED(device->CreateRenderTargetView(
                     combinedFinal.Get(), nullptr, &combinedFinalView)),
                 "combined final RTV");
-        Require(ngu.RunNativeLuma4x720Full(
-                    combinedChromaShaderView.Get(),
-                    1280,
-                    720,
+        Require(ngu.RunNativeNgu720FromPlanes(
+                    packedUvView.Get(),
+                    yView.Get(),
                     combinedFinalView.Get()),
                 ngu.LastError());
         pl_gpu_finish(d3d->gpu);
