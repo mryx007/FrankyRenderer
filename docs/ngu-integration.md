@@ -384,3 +384,30 @@ above one; the 1080p equivalent; P010 bridge integration into
 Backend/DirectShow; then full format/lifecycle/performance acceptance. No
 missing mapping may be replaced by a guessed fallback while those gates are
 open.
+
+## First experimental VeryHigh gate (2026-11-12)
+
+E-148 corrects `NguDither` to the target's observed final MT recurrence,
+`state[396] & (mixed >> 1) ^ magic`. The regression covers the captured seed
+state, the first eight words, word 623 and a 65,536-word FNV-1a64 hash. This
+fix changes target-visible color-noise state; it is not a tolerance adjustment.
+
+Settings-sensitive NGU DirectShow tests now create an isolated per-process
+registry root by default. Set `PLACEBO_RENDERER_TEST_ROOT` explicitly to retain
+a caller-selected test profile. This prevents persisted display/profile values
+from changing a same-frame oracle comparison.
+
+The experimental milestone passes:
+
+```text
+RGB48 DirectShow maximum=1
+Backend RGB/stored/1080 maximum=1, diff_gt_1_pixels=0
+P010 DirectShow lifecycle
+P010 1080 final PS_1352 maximum=1, diff_gt_1_pixels=0
+SuperChromaRes strength-3 and tested VeryHigh stages exact or within declared bounds
+```
+
+It remains experimental. P016 is exact through PS_1672 but first exceeds the
+declared PS_4620 layer tolerance at layer 8. The 720p combined final retains two
+pixels above one pending exact target dither-surface replay. P210/P216 and the
+real-player lifecycle matrix are still open.

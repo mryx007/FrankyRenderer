@@ -1294,6 +1294,12 @@ static int TestVideoWindowFocus(FactoryGetter getter, REFCLSID rendererId)
 
 int wmain(int argc, wchar_t** argv)
 {
+    wchar_t explicitTestRoot[512] = {};
+    const bool hasExplicitTestRoot =
+        GetEnvironmentVariableW(
+            L"PLACEBO_RENDERER_TEST_ROOT",
+            explicitTestRoot,
+            ARRAYSIZE(explicitTestRoot)) > 0;
     bool snapshotTest = false;
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--snapshot") == 0)
@@ -1407,6 +1413,20 @@ int wmain(int argc, wchar_t** argv)
     {
         puts("FAIL --ngu-frame-count must be positive");
         return 1;
+    }
+    if (nguTest && !hasExplicitTestRoot)
+    {
+        wchar_t isolatedRoot[160] = {};
+        swprintf_s(
+            isolatedRoot,
+            L"Software\\PlaceboRenderer\\TestHarness\\Ngu%lu",
+            GetCurrentProcessId());
+        if (_wputenv_s(L"PLACEBO_RENDERER_TEST_ROOT",
+                       isolatedRoot) != 0)
+        {
+            puts("FAIL could not isolate renderer test settings");
+            return 1;
+        }
     }
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--srv") == 0)
@@ -1543,7 +1563,7 @@ int wmain(int argc, wchar_t** argv)
             if (!strcmp(ScalerChoices[i].name, "ngu_sharp"))
                 settings.chromaScaler = i + 1;
     }
-    if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0))
+    if (hasExplicitTestRoot)
     {
         auto inactive = settings;
         const auto id = DisplayProfiles::Hash(L"filter:test:inactive");

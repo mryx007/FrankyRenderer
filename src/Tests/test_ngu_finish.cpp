@@ -192,6 +192,33 @@ int main(int argc, char** argv)
         Require(secondPhase.z == 26500.0f / 32767.0f, "second dither z");
         ditherPhases.Reset();
         Require(ditherPhases.NextPhase().y == firstPhase.y, "dither reset");
+
+        // E-148/FUN_4a429160 and FUN_4a4292c0: replay a target-captured
+        // seed and recur through the non-textbook final MT recurrence.
+        NguDither colorDither;
+        colorDither.SeedColor(114406734u, 1503175456u, 31290039u);
+        std::vector<uint32_t> colorWords(65536);
+        colorDither.FillColor(colorWords);
+        constexpr uint32_t expectedColorWords[] = {
+            0x40f15b52u, 0x6d9369fdu, 0xdeb1a2aeu, 0xcc4c7124u,
+            0x9cc90b60u, 0xd3c4fa6du, 0x83cf6459u, 0xeb9f0508u};
+        for (size_t i = 0; i < std::size(expectedColorWords); ++i)
+            Require(colorWords[i] == expectedColorWords[i],
+                    "target MT19937 color sequence");
+        Require(colorWords[623] == 0x9e65193cu,
+                "target MT19937 final recurrence");
+        uint64_t colorHash = 0xcbf29ce484222325ull;
+        for (uint32_t word : colorWords)
+        {
+            for (unsigned shift = 0; shift < 32; shift += 8)
+            {
+                colorHash ^= (word >> shift) & 0xffu;
+                colorHash *= 0x100000001b3ull;
+            }
+        }
+        Require(colorHash == 0xf915d4365f5ad518ull,
+                "target MT19937 color hash");
+
         const bool prepared = ngu.PrepareNativeLumaFinish(d3d->gpu);
         Require(prepared, ngu.LastError());
 

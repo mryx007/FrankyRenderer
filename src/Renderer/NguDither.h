@@ -105,8 +105,11 @@ class NguDither
             const uint32_t mixed =
                 ((colorState_.back() ^ colorState_[0]) & 0x7fffffffu) ^
                 colorState_.back();
+            // E-148/FUN_4a4292c0: the final recurrence ANDs state[396] with
+            // the shifted mixture before applying the magic word. This differs
+            // from the textbook MT19937 recurrence.
             colorState_.back() =
-                colorState_[396] ^ (mixed >> 1) ^ magic[mixed & 1u];
+                (colorState_[396] & (mixed >> 1)) ^ magic[mixed & 1u];
             colorIndex_ = 0;
         }
         uint32_t value = colorState_[colorIndex_++];
