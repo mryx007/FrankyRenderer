@@ -47,11 +47,6 @@ float4 FetchCb(float2 position)
     return CbInput.Load(int3(pixel, 0));
 }
 
-float Quantize16(float value)
-{
-    return floor(saturate(value) * 65535.0 + 0.5) / 65535.0;
-}
-
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
     // E-124: target Cubicd2x maps output coordinate n to dense (n + 1) / 2.
@@ -67,8 +62,8 @@ float4 PSMain(float4 position : SV_Position) : SV_Target0
     const float value = selected + FetchAdd(position.xy).x;
 
 #if defined(NGU_COMBINE_2)
-    return float4(Quantize16(FetchCb(position.xy).x), Quantize16(value), 0.0, 1.0);
+    return float4(FetchCb(position.xy).x, value, 0.0, 1.0);
 #else
-    return float4(Quantize16(value), 0.0, 0.0, 1.0);
+    return float4(value, 0.0, 0.0, 1.0);
 #endif
 }

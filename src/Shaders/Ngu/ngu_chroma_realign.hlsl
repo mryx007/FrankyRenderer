@@ -200,11 +200,6 @@ float4 DL1 = float4(2,3,0.5,8);
   return w72;
 }
 
-float Quantize16(float value)
-{
-    return floor(saturate(value) * 65535.0 + 0.5) / 65535.0;
-}
-
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
     int rasterWidth, rasterHeight;
@@ -212,5 +207,5 @@ float4 PSMain(float4 position : SV_Position) : SV_Target0
     const float2 RasterSize = float2(rasterWidth, rasterHeight);
     const float2 uv = position.xy / RasterSize;
     const float4 result = Evaluate(float4(uv, 0.0, 1.0));
-    return float4(Quantize16(result.x), Quantize16(result.y), 0.0, 0.0);
+    return float4(result.x, result.y, 0.0, 0.0);
 }

@@ -254,7 +254,7 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_00121_PS_564_500335c8_rt0_1280x720_f81.bin",
                       size_t(1280) * 720 * 8));
         bool passed =
-            CompareCode(combine1Actual, combine1Expected, 1, 1, 1280, "PS_564");
+            CompareCode(combine1Actual, combine1Expected, 1, 0, 1280, "PS_564");
 
         auto combine2AddBytes = ExtractL16(
             ReadBytes(root / "input_00154_PS_644_512f7798_s0.bin",
@@ -305,7 +305,7 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_00154_PS_644_512f7798_rt0_1280x720_f34.bin",
                       size_t(1280) * 720 * 4);
         passed &=
-            CompareCode(combine2Actual, combine2Expected, 2, 1, 1280, "PS_644");
+            CompareCode(combine2Actual, combine2Expected, 2, 0, 1280, "PS_644");
         if (!passed)
         {
             std::puts("FAIL_PRODUCT chroma combine comparison");
