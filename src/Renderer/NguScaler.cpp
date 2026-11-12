@@ -2805,7 +2805,8 @@ bool NguScaler::RunNativeChromaFull(
                                                 diffOriginal,
                                                 mainOriginal,
                                                 baseOriginal,
-                                                output)
+                                                output,
+                                                p010)
              : !RunNativeSuperResStrength3(state.ycbcrShaderView.Get(),
                                            diffOriginal,
                                            mainOriginal,

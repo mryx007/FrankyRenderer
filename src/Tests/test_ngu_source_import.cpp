@@ -520,6 +520,10 @@ void TestPacked(NguScaler& ngu,
                 ngu.LastError());
         const auto ycbcrBytes =
             Download(device, context, ycbcr.Get(), 8);
+        ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    ycbcr.Get(), nullptr, &ycbcrShaderView)),
+                "YCbCr SRV");
         int ycbcrMaximum = 0;
         int ycbcrOverEight = 0;
         const int ycbcrDifferent = CompareWords(
@@ -538,6 +542,137 @@ void TestPacked(NguScaler& ngu,
                     realignMaximum,
                     ycbcrDifferent,
                     ycbcrMaximum);
+
+        ComPtr<ID3D11RenderTargetView> downXView;
+        auto downX = CreateOutput(device,
+                                  width / 2,
+                                  height,
+                                  DXGI_FORMAT_R16G16B16A16_UNORM,
+                                  downXView);
+        Require(ngu.RunNativeSuperResDownX1080(ycbcrShaderView.Get(),
+                                               downXView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> downXShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    downX.Get(), nullptr, &downXShaderView)),
+                "SuperRes down-X SRV");
+        ComPtr<ID3D11RenderTargetView> downYView;
+        auto downY = CreateOutput(device,
+                                  width / 2,
+                                  height / 2,
+                                  DXGI_FORMAT_R16G16B16A16_UNORM,
+                                  downYView);
+        Require(ngu.RunNativeSuperResDownY1080(downXShaderView.Get(),
+                                               downYView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> downYShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    downY.Get(), nullptr, &downYShaderView)),
+                "SuperRes down-Y SRV");
+        ComPtr<ID3D11RenderTargetView> diffView;
+        auto diff = CreateOutput(device,
+                                 width / 2,
+                                 height / 2,
+                                 DXGI_FORMAT_R16G16_FLOAT,
+                                 diffView);
+        Require(ngu.RunNativeSuperResDiff1080(chromaShaderView.Get(),
+                                              downYShaderView.Get(),
+                                              diffView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> diffShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    diff.Get(), nullptr, &diffShaderView)),
+                "SuperRes diff SRV");
+
+        const auto downXBytes = Download(device, context, downX.Get(), 8);
+        const auto downYBytes = Download(device, context, downY.Get(), 8);
+        const auto diffBytes = Download(device, context, diff.Get(), 4);
+        int downXMaximum = 0;
+        int downYMaximum = 0;
+        int diffMaximum = 0;
+        int ignored = 0;
+        const int downXDifferent = CompareWords(
+            downXBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00147_PS_520_4a9505a4_rt0_960x1080_f36.bin"),
+            downXMaximum,
+            ignored);
+        ignored = 0;
+        const int downYDifferent = CompareWords(
+            downYBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00148_PS_520_4ee2414c_rt0_960x540_f36.bin"),
+            downYMaximum,
+            ignored);
+        ignored = 0;
+        // PS_284 writes G16R16F; word deltas diagnose raw-bit movement only.
+        const int diffDifferent = CompareWords(
+            diffBytes,
+            ReadBytes(
+                oracleRoot /
+                "input_00150_PS_4412_c39b49cf_s3.bin"),
+            diffMaximum,
+            ignored);
+
+        const auto targetBaseYBytes = ReadBytes(
+            oracleRoot /
+            "input_00154_PS_4576_b7830945_s0.bin");
+        ComPtr<ID3D11RenderTargetView> targetBaseYView;
+        auto targetBaseY =
+            CreateOutput(device,
+                         width,
+                         height,
+                         DXGI_FORMAT_R16G16B16A16_UNORM,
+                         targetBaseYView);
+        context->UpdateSubresource(targetBaseY.Get(),
+                                   0,
+                                   nullptr,
+                                   targetBaseYBytes.data(),
+                                   width * 8,
+                                   0);
+        ComPtr<ID3D11ShaderResourceView> targetBaseYShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    targetBaseY.Get(),
+                    nullptr,
+                    &targetBaseYShaderView)),
+                "target base-Y SRV");
+
+        ComPtr<ID3D11RenderTargetView> mainView;
+        auto main = CreateOutput(device,
+                                 width,
+                                 height,
+                                 DXGI_FORMAT_R16G16B16A16_UNORM,
+                                 mainView);
+        Require(ngu.RunNativeSuperResToRgbMain1080(
+                    targetBaseYShaderView.Get(),
+                    ycbcrShaderView.Get(),
+                    diffShaderView.Get(),
+                    mainView.Get()),
+                ngu.LastError());
+        const auto mainBytes = Download(device, context, main.Get(), 8);
+        int mainMaximum = 0;
+        int mainOverEight = 0;
+        const int mainDifferent = CompareWords(
+            mainBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00150_PS_4412_c39b49cf_rt0_1920x1080_f36.bin"),
+            mainMaximum,
+            mainOverEight);
+        std::printf("P010 1080 SuperRes downX different=%d maximum=%d "
+                    "downY different=%d maximum=%d "
+                    "diff different=%d maximum=%d "
+                    "main different=%d maximum=%d\n",
+                    downXDifferent,
+                    downXMaximum,
+                    downYDifferent,
+                    downYMaximum,
+                    diffDifferent,
+                    diffMaximum,
+                    mainDifferent,
+                    mainMaximum);
 
         std::vector<uint8_t> expanded(size_t(width) * height * 8);
         for (size_t pixel = 0; pixel < size_t(width) * height; ++pixel)
