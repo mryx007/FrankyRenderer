@@ -848,6 +848,41 @@ void TestPacked(NguScaler& ngu,
                 finalMilliseconds);
             Require(finalMaximum <= 1 && finalOverOne == 0,
                     "P010 raw 1080 PS_1352 oracle");
+
+            if (const char* benchFramesText =
+                    std::getenv("NGU_P010_1080_BENCH_FRAMES"))
+            {
+                const int benchFrames = std::atoi(benchFramesText);
+                Require(benchFrames > 0, "P010 1080 benchmark frame count");
+                std::vector<double> samples;
+                samples.reserve(size_t(benchFrames));
+                for (int frame = 0; frame < benchFrames; ++frame)
+                {
+                    const auto start = std::chrono::steady_clock::now();
+                    Require(ngu.RunNativeNgu1080FromPlanes(
+                                chromaShaderView.Get(),
+                                lumaShaderView.Get(),
+                                finalView.Get(),
+                                true),
+                            ngu.LastError());
+                    pl_gpu_finish(gpu);
+                    samples.push_back(
+                        std::chrono::duration<double, std::milli>(
+                            std::chrono::steady_clock::now() - start).count());
+                }
+                const auto [minimum, maximumSample] =
+                    std::minmax_element(samples.begin(), samples.end());
+                double total = 0.0;
+                for (double sample : samples)
+                    total += sample;
+                std::printf(
+                    "P010 1080 benchmark frames=%d min=%.3f avg=%.3f "
+                    "max=%.3f ms/frame\n",
+                    benchFrames,
+                    *minimum,
+                    total / double(samples.size()),
+                    *maximumSample);
+            }
         }
     }
 }
