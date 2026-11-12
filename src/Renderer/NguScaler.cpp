@@ -428,6 +428,15 @@ struct NguScaler::NativeChromaVeryHigh720
         groupShaderViews;
 };
 
+struct NguScaler::NativeChromaCombines
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> combine1;
+    ComPtr<ID3D11PixelShader> combine2;
+    ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -1562,7 +1571,6 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         error_ = "NGU chroma network rasterizer could not be created";
         return false;
     }
-
     nativeChromaNetwork_ = std::move(state);
     gpu_ = gpu;
     error_ = "";
@@ -1818,6 +1826,177 @@ bool NguScaler::RunNativeChromaVeryHigh720(
     }
     if (!RunNativeChromaDense(current.data(), denseOutput))
         return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma combines require a GPU";
+        return false;
+    }
+    if (nativeChromaCombines_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma combines require the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_combine.hlsl", 32 * 1024);
+    const auto combine1Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine1.cso", 0);
+    const auto combine2Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine2.cso", 0);
+    const auto constantBytes =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants.bin",
+                         2 * sizeof(float) * 4);
+    if (shaderText.empty() || combine1Bytecode.empty() ||
+        combine2Bytecode.empty() || constantBytes.empty())
+    {
+        error_ = "NGU chroma combine assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaCombine",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma combine vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaCombines>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            combine1Bytecode.data(),
+            static_cast<SIZE_T>(combine1Bytecode.size()),
+            nullptr,
+            &state->combine1)) ||
+        FAILED(device->CreatePixelShader(
+            combine2Bytecode.data(),
+            static_cast<SIZE_T>(combine2Bytecode.size()),
+            nullptr,
+            &state->combine2)))
+    {
+        error_ = "NGU chroma combine shader objects could not be created";
+        return false;
+    }
+
+    D3D11_BUFFER_DESC constantDesc = {};
+    constantDesc.ByteWidth = static_cast<UINT>(constantBytes.size());
+    constantDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA constantData = {};
+    constantData.pSysMem = constantBytes.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->constants)))
+    {
+        error_ = "NGU chroma combine constants could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
+                                              &state->rasterizer)))
+    {
+        error_ = "NGU chroma combine rasterizer could not be created";
+        return false;
+    }
+    nativeChromaCombines_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaCombine1(
+    ID3D11ShaderResourceView* addInput,
+    ID3D11ShaderResourceView* nnInput,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaCombines_ || !addInput || !nnInput || !output ||
+        !ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(nnInput,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            642,
+                            362) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720))
+    {
+        error_ = "NGU chroma combine 1 request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[2] = {addInput, nnInput};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaCombines_->vertex.Get(),
+                  nativeChromaCombines_->combine1.Get(),
+                  nativeChromaCombines_->constants.Get(),
+                  nativeChromaCombines_->rasterizer.Get(),
+                  inputs,
+                  2,
+                  &output,
+                  1,
+                  1280,
+                  720);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaCombine2(
+    ID3D11ShaderResourceView* addInput,
+    ID3D11ShaderResourceView* cbInput,
+    ID3D11ShaderResourceView* nnInput,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaCombines_ || !addInput || !cbInput || !nnInput ||
+        !output ||
+        !ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(nnInput,
+                            DXGI_FORMAT_R16G16B16A16_FLOAT,
+                            642,
+                            362) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 720))
+    {
+        error_ = "NGU chroma combine 2 request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[3] = {addInput, nnInput, cbInput};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaCombines_->vertex.Get(),
+                  nativeChromaCombines_->combine2.Get(),
+                  nativeChromaCombines_->constants.Get(),
+                  nativeChromaCombines_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  &output,
+                  1,
+                  1280,
+                  720);
     error_ = "";
     return true;
 }
@@ -5965,6 +6144,7 @@ void NguScaler::Reset()
     nativeChromaScale_.reset();
     nativeChromaNetwork_.reset();
     nativeChromaVeryHigh720_.reset();
+    nativeChromaCombines_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

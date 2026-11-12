@@ -276,6 +276,15 @@ produces a complete cascade within `3.29614e-5` of the captured dense surface
 at `2.849 ms/frame` on this host. Canonical run3 L16 words are read as
 R16_UNORM; the half-encoded capture variant is not interchangeable.
 
+The native PS_564 L16 and PS_644 G16R16 combines are now connected to reusable
+D3D11 resources inside the same `NguScaler` module. Complete D3D9 target replay
+with the captured bytecode, textures, constants and render state is `0/0` for
+both. The native SM5 translation is `maximum=1`, `diff_gt_1_pixels=0`
+(PS_564: 30855 tied codes; PS_644: 35191 tied codes). Captured synthetic probes
+fix the half-cell dense index, `A/B/G/R` component matrix and 1:1 add/Cb fetch;
+the remaining one-code boundary is ps_3_0 versus SM5 floating-point and L16
+conversion, not a missing mapping.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -303,11 +312,12 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
+| Native chroma combines | PS_564/PS_644 D3D9 replay `0/0`; native `maximum=1`, `diff_gt_1_pixels=0` | Cr, PS_1516 Realign and PS_396...PS_4576 |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: native Cr and PS_564...PS_4576 chroma,
-P010 bridge wiring into Backend/DirectShow, then full
+The shortest critical path is therefore: native Cr, PS_1516 Realign and
+PS_396...PS_4576 chroma, P010 bridge wiring into Backend/DirectShow, then full
 format/lifecycle/performance acceptance. No missing mapping may be replaced by
 a guessed fallback while those gates are open.
