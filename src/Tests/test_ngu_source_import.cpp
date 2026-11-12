@@ -288,6 +288,14 @@ void TestPacked(NguScaler& ngu,
                 ngu.LastError());
         const auto cbBytes = Download(device, context, cb.Get(), 2);
         const auto crBytes = Download(device, context, cr.Get(), 2);
+        ComPtr<ID3D11ShaderResourceView> cbShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    cb.Get(), nullptr, &cbShaderView)),
+                "Cb SRV");
+        ComPtr<ID3D11ShaderResourceView> crShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    cr.Get(), nullptr, &crShaderView)),
+                "Cr SRV");
         const std::filesystem::path oracleRoot =
             std::filesystem::path(oraclePath).parent_path();
         int cbMaximum = 0;
@@ -314,6 +322,222 @@ void TestPacked(NguScaler& ngu,
                     cbMaximum,
                     crDifferent,
                     crMaximum);
+
+        ComPtr<ID3D11RenderTargetView> scaleXView;
+        auto scaleX = CreateOutput(
+            device, width, height / 2, DXGI_FORMAT_R16_UNORM, scaleXView);
+        Require(ngu.RunNativeChromaScaleX(cbShaderView.Get(),
+                                          scaleXView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> scaleXShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    scaleX.Get(), nullptr, &scaleXShaderView)),
+                "scale-X SRV");
+        ComPtr<ID3D11RenderTargetView> scaleYView;
+        auto scaleY = CreateOutput(
+            device, width, height, DXGI_FORMAT_R16_UNORM, scaleYView);
+        Require(ngu.RunNativeChromaScaleY(scaleXShaderView.Get(),
+                                          scaleYView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> scaleYShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    scaleY.Get(), nullptr, &scaleYShaderView)),
+                "scale-Y SRV");
+        const auto scaleXBytes = Download(device, context, scaleX.Get(), 2);
+        const auto scaleYBytes = Download(device, context, scaleY.Get(), 2);
+        int scaleXMaximum = 0;
+        int scaleXOverEight = 0;
+        int scaleYMaximum = 0;
+        int scaleYOverEight = 0;
+        const int scaleXDifferent = CompareWords(
+            scaleXBytes,
+            ExtractL16(ReadBytes(
+                oracleRoot /
+                "draw_00079_PS_748_721dd04e_rt0_1920x540_f81.bin")),
+            scaleXMaximum,
+            scaleXOverEight);
+        const int scaleYDifferent = CompareWords(
+            scaleYBytes,
+            ExtractL16(ReadBytes(
+                oracleRoot /
+                "draw_00080_PS_748_4085ea73_rt0_1920x1080_f81.bin")),
+            scaleYMaximum,
+            scaleYOverEight);
+        std::printf("P010 1080 raw->PS_748 X different=%d maximum=%d "
+                    "Y different=%d maximum=%d\n",
+                    scaleXDifferent,
+                    scaleXMaximum,
+                    scaleYDifferent,
+                    scaleYMaximum);
+
+        ComPtr<ID3D11RenderTargetView> denseView;
+        auto dense = CreateOutput(device,
+                                  width / 2 + 2,
+                                  height / 2 + 2,
+                                  DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                  denseView);
+        Require(ngu.RunNativeChromaVeryHigh1080(cbShaderView.Get(),
+                                                denseView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> denseShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    dense.Get(), nullptr, &denseShaderView)),
+                "dense SRV");
+        const auto denseBytes = Download(device, context, dense.Get(), 8);
+        int denseMaximum = 0;
+        int denseOverEight = 0;
+        const int denseDifferent = CompareWords(
+            denseBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00110_PS_2672_9e6139d1_rt0_962x542_f113.bin"),
+            denseMaximum,
+            denseOverEight);
+
+        ComPtr<ID3D11RenderTargetView> combine1View;
+        auto combine1 = CreateOutput(
+            device, width, height, DXGI_FORMAT_R16_UNORM, combine1View);
+        Require(ngu.RunNativeChromaCombine1(scaleYShaderView.Get(),
+                                            denseShaderView.Get(),
+                                            combine1View.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> combine1ShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combine1.Get(), nullptr, &combine1ShaderView)),
+                "combine1 SRV");
+        const auto combine1Bytes =
+            Download(device, context, combine1.Get(), 2);
+        int combine1Maximum = 0;
+        int combine1OverEight = 0;
+        const int combine1Different = CompareWords(
+            combine1Bytes,
+            ExtractL16(ReadBytes(
+                oracleRoot /
+                "draw_00111_PS_564_500335c8_rt0_1920x1080_f81.bin")),
+            combine1Maximum,
+            combine1OverEight);
+        std::printf("P010 1080 raw->PS_2672 different=%d maximum=%d "
+                    "raw->PS_564 different=%d maximum=%d\n",
+                    denseDifferent,
+                    denseMaximum,
+                    combine1Different,
+                    combine1Maximum);
+
+        ComPtr<ID3D11RenderTargetView> denseCrView;
+        auto denseCr = CreateOutput(device,
+                                    width / 2 + 2,
+                                    height / 2 + 2,
+                                    DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                    denseCrView);
+        Require(ngu.RunNativeChromaVeryHigh1080(crShaderView.Get(),
+                                                denseCrView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> denseCrShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    denseCr.Get(), nullptr, &denseCrShaderView)),
+                "Cr dense SRV");
+        ComPtr<ID3D11RenderTargetView> scaleXCrView;
+        auto scaleXCr = CreateOutput(
+            device, width, height / 2, DXGI_FORMAT_R16_UNORM, scaleXCrView);
+        Require(ngu.RunNativeChromaScaleX(crShaderView.Get(),
+                                          scaleXCrView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> scaleXCrShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    scaleXCr.Get(), nullptr, &scaleXCrShaderView)),
+                "Cr scale-X SRV");
+        ComPtr<ID3D11RenderTargetView> scaleYCrView;
+        auto scaleYCr = CreateOutput(
+            device, width, height, DXGI_FORMAT_R16_UNORM, scaleYCrView);
+        Require(ngu.RunNativeChromaScaleY(scaleXCrShaderView.Get(),
+                                          scaleYCrView.Get()),
+                ngu.LastError());
+        ComPtr<ID3D11ShaderResourceView> scaleYCrShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    scaleYCr.Get(), nullptr, &scaleYCrShaderView)),
+                "Cr scale-Y SRV");
+        ComPtr<ID3D11RenderTargetView> combine2View;
+        auto combine2 = CreateOutput(device,
+                                     width,
+                                     height,
+                                     DXGI_FORMAT_R16G16_UNORM,
+                                     combine2View);
+        Require(ngu.RunNativeChromaCombine2(scaleYCrShaderView.Get(),
+                                            combine1ShaderView.Get(),
+                                            denseCrShaderView.Get(),
+                                            combine2View.Get()),
+                ngu.LastError());
+        const auto combine2Bytes =
+            Download(device, context, combine2.Get(), 4);
+        int combine2Maximum = 0;
+        int combine2OverEight = 0;
+        const int combine2Different = CompareWords(
+            combine2Bytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00144_PS_644_512f7798_rt0_1920x1080_f34.bin"),
+            combine2Maximum,
+            combine2OverEight);
+        ComPtr<ID3D11ShaderResourceView> combine2ShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    combine2.Get(), nullptr, &combine2ShaderView)),
+                "combine2 SRV");
+
+        ComPtr<ID3D11RenderTargetView> realignView;
+        auto realign = CreateOutput(device,
+                                    width,
+                                    height,
+                                    DXGI_FORMAT_R16G16B16A16_UNORM,
+                                    realignView);
+        Require(ngu.RunNativeChromaRealign(combine2ShaderView.Get(),
+                                           realignView.Get()),
+                ngu.LastError());
+        const auto realignBytes =
+            Download(device, context, realign.Get(), 8);
+        int realignMaximum = 0;
+        int realignOverEight = 0;
+        const int realignDifferent = CompareWords(
+            realignBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00145_PS_1516_11f763dd_rt0_1920x1080_f36.bin"),
+            realignMaximum,
+            realignOverEight);
+        ComPtr<ID3D11ShaderResourceView> realignShaderView;
+        Require(SUCCEEDED(device->CreateShaderResourceView(
+                    realign.Get(), nullptr, &realignShaderView)),
+                "realign SRV");
+
+        ComPtr<ID3D11RenderTargetView> ycbcrView;
+        auto ycbcr = CreateOutput(device,
+                                  width,
+                                  height,
+                                  DXGI_FORMAT_R16G16B16A16_UNORM,
+                                  ycbcrView);
+        Require(ngu.RunNativeChromaYCbCr(lumaShaderView.Get(),
+                                         realignShaderView.Get(),
+                                         ycbcrView.Get()),
+                ngu.LastError());
+        const auto ycbcrBytes =
+            Download(device, context, ycbcr.Get(), 8);
+        int ycbcrMaximum = 0;
+        int ycbcrOverEight = 0;
+        const int ycbcrDifferent = CompareWords(
+            ycbcrBytes,
+            ReadBytes(
+                oracleRoot /
+                "draw_00146_PS_396_e3199f71_rt0_1920x1080_f36.bin"),
+            ycbcrMaximum,
+            ycbcrOverEight);
+        std::printf("P010 1080 raw->PS_644 different=%d maximum=%d "
+                    "raw->PS_1516 different=%d maximum=%d "
+                    "raw->PS_396 different=%d maximum=%d\n",
+                    combine2Different,
+                    combine2Maximum,
+                    realignDifferent,
+                    realignMaximum,
+                    ycbcrDifferent,
+                    ycbcrMaximum);
 
         std::vector<uint8_t> expanded(size_t(width) * height * 8);
         for (size_t pixel = 0; pixel < size_t(width) * height; ++pixel)
