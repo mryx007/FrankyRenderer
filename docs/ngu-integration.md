@@ -308,6 +308,22 @@ UV and Y, reuses them as the observed diff/main/base originals, expands L8 to
 RGB through a native transport shader, and executes the complete graph. Its
 same-frame final residual is `maximum=5`, 18 pixels above one.
 
+The native source-peer direction is closed rather than provisional:
+`ngu_sharp` is a normal persisted scaler identifier resolved by the generic
+native-scaler boundary, and NGU may own target-format D3D11 resources, MRTs,
+samplers and scheduling without routing through an EWA or user-shader transport.
+The `3 x 16-bit RGB` SuperChromaRes restriction is therefore no longer a
+transport blocker. Target arithmetic, pass order, bindings and fallback behavior
+remain evidence-bound, and unsupported contracts still fail closed.
+
+The current chroma geometry WIP builds successfully and preserves the recorded
+720p regression. Cubici2, layer and dense shaders derive their raster dimensions
+from their inputs and accept either 640x360 or 960x540. This is not complete
+1080p support: the network still loads only the 720p immutable constant
+buffers, and the full chroma scheduler remains fixed to 720p surfaces. The next
+implementation boundary is separate evidence-backed 1080p constants followed by
+the complete 960x540 -> 1920x1080 chroma scheduler.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
