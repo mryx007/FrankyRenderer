@@ -22,36 +22,30 @@ VSOut VSMain(uint vertex : SV_VertexID)
     return output;
 }
 
-float4 Fetch0(float2 position)
+float4 Fetch0(float2 position, int2 dimensions)
 {
-    int width, height;
-    Feature0.GetDimensions(width, height);
-    int2 pixel = (int2)floor(position * float2(width, height));
-    pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1));
+    int2 pixel = (int2)floor(position * float2(dimensions));
+    pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1));
     return Feature0.Load(int3(pixel, 0));
 }
 
-float4 Fetch1(float2 position)
+float4 Fetch1(float2 position, int2 dimensions)
 {
-    int width, height;
-    Feature1.GetDimensions(width, height);
-    int2 pixel = (int2)floor(position * float2(width, height));
-    pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1));
+    int2 pixel = (int2)floor(position * float2(dimensions));
+    pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1));
     return Feature1.Load(int3(pixel, 0));
 }
 
-float4 Fetch2(float2 position)
+float4 Fetch2(float2 position, int2 dimensions)
 {
-    int width, height;
-    Feature2.GetDimensions(width, height);
-    int2 pixel = (int2)floor(position * float2(width, height));
-    pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1));
+    int2 pixel = (int2)floor(position * float2(dimensions));
+    pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1));
     return Feature2.Load(int3(pixel, 0));
 }
 
-float4 Group0(float2 position, int base)
+float4 Group0(float2 position, int base, int2 dimensions)
 {
-    float4 sample = Fetch0(position);
+    float4 sample = Fetch0(position, dimensions);
     precise float4 value = sample.y * U[base + 1];
     value = mad(sample.x, U[base], value);
     value = mad(sample.z, U[base + 2], value);
@@ -59,9 +53,9 @@ float4 Group0(float2 position, int base)
     return value;
 }
 
-float4 Group1(float2 position, int base)
+float4 Group1(float2 position, int base, int2 dimensions)
 {
-    float4 sample = Fetch1(position);
+    float4 sample = Fetch1(position, dimensions);
     precise float4 value = sample.y * U[base + 1];
     value = mad(sample.x, U[base], value);
     value = mad(sample.z, U[base + 2], value);
@@ -69,9 +63,9 @@ float4 Group1(float2 position, int base)
     return value;
 }
 
-float4 Group2(float2 position, int base)
+float4 Group2(float2 position, int base, int2 dimensions)
 {
-    float4 sample = Fetch2(position);
+    float4 sample = Fetch2(position, dimensions);
     precise float4 value = sample.y * U[base + 1];
     value = mad(sample.x, U[base], value);
     value = mad(sample.z, U[base + 2], value);
@@ -79,11 +73,11 @@ float4 Group2(float2 position, int base)
     return value;
 }
 
-float4 SampleGroup(float2 position, int base)
+float4 SampleGroup(float2 position, int base, int2 dimensions)
 {
-    float4 a = Group0(position, base);
-    float4 b = Group1(position, base + 36);
-    float4 c = Group2(position, base + 72);
+    float4 a = Group0(position, base, dimensions);
+    float4 b = Group1(position, base + 36, dimensions);
+    float4 c = Group2(position, base + 72, dimensions);
     return c + (a + b);
 }
 
@@ -95,22 +89,26 @@ float4 LeakyReLU(float4 value)
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
+    int width, height;
+    Feature0.GetDimensions(width, height);
+    const int2 featureDimensions = int2(width, height);
     const float2 center = position.xy * U[110].xy;
-    float4 value = SampleGroup(center - U[110].xy, 0) + U[108];
+    float4 value =
+        SampleGroup(center - U[110].xy, 0, featureDimensions) + U[108];
 
     const float4 offsets = float4(0.0, -1.0, 1.0, -1.0);
     float4 positions0 = U[110].xyxy * offsets + center.xyxy;
-    value += SampleGroup(positions0.xy, 4);
-    value += SampleGroup(positions0.zw, 8);
+    value += SampleGroup(positions0.xy, 4, featureDimensions);
+    value += SampleGroup(positions0.zw, 8, featureDimensions);
 
     float4 positions1 = U[110].xyxy * float4(-1.0, 0.0, 1.0, 0.0) + center.xyxy;
-    value += SampleGroup(positions1.xy, 12);
-    value += SampleGroup(center, 16);
-    value += SampleGroup(positions1.zw, 20);
+    value += SampleGroup(positions1.xy, 12, featureDimensions);
+    value += SampleGroup(center, 16, featureDimensions);
+    value += SampleGroup(positions1.zw, 20, featureDimensions);
 
     float4 positions2 = U[110].xyxy * float4(-1.0, 1.0, 0.0, 1.0) + center.xyxy;
-    value += SampleGroup(positions2.xy, 24);
-    value += SampleGroup(positions2.zw, 28);
-    value += SampleGroup(center + U[110].xy, 32);
+    value += SampleGroup(positions2.xy, 24, featureDimensions);
+    value += SampleGroup(positions2.zw, 28, featureDimensions);
+    value += SampleGroup(center + U[110].xy, 32, featureDimensions);
     return LeakyReLU(value);
 }

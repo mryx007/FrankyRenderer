@@ -4,10 +4,10 @@ Texture2D<float4> Feature2 : register(t2);
 cbuffer NguDenseParams : register(b0) { float4 U[51]; };
 struct VSOut { float4 position : SV_Position; };
 VSOut VSMain(uint vertex : SV_VertexID) { VSOut output; float2 uv = float2((vertex << 1) & 2, vertex & 2); output.position = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0); return output; }
-float4 Fetch0(float2 position) { int width, height; Feature0.GetDimensions(width, height); int2 pixel = (int2)floor(position * float2(width, height)); pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1)); return Feature0.Load(int3(pixel, 0)); }
-float4 Fetch1(float2 position) { int width, height; Feature1.GetDimensions(width, height); int2 pixel = (int2)floor(position * float2(width, height)); pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1)); return Feature1.Load(int3(pixel, 0)); }
-float4 Fetch2(float2 position) { int width, height; Feature2.GetDimensions(width, height); int2 pixel = (int2)floor(position * float2(width, height)); pixel = clamp(pixel, int2(0, 0), int2(width - 1, height - 1)); return Feature2.Load(int3(pixel, 0)); }
-float4 PSMain(float4 position : SV_Position) : SV_Target0 { float4 v0 = float4(position.xy / U[50].xy, 0.0, 1.0);float4 DL51 = float4(-1,1,0,0);
+float4 Fetch0(float2 position, int2 dimensions) { int2 pixel = (int2)floor(position * float2(dimensions)); pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1)); return Feature0.Load(int3(pixel, 0)); }
+float4 Fetch1(float2 position, int2 dimensions) { int2 pixel = (int2)floor(position * float2(dimensions)); pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1)); return Feature1.Load(int3(pixel, 0)); }
+float4 Fetch2(float2 position, int2 dimensions) { int2 pixel = (int2)floor(position * float2(dimensions)); pixel = clamp(pixel, int2(0, 0), dimensions - int2(1, 1)); return Feature2.Load(int3(pixel, 0)); }
+float4 PSMain(float4 position : SV_Position) : SV_Target0 { int width, height; Feature0.GetDimensions(width, height); const int2 featureDimensions = int2(width, height); float4 v0 = float4(position.xy / U[50].xy, 0.0, 1.0);float4 DL51 = float4(-1,1,0,0);
   float4 r0_init = float4(0,0,0,0);
   float4 r1_init = float4(0,0,0,0);
   float4 r2_init = float4(0,0,0,0);
@@ -48,42 +48,42 @@ float4 PSMain(float4 position : SV_Position) : SV_Target0 { float4 v0 = float4(p
   float4 w3 = float4(e3.x, e3.y, r1_init.z, r1_init.w);
   float4 e4 = (w2 * U[49].xyzy + U[49].xyzy);
   float4 w4 = float4(e4.x, w2.y, w2.z, e4.w);
-  float4 w5 = Fetch0(w3);
+  float4 w5 = Fetch0(w3, featureDimensions);
   float4 e6 = dot(w5, U[10]);
   float4 w6 = float4(w3.x, w3.y, e6.z, w3.w);
-  float4 w7 = Fetch1(w6);
+  float4 w7 = Fetch1(w6, featureDimensions);
   float4 e8 = dot(w7, U[26]);
   float4 w8 = float4(w6.x, w6.y, w6.z, e8.w);
   float4 e9 = (w8.wwww + w8.zzzz);
   float4 w9 = float4(w8.x, w8.y, e9.z, w8.w);
-  float4 w10 = Fetch2(w9);
+  float4 w10 = Fetch2(w9, featureDimensions);
   float4 w11 = (U[49].xyxy * w4.yzzy + w9.xyxy);
   float4 e12 = dot(w10, U[42]);
   float4 w12 = float4(w4.x, e12.y, w4.z, w4.w);
   float4 e13 = (w12.yyyy + w9.zzzz);
   float4 w13 = float4(w12.x, e13.y, w12.z, w12.w);
-  float4 w14 = Fetch0(w11);
+  float4 w14 = Fetch0(w11, featureDimensions);
   float4 e15 = dot(w14, U[8]);
   float4 w15 = float4(w13.x, w13.y, e15.z, w13.w);
   float4 e16 = (w15.zzzz + w15.yyyy);
   float4 w16 = float4(w15.x, e16.y, w15.z, w15.w);
-  float4 w17 = Fetch1(w11);
+  float4 w17 = Fetch1(w11, featureDimensions);
   float4 e18 = dot(w17, U[24]);
   float4 w18 = float4(w16.x, w16.y, e18.z, w16.w);
   float4 e19 = (w18.zzzz + w18.yyyy);
   float4 w19 = float4(w18.x, e19.y, w18.z, w18.w);
-  float4 w20 = Fetch2(w11);
+  float4 w20 = Fetch2(w11, featureDimensions);
   float4 e21 = dot(w20, U[40]);
   float4 w21 = float4(w19.x, w19.y, e21.z, w19.w);
   float4 e22 = (w21.zzzz + w21.yyyy);
   float4 w22 = float4(w21.x, e22.y, w21.z, w21.w);
-  float4 w23 = Fetch0(w11.zwzw);
+  float4 w23 = Fetch0(w11.zwzw, featureDimensions);
   float4 e24 = dot(w23, U[2]);
   float4 w24 = float4(w22.x, w22.y, e24.z, w22.w);
   float4 e25 = (w24.zzzz + w24.yyyy);
   float4 w25 = float4(w24.x, e25.y, w24.z, w24.w);
-  float4 w26 = Fetch1(w11.zwzw);
-  float4 w27 = Fetch2(w11.zwzw);
+  float4 w26 = Fetch1(w11.zwzw, featureDimensions);
+  float4 w27 = Fetch2(w11.zwzw, featureDimensions);
   float4 e28 = dot(w26, U[18]);
   float4 w28 = float4(w25.x, w25.y, e28.z, w25.w);
   float4 e29 = (w28.zzzz + w28.yyyy);
@@ -92,13 +92,13 @@ float4 PSMain(float4 position : SV_Position) : SV_Target0 { float4 v0 = float4(p
   float4 w30 = float4(w29.x, w29.y, e30.z, w29.w);
   float4 e31 = (w30.zzzz + w30.yyyy);
   float4 w31 = float4(w30.x, e31.y, w30.z, w30.w);
-  float4 w32 = Fetch0(w31.xwzw);
+  float4 w32 = Fetch0(w31.xwzw, featureDimensions);
   float4 e33 = dot(w32, U[0]);
   float4 w33 = float4(w31.x, w31.y, e33.z, w31.w);
   float4 e34 = (w33.zzzz + w33.yyyy);
   float4 w34 = float4(w33.x, e34.y, w33.z, w33.w);
-  float4 w35 = Fetch1(w34.xwzw);
-  float4 w36 = Fetch2(w34.xwzw);
+  float4 w35 = Fetch1(w34.xwzw, featureDimensions);
+  float4 w36 = Fetch2(w34.xwzw, featureDimensions);
   float4 e37 = dot(w35, U[16]);
   float4 w37 = float4(e37.x, w34.y, w34.z, w34.w);
   float4 e38 = (w37.xxxx + w37.yyyy);
