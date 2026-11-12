@@ -435,3 +435,8 @@ arithmetic failure.
 
 The exact PS_4620 layer order also closes the native 720p combined path at
 `maximum=1`, `diff_gt_1_pixels=0` without substituting a target dither surface.
+
+The decoder-backed paused-seek lifecycle now also passes with installed LAV
+0.80.0 and `test_paused_seek --ngu`: 4K paused preview, 5s/12s/2s seeks and
+resume all update actual product pixels. External player process automation
+remains a separate gate.

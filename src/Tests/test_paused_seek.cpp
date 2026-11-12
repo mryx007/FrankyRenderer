@@ -5,7 +5,9 @@
 #include <dshow.h>
 #include <wrl/client.h>
 #include "Settings/Settings.h"
+#include "Settings/SettingsChoices.h"
 #include <algorithm>
+#include <cstring>
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -68,9 +70,10 @@ static void Pump()
 
 int wmain(int argc, wchar_t** argv)
 {
-    if (argc < 4 || argc > 6)
+    if (argc < 4 || argc > 7)
     {
-        puts("Usage: test_paused_seek renderer.ax LAVFilters64 video [--motion] [--potplayer]");
+        puts("Usage: test_paused_seek renderer.ax LAVFilters64 video "
+             "[--motion] [--potplayer] [--ngu]");
         return 2;
     }
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -83,11 +86,12 @@ int wmain(int argc, wchar_t** argv)
         const CLSID decoderId = {0xee30215d, 0x164f, 0x4a92, {0xa4, 0xeb, 0x9d, 0x4c, 0x13, 0x39, 0x0f, 0x9f}};
         auto splitter = Load(std::wstring(argv[2]) + L"\\LAVSplitter.ax", splitterId);
         auto decoder = Load(std::wstring(argv[2]) + L"\\LAVVideo.ax", decoderId);
-        bool potplayer = false, motion = false;
+        bool potplayer = false, motion = false, ngu = false;
         for (int i = 4; i < argc; ++i)
         {
             potplayer |= wcscmp(argv[i], L"--potplayer") == 0;
             motion |= wcscmp(argv[i], L"--motion") == 0;
+            ngu |= wcscmp(argv[i], L"--ngu") == 0;
         }
         // Both players use the same native class since the packages were unified.
         (void)potplayer;
@@ -124,7 +128,10 @@ int wmain(int argc, wchar_t** argv)
         Check(graph->ConnectDirect(
                   Pin(decoder.Get(), PINDIR_OUTPUT).Get(), Pin(renderer.Get(), PINDIR_INPUT).Get(), nullptr),
               "decoder to renderer");
-        Check(window->SetWindowPosition(0, 0, 320, 180), "video size");
+        const int outputWidth = ngu ? 3840 : 320;
+        const int outputHeight = ngu ? 2160 : 180;
+        Check(window->SetWindowPosition(0, 0, outputWidth, outputHeight),
+              "video size");
         ComPtr<IPlaceboSettings> config;
         Check(renderer.As(&config), "renderer settings");
         PlaceboSettings settings;
@@ -133,6 +140,17 @@ int wmain(int argc, wchar_t** argv)
         settings.hdrPassthrough = settings.autoHdr = FALSE;
         settings.smoothMotion = motion;
         settings.rtxSuperResolution = FALSE;
+        if (ngu)
+        {
+            wcscpy_s(settings.upscaler, L"ngu_sharp");
+            strcpy_s(settings.scaling.filters[0].filter, "ngu_sharp");
+            strcpy_s(settings.scaling.filters[2].filter, "ngu_sharp");
+            const int scalerCount =
+                int(sizeof(ScalerChoices) / sizeof(ScalerChoices[0]));
+            for (int i = 0; i < scalerCount; ++i)
+                if (!strcmp(ScalerChoices[i].name, "ngu_sharp"))
+                    settings.chromaScaler = i + 1;
+        }
         Check(config->SetSettings(&settings), "isolated test settings");
         ComPtr<IMediaControl> control;
         ComPtr<IMediaSeeking> seeking;
@@ -158,15 +176,24 @@ int wmain(int argc, wchar_t** argv)
         Check(config->GetStatus(&baseline), "initial status");
         Check(control->Pause(), "initial pause");
         uint64_t rendered = waitPreview(baseline.rendered);
-        std::vector<BYTE> pixels(320 * 180 * 4), next(pixels.size());
-        Check(config->ReadPixels(320, 180, pixels.data(), pixels.size()), "initial preview pixels");
+        std::vector<BYTE> pixels(size_t(outputWidth) * outputHeight * 4);
+        std::vector<BYTE> next(pixels.size());
+        Check(config->ReadPixels(outputWidth,
+                                 outputHeight,
+                                 pixels.data(),
+                                 pixels.size()),
+              "initial preview pixels");
         for (int seconds : {5, 12, 2})
         {
             REFERENCE_TIME target = seconds * 10000000LL;
             Check(seeking->SetPositions(&target, AM_SEEKING_AbsolutePositioning, nullptr, AM_SEEKING_NoPositioning),
                   "seek while paused");
             rendered = waitPreview(rendered);
-            Check(config->ReadPixels(320, 180, next.data(), next.size()), "new paused pixels");
+            Check(config->ReadPixels(outputWidth,
+                                     outputHeight,
+                                     next.data(),
+                                     next.size()),
+                  "new paused pixels");
             if (pixels == next)
                 Check(E_FAIL, "paused seek retained old pixels");
             pixels.swap(next);
@@ -184,7 +211,10 @@ int wmain(int argc, wchar_t** argv)
             Check(E_FAIL, "resume after previews");
         Check(control->Stop(), "stop graph");
         DestroyWindow(owner);
-        printf("PASS paused preview, forward/backward seeking and resume; smooth motion=%d\n", settings.smoothMotion);
+        printf("PASS paused preview, forward/backward seeking and resume; "
+               "ngu=%d smooth motion=%d\n",
+               ngu,
+               settings.smoothMotion);
     }
     catch (const std::exception&)
     {
