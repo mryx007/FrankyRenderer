@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -201,6 +202,33 @@ int CompareWords(const std::vector<uint8_t>& actual,
             ++different;
         maximum = std::max(maximum, delta);
         overEight += delta > 8;
+    }
+    return different;
+}
+
+int CompareRgb8(const std::vector<uint8_t>& actual,
+                const std::vector<uint8_t>& expected,
+                int& maximum,
+                int& overOne)
+{
+    Require(actual.size() == expected.size() && actual.size() % 4 == 0,
+            "RGB8 comparison size");
+    int different = 0;
+    maximum = 0;
+    overOne = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (int channel = 0; channel < 3; ++channel)
+        {
+            const int delta = std::abs(int(actual[offset + channel]) -
+                                       int(expected[offset + channel]));
+            if (delta)
+                ++different;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
     }
     return different;
 }
@@ -768,6 +796,59 @@ void TestPacked(NguScaler& ngu,
                     overEight);
         Require(maximum <= 8 && overEight == 0,
                 "P010 raw 1080 PS_4576 oracle");
+
+        if (const char* finalOraclePath =
+                std::getenv("NGU_P010_1080_FINAL_ORACLE"))
+        {
+            Require(ngu.PrepareNativeNgu1080FromPlanes(gpu),
+                    ngu.LastError());
+            ComPtr<ID3D11RenderTargetView> finalView;
+            auto final = CreateOutput(device,
+                                      3840,
+                                      2160,
+                                      DXGI_FORMAT_B8G8R8A8_UNORM,
+                                      finalView);
+            const auto finalStart = std::chrono::steady_clock::now();
+            Require(ngu.RunNativeNgu1080FromPlanes(
+                        chromaShaderView.Get(),
+                        lumaShaderView.Get(),
+                        finalView.Get(),
+                        true),
+                    ngu.LastError());
+            pl_gpu_finish(gpu);
+            const double finalMilliseconds =
+                std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - finalStart).count();
+            const auto finalBytes =
+                Download(device, context, final.Get(), 4);
+            if (const char* dumpPath =
+                    std::getenv("NGU_P010_1080_FINAL_DUMP"))
+            {
+                std::ofstream dump(
+                    dumpPath, std::ios::binary | std::ios::trunc);
+                Require(bool(dump), "open final dump");
+                dump.write(
+                    reinterpret_cast<const char*>(finalBytes.data()),
+                    std::streamsize(finalBytes.size()));
+                Require(bool(dump), "write final dump");
+            }
+            int finalMaximum = 0;
+            int finalOverOne = 0;
+            const int finalDifferent = CompareRgb8(
+                finalBytes,
+                ReadBytes(finalOraclePath),
+                finalMaximum,
+                finalOverOne);
+            std::printf(
+                "P010 1080 raw->PS_1352 different=%d maximum=%d "
+                "diff_gt_1_pixels=%d %.3f ms/frame\n",
+                finalDifferent,
+                finalMaximum,
+                finalOverOne,
+                finalMilliseconds);
+            Require(finalMaximum <= 1 && finalOverOne == 0,
+                    "P010 raw 1080 PS_1352 oracle");
+        }
     }
 }
 } // namespace
