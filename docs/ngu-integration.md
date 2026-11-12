@@ -420,3 +420,8 @@ E-150 closes the remaining SDR presentation gap. Native FinalStep output is
 handed to the renderer without a second libplacebo dither or source-transfer
 conversion. DirectShow and the expanded package now pass P010 1080 at
 `maximum=1`, `diff_gt_1_pixels=0`; RGB48 and Backend remain green.
+
+On the P016 fixture, the presentation fix reduces the final residual from
+`maximum=114` over 1,437,693 pixels to `maximum=11` over seven pixels.
+PS_4620 layer 8 remains the first above-tolerance arithmetic boundary, so P016
+is still experimental.
