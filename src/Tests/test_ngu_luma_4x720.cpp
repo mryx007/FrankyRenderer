@@ -1163,6 +1163,9 @@ int main(int argc, char** argv)
         std::printf("CombinedChroma different=%d maximum=%d\n",
                     combinedChromaDifferent,
                     combinedChromaMaximum);
+        if (!actualPrefix.empty())
+            WriteBytes(actualPrefix + L"combined_chroma.bin",
+                       combinedChromaActual);
         Require(ngu.PrepareNativeLuma4x720Full(d3d->gpu),
                 ngu.LastError());
         auto combinedFinal =
@@ -1185,6 +1188,9 @@ int main(int argc, char** argv)
         pl_gpu_finish(d3d->gpu);
         auto combinedFinalActual =
             Download(device, context.Get(), combinedFinal.Get());
+        if (!actualPrefix.empty())
+            WriteBytes(actualPrefix + L"combined_final.bin",
+                       combinedFinalActual);
         int combinedFinalMaximum = 0;
         int combinedFinalOverOne = 0;
         const int combinedFinalDifferent = CountPixelDifferences(
