@@ -143,7 +143,7 @@ static constexpr int NguHeight = 720;
 
 static DWORD FourCC()
 {
-    if (nguTest)
+    if (nguTest && !hardware)
         return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
            : textureFormat == DXGI_FORMAT_P016 ? MAKEFOURCC('P', '0', '1', '6')
@@ -152,10 +152,21 @@ static DWORD FourCC()
 
 static long SampleBytes()
 {
-    if (nguTest)
+    if (nguTest && !hardware)
         return NguWidth * NguHeight * 6;
+    if (nguTest)
+        return NguWidth * NguHeight * 3;
     return 64 * 64 * 3 / (textureFormat == DXGI_FORMAT_NV12 ? 2 : 1);
 }
+
+static void NguTrace(const char* message)
+{
+    if (std::getenv("FRANKY_NGU_TRACE"))
+        std::fprintf(stderr, "TEST_NGU_TRACE %s\n", message);
+}
+
+static std::atomic<int> nguSourceStage = 0;
+static std::atomic<unsigned> nguSourceIndex = 0;
 
 class TextureSample final : public IMediaSample, public IMediaSampleD3D11
 {
@@ -204,7 +215,7 @@ class TextureSample final : public IMediaSample, public IMediaSampleD3D11
             return E_INVALIDARG;
         *out = texture.Get();
         (*out)->AddRef();
-        *slice = 1;
+        *slice = 0;
         return S_OK;
     }
 
@@ -686,8 +697,13 @@ class PatternStream final : public CSourceStream
 
     HRESULT GetDeliveryBuffer(IMediaSample** out, REFERENCE_TIME* start, REFERENCE_TIME* stop, DWORD flags) override
     {
+        nguSourceStage = 2;
+        NguTrace("source delivery entry");
         ComPtr<IMediaSample> base;
+        nguSourceStage = 3;
         HRESULT hr = CSourceStream::GetDeliveryBuffer(&base, start, stop, flags);
+        nguSourceStage = 4;
+        NguTrace("source delivery base complete");
         if (FAILED(hr))
             return hr;
         if (!hardware)
@@ -699,12 +715,14 @@ class PatternStream final : public CSourceStream
         desc.Width = nguTest ? NguWidth : 64;
         desc.Height = nguTest ? NguHeight : 64;
         desc.MipLevels = 1;
-        desc.ArraySize = 2;
+        desc.ArraySize = 1;
         desc.Format = textureFormat;
         desc.SampleDesc.Count = 1;
         desc.BindFlags = textureBind;
         ComPtr<ID3D11Texture2D> texture;
+        nguSourceStage = 5;
         hr = device->CreateTexture2D(&desc, nullptr, &texture);
+        NguTrace("source delivery texture create complete");
         if (FAILED(hr))
         {
             if (sourceFailure.exchange(hr) == S_OK)
@@ -714,7 +732,30 @@ class PatternStream final : public CSourceStream
                        static_cast<unsigned long>(hr));
             return hr;
         }
+        if (nguTest)
+        {
+            nguSourceStage = 6;
+            std::vector<BYTE> data(size_t(NguWidth) * NguHeight * 3);
+            auto yPlane = reinterpret_cast<uint16_t*>(data.data());
+            for (int y = 0; y < NguHeight; ++y)
+                for (int x = 0; x < NguWidth; ++x)
+                    yPlane[size_t(y) * NguWidth + x] =
+                        uint16_t((16 + (x * 219) / (NguWidth - 1)) << 6);
+            auto uvPlane = reinterpret_cast<uint16_t*>(
+                data.data() + size_t(NguWidth) * NguHeight * 2);
+            for (size_t i = 0; i < size_t(NguWidth / 2) * (NguHeight / 2);
+                 ++i)
+            {
+                uvPlane[i * 2] = 128 << 6;
+                uvPlane[i * 2 + 1] = 128 << 6;
+            }
+            context->UpdateSubresource(
+                texture.Get(), 0, nullptr, data.data(), NguWidth * 2, 0);
+            NguTrace("source delivery texture update complete");
+        }
         *out = new TextureSample(base.Get(), texture.Get());
+        nguSourceStage = 7;
+        NguTrace("source delivery wrapped");
         return S_OK;
     }
 
@@ -738,7 +779,10 @@ class PatternStream final : public CSourceStream
         info->bmiHeader.biWidth = nguTest ? NguWidth : 64;
         info->bmiHeader.biHeight = nguTest ? -NguHeight : 64;
         info->bmiHeader.biPlanes = 1;
-        info->bmiHeader.biBitCount = nguTest ? 48 : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
+        info->bmiHeader.biBitCount =
+            nguTest && !hardware
+                ? 48
+                : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
         info->bmiHeader.biCompression = p010.Data1;
         info->bmiHeader.biSizeImage = SampleBytes();
         mt->SetSampleSize(SampleBytes());
@@ -756,16 +800,23 @@ class PatternStream final : public CSourceStream
 
     HRESULT OnThreadCreate() override
     {
+        nguSourceStage = 1;
+        NguTrace("source thread create");
         index = 0;
+        nguSourceIndex = 0;
         return S_OK;
     }
 
     HRESULT FillBuffer(IMediaSample* sample) override
     {
+        nguSourceStage = 8;
+        NguTrace("source FillBuffer entry");
         if (index >= (eosTest ? 6u : 90u))
             return S_FALSE;
         BYTE* bytes = nullptr;
+        nguSourceStage = 9;
         HRESULT hr = sample->GetPointer(&bytes);
+        NguTrace("source FillBuffer pointer complete");
         if (FAILED(hr))
             return hr;
         ComPtr<IMediaSample2> propsSample;
@@ -778,6 +829,7 @@ class PatternStream final : public CSourceStream
                   "sample field flags");
         }
         ComPtr<IMediaSideData> side;
+        nguSourceStage = 10;
         hr = sample->QueryInterface(IID_PPV_ARGS(&side));
         if (FAILED(hr))
             return hr;
@@ -811,7 +863,7 @@ class PatternStream final : public CSourceStream
             if (FAILED(hr))
                 return hr;
         }
-        if (nguTest)
+        if (nguTest && !hardware)
         {
             auto data = reinterpret_cast<uint16_t*>(bytes);
             if (!nguCapturedInput.empty())
@@ -855,6 +907,7 @@ class PatternStream final : public CSourceStream
         }
         if (hardware)
         {
+            nguSourceStage = 11;
             ComPtr<IMediaSampleD3D11> gpu;
             hr = sample->QueryInterface(IID_PPV_ARGS(&gpu));
             if (FAILED(hr))
@@ -864,18 +917,27 @@ class PatternStream final : public CSourceStream
             hr = gpu->GetD3D11Texture(0, &tex, &slice);
             if (FAILED(hr))
                 return hr;
-            if (WaitForSingleObject(mutex, 1000) != WAIT_OBJECT_0)
-                return E_FAIL;
-            context->UpdateSubresource(
-                tex.Get(), slice, nullptr, bytes, textureFormat == DXGI_FORMAT_NV12 ? 64 : 128, 0);
-            context->Flush();
-            ReleaseMutex(mutex);
+            // GPU NGU delivery populated the texture before publishing the
+            // sample. CPU upload would overwrite it with the wrong stride and
+            // the sample's small P010 byte span is not an RGB48 source.
+            if (!nguTest)
+            {
+                if (WaitForSingleObject(mutex, 1000) != WAIT_OBJECT_0)
+                    return E_FAIL;
+                context->UpdateSubresource(
+                    tex.Get(), slice, nullptr, bytes, textureFormat == DXGI_FORMAT_NV12 ? 64 : 128, 0);
+                context->Flush();
+                ReleaseMutex(mutex);
+            }
         }
-        REFERENCE_TIME start = index * 333333LL, stop = start + 333333;
+        REFERENCE_TIME start = CurrentStartTime() + index * 333333LL;
+        REFERENCE_TIME stop = start + 333333;
         sample->SetTime(&start, &stop);
         sample->SetSyncPoint(TRUE);
         sample->SetActualDataLength(SampleBytes());
         index++;
+        nguSourceIndex = index;
+        nguSourceStage = 12;
         return S_OK;
     }
 };
@@ -1155,11 +1217,6 @@ int wmain(int argc, wchar_t** argv)
         if (wcscmp(argv[i], L"--p016") == 0)
             textureFormat = DXGI_FORMAT_P016;
     }
-    if (nguTest && hardware)
-    {
-        puts("FAIL --ngu currently accepts the CPU RGB48 graph path only");
-        return 1;
-    }
     if (nguTest && !nguCaptureRoot.empty())
     {
         nguCapturedInput = ReadFile(
@@ -1170,6 +1227,12 @@ int wmain(int argc, wchar_t** argv)
             puts("FAIL ngu_sharp capture source");
             return 1;
         }
+    }
+    if (nguTest && hardware && !nguCaptureRoot.empty())
+    {
+        puts("FAIL the captured NGU oracle is RGB48; GPU mode is a P010 "
+             "playback smoke and cannot use --ngu-root");
+        return 1;
     }
     for (int i = 1; i < argc; i++)
         if (wcscmp(argv[i], L"--srv") == 0)
@@ -1564,8 +1627,154 @@ int wmain(int argc, wchar_t** argv)
                 return 1;
             }
         }
+        if (hardware)
+        {
+            const auto baseline = status.rendered;
+            const auto baselineHardware = status.hardwareFrames;
+            std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
+            Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()),
+                  "P010 NGU first pixels");
+            if (std::all_of(pixels.begin(), pixels.end(),
+                            [](BYTE value) { return value == 0; }))
+            {
+                puts("FAIL_PRODUCT P010 NGU produced a black 4K frame");
+                return 1;
+            }
+            Check(control->Pause(), "pause P010 NGU graph");
+            OAFilterState paused = State_Stopped;
+            Check(control->GetState(3000, &paused), "P010 NGU paused state");
+            if (paused != State_Paused)
+            {
+                puts("FAIL_PRODUCT P010 NGU did not enter paused state");
+                return 1;
+            }
+            Check(control->Run(), "resume P010 NGU graph");
+            const DWORD resumeDeadline = GetTickCount();
+            do
+            {
+                Sleep(10);
+                MSG message;
+                while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                Check(config->GetStatus(&status), "P010 NGU resume status");
+            } while (status.rendered < baseline + 2 &&
+                     SUCCEEDED(sourceFailure.load()) &&
+                     GetTickCount() - resumeDeadline < 5000);
+            Check(control->Pause(), "pause resumed P010 NGU graph");
+            if (status.rendered < baseline + 2 ||
+                FAILED(status.lastResult) ||
+                status.hardwareFrames < baselineHardware + 2)
+            {
+                printf("FAIL_PRODUCT P010 NGU pause/flush/resume rendered=%llu "
+                       "hardware=%llu last=%08lX source=%08lX "
+                       "source_stage=%d source_index=%u\n",
+                       static_cast<unsigned long long>(status.rendered),
+                       static_cast<unsigned long long>(status.hardwareFrames),
+                       static_cast<unsigned long>(status.lastResult),
+                       static_cast<unsigned long>(sourceFailure.load()),
+                       nguSourceStage.load(),
+                       nguSourceIndex.load());
+                return 1;
+            }
+            Check(control->Stop(), "stop paused P010 NGU graph");
+            Check(input->BeginFlush(), "P010 NGU begin flush");
+            Check(input->NewSegment(0, 0, 1.), "P010 NGU new segment");
+            Check(input->EndFlush(), "P010 NGU end flush");
+            Check(config->GetStatus(&status), "P010 NGU segment baseline");
+            const auto segmentBaseline = status.rendered;
+            const auto segmentBaselineHardware = status.hardwareFrames;
+            Check(control->Run(), "run P010 NGU after new segment");
+            const DWORD segmentDeadline = GetTickCount();
+            do
+            {
+                Sleep(10);
+                MSG message;
+                while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                Check(config->GetStatus(&status), "P010 NGU segment status");
+            } while (status.rendered < segmentBaseline + 5 &&
+                     SUCCEEDED(sourceFailure.load()) &&
+                     GetTickCount() - segmentDeadline < 5000);
+            Check(control->Pause(), "pause P010 NGU after new segment");
+            if (status.rendered < segmentBaseline + 5 ||
+                FAILED(status.lastResult) ||
+                status.hardwareFrames < segmentBaselineHardware + 5)
+            {
+                printf("FAIL_PRODUCT P010 NGU flush/new-segment rendered=%llu "
+                       "hardware=%llu last=%08lX source=%08lX "
+                       "source_stage=%d source_index=%u\n",
+                       static_cast<unsigned long long>(status.rendered),
+                       static_cast<unsigned long long>(status.hardwareFrames),
+                       static_cast<unsigned long>(status.lastResult),
+                       static_cast<unsigned long>(sourceFailure.load()),
+                       nguSourceStage.load(),
+                       nguSourceIndex.load());
+                return 1;
+            }
+            Check(control->Stop(), "stop P010 NGU after new segment");
+
+            Check(graph->Disconnect(rawSource->GetPin(0)),
+                  "disconnect P010 NGU decoder");
+            Check(graph->Disconnect(input.Get()),
+                  "disconnect P010 NGU renderer");
+            Check(graph->ConnectDirect(rawSource->GetPin(0), input.Get(), nullptr),
+                  "reconnect P010 NGU decoder");
+            Check(config->GetStatus(&status), "P010 NGU reconnect baseline");
+            const auto reconnectBaseline = status.rendered;
+            const auto reconnectBaselineHardware = status.hardwareFrames;
+            Check(control->Run(), "run reconnected P010 NGU graph");
+            const DWORD reconnectDeadline = GetTickCount();
+            do
+            {
+                Sleep(10);
+                MSG message;
+                while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                Check(config->GetStatus(&status), "P010 NGU reconnect status");
+            } while (status.rendered < reconnectBaseline + 5 &&
+                     SUCCEEDED(sourceFailure.load()) &&
+                     GetTickCount() - reconnectDeadline < 5000);
+            Check(control->Pause(), "pause reconnected P010 NGU graph");
+            if (status.rendered < reconnectBaseline + 5 ||
+                FAILED(status.lastResult) ||
+                status.hardwareFrames < reconnectBaselineHardware + 5)
+            {
+                printf("FAIL_PRODUCT P010 NGU reconnect rendered=%llu "
+                       "hardware=%llu last=%08lX source=%08lX\n",
+                       static_cast<unsigned long long>(status.rendered),
+                       static_cast<unsigned long long>(status.hardwareFrames),
+                       static_cast<unsigned long>(status.lastResult),
+                       static_cast<unsigned long>(sourceFailure.load()));
+                return 1;
+            }
+            PlaceboDiagnostics lifecycleDiagnostics = {};
+            ComPtr<IPlaceboDiagnostics> lifecycleConfig;
+            Check(renderer.As(&lifecycleConfig),
+                  "P010 NGU lifecycle diagnostics interface");
+            Check(lifecycleConfig->GetDiagnostics(&lifecycleDiagnostics),
+                  "P010 NGU lifecycle diagnostics");
+            if (!lifecycleDiagnostics.haveVideo ||
+                !lifecycleDiagnostics.directGpu ||
+                strcmp(lifecycleDiagnostics.pixelFormat, "P010") != 0)
+            {
+                puts("FAIL_PRODUCT P010 NGU lifecycle lost the hardware plane path");
+                return 1;
+            }
+            puts("PASS_PRODUCT P010 NGU pause, flush, restart and reconnect");
+        }
         Check(control->Stop(), "stop NGU graph");
-        printf("PASS_PRODUCT ngu_sharp DirectShow RGB48 graph rendered=%llu different=%d maximum=%d\n",
+        printf("PASS_PRODUCT ngu_sharp DirectShow %s graph rendered=%llu "
+               "different=%d maximum=%d\n",
+               hardware ? "P010" : "RGB48",
                static_cast<unsigned long long>(status.rendered),
                different,
                maximum);

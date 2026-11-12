@@ -16,6 +16,8 @@
 #include "Renderer/MotionTiming.h"
 #include "Renderer/ShaderCache.h"
 #include <deque>
+#include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <iomanip>
 #pragma comment(lib, "gdi32.lib")
@@ -60,6 +62,18 @@ using Microsoft::WRL::ComPtr;
 
 struct PlaceboBackend::State
 {
+    static bool TraceNgu()
+    {
+        static const bool enabled = std::getenv("FRANKY_NGU_TRACE") != nullptr;
+        return enabled;
+    }
+
+    static void TraceNgu(const char* message)
+    {
+        if (TraceNgu())
+            std::fprintf(stderr, "NGU_TRACE %s\n", message);
+    }
+
     struct StoredFrame
     {
         pl_gpu gpu = nullptr;
@@ -599,6 +613,7 @@ struct PlaceboBackend::State
             return false;
         if (nativePlane)
         {
+            TraceNgu("P010: begin decoder plane copy");
             if (!nguPlaneYView || !nguPlaneUvView ||
                 !nguPlaneYShaderView || !nguPlaneUvShaderView)
             {
@@ -612,6 +627,7 @@ struct PlaceboBackend::State
                 description.height,
                 nguPlaneYView.Get(),
                 nguPlaneUvView.Get());
+            TraceNgu("P010: decoder plane copy complete");
             const bool ran = copied &&
                 (description.width == 1280
                      ? ngu.RunNativeNgu720FromPlanes(
@@ -622,6 +638,7 @@ struct PlaceboBackend::State
                            nguPlaneUvShaderView.Get(),
                            nguPlaneYShaderView.Get(),
                            nguOutputView.Get()));
+            TraceNgu("P010: native NGU plane entry complete");
             if (!ran)
             {
                 error = ngu.LastError();
