@@ -6,6 +6,22 @@ cbuffer Params : register(b0) { float4 U[1]; };
 
 struct VSOut { float4 position : SV_Position; };
 
+float EncodeTargetUnorm16(float value)
+{
+    const uint fixed20 =
+        min(uint(floor(saturate(value) * 1048576.0)), 1048575u);
+    const uint high = fixed20 >> 16;
+    const uint low = fixed20 & 65535u;
+    const uint highScaled = high * 65535u;
+    const uint lowProduct = low * 65535u;
+    const uint remainder =
+        ((highScaled & 15u) << 16) +
+        (lowProduct & 1048575u) + 524287u;
+    const uint code =
+        (highScaled >> 4) + (lowProduct >> 20) + (remainder >> 20);
+    return float(code) / 65535.0;
+}
+
 VSOut VSMain(uint vertex : SV_VertexID)
 {
     VSOut output;
@@ -36,5 +52,8 @@ float4 PSMain(VSOut input) : SV_Target0
         result = mad(sample, scale.y, result);
         tap += U[0].w;
     }
-    return float4(result, 0.0);
+    return float4(EncodeTargetUnorm16(result.x),
+                  EncodeTargetUnorm16(result.y),
+                  EncodeTargetUnorm16(result.z),
+                  0.0);
 }

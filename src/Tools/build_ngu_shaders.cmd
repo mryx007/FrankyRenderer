@@ -11,6 +11,8 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_c
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_X /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x_class3.cso" "Shaders\Ngu\ngu_chroma_scale_x_class3.hlsl"
+if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_Y /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_y.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_class3_scale_y.cso" "Shaders\Ngu\ngu_class3_scale_y.hlsl"
@@ -39,7 +41,7 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_c
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_ycbcr_class3.cso" "Shaders\Ngu\ngu_chroma_ycbcr_class3.hlsl"
 if errorlevel 1 exit /b 1
-fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_class3_scale_x.cso" "Shaders\Ngu\ngu_class3_scale_x.hlsl"
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_class3_scale_x.cso" "Shaders\Ngu\ngu_class3_scale_x.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_l8_expand.cso" "Shaders\Ngu\ngu_l8_expand.hlsl"
 if errorlevel 1 exit /b 1

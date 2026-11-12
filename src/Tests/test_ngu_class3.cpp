@@ -430,6 +430,7 @@ int main(int argc, char** argv)
                 UINT width;
                 UINT height;
             } coreStages[] = {
+                {0, "PS_260_cdfc6b55", 640, 720},
                 {6, "PS_1516_11f763dd", 1280, 1440},
                 {7, "PS_396_e3199f71", 1280, 720},
                 {11, "PS_4576_b7830945", 1280, 720},
@@ -437,15 +438,20 @@ int main(int argc, char** argv)
             std::vector<uint8_t> coreRgbActual;
             for (const auto& coreStage : coreStages)
             {
+                if (coreStage.stage == 0 &&
+                    std::string(label) != "P216")
+                    continue;
                 const std::string geometry =
                     std::to_string(coreStage.width) + "x" +
                     std::to_string(coreStage.height);
+                const std::filesystem::path stageRoot =
+                    coreStage.stage == 0 ? coreTargetRoot : root;
                 const auto stageExpected = ReadBytes(
-                    FindCapture(root,
-                                coreStage.shader,
-                                geometry.c_str(),
-                                size_t(coreStage.width) *
-                                    coreStage.height * 8),
+                    FindFirstCapture(stageRoot,
+                                     coreStage.shader,
+                                     geometry.c_str(),
+                                     size_t(coreStage.width) *
+                                         coreStage.height * 8),
                     size_t(coreStage.width) * coreStage.height * 8);
                 auto stageOutput = CreateTexture(
                     device,
@@ -453,7 +459,9 @@ int main(int argc, char** argv)
                     coreStage.height,
                     D3D11_BIND_RENDER_TARGET |
                         D3D11_BIND_SHADER_RESOURCE,
-                    nullptr);
+                    nullptr,
+                    coreStage.stage == 0 ? DXGI_FORMAT_R16_UNORM
+                                         : DXGI_FORMAT_R16G16B16A16_UNORM);
                 ComPtr<ID3D11RenderTargetView> stageView;
                 Require(SUCCEEDED(device->CreateRenderTargetView(
                             stageOutput.Get(), nullptr, &stageView)),
@@ -473,12 +481,20 @@ int main(int argc, char** argv)
                 int stageMaximum = 0;
                 int stageOverOne = 0;
                 size_t stageMaximumOffset = 0;
-                const int stageDifferent = CompareChannels(
-                    stageActual,
-                    stageExpected,
-                    stageMaximum,
-                    stageOverOne,
-                    stageMaximumOffset);
+                const int stageDifferent =
+                    coreStage.stage == 0
+                        ? CompareR16ToExpandedCapture(
+                              stageActual,
+                              stageExpected,
+                              stageMaximum,
+                              stageOverOne,
+                              stageMaximumOffset)
+                        : CompareChannels(
+                              stageActual,
+                              stageExpected,
+                              stageMaximum,
+                              stageOverOne,
+                              stageMaximumOffset);
                 std::printf(
                     "class3-core stage=%d different=%d maximum=%d "
                     "diff_gt_1_channels=%d\n",
@@ -740,6 +756,25 @@ int main(int argc, char** argv)
                     cbScaleXOverOne,
                     cbScaleXMaximumOffset % 1280,
                     cbScaleXMaximumOffset / 1280);
+                if (cbScaleXMaximum != 0)
+                {
+                    std::printf(
+                        "PS_748 X mismatch actual=%u expected=%u\n",
+                        unsigned(uint16_t(
+                                     cbScaleXActual[
+                                         cbScaleXMaximumOffset * 2]) |
+                                 (uint16_t(
+                                      cbScaleXActual[
+                                          cbScaleXMaximumOffset * 2 + 1])
+                                  << 8)),
+                        unsigned(uint16_t(
+                                     cbScaleXExpected[
+                                         cbScaleXMaximumOffset * 8]) |
+                                 (uint16_t(
+                                      cbScaleXExpected[
+                                          cbScaleXMaximumOffset * 8 + 1])
+                                  << 8)));
+                }
                 Require(cbScaleXMaximum <= 1 && cbScaleXOverOne == 0,
                         "class-3 cbScaleX source exceeds one code");
 

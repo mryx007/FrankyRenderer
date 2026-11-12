@@ -448,6 +448,7 @@ struct NguScaler::NativeChromaScale
 {
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> scaleX;
+    ComPtr<ID3D11PixelShader> scaleXClass3;
     ComPtr<ID3D11PixelShader> scaleY;
     ComPtr<ID3D11PixelShader> scaleYClass3;
     ComPtr<ID3D11Buffer> scaleXConstants;
@@ -1528,6 +1529,9 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
         LoadBundledText(L"shaders\\Ngu\\ngu_chroma_scale.hlsl", 16 * 1024);
     const auto scaleXCso =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x.cso", 0);
+    const auto scaleXClass3Cso =
+        LoadBundledBytes(
+            L"shaders\\Ngu\\ngu_chroma_scale_x_class3.cso", 0);
     const auto scaleYCso =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y.cso", 0);
     const auto scaleYClass3Cso =
@@ -1538,7 +1542,8 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
     const auto scaleYConstants1080 =
         LoadBundledBytes(
             L"shaders\\Ngu\\ngu_chroma_scale_y_constants_1080.bin", 48);
-    if (shaderText.empty() || scaleXCso.empty() || scaleYCso.empty() ||
+    if (shaderText.empty() || scaleXCso.empty() ||
+        scaleXClass3Cso.empty() || scaleYCso.empty() ||
         scaleYClass3Cso.empty() ||
         scaleXConstants1080.empty() || scaleYConstants1080.empty())
     {
@@ -1576,6 +1581,11 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
                                          static_cast<SIZE_T>(scaleXCso.size()),
                                          nullptr,
                                          &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(
+            scaleXClass3Cso.data(),
+            static_cast<SIZE_T>(scaleXClass3Cso.size()),
+            nullptr,
+            &state->scaleXClass3)) ||
         FAILED(device->CreatePixelShader(scaleYCso.data(),
                                          static_cast<SIZE_T>(scaleYCso.size()),
                                          nullptr,
@@ -1703,7 +1713,8 @@ bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
     }
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaScale_->vertex.Get(),
-                  nativeChromaScale_->scaleX.Get(),
+                  (isClass3 ? nativeChromaScale_->scaleXClass3.Get()
+                            : nativeChromaScale_->scaleX.Get()),
                   (isClass3
                        ? nativeChromaScale_->scaleXConstantsClass3.Get()
                        : is1080
