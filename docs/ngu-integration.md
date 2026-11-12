@@ -421,13 +421,17 @@ handed to the renderer without a second libplacebo dither or source-transfer
 conversion. DirectShow and the expanded package now pass P010 1080 at
 `maximum=1`, `diff_gt_1_pixels=0`; RGB48 and Backend remain green.
 
-On the P016 fixture, the presentation fix reduces the final residual from
+On the P016 fixture, the presentation fix first reduced the final residual from
 `maximum=114` over 1,437,693 pixels to `maximum=11` over seven pixels.
-PS_4620 layer 8 remains the first above-tolerance arithmetic boundary, so P016
-is still experimental.
+E-152 then matched the target PS_4620 accumulation order; all 28 layers and
+dense outputs are bit-exact and P016 closes at `maximum=1`,
+`diff_gt_1_pixels=0`.
 
 The 720p FinalStep residual is also closed at the dither-surface boundary.
 Replaying the captured target stage-5 texture with the byte-identical pre-final
 input passes at `maximum=1`. Independent product/target clock seeds still vary
 at two pixels; that variance is reported separately rather than treated as NGU
 arithmetic failure.
+
+The exact PS_4620 layer order also closes the native 720p combined path at
+`maximum=1`, `diff_gt_1_pixels=0` without substituting a target dither surface.

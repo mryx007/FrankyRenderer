@@ -118,8 +118,8 @@ float4 PSMain(float4 position : SV_Position) : SV_Target0
     top += U[144];
     top += Tap(uv + float2(0.0, -1.0) * step, 4, featureDimensions);
     top += Tap(uv + float2(1.0, -1.0) * step, 8, featureDimensions);
+    top += Tap(uv + float2(-1.0, 0.0) * step, 12, featureDimensions);
     precise float4 value = center + top;
-    value += Tap(uv + float2(-1.0, 0.0) * step, 12, featureDimensions);
     value += Tap(uv + float2(1.0, 0.0) * step, 20, featureDimensions);
     value += Tap(uv + float2(-1.0, 1.0) * step, 24, featureDimensions);
     value += Tap(uv + float2(0.0, 1.0) * step, 28, featureDimensions);
