@@ -150,15 +150,15 @@ static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
 static DXGI_FORMAT textureFormat = DXGI_FORMAT_P010;
 static UINT textureBind = D3D11_BIND_DECODER;
 static std::atomic<HRESULT> sourceFailure = S_OK;
-static constexpr int NguWidth = 1280;
-static constexpr int NguHeight = 720;
+static int nguSourceWidth = 1280;
+static int nguSourceHeight = 720;
 
 static int P010InputTextureWidth()
 {
     if (p010FixtureInput.empty())
-        return NguWidth;
+        return nguSourceWidth;
     return static_cast<int>(p010FixtureInput.size() /
-                            (size_t(NguHeight) * 3));
+                            (size_t(nguSourceHeight) * 3));
 }
 
 static DWORD FourCC()
@@ -173,10 +173,10 @@ static DWORD FourCC()
 static long SampleBytes()
 {
     if (nguTest && !hardware)
-        return NguWidth * NguHeight * 6;
+        return nguSourceWidth * nguSourceHeight * 6;
     if (nguTest)
         return p010FixtureInput.empty()
-                   ? NguWidth * NguHeight * 3
+                   ? nguSourceWidth * nguSourceHeight * 3
                    : static_cast<long>(p010FixtureInput.size());
     return 64 * 64 * 3 / (textureFormat == DXGI_FORMAT_NV12 ? 2 : 1);
 }
@@ -736,7 +736,7 @@ class PatternStream final : public CSourceStream
         D3D11_TEXTURE2D_DESC desc = {};
         const int textureWidth = nguTest ? P010InputTextureWidth() : 64;
         desc.Width = textureWidth;
-        desc.Height = nguTest ? NguHeight : 64;
+        desc.Height = nguTest ? nguSourceHeight : 64;
         desc.MipLevels = 1;
         desc.ArraySize = 1;
         desc.Format = textureFormat;
@@ -762,16 +762,21 @@ class PatternStream final : public CSourceStream
             const BYTE* data = p010FixtureInput.data();
             if (p010FixtureInput.empty())
             {
-                generated.resize(size_t(NguWidth) * NguHeight * 3);
+                generated.resize(size_t(nguSourceWidth) *
+                                 nguSourceHeight * 3);
                 auto yPlane = reinterpret_cast<uint16_t*>(generated.data());
-                for (int y = 0; y < NguHeight; ++y)
-                    for (int x = 0; x < NguWidth; ++x)
-                        yPlane[size_t(y) * NguWidth + x] =
-                            uint16_t((16 + (x * 219) / (NguWidth - 1)) << 6);
+                for (int y = 0; y < nguSourceHeight; ++y)
+                    for (int x = 0; x < nguSourceWidth; ++x)
+                        yPlane[size_t(y) * nguSourceWidth + x] =
+                            uint16_t((16 + (x * 219) /
+                                             (nguSourceWidth - 1))
+                                     << 6);
                 auto uvPlane = reinterpret_cast<uint16_t*>(
-                    generated.data() + size_t(NguWidth) * NguHeight * 2);
+                    generated.data() +
+                    size_t(nguSourceWidth) * nguSourceHeight * 2);
                 for (size_t i = 0;
-                     i < size_t(NguWidth / 2) * (NguHeight / 2);
+                     i < size_t(nguSourceWidth / 2) *
+                             (nguSourceHeight / 2);
                      ++i)
                 {
                     uvPlane[i * 2] = 128 << 6;
@@ -806,8 +811,8 @@ class PatternStream final : public CSourceStream
         info->dwPictAspectRatioX = nguTest ? 16 : 1;
         info->dwPictAspectRatioY = nguTest ? 9 : 1;
         info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        info->bmiHeader.biWidth = nguTest ? NguWidth : 64;
-        info->bmiHeader.biHeight = nguTest ? -NguHeight : 64;
+        info->bmiHeader.biWidth = nguTest ? nguSourceWidth : 64;
+        info->bmiHeader.biHeight = nguTest ? -nguSourceHeight : 64;
         info->bmiHeader.biPlanes = 1;
         info->bmiHeader.biBitCount =
             nguTest && !hardware
@@ -898,20 +903,27 @@ class PatternStream final : public CSourceStream
             auto data = reinterpret_cast<uint16_t*>(bytes);
             if (!nguCapturedInput.empty())
             {
-                for (size_t i = 0; i < size_t(NguWidth) * NguHeight; ++i)
+                for (size_t i = 0;
+                     i < size_t(nguSourceWidth) * nguSourceHeight;
+                     ++i)
                     std::memcpy(reinterpret_cast<BYTE*>(data) + i * 6,
                                 nguCapturedInput.data() + i * 8,
                                 6);
             }
             else
             {
-                for (int y = 0; y < NguHeight; ++y)
-                    for (int x = 0; x < NguWidth; ++x)
+                for (int y = 0; y < nguSourceHeight; ++y)
+                    for (int x = 0; x < nguSourceWidth; ++x)
                     {
-                        const size_t offset = (size_t(y) * NguWidth + x) * 3;
-                        data[offset] = static_cast<uint16_t>(x * 65535 / (NguWidth - 1));
-                        data[offset + 1] = static_cast<uint16_t>(y * 65535 / (NguHeight - 1));
-                        data[offset + 2] = static_cast<uint16_t>((x + y) * 32767 / (NguWidth + NguHeight - 2));
+                        const size_t offset =
+                            (size_t(y) * nguSourceWidth + x) * 3;
+                        data[offset] = static_cast<uint16_t>(
+                            x * 65535 / (nguSourceWidth - 1));
+                        data[offset + 1] = static_cast<uint16_t>(
+                            y * 65535 / (nguSourceHeight - 1));
+                        data[offset + 2] = static_cast<uint16_t>(
+                            (x + y) * 32767 /
+                            (nguSourceWidth + nguSourceHeight - 2));
                     }
             }
         }
@@ -1250,6 +1262,11 @@ int wmain(int argc, wchar_t** argv)
             p010FixtureOutputPath = argv[++i];
         if (wcscmp(argv[i], L"--ngu-frame-count") == 0 && i + 1 < argc)
             nguInitialFrames = _wtoi(argv[++i]);
+        if (wcscmp(argv[i], L"--ngu-1080") == 0)
+        {
+            nguSourceWidth = 1920;
+            nguSourceHeight = 1080;
+        }
         if (wcscmp(argv[i], L"--nv12") == 0)
             textureFormat = DXGI_FORMAT_NV12;
         if (wcscmp(argv[i], L"--p016") == 0)
@@ -1266,6 +1283,12 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
     }
+    if (nguTest && (!hardware) &&
+        (nguSourceWidth != 1280 || nguSourceHeight != 720))
+    {
+        puts("FAIL --ngu-1080 is a P010 GPU smoke; use --gpu");
+        return 1;
+    }
     if (nguTest && hardware && !nguCaptureRoot.empty())
     {
         puts("FAIL the captured NGU oracle is RGB48; GPU mode is a P010 "
@@ -1275,17 +1298,19 @@ int wmain(int argc, wchar_t** argv)
     if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())
     {
         if (!nguTest || !hardware || !nguCaptureRoot.empty() ||
-            p010FixtureInputPath.empty() || p010FixtureOraclePath.empty())
+            p010FixtureInputPath.empty())
         {
-            puts("FAIL --p010-input and --p010-oracle require --gpu --ngu "
-                 "without --ngu-root");
+            puts("FAIL --p010-input requires --gpu --ngu without "
+                 "--ngu-root");
             return 1;
         }
         p010FixtureInput =
-            ReadFile(p010FixtureInputPath, size_t(2048) * NguHeight * 3);
+            ReadFile(p010FixtureInputPath,
+                     size_t(2048) * nguSourceHeight * 3);
         if (p010FixtureInput.empty())
         {
-            puts("FAIL P010 fixture input must be 2048x720 P010");
+            printf("FAIL P010 fixture input must be 2048x%d P010\n",
+                   nguSourceHeight);
             return 1;
         }
     }
@@ -1867,12 +1892,17 @@ int wmain(int argc, wchar_t** argv)
                 puts("FAIL_PRODUCT P010 NGU lifecycle lost the hardware plane path");
                 return 1;
             }
-            puts("PASS_PRODUCT P010 NGU pause, flush, restart and reconnect");
+            printf("PASS_PRODUCT P010 NGU %dx%d pause, flush, restart "
+                   "and reconnect\n",
+                   nguSourceWidth,
+                   nguSourceHeight);
         }
         Check(control->Stop(), "stop NGU graph");
-        printf("PASS_PRODUCT ngu_sharp DirectShow %s graph rendered=%llu "
-               "different=%d maximum=%d\n",
+        printf("PASS_PRODUCT ngu_sharp DirectShow %s %dx%d graph "
+               "rendered=%llu different=%d maximum=%d\n",
                hardware ? "P010" : "RGB48",
+               nguSourceWidth,
+               nguSourceHeight,
                static_cast<unsigned long long>(status.rendered),
                different,
                maximum);
