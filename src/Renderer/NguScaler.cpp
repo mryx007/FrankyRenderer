@@ -463,8 +463,10 @@ struct NguScaler::NativeChromaYCbCr
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
-struct NguScaler::NativeChromaVeryHigh720Full
+struct NguScaler::NativeChromaFullResources
 {
+    UINT width = 0;
+    UINT height = 0;
     ComPtr<ID3D11Texture2D> cbTexture;
     ComPtr<ID3D11RenderTargetView> cbView;
     ComPtr<ID3D11ShaderResourceView> cbShaderView;
@@ -2563,26 +2565,43 @@ bool NguScaler::RunNativeChromaYCbCr(
     return true;
 }
 
-bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
+bool NguScaler::PrepareNativeChromaFull(
+    pl_gpu gpu,
+    int width,
+    int height,
+    std::unique_ptr<NativeChromaFullResources>& state,
+    const char* geometry)
 {
-    if (!gpu)
+    if (!gpu || width <= 0 || height <= 0)
     {
-        error_ = "NGU full VeryHigh chroma requires a GPU";
+        error_ = "NGU full VeryHigh chroma requires a valid GPU and geometry";
         return false;
     }
-    if (nativeChromaVeryHigh720Full_ && gpu == gpu_)
+    if (state && gpu == gpu_ && state->width == UINT(width) &&
+        state->height == UINT(height))
         return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    const bool is1080 = width == 960 && height == 540;
     if (!PrepareNativeChromaSplit(gpu) ||
         !PrepareNativeChromaScale(gpu) ||
-        !PrepareNativeChromaVeryHigh720(gpu) ||
+        (is1080 ? !PrepareNativeChromaVeryHigh1080(gpu)
+                : !PrepareNativeChromaVeryHigh720(gpu)) ||
         !PrepareNativeChromaCombines(gpu) ||
         !PrepareNativeChromaRealign(gpu) ||
         !PrepareNativeChromaYCbCr(gpu) ||
-        !PrepareNativeSuperResStrength3(gpu))
+        (is1080 ? !PrepareNativeSuperResStrength3_1080(gpu)
+                : !PrepareNativeSuperResStrength3(gpu)))
         return false;
 
     ID3D11Device* device = pl_d3d11_get(gpu)->device;
-    auto state = std::make_unique<NativeChromaVeryHigh720Full>();
+    auto next = std::make_unique<NativeChromaFullResources>();
+    next->width = UINT(width);
+    next->height = UINT(height);
+    const UINT outputWidth = UINT(width * 2);
+    const UINT outputHeight = UINT(height * 2);
+    const UINT denseWidth = UINT(width + 2);
+    const UINT denseHeight = UINT(height + 2);
     auto create = [&](UINT width,
                       UINT height,
                       DXGI_FORMAT format,
@@ -2606,108 +2625,143 @@ bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
                SUCCEEDED(device->CreateShaderResourceView(
                    texture.Get(), nullptr, &shaderView));
     };
-    if (!create(640, 360, DXGI_FORMAT_R16_UNORM,
-                state->cbTexture, state->cbView, state->cbShaderView) ||
-        !create(640, 360, DXGI_FORMAT_R16_UNORM,
-                state->crTexture, state->crView, state->crShaderView) ||
-        !create(1280, 360, DXGI_FORMAT_R16_UNORM,
-                state->cbScaleXTexture,
-                state->cbScaleXView,
-                state->cbScaleXShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
-                state->cbScaleYTexture,
-                state->cbScaleYView,
-                state->cbScaleYShaderView) ||
-        !create(1280, 360, DXGI_FORMAT_R16_UNORM,
-                state->crScaleXTexture,
-                state->crScaleXView,
-                state->crScaleXShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
-                state->crScaleYTexture,
-                state->crScaleYView,
-                state->crScaleYShaderView) ||
-        !create(642, 362, DXGI_FORMAT_R16G16B16A16_FLOAT,
-                state->denseCbTexture,
-                state->denseCbView,
-                state->denseCbShaderView) ||
-        !create(642, 362, DXGI_FORMAT_R16G16B16A16_FLOAT,
-                state->denseCrTexture,
-                state->denseCrView,
-                state->denseCrShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
-                state->combine1Texture,
-                state->combine1View,
-                state->combine1ShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16G16_UNORM,
-                state->combine2Texture,
-                state->combine2View,
-                state->combine2ShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->realignTexture,
-                state->realignView,
-                state->realignShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->ycbcrTexture,
-                state->ycbcrView,
-                state->ycbcrShaderView))
+    if (!create(next->width, next->height, DXGI_FORMAT_R16_UNORM,
+                next->cbTexture, next->cbView, next->cbShaderView) ||
+        !create(next->width, next->height, DXGI_FORMAT_R16_UNORM,
+                next->crTexture, next->crView, next->crShaderView) ||
+        !create(outputWidth, next->height, DXGI_FORMAT_R16_UNORM,
+                next->cbScaleXTexture,
+                next->cbScaleXView,
+                next->cbScaleXShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+                next->cbScaleYTexture,
+                next->cbScaleYView,
+                next->cbScaleYShaderView) ||
+        !create(outputWidth, next->height, DXGI_FORMAT_R16_UNORM,
+                next->crScaleXTexture,
+                next->crScaleXView,
+                next->crScaleXShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+                next->crScaleYTexture,
+                next->crScaleYView,
+                next->crScaleYShaderView) ||
+        !create(denseWidth, denseHeight, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                next->denseCbTexture,
+                next->denseCbView,
+                next->denseCbShaderView) ||
+        !create(denseWidth, denseHeight, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                next->denseCrTexture,
+                next->denseCrView,
+                next->denseCrShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+                next->combine1Texture,
+                next->combine1View,
+                next->combine1ShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16_UNORM,
+                next->combine2Texture,
+                next->combine2View,
+                next->combine2ShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16B16A16_UNORM,
+                next->realignTexture,
+                next->realignView,
+                next->realignShaderView) ||
+        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16B16A16_UNORM,
+                next->ycbcrTexture,
+                next->ycbcrView,
+                next->ycbcrShaderView))
     {
-        error_ = "NGU full VeryHigh chroma surfaces could not be created";
+        error_ = std::string("NGU ") + geometry +
+                 " full VeryHigh chroma surfaces could not be created";
         return false;
     }
-    nativeChromaVeryHigh720Full_ = std::move(state);
+    state = std::move(next);
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeChromaVeryHigh720Full(
+bool NguScaler::RunNativeChromaFull(
     ID3D11ShaderResourceView* packedUv,
     ID3D11ShaderResourceView* yInput,
     ID3D11ShaderResourceView* diffOriginal,
     ID3D11ShaderResourceView* mainOriginal,
     ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output)
+    ID3D11RenderTargetView* output,
+    int width,
+    int height,
+    bool is1080,
+    NativeChromaFullResources& state)
 {
+    const UINT outputWidth = UINT(width * 2);
+    const UINT outputHeight = UINT(height * 2);
     const bool packedUvIsRgba16 =
         packedUv &&
         ViewMatchesTexture(
-            packedUv, DXGI_FORMAT_R16G16B16A16_UNORM, 640, 360);
+            packedUv,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            UINT(width),
+            UINT(height));
     const bool packedUvIsBgra8 =
         packedUv &&
-        ViewMatchesTexture(packedUv, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
+        ViewMatchesTexture(packedUv,
+                           DXGI_FORMAT_B8G8R8A8_UNORM,
+                           UINT(width),
+                           UINT(height));
     const bool mainIsRgba16 =
         mainOriginal &&
         ViewMatchesTexture(
-            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+            mainOriginal,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            outputWidth,
+            outputHeight);
     const bool mainIsR8 =
         mainOriginal &&
-        ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+        ViewMatchesTexture(mainOriginal,
+                           DXGI_FORMAT_R8_UNORM,
+                           outputWidth,
+                           outputHeight);
     const bool baseIsRgba16 =
         baseOriginal &&
         ViewMatchesTexture(
-            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+            baseOriginal,
+            DXGI_FORMAT_R16G16B16A16_UNORM,
+            outputWidth,
+            outputHeight);
     const bool baseIsR8 =
         baseOriginal &&
-        ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
-    if (!nativeChromaVeryHigh720Full_ || !packedUv || !yInput ||
-        !diffOriginal || !mainOriginal || !baseOriginal || !output ||
+        ViewMatchesTexture(baseOriginal,
+                           DXGI_FORMAT_R8_UNORM,
+                           outputWidth,
+                           outputHeight);
+    if (state.width != UINT(width) || state.height != UINT(height) ||
+        !packedUv || !yInput || !diffOriginal || !mainOriginal ||
+        !baseOriginal || !output ||
         (!packedUvIsRgba16 && !packedUvIsBgra8) ||
-        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(yInput,
+                            DXGI_FORMAT_R8_UNORM,
+                            outputWidth,
+                            outputHeight) ||
         !ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
+            diffOriginal,
+            DXGI_FORMAT_B8G8R8A8_UNORM,
+            UINT(width),
+            UINT(height)) ||
         (!mainIsRgba16 && !mainIsR8) ||
         (!baseIsRgba16 && !baseIsR8) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
+        !ViewMatchesTexture(output,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            outputWidth,
+                            outputHeight))
     {
         error_ = "NGU full VeryHigh chroma request is invalid";
         return false;
     }
 
-    auto& state = *nativeChromaVeryHigh720Full_;
     if (!RunNativeChromaSplit(
-            packedUv, 640, 360, state.cbView.Get(), state.crView.Get()) ||
-        !RunNativeChromaVeryHigh720(
-            state.cbShaderView.Get(), state.denseCbView.Get()) ||
+            packedUv, width, height, state.cbView.Get(), state.crView.Get()) ||
+        (is1080 ? !RunNativeChromaVeryHigh1080(
+                      state.cbShaderView.Get(), state.denseCbView.Get())
+                : !RunNativeChromaVeryHigh720(
+                      state.cbShaderView.Get(), state.denseCbView.Get())) ||
         !RunNativeChromaScaleX(
             state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
         !RunNativeChromaScaleY(
@@ -2715,8 +2769,10 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
         !RunNativeChromaCombine1(state.cbScaleYShaderView.Get(),
                                  state.denseCbShaderView.Get(),
                                  state.combine1View.Get()) ||
-        !RunNativeChromaVeryHigh720(
-            state.crShaderView.Get(), state.denseCrView.Get()) ||
+        (is1080 ? !RunNativeChromaVeryHigh1080(
+                      state.crShaderView.Get(), state.denseCrView.Get())
+                : !RunNativeChromaVeryHigh720(
+                      state.crShaderView.Get(), state.denseCrView.Get())) ||
         !RunNativeChromaScaleX(
             state.crShaderView.Get(), state.crScaleXView.Get()) ||
         !RunNativeChromaScaleY(
@@ -2730,14 +2786,82 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
         !RunNativeChromaYCbCr(yInput,
                               state.realignShaderView.Get(),
                               state.ycbcrView.Get()) ||
-        !RunNativeSuperResStrength3(state.ycbcrShaderView.Get(),
-                                    diffOriginal,
-                                    mainOriginal,
-                                    baseOriginal,
-                                    output))
+        (is1080
+             ? !RunNativeSuperResStrength3_1080(state.ycbcrShaderView.Get(),
+                                                diffOriginal,
+                                                mainOriginal,
+                                                baseOriginal,
+                                                output)
+             : !RunNativeSuperResStrength3(state.ycbcrShaderView.Get(),
+                                           diffOriginal,
+                                           mainOriginal,
+                                           baseOriginal,
+                                           output)))
         return false;
     error_ = "";
     return true;
+}
+
+bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
+{
+    return PrepareNativeChromaFull(
+        gpu, 640, 360, nativeChromaVeryHigh720Full_, "720p");
+}
+
+bool NguScaler::RunNativeChromaVeryHigh720Full(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11ShaderResourceView* diffOriginal,
+    ID3D11ShaderResourceView* mainOriginal,
+    ID3D11ShaderResourceView* baseOriginal,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaVeryHigh720Full_)
+    {
+        error_ = "NGU 720p full VeryHigh chroma scheduler is not prepared";
+        return false;
+    }
+    return RunNativeChromaFull(packedUv,
+                               yInput,
+                               diffOriginal,
+                               mainOriginal,
+                               baseOriginal,
+                               output,
+                               640,
+                               360,
+                               false,
+                               *nativeChromaVeryHigh720Full_);
+}
+
+bool NguScaler::PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu)
+{
+    return PrepareNativeChromaFull(
+        gpu, 960, 540, nativeChromaVeryHigh1080Full_, "1080p");
+}
+
+bool NguScaler::RunNativeChromaVeryHigh1080Full(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11ShaderResourceView* diffOriginal,
+    ID3D11ShaderResourceView* mainOriginal,
+    ID3D11ShaderResourceView* baseOriginal,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaVeryHigh1080Full_)
+    {
+        error_ = "NGU 1080p full VeryHigh chroma scheduler is not prepared";
+        return false;
+    }
+    return RunNativeChromaFull(packedUv,
+                               yInput,
+                               diffOriginal,
+                               mainOriginal,
+                               baseOriginal,
+                               output,
+                               960,
+                               540,
+                               true,
+                               *nativeChromaVeryHigh1080Full_);
 }
 
 bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
@@ -7031,6 +7155,7 @@ void NguScaler::Reset()
     nativeChromaRealign_.reset();
     nativeChromaYCbCr_.reset();
     nativeChromaVeryHigh720Full_.reset();
+    nativeChromaVeryHigh1080Full_.reset();
     nativeNgu720FromPlanes_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();

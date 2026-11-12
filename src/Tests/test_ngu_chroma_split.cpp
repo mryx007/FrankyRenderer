@@ -1513,6 +1513,42 @@ int main(int argc, char** argv)
                     8,
                     1920,
                     "PS_4576 1080 chained");
+
+                Require(ngu.PrepareNativeChromaVeryHigh1080Full(d3d->gpu),
+                        ngu.LastError());
+                ComPtr<ID3D11RenderTargetView> fullView;
+                ComPtr<ID3D11ShaderResourceView> fullShaderView;
+                auto fullTexture =
+                    CreateRgbaUnormOutput(d3d->device,
+                                          1920,
+                                          1080,
+                                          fullView,
+                                          fullShaderView);
+                Require(ngu.RunNativeChromaVeryHigh1080Full(
+                            packedUvView.Get(),
+                            yInputView.Get(),
+                            diffuseSourceView.Get(),
+                            mainOriginalView.Get(),
+                            baseOriginalView.Get(),
+                            fullView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto fullActual =
+                    Download(d3d->device,
+                             context.Get(),
+                             fullTexture.Get(),
+                             8);
+                DumpIfRequested(fullActual, "ps4576_1080_full.bin");
+                CompareUnormOutput(
+                    fullActual,
+                    ReadBytes(networkRoot /
+                                  "draw_00153_PS_4576_b7830945_"
+                                  "rt0_1920x1080_f36.bin",
+                              size_t(1920) * 1080 * 8),
+                    4,
+                    8,
+                    1920,
+                    "PS_4576 1080 full native");
             }
 
             if (!core1080)

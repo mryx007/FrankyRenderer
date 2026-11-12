@@ -146,6 +146,14 @@ class NguScaler
         ID3D11ShaderResourceView* mainOriginal,
         ID3D11ShaderResourceView* baseOriginal,
         ID3D11RenderTargetView* output);
+    bool PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu);
+    bool RunNativeChromaVeryHigh1080Full(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11ShaderResourceView* diffOriginal,
+        ID3D11ShaderResourceView* mainOriginal,
+        ID3D11ShaderResourceView* baseOriginal,
+        ID3D11RenderTargetView* output);
     bool PrepareNativeNgu720FromPlanes(pl_gpu gpu);
     bool RunNativeNgu720FromPlanes(
         ID3D11ShaderResourceView* packedUv,
@@ -318,7 +326,7 @@ class NguScaler
     struct NativeChromaCombines;
     struct NativeChromaRealign;
     struct NativeChromaYCbCr;
-    struct NativeChromaVeryHigh720Full;
+    struct NativeChromaFullResources;
     struct NativeNgu720FromPlanes;
     struct NativeLumaLayers;
     struct NativeLumaDense;
@@ -344,6 +352,23 @@ class NguScaler
                                  int width,
                                  int height,
                                  NativeChromaVeryHighResources& state);
+    bool PrepareNativeChromaFull(
+        pl_gpu gpu,
+        int width,
+        int height,
+        std::unique_ptr<NativeChromaFullResources>& state,
+        const char* geometry);
+    bool RunNativeChromaFull(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11ShaderResourceView* diffOriginal,
+        ID3D11ShaderResourceView* mainOriginal,
+        ID3D11ShaderResourceView* baseOriginal,
+        ID3D11RenderTargetView* output,
+        int width,
+        int height,
+        bool is1080,
+        NativeChromaFullResources& state);
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -361,7 +386,8 @@ class NguScaler
     std::unique_ptr<NativeChromaCombines> nativeChromaCombines_;
     std::unique_ptr<NativeChromaRealign> nativeChromaRealign_;
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
-    std::unique_ptr<NativeChromaVeryHigh720Full> nativeChromaVeryHigh720Full_;
+    std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh720Full_;
+    std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh1080Full_;
     std::unique_ptr<NativeNgu720FromPlanes> nativeNgu720FromPlanes_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;

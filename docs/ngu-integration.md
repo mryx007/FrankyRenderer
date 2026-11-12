@@ -327,6 +327,12 @@ connected strength-3 scheduler. PS_4576 is `maximum=5`, `diff_gt_8=0`; the
 720p regression is unchanged. SuperRes diff/main/base originals remain captured
 inputs, so this is not final decoder or playback acceptance.
 
+`PrepareNativeChromaVeryHigh1080Full` and
+`RunNativeChromaVeryHigh1080Full` now expose the complete graph as one call.
+The 720p and 1080p paths share `NativeChromaFullResources` and one scheduler
+implementation; geometry selects the observed constants and SuperRes variant.
+The one-call 1080 result matches the manually scheduled PS_4576 result.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -354,7 +360,7 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native 1080p chroma | packed UV runs through native PS_4576 at `maximum=5`, no value above 8 | One-call product scheduler, production SuperRes originals, luma/playback |
+| Native 1080p chroma | one packed-UV call runs through native PS_4576 at `maximum=5`, no value above 8 | Production SuperRes originals, luma/playback |
 | Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, Backend/DirectShow |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
