@@ -188,5 +188,21 @@
     "target": "madVR64.ax sha256 09f6eafb6117073617f042b79c1674660f0818125c6aca6ff7aa2d66f3bfbb23",
     "target_shader": "PS_536_057fb11f",
     "role": "class-3 RGB-to-YCbCr variant; preserves all three f36 channels"
+  },
+  "ngu_chroma_ycbcr_class3.hlsl": {
+    "evidence": "OpenMadVR E-058/E-073/E-154",
+    "target_shader": "PS_396_e3199f71",
+    "role": "class-3 YCbCr pack; point-sampled Y and linearly sampled CbCr"
+  },
+  "ngu_class3_scale_x.hlsl": {
+    "evidence": "OpenMadVR E-155",
+    "target_shader": "PS_520_4a9505a4",
+    "role": "class-3 X scale from 1280x720 to 640x720 with 4x640 table"
+  },
+  "ngu_class3_scale_y.hlsl": {
+    "sha256": "A76033DE5FB55B85A7A32225335612AC38BAB1EB6C70D3910A526DCA2031135C",
+    "evidence": "OpenMadVR E-090/E-099/E-138/E-156",
+    "target_shader": "PS_748_4085ea73",
+    "role": "class-3 Y scale with target L16 20-bit-fixed round-half-down output semantics"
   }
 }
