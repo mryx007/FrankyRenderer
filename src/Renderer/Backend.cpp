@@ -102,6 +102,11 @@ struct PlaceboBackend::State
     ComPtr<ID3D11Texture2D> nguOutput;
     ComPtr<ID3D11RenderTargetView> nguOutputView;
     ComPtr<ID3D11ShaderResourceView> nguSourceView;
+    ComPtr<ID3D11Texture2D> nguCpuPlaneYTexture;
+    ComPtr<ID3D11Texture2D> nguCpuPlaneUvTexture;
+    ComPtr<ID3D11ShaderResourceView> nguCpuPlaneYView;
+    ComPtr<ID3D11ShaderResourceView> nguCpuPlaneUvView;
+    bool nguCpuPlanes = false;
     ComPtr<ID3D11Texture2D> nguPlaneYTexture;
     ComPtr<ID3D11Texture2D> nguPlaneUvTexture;
     ComPtr<ID3D11RenderTargetView> nguPlaneYView;
@@ -434,9 +439,90 @@ struct PlaceboBackend::State
         copy.Reset();
         nguSource.Reset();
         nguSourceView.Reset();
+        nguCpuPlaneYView.Reset();
+        nguCpuPlaneUvView.Reset();
+        nguCpuPlaneYTexture.Reset();
+        nguCpuPlaneUvTexture.Reset();
+        nguCpuPlanes = false;
         unpack422.ResetFrame();
         image = {};
         valid = false;
+    }
+
+    HRESULT UploadNguCpuPlanes(const VideoFrame& frame,
+                               const uint8_t* data,
+                               int stride)
+    {
+        if (!d3d || !d3d->device || !context || !data ||
+            (frame.format != PixelFormat::P010 &&
+             frame.format != PixelFormat::P016) ||
+            frame.width <= 0 || frame.height <= 0 || stride <= 0)
+            return E_INVALIDARG;
+
+        D3D11_TEXTURE2D_DESC yDesc = {};
+        yDesc.Width = frame.width;
+        yDesc.Height = frame.height;
+        yDesc.MipLevels = 1;
+        yDesc.ArraySize = 1;
+        yDesc.Format = DXGI_FORMAT_R16_UNORM;
+        yDesc.SampleDesc.Count = 1;
+        yDesc.Usage = D3D11_USAGE_DEFAULT;
+        yDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_TEXTURE2D_DESC uvDesc = yDesc;
+        uvDesc.Width = frame.width / 2;
+        uvDesc.Height = frame.height / 2;
+        uvDesc.Format = DXGI_FORMAT_R16G16_UNORM;
+
+        bool recreate = !nguCpuPlaneYTexture || !nguCpuPlaneUvTexture;
+        if (!recreate)
+        {
+            D3D11_TEXTURE2D_DESC current = {};
+            nguCpuPlaneYTexture->GetDesc(&current);
+            recreate = current.Width != yDesc.Width ||
+                       current.Height != yDesc.Height;
+            nguCpuPlaneUvTexture->GetDesc(&current);
+            recreate = recreate || current.Width != uvDesc.Width ||
+                       current.Height != uvDesc.Height;
+        }
+        if (recreate)
+        {
+            nguCpuPlaneYView.Reset();
+            nguCpuPlaneUvView.Reset();
+            nguCpuPlaneYTexture.Reset();
+            nguCpuPlaneUvTexture.Reset();
+            if (FAILED(d3d->device->CreateTexture2D(
+                    &yDesc, nullptr, &nguCpuPlaneYTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(
+                    nguCpuPlaneYTexture.Get(),
+                    nullptr,
+                    &nguCpuPlaneYView)) ||
+                FAILED(d3d->device->CreateTexture2D(
+                    &uvDesc, nullptr, &nguCpuPlaneUvTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(
+                    nguCpuPlaneUvTexture.Get(),
+                    nullptr,
+                    &nguCpuPlaneUvView)))
+            {
+                nguCpuPlaneYView.Reset();
+                nguCpuPlaneUvView.Reset();
+                nguCpuPlaneYTexture.Reset();
+                nguCpuPlaneUvTexture.Reset();
+                return E_FAIL;
+            }
+        }
+
+        context->UpdateSubresource(
+            nguCpuPlaneYTexture.Get(), 0, nullptr, data, stride, 0);
+        context->UpdateSubresource(
+            nguCpuPlaneUvTexture.Get(),
+            0,
+            nullptr,
+            data + size_t(stride) * frame.height,
+            stride,
+            0);
+        nguCpuPlanes = true;
+        TraceNgu("high-bit CPU planes uploaded");
+        return S_OK;
     }
 
     bool PrepareNgu(int sourceWidth, int sourceHeight)
@@ -588,19 +674,21 @@ struct PlaceboBackend::State
                     " planes " + std::to_string(image.num_planes);
             return false;
         }
-        if (!nguSource)
+        if (!nguSource && !nguCpuPlanes)
         {
             error = "ngu_sharp source texture is unavailable";
             return false;
         }
         D3D11_TEXTURE2D_DESC sourceDesc = {};
-        nguSource->GetDesc(&sourceDesc);
-        if (rgb48 && sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
+        if (nguSource)
+            nguSource->GetDesc(&sourceDesc);
+        if (rgb48 && (!nguSource ||
+                      sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM))
         {
             error = "ngu_sharp source format is unsupported";
             return false;
         }
-        if (nativePlane &&
+        if (nativePlane && !nguCpuPlanes &&
             !((description.format == PixelFormat::P010 &&
                sourceDesc.Format == DXGI_FORMAT_P010) ||
               (description.format == PixelFormat::P016 &&
@@ -613,34 +701,54 @@ struct PlaceboBackend::State
             return false;
         if (nativePlane)
         {
-            TraceNgu("P010: begin decoder plane copy");
-            if (!nguPlaneYView || !nguPlaneUvView ||
-                !nguPlaneYShaderView || !nguPlaneUvShaderView)
+            bool ran = false;
+            if (nguCpuPlanes)
             {
-                error = "ngu_sharp decoder plane surfaces are unavailable";
-                return false;
+                TraceNgu("high-bit CPU planes: begin native NGU");
+                ran = description.width == 1280
+                          ? ngu.RunNativeNgu720FromPlanes(
+                                nguCpuPlaneUvView.Get(),
+                                nguCpuPlaneYView.Get(),
+                                nguOutputView.Get(),
+                                true)
+                          : ngu.RunNativeNgu1080FromPlanes(
+                                nguCpuPlaneUvView.Get(),
+                                nguCpuPlaneYView.Get(),
+                                nguOutputView.Get(),
+                                true);
+                TraceNgu("high-bit CPU planes: native NGU complete");
             }
-            const bool copied = ngu.RunNativeDecoderSourceCopy(
-                nguSource.Get(),
-                0,
-                description.width,
-                description.height,
-                nguPlaneYView.Get(),
-                nguPlaneUvView.Get());
-            TraceNgu("P010: decoder plane copy complete");
-            const bool ran = copied &&
-                (description.width == 1280
-                     ? ngu.RunNativeNgu720FromPlanes(
-                           nguPlaneUvShaderView.Get(),
-                           nguPlaneYShaderView.Get(),
-                           nguOutputView.Get(),
-                           description.format == PixelFormat::P010)
-                     : ngu.RunNativeNgu1080FromPlanes(
-                           nguPlaneUvShaderView.Get(),
-                           nguPlaneYShaderView.Get(),
-                           nguOutputView.Get(),
-                           description.format == PixelFormat::P010));
-            TraceNgu("P010: native NGU plane entry complete");
+            else
+            {
+                TraceNgu("P010/P016: begin decoder plane copy");
+                if (!nguPlaneYView || !nguPlaneUvView ||
+                    !nguPlaneYShaderView || !nguPlaneUvShaderView)
+                {
+                    error = "ngu_sharp decoder plane surfaces are unavailable";
+                    return false;
+                }
+                const bool copied = ngu.RunNativeDecoderSourceCopy(
+                    nguSource.Get(),
+                    0,
+                    description.width,
+                    description.height,
+                    nguPlaneYView.Get(),
+                    nguPlaneUvView.Get());
+                TraceNgu("P010/P016: decoder plane copy complete");
+                ran = copied &&
+                      (description.width == 1280
+                           ? ngu.RunNativeNgu720FromPlanes(
+                                 nguPlaneUvShaderView.Get(),
+                                 nguPlaneYShaderView.Get(),
+                                 nguOutputView.Get(),
+                                 true)
+                           : ngu.RunNativeNgu1080FromPlanes(
+                                 nguPlaneUvShaderView.Get(),
+                                 nguPlaneYShaderView.Get(),
+                                 nguOutputView.Get(),
+                                 true));
+                TraceNgu("P010/P016: native NGU plane entry complete");
+            }
             if (!ran)
             {
                 error = ngu.LastError();
@@ -2506,6 +2614,18 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     if (s.copy)
         s.ClearFrame();
     s.Describe(frame);
+    s.nguCpuPlanes = false;
+    if (s.settings.nativeScaler == NativeScalerKind::NguSharp &&
+        (frame.format == PixelFormat::P010 ||
+         frame.format == PixelFormat::P016))
+    {
+        hr = s.UploadNguCpuPlanes(frame, data, stride);
+        if (FAILED(hr))
+        {
+            s.valid = false;
+            return hr;
+        }
+    }
     if (frame.format == PixelFormat::Y410)
     {
         s.unpacked.resize(static_cast<size_t>(frame.width) * frame.height * 8);
@@ -2724,6 +2844,7 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
     if (held)
         ReleaseMutex(s.decoderMutex);
     s.Describe(frame);
+    s.nguCpuPlanes = false;
     if (semi || packed)
     {
         if (packed)

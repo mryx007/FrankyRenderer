@@ -53,6 +53,10 @@ static std::wstring p010FixtureInputPath;
 static std::wstring p010FixtureOraclePath;
 static std::wstring p010FixtureOutputPath;
 static std::vector<BYTE> p010FixtureInput;
+static bool explicitP016 = false;
+static std::wstring p016FixtureInputPath;
+static std::wstring nguCpuPlaneOutputPath;
+static std::vector<BYTE> p016FixtureInput;
 
 static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
 {
@@ -71,6 +75,33 @@ static bool WriteFile(const std::wstring& path, const std::vector<BYTE>& bytes)
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
     return file && file.write(reinterpret_cast<const char*>(bytes.data()),
                               std::streamsize(bytes.size()));
+}
+
+static bool WriteBmp32(const std::wstring& path,
+                       UINT width,
+                       UINT height,
+                       const std::vector<BYTE>& pixels)
+{
+    if (pixels.size() != size_t(width) * height * 4)
+        return false;
+    BITMAPFILEHEADER file = {};
+    BITMAPINFOHEADER info = {};
+    info.biSize = sizeof(info);
+    info.biWidth = LONG(width);
+    info.biHeight = -LONG(height);
+    info.biPlanes = 1;
+    info.biBitCount = 32;
+    info.biCompression = BI_RGB;
+    info.biSizeImage = DWORD(pixels.size());
+    file.bfType = 0x4d42;
+    file.bfOffBits = sizeof(file) + sizeof(info);
+    file.bfSize = file.bfOffBits + DWORD(pixels.size());
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    return out &&
+           out.write(reinterpret_cast<const char*>(&file), sizeof(file)) &&
+           out.write(reinterpret_cast<const char*>(&info), sizeof(info)) &&
+           out.write(reinterpret_cast<const char*>(pixels.data()),
+                     std::streamsize(pixels.size()));
 }
 
 static bool CompareNguRgb(const std::vector<BYTE>& actual,
@@ -163,7 +194,7 @@ static int P010InputTextureWidth()
 
 static DWORD FourCC()
 {
-    if (nguTest && !hardware)
+    if (nguTest && !hardware && !explicitP016)
         return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
            : textureFormat == DXGI_FORMAT_P016 ? MAKEFOURCC('P', '0', '1', '6')
@@ -172,8 +203,12 @@ static DWORD FourCC()
 
 static long SampleBytes()
 {
-    if (nguTest && !hardware)
+    if (nguTest && !hardware && !explicitP016)
         return nguSourceWidth * nguSourceHeight * 6;
+    if (nguTest && !hardware && explicitP016)
+        return p016FixtureInput.empty()
+                   ? nguSourceWidth * nguSourceHeight * 3
+                   : static_cast<long>(p016FixtureInput.size());
     if (nguTest)
         return p010FixtureInput.empty()
                    ? nguSourceWidth * nguSourceHeight * 3
@@ -815,7 +850,7 @@ class PatternStream final : public CSourceStream
         info->bmiHeader.biHeight = nguTest ? -nguSourceHeight : 64;
         info->bmiHeader.biPlanes = 1;
         info->bmiHeader.biBitCount =
-            nguTest && !hardware
+            nguTest && !hardware && !explicitP016
                 ? 48
                 : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
         info->bmiHeader.biCompression = p010.Data1;
@@ -898,7 +933,7 @@ class PatternStream final : public CSourceStream
             if (FAILED(hr))
                 return hr;
         }
-        if (nguTest && !hardware)
+        if (nguTest && !hardware && !explicitP016)
         {
             auto data = reinterpret_cast<uint16_t*>(bytes);
             if (!nguCapturedInput.empty())
@@ -925,6 +960,33 @@ class PatternStream final : public CSourceStream
                             (x + y) * 32767 /
                             (nguSourceWidth + nguSourceHeight - 2));
                     }
+            }
+        }
+        else if (nguTest && !hardware && explicitP016)
+        {
+            if (!p016FixtureInput.empty())
+            {
+                std::memcpy(bytes,
+                            p016FixtureInput.data(),
+                            p016FixtureInput.size());
+            }
+            else
+            {
+                auto data = reinterpret_cast<uint16_t*>(bytes);
+                for (int y = 0; y < nguSourceHeight; ++y)
+                    for (int x = 0; x < nguSourceWidth; ++x)
+                        data[size_t(y) * nguSourceWidth + x] =
+                            uint16_t((16 + (x * 219) /
+                                             (nguSourceWidth - 1))
+                                     * 257);
+                auto uv = data + size_t(nguSourceWidth) * nguSourceHeight;
+                const size_t uvPixels =
+                    size_t(nguSourceWidth / 2) * (nguSourceHeight / 2);
+                for (size_t i = 0; i < uvPixels; ++i)
+                {
+                    uv[i * 2] = uint16_t(128 * 257);
+                    uv[i * 2 + 1] = uint16_t(128 * 257);
+                }
             }
         }
         else if (textureFormat == DXGI_FORMAT_NV12)
@@ -1260,6 +1322,10 @@ int wmain(int argc, wchar_t** argv)
             p010FixtureOraclePath = argv[++i];
         if (wcscmp(argv[i], L"--p010-output") == 0 && i + 1 < argc)
             p010FixtureOutputPath = argv[++i];
+        if (wcscmp(argv[i], L"--p016-input") == 0 && i + 1 < argc)
+            p016FixtureInputPath = argv[++i];
+        if (wcscmp(argv[i], L"--ngu-output") == 0 && i + 1 < argc)
+            nguCpuPlaneOutputPath = argv[++i];
         if (wcscmp(argv[i], L"--ngu-frame-count") == 0 && i + 1 < argc)
             nguInitialFrames = _wtoi(argv[++i]);
         if (wcscmp(argv[i], L"--ngu-1080") == 0)
@@ -1270,7 +1336,10 @@ int wmain(int argc, wchar_t** argv)
         if (wcscmp(argv[i], L"--nv12") == 0)
             textureFormat = DXGI_FORMAT_NV12;
         if (wcscmp(argv[i], L"--p016") == 0)
+        {
+            explicitP016 = true;
             textureFormat = DXGI_FORMAT_P016;
+        }
     }
     if (nguTest && !nguCaptureRoot.empty())
     {
@@ -1310,6 +1379,26 @@ int wmain(int argc, wchar_t** argv)
         if (p010FixtureInput.empty())
         {
             printf("FAIL P010 fixture input must be 2048x%d P010\n",
+                   nguSourceHeight);
+            return 1;
+        }
+    }
+    if (!p016FixtureInputPath.empty())
+    {
+        if (!nguTest || hardware || !explicitP016 ||
+            !nguCaptureRoot.empty())
+        {
+            puts("FAIL --p016-input requires --ngu --p016 without --gpu "
+                 "or --ngu-root");
+            return 1;
+        }
+        p016FixtureInput =
+            ReadFile(p016FixtureInputPath,
+                     size_t(nguSourceWidth) * nguSourceHeight * 3);
+        if (p016FixtureInput.empty())
+        {
+            printf("FAIL P016 fixture input must be %dx%d P016\n",
+                   nguSourceWidth,
                    nguSourceHeight);
             return 1;
         }
@@ -1687,9 +1776,15 @@ int wmain(int argc, wchar_t** argv)
         if (FAILED(sourceFailure.load()) ||
             status.rendered < initialFrames)
         {
-            printf("FAIL_PRODUCT ngu_sharp DirectShow rendered=%llu source=%08lX\n",
+            printf("FAIL_PRODUCT ngu_sharp DirectShow rendered=%llu "
+                   "hardware=%llu last=%08lX source=%08lX "
+                   "source_stage=%d source_index=%u\n",
                    static_cast<unsigned long long>(status.rendered),
-                   static_cast<unsigned long>(sourceFailure.load()));
+                   static_cast<unsigned long long>(status.hardwareFrames),
+                   static_cast<unsigned long>(status.lastResult),
+                   static_cast<unsigned long>(sourceFailure.load()),
+                   nguSourceStage.load(),
+                   nguSourceIndex.load());
             return 1;
         }
         int different = 0, maximum = 0, overOne = 0;
@@ -1747,6 +1842,24 @@ int wmain(int argc, wchar_t** argv)
             if (maximum > 1 || overOne != 0)
             {
                 puts("FAIL_PRODUCT P010 fixture final image gate");
+                return 1;
+            }
+        }
+        if (!nguCpuPlaneOutputPath.empty())
+        {
+            std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
+            Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()),
+                  "high-bit CPU plane NGU pixels");
+            if (!WriteBmp32(nguCpuPlaneOutputPath, 3840, 2160, pixels))
+            {
+                puts("FAIL could not write high-bit CPU plane NGU BMP");
+                return 1;
+            }
+            if (std::all_of(pixels.begin(),
+                            pixels.end(),
+                            [](BYTE value) { return value == 0; }))
+            {
+                puts("FAIL_PRODUCT high-bit CPU plane NGU produced black output");
                 return 1;
             }
         }
@@ -1900,7 +2013,8 @@ int wmain(int argc, wchar_t** argv)
         Check(control->Stop(), "stop NGU graph");
         printf("PASS_PRODUCT ngu_sharp DirectShow %s %dx%d graph "
                "rendered=%llu different=%d maximum=%d\n",
-               hardware ? "P010" : "RGB48",
+               hardware ? "P010"
+                        : explicitP016 ? "P016" : "RGB48",
                nguSourceWidth,
                nguSourceHeight,
                static_cast<unsigned long long>(status.rendered),
