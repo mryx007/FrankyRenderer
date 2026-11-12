@@ -794,6 +794,12 @@ struct PlaceboBackend::State
         nguFrame.repr = pl_color_repr_rgb;
         nguFrame.repr.bits = {8, 8, 0};
         nguFrame.repr.alpha = PL_ALPHA_NONE;
+        // E-098/E-150: the target FinalStep output is already the captured
+        // display-referred SDR result. Re-applying the source BT.1886 transfer
+        // before presentation adds a second conversion. Preserve the source
+        // primaries and only neutralize the SDR transfer stage.
+        if (!pl_color_transfer_is_hdr(description.color.transfer))
+            nguFrame.color.transfer = PL_COLOR_TRC_SRGB;
         image = nguFrame;
         description.width = 3840;
         description.height = 2160;

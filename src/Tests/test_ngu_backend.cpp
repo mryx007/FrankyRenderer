@@ -100,6 +100,26 @@ int main(int argc, char** argv)
         Require(SUCCEEDED(BuildRenderOptions(options, settings)),
                 "NGU render options");
         pl_options_free(&options);
+
+        RenderSettings ditherSettings;
+        ditherSettings.ditherMethod = 0;
+        ditherSettings.nativeScaler = NativeScalerKind::NguSharp;
+        auto nativeDitherOptions = pl_options_alloc(nullptr);
+        Require(nativeDitherOptions != nullptr, "native dither options");
+        pl_options_reset(nativeDitherOptions, &pl_render_default_params);
+        Require(SUCCEEDED(BuildRenderOptions(
+                    nativeDitherOptions, ditherSettings)),
+                "native NGU dither options");
+        Require(nativeDitherOptions->params.dither_params == nullptr,
+                "native NGU must not add presentation dither");
+        ditherSettings.nativeScaler = NativeScalerKind::None;
+        Require(SUCCEEDED(BuildRenderOptions(
+                    nativeDitherOptions, ditherSettings)),
+                "ordinary dither options");
+        Require(nativeDitherOptions->params.dither_params != nullptr,
+                "ordinary scaler retains presentation dither");
+        pl_options_free(&nativeDitherOptions);
+
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
         VideoFrame frame;

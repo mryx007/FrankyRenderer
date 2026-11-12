@@ -84,7 +84,15 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
     if (settings.ditherMethod < 3)
         options->dither_params.method = methods[settings.ditherMethod];
     options->dither_params.temporal = settings.ditherTemporal;
-    options->params.dither_params = settings.ditherMethod == 3 ? nullptr : &options->dither_params;
+    // E-098: the native NGU FinalStep already performs the target's sole
+    // 8-bit dither conversion. A second libplacebo dither changes that BGRA8
+    // result and must not be applied on top of native NGU output.
+    const bool nativeNguFinal =
+        settings.nativeScaler == NativeScalerKind::NguSharp;
+    options->params.dither_params =
+        settings.ditherMethod == 3 || nativeNguFinal
+            ? nullptr
+            : &options->dither_params;
     if (!ApplyExtras(options, settings.extras))
         return E_INVALIDARG;
     return S_OK;
