@@ -285,6 +285,14 @@ fix the half-cell dense index, `A/B/G/R` component matrix and 1:1 add/Cb fetch;
 the remaining one-code boundary is ps_3_0 versus SM5 floating-point and L16
 conversion, not a missing mapping.
 
+Cr uses the same network constants and scheduler resources as Cb. Its complete
+dense result stays within `3.16799e-5`. PS_1516 Realign consumes the captured
+G16R16 combine output using the exact `1/1280` constant and is bounded at
+`maximum=1` with exact zero BA. PS_396 then packs Y/L8 and the Realign RG
+surface exactly from the captured inputs. The connected captured-input
+core -> combines -> Realign -> PS_396 -> strength-3 SuperChromaRes path reaches
+PS_4576 at `maximum=6`, `diff_gt_8=0`.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -312,12 +320,13 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native chroma combines | PS_564/PS_644 D3D9 replay `0/0`; native `maximum=1`, `diff_gt_1_pixels=0` | Cr, PS_1516 Realign and PS_396...PS_4576 |
+| Native chroma tail | Cb/Cr dense bounded; combines/Realign/PS_396 native; captured chain reaches PS_4576 `maximum=6`, `diff_gt_8=0` | Production input construction, final luma/output, 1080 Realign/PS_396 |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
 
-The shortest critical path is therefore: native Cr, PS_1516 Realign and
-PS_396...PS_4576 chroma, P010 bridge wiring into Backend/DirectShow, then full
-format/lifecycle/performance acceptance. No missing mapping may be replaced by
-a guessed fallback while those gates are open.
+The shortest critical path is therefore: production construction of the add,
+external Y, diff and original inputs; final luma/output wiring; P010 bridge
+integration into Backend/DirectShow; then full format/lifecycle/performance
+acceptance. No missing mapping may be replaced by a guessed fallback while
+those gates are open.

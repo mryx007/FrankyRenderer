@@ -94,6 +94,62 @@ ComPtr<ID3D11Texture2D> CreateL16Input(ID3D11Device* device,
     return texture;
 }
 
+ComPtr<ID3D11Texture2D> CreateRg16Input(
+    ID3D11Device* device,
+    const std::vector<uint8_t>& bytes,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11ShaderResourceView>& view)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width * 4;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create RG16 input");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &view)),
+            "create RG16 SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateR8Input(
+    ID3D11Device* device,
+    const std::vector<uint8_t>& bytes,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11ShaderResourceView>& view)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create R8 input");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &view)),
+            "create R8 SRV");
+    return texture;
+}
+
 ComPtr<ID3D11Texture2D> CreateOutput(ID3D11Device* device,
                                      UINT width,
                                      UINT height,
@@ -113,6 +169,62 @@ ComPtr<ID3D11Texture2D> CreateOutput(ID3D11Device* device,
             "create output");
     Require(SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)),
             "create output RTV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateL16Output(
+    ID3D11Device* device,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11RenderTargetView>& view,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)),
+            "create L16 output");
+    Require(SUCCEEDED(device->CreateRenderTargetView(
+                texture.Get(), nullptr, &view)),
+            "create L16 output RTV");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create L16 output SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateRg16Output(
+    ID3D11Device* device,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11RenderTargetView>& view,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)),
+            "create RG16 output");
+    Require(SUCCEEDED(device->CreateRenderTargetView(
+                texture.Get(), nullptr, &view)),
+            "create RG16 output RTV");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create RG16 output SRV");
     return texture;
 }
 
@@ -140,6 +252,90 @@ ComPtr<ID3D11Texture2D> CreateRgbaOutput(
     Require(SUCCEEDED(device->CreateShaderResourceView(
                 texture.Get(), nullptr, &shaderView)),
             "create RGBA output SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateRgbaUnormOutput(
+    ID3D11Device* device,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11RenderTargetView>& view,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)),
+            "create RGBA UNORM output");
+    Require(SUCCEEDED(device->CreateRenderTargetView(
+                texture.Get(), nullptr, &view)),
+            "create RGBA UNORM output RTV");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create RGBA UNORM output SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateRgbaUnormInput(
+    ID3D11Device* device,
+    const std::vector<uint8_t>& bytes,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width * 8;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create RGBA UNORM input");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create RGBA UNORM input SRV");
+    return texture;
+}
+
+ComPtr<ID3D11Texture2D> CreateBgra8Input(
+    ID3D11Device* device,
+    const std::vector<uint8_t>& bytes,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11ShaderResourceView>& shaderView)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA initial = {};
+    initial.pSysMem = bytes.data();
+    initial.SysMemPitch = width * 4;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, &initial, &texture)),
+            "create BGRA input");
+    Require(SUCCEEDED(device->CreateShaderResourceView(
+                texture.Get(), nullptr, &shaderView)),
+            "create BGRA input SRV");
     return texture;
 }
 
@@ -205,6 +401,15 @@ std::vector<uint8_t> ExtractL16(const std::vector<uint8_t>& expanded)
     std::vector<uint8_t> bytes(expanded.size() / 4);
     for (size_t pixel = 0; pixel < bytes.size() / 2; ++pixel)
         memcpy(bytes.data() + pixel * 2, expanded.data() + pixel * 8, 2);
+    return bytes;
+}
+
+std::vector<uint8_t> ExtractRg16(const std::vector<uint8_t>& expanded)
+{
+    Require(expanded.size() % 8 == 0, "RG16 expanded size");
+    std::vector<uint8_t> bytes(expanded.size() / 2);
+    for (size_t pixel = 0; pixel < bytes.size() / 4; ++pixel)
+        memcpy(bytes.data() + pixel * 4, expanded.data() + pixel * 8, 4);
     return bytes;
 }
 
@@ -340,6 +545,55 @@ void CompareFloatStage(const std::vector<uint8_t>& actual,
                 maximumAllowedAbsolute);
     Require(maximumAbsolute <= maximumAllowedAbsolute,
             "chroma network comparison");
+}
+
+void CompareUnormOutput(const std::vector<uint8_t>& actual,
+                        const std::vector<uint8_t>& expected,
+                        int components,
+                        int maximumAllowed,
+                        UINT width,
+                        const char* name)
+{
+    int different = 0;
+    int above = 0;
+    int maximum = 0;
+    bool reported = false;
+    for (size_t pixel = 0; pixel < actual.size() / (size_t(components) * 2);
+         ++pixel)
+    {
+        for (int component = 0; component < components; ++component)
+        {
+            const size_t offset =
+                (pixel * size_t(components) + size_t(component)) * 2;
+            const uint16_t a = uint16_t(actual[offset]) |
+                               (uint16_t(actual[offset + 1]) << 8);
+            const uint16_t e = uint16_t(expected[offset]) |
+                               (uint16_t(expected[offset + 1]) << 8);
+            const int delta = std::abs(int(a) - int(e));
+            different += delta != 0;
+            above += delta > maximumAllowed;
+            maximum = std::max(maximum, delta);
+            if (delta > maximumAllowed && !reported)
+            {
+                reported = true;
+                std::printf(
+                    "%s first x=%zu y=%zu component=%d actual=%u expected=%u\n",
+                    name,
+                    pixel % size_t(width),
+                    pixel / size_t(width),
+                    component,
+                    a,
+                    e);
+            }
+        }
+    }
+    std::printf("%s different=%d maximum=%d diff_gt_%d=%d\n",
+                name,
+                different,
+                maximum,
+                maximumAllowed,
+                above);
+    Require(above == 0, "chroma UNORM comparison");
 }
 
 } // namespace
@@ -745,6 +999,376 @@ int main(int argc, char** argv)
                           size_t(642) * 362 * 8),
                 0.00004f,
                 "PS_2672 scheduler dense");
+
+            const int crNetworkDraw = networkDrawBase + 33;
+            const int crDenseDraw = networkDrawBase + 62;
+            const auto crNetworkInputExpanded =
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "input_%05d_PS_1672_b083dfa8_s0.bin",
+                                      crNetworkDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(640) * 360 * 8);
+            const auto crNetworkInput = ExtractL16(crNetworkInputExpanded);
+            ComPtr<ID3D11ShaderResourceView> crNetworkInputView;
+            auto crNetworkInputTexture =
+                CreateL16Input(d3d->device,
+                               crNetworkInput,
+                               640,
+                               360,
+                               crNetworkInputView);
+            ComPtr<ID3D11RenderTargetView> crSchedulerView;
+            ComPtr<ID3D11ShaderResourceView> crSchedulerShaderView;
+            auto crSchedulerTexture =
+                CreateRgbaOutput(d3d->device,
+                                 642,
+                                 362,
+                                 crSchedulerView,
+                                 crSchedulerShaderView);
+            const auto crSchedulerStart = std::chrono::steady_clock::now();
+            if (!ngu.RunNativeChromaVeryHigh720(crNetworkInputView.Get(),
+                                                crSchedulerView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto crSchedulerEnd = std::chrono::steady_clock::now();
+            const double crSchedulerMs =
+                std::chrono::duration<double, std::milli>(
+                    crSchedulerEnd - crSchedulerStart)
+                    .count();
+            std::printf("PS_2672 Cr scheduler elapsed=%.3f ms/frame\n",
+                        crSchedulerMs);
+            const auto crSchedulerDense =
+                Download(d3d->device,
+                         context.Get(),
+                         crSchedulerTexture.Get(),
+                         8);
+            DumpIfRequested(crSchedulerDense, "ps2672_cr_dense.bin");
+            CompareFloatStage(
+                crSchedulerDense,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_2672_9e6139d1_"
+                                      "rt0_642x362_f113.bin",
+                                      crDenseDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(642) * 362 * 8),
+                0.00004f,
+                "PS_2672 Cr scheduler dense");
+
+            const int realignDraw = networkDrawBase + 64;
+            const auto realignInput =
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "input_%05d_PS_1516_11f763dd_s0.bin",
+                                      realignDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 4);
+            ComPtr<ID3D11ShaderResourceView> realignInputView;
+            auto realignInputTexture =
+                CreateRg16Input(d3d->device,
+                                realignInput,
+                                1280,
+                                720,
+                                realignInputView);
+            ComPtr<ID3D11RenderTargetView> realignView;
+            ComPtr<ID3D11ShaderResourceView> realignShaderView;
+            auto realignTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      realignView,
+                                      realignShaderView);
+            if (!ngu.PrepareNativeChromaRealign(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            if (!ngu.RunNativeChromaRealign(realignInputView.Get(),
+                                            realignView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto realignActual =
+                Download(d3d->device,
+                         context.Get(),
+                         realignTexture.Get(),
+                         8);
+            DumpIfRequested(realignActual, "ps1516_realign.bin");
+            const auto realignTarget =
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_1516_11f763dd_"
+                                      "rt0_1280x720_f36.bin",
+                                      realignDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8);
+            CompareUnormOutput(
+                realignActual,
+                realignTarget,
+                4,
+                1,
+                1280,
+                "PS_1516 Realign");
+
+            const int ycbcrDraw = networkDrawBase + 65;
+            const auto yExpanded =
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "input_%05d_PS_396_e3199f71_s0.bin",
+                                      ycbcrDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8);
+            std::vector<uint8_t> yPlane(size_t(1280) * 720);
+            for (size_t pixel = 0; pixel < yPlane.size(); ++pixel)
+                yPlane[pixel] = yExpanded[pixel * 8];
+            ComPtr<ID3D11ShaderResourceView> yInputView;
+            auto yInputTexture =
+                CreateR8Input(d3d->device,
+                              yPlane,
+                              1280,
+                              720,
+                              yInputView);
+            ComPtr<ID3D11ShaderResourceView> cbcrInputView;
+            const auto realignTargetRg = ExtractRg16(realignTarget);
+            auto cbcrInputTexture =
+                CreateRg16Input(d3d->device,
+                                realignTargetRg,
+                                1280,
+                                720,
+                                cbcrInputView);
+            ComPtr<ID3D11RenderTargetView> ycbcrView;
+            ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
+            auto ycbcrTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      ycbcrView,
+                                      ycbcrShaderView);
+            if (!ngu.PrepareNativeChromaYCbCr(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            if (!ngu.RunNativeChromaYCbCr(yInputView.Get(),
+                                          cbcrInputView.Get(),
+                                          ycbcrView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto ycbcrActual =
+                Download(d3d->device,
+                         context.Get(),
+                         ycbcrTexture.Get(),
+                         8);
+            DumpIfRequested(ycbcrActual, "ps396_ycbcr.bin");
+            CompareUnormOutput(
+                ycbcrActual,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_396_e3199f71_"
+                                      "rt0_1280x720_f36.bin",
+                                      ycbcrDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8),
+                4,
+                0,
+                1280,
+                "PS_396 YCbCr");
+
+            const auto combine1AddBytes = ExtractL16(
+                ReadBytes(networkRoot /
+                              "input_00121_PS_564_500335c8_s0.bin",
+                          size_t(1280) * 720 * 8));
+            ComPtr<ID3D11ShaderResourceView> combine1AddView;
+            auto combine1AddTexture =
+                CreateL16Input(d3d->device,
+                               combine1AddBytes,
+                               1280,
+                                 720,
+                               combine1AddView);
+            ComPtr<ID3D11RenderTargetView> combine1View;
+            ComPtr<ID3D11ShaderResourceView> combine1ShaderView;
+            auto combine1Texture =
+                CreateL16Output(d3d->device,
+                                1280,
+                                720,
+                                combine1View,
+                                combine1ShaderView);
+            if (!ngu.PrepareNativeChromaCombines(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            if (!ngu.RunNativeChromaCombine1(combine1AddView.Get(),
+                                             schedulerShaderView.Get(),
+                                             combine1View.Get()))
+                throw std::runtime_error(ngu.LastError());
+
+            const auto combine2AddBytes = ExtractL16(
+                ReadBytes(networkRoot /
+                              "input_00154_PS_644_512f7798_s0.bin",
+                          size_t(1280) * 720 * 8));
+            ComPtr<ID3D11ShaderResourceView> combine2AddView;
+            auto combine2AddTexture =
+                CreateL16Input(d3d->device,
+                               combine2AddBytes,
+                               1280,
+                               720,
+                               combine2AddView);
+            ComPtr<ID3D11RenderTargetView> combine2View;
+            ComPtr<ID3D11ShaderResourceView> combine2ShaderView;
+            auto combine2Texture =
+                CreateRg16Output(d3d->device,
+                                 1280,
+                                 720,
+                                 combine2View,
+                                 combine2ShaderView);
+            if (!ngu.RunNativeChromaCombine2(combine2AddView.Get(),
+                                             combine1ShaderView.Get(),
+                                             crSchedulerShaderView.Get(),
+                                             combine2View.Get()))
+                throw std::runtime_error(ngu.LastError());
+
+            ComPtr<ID3D11RenderTargetView> chainedRealignView;
+            ComPtr<ID3D11ShaderResourceView> chainedRealignShaderView;
+            auto chainedRealignTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      chainedRealignView,
+                                      chainedRealignShaderView);
+            if (!ngu.RunNativeChromaRealign(combine2ShaderView.Get(),
+                                            chainedRealignView.Get()))
+                throw std::runtime_error(ngu.LastError());
+
+            ComPtr<ID3D11RenderTargetView> chainedYCbCrView;
+            ComPtr<ID3D11ShaderResourceView> chainedYCbCrShaderView;
+            auto chainedYCbCrTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      chainedYCbCrView,
+                                      chainedYCbCrShaderView);
+            if (!ngu.RunNativeChromaYCbCr(yInputView.Get(),
+                                          chainedRealignShaderView.Get(),
+                                          chainedYCbCrView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto chainedYCbCr =
+                Download(d3d->device,
+                         context.Get(),
+                         chainedYCbCrTexture.Get(),
+                         8);
+            DumpIfRequested(chainedYCbCr, "ps396_chained_ycbcr.bin");
+            CompareUnormOutput(
+                chainedYCbCr,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_396_e3199f71_"
+                                      "rt0_1280x720_f36.bin",
+                                      ycbcrDraw);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8),
+                4,
+                3,
+                1280,
+                "PS_396 chained YCbCr");
+
+            ComPtr<ID3D11ShaderResourceView> diffuseSourceView;
+            auto diffuseSourceTexture =
+                CreateBgra8Input(
+                    d3d->device,
+                    ReadBytes(networkRoot /
+                                  "input_00159_PS_284_e8e2a8eb_s0.bin",
+                             size_t(640) * 360 * 4),
+                    640,
+                    360,
+                    diffuseSourceView);
+            ComPtr<ID3D11ShaderResourceView> mainOriginalView;
+            auto mainOriginalTexture =
+                CreateRgbaUnormInput(
+                    d3d->device,
+                    ReadBytes(networkRoot /
+                                  "input_00160_PS_4412_c39b49cf_s0.bin",
+                             size_t(1280) * 720 * 8),
+                    1280,
+                    720,
+                    mainOriginalView);
+            ComPtr<ID3D11ShaderResourceView> baseOriginalView;
+            auto baseOriginalTexture =
+                CreateRgbaUnormInput(
+                    d3d->device,
+                    ReadBytes(networkRoot /
+                                  "input_00164_PS_4576_b7830945_s0.bin",
+                             size_t(1280) * 720 * 8),
+                    1280,
+                    720,
+                    baseOriginalView);
+            if (!ngu.PrepareNativeSuperResStrength3(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            ComPtr<ID3D11RenderTargetView> superResView;
+            ComPtr<ID3D11ShaderResourceView> superResShaderView;
+            auto superResTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      superResView,
+                                      superResShaderView);
+            if (!ngu.RunNativeSuperResStrength3(chainedYCbCrShaderView.Get(),
+                                                diffuseSourceView.Get(),
+                                                mainOriginalView.Get(),
+                                                baseOriginalView.Get(),
+                                                superResView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto superResActual =
+                Download(d3d->device,
+                         context.Get(),
+                         superResTexture.Get(),
+                         8);
+            DumpIfRequested(superResActual, "ps4576_chained.bin");
+            CompareUnormOutput(
+                superResActual,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_4576_b7830945_"
+                                      "rt0_1280x720_f36.bin",
+                                      ycbcrDraw + 8);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8),
+                4,
+                8,
+                1280,
+                "PS_4576 chained");
         }
 
         std::puts("PASS_PRODUCT native PS_260/PS_748/PS_1672...PS_2672 chroma");

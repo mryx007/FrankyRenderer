@@ -437,6 +437,23 @@ struct NguScaler::NativeChromaCombines
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeChromaRealign
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeChromaYCbCr
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -1997,6 +2014,282 @@ bool NguScaler::RunNativeChromaCombine2(
                   1,
                   1280,
                   720);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma Realign requires a GPU";
+        return false;
+    }
+    if (nativeChromaRealign_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma Realign requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_realign.hlsl", 96 * 1024);
+    const auto pixelBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign.cso", 0);
+    const auto constantBytes =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants.bin",
+                         sizeof(float) * 4);
+    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty())
+    {
+        error_ = "NGU chroma Realign assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaRealign",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma Realign vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaRealign>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelBytecode.data(),
+            static_cast<SIZE_T>(pixelBytecode.size()),
+            nullptr,
+            &state->pixel)))
+    {
+        error_ = "NGU chroma Realign shader objects could not be created";
+        return false;
+    }
+
+    D3D11_BUFFER_DESC constantDesc = {};
+    constantDesc.ByteWidth = static_cast<UINT>(constantBytes.size());
+    constantDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA constantData = {};
+    constantData.pSysMem = constantBytes.data();
+    if (FAILED(device->CreateBuffer(
+            &constantDesc, &constantData, &state->constants)))
+    {
+        error_ = "NGU chroma Realign constants could not be created";
+        return false;
+    }
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc,
+                                          &state->pointSampler)))
+    {
+        error_ = "NGU chroma Realign sampler could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
+                                              &state->rasterizer)))
+    {
+        error_ = "NGU chroma Realign rasterizer could not be created";
+        return false;
+    }
+    nativeChromaRealign_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaRealign(
+    ID3D11ShaderResourceView* input,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeChromaRealign_ || !input || !output ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(output,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            1280,
+                            720))
+    {
+        error_ = "NGU chroma Realign request is invalid";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaRealign_->vertex.Get(),
+                  nativeChromaRealign_->pixel.Get(),
+                  nativeChromaRealign_->constants.Get(),
+                  nativeChromaRealign_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeChromaRealign_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU chroma YCbCr requires a GPU";
+        return false;
+    }
+    if (nativeChromaYCbCr_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU chroma YCbCr requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_ycbcr.hlsl", 16 * 1024);
+    const auto pixelBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_ycbcr.cso", 0);
+    if (shaderText.empty() || pixelBytecode.empty())
+    {
+        error_ = "NGU chroma YCbCr assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_ChromaYCbCr",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                          "NGU chroma YCbCr vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeChromaYCbCr>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelBytecode.data(),
+            static_cast<SIZE_T>(pixelBytecode.size()),
+            nullptr,
+            &state->pixel)))
+    {
+        error_ = "NGU chroma YCbCr shader objects could not be created";
+        return false;
+    }
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc,
+                                          &state->pointSampler)))
+    {
+        error_ = "NGU chroma YCbCr sampler could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
+                                              &state->rasterizer)))
+    {
+        error_ = "NGU chroma YCbCr rasterizer could not be created";
+        return false;
+    }
+    nativeChromaYCbCr_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaYCbCr(
+    ID3D11ShaderResourceView* yInput,
+    ID3D11ShaderResourceView* cbcrInput,
+    ID3D11RenderTargetView* output)
+{
+    const bool hasRg16Input =
+        cbcrInput &&
+        ViewMatchesTexture(cbcrInput,
+                           DXGI_FORMAT_R16G16_UNORM,
+                           1280,
+                           720);
+    const bool hasRgba16Input =
+        cbcrInput &&
+        ViewMatchesTexture(cbcrInput,
+                           DXGI_FORMAT_R16G16B16A16_UNORM,
+                           1280,
+                           720);
+    if (!nativeChromaYCbCr_ || !yInput || !cbcrInput || !output ||
+        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+        (!hasRg16Input && !hasRgba16Input) ||
+        !ViewMatchesTexture(output,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            1280,
+                            720))
+    {
+        error_ = "NGU chroma YCbCr request is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[2] = {yInput, cbcrInput};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeChromaYCbCr_->vertex.Get(),
+                  nativeChromaYCbCr_->pixel.Get(),
+                  nullptr,
+                  nativeChromaYCbCr_->rasterizer.Get(),
+                  inputs,
+                  2,
+                  &output,
+                  1,
+                  1280,
+                  720,
+                  nativeChromaYCbCr_->pointSampler.Get());
     error_ = "";
     return true;
 }
@@ -6145,6 +6438,8 @@ void NguScaler::Reset()
     nativeChromaNetwork_.reset();
     nativeChromaVeryHigh720_.reset();
     nativeChromaCombines_.reset();
+    nativeChromaRealign_.reset();
+    nativeChromaYCbCr_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();
