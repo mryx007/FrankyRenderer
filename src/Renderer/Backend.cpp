@@ -453,8 +453,12 @@ struct PlaceboBackend::State
                                const uint8_t* data,
                                int stride)
     {
+        const bool class3 =
+            frame.format == PixelFormat::P210 ||
+            frame.format == PixelFormat::P216;
         if (!d3d || !d3d->device || !context || !data ||
-            (frame.format != PixelFormat::P010 &&
+            (!class3 &&
+             frame.format != PixelFormat::P010 &&
              frame.format != PixelFormat::P016) ||
             frame.width <= 0 || frame.height <= 0 || stride <= 0)
             return E_INVALIDARG;
@@ -470,7 +474,7 @@ struct PlaceboBackend::State
         yDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         D3D11_TEXTURE2D_DESC uvDesc = yDesc;
         uvDesc.Width = frame.width / 2;
-        uvDesc.Height = frame.height / 2;
+        uvDesc.Height = class3 ? frame.height : frame.height / 2;
         uvDesc.Format = DXGI_FORMAT_R16G16_UNORM;
 
         bool recreate = !nguCpuPlaneYTexture || !nguCpuPlaneUvTexture;
@@ -565,10 +569,13 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        const bool nativePlane =
+        const bool decoderPlane =
             description.format == PixelFormat::P010 ||
             description.format == PixelFormat::P016;
-        if (nativePlane)
+        const bool class3Plane =
+            description.format == PixelFormat::P210 ||
+            description.format == PixelFormat::P216;
+        if (decoderPlane)
         {
             D3D11_TEXTURE2D_DESC yDesc = {};
             yDesc.Width = sourceWidth;
@@ -622,7 +629,11 @@ struct PlaceboBackend::State
                 }
             }
         }
-        const bool prepared = nativePlane
+        const bool prepared = class3Plane
+            ? nguCpuPlanes && sourceWidth == 1280 &&
+                  sourceHeight == 720 &&
+                  ngu.PrepareNativeNguClass3_720(d3d->gpu)
+            : decoderPlane
             ? ngu.PrepareNativeDecoderSource(d3d->gpu) &&
                   (sourceWidth == 1280 && sourceHeight == 720
                        ? ngu.PrepareNativeNgu720FromPlanes(d3d->gpu)
@@ -662,11 +673,16 @@ struct PlaceboBackend::State
         const bool nativePlane =
             description.format == PixelFormat::P010 ||
             description.format == PixelFormat::P016;
+        const bool class3Plane =
+            description.format == PixelFormat::P210 ||
+            description.format == PixelFormat::P216;
         const bool rgb48 = description.format == PixelFormat::RGB48;
-        if ((!rgb48 && !nativePlane) || description.bottomUp ||
+        if ((!rgb48 && !nativePlane && !class3Plane) ||
+            description.bottomUp ||
             (rgb48 && image.num_planes != 1))
         {
-            error = "ngu_sharp requires top-down RGB48, P010 or P016: got " +
+            error =
+                "ngu_sharp requires top-down RGB48, P010, P016, P210 or P216: got " +
                     std::to_string(description.width) + "x" + std::to_string(description.height) +
                     " format " +
                     std::to_string(static_cast<int>(description.format)) +
@@ -697,9 +713,32 @@ struct PlaceboBackend::State
             error = "ngu_sharp decoder texture format is unsupported";
             return false;
         }
+        if (class3Plane &&
+            (!nguCpuPlanes || description.width != 1280 ||
+             description.height != 720))
+        {
+            error = class3Plane && description.width == 1920
+                        ? "P210/P216 1080p class-3 is not yet implemented"
+                        : "P210/P216 requires uploadable CPU planes";
+            return false;
+        }
         if (!PrepareNgu(description.width, description.height))
             return false;
-        if (nativePlane)
+        if (class3Plane)
+        {
+            TraceNgu("P210/P216: begin exact class-3 path");
+            const bool ran = ngu.RunNativeNguClass3_720(
+                nguCpuPlaneUvView.Get(),
+                nguCpuPlaneYView.Get(),
+                nguOutputView.Get());
+            TraceNgu("P210/P216: exact class-3 path complete");
+            if (!ran)
+            {
+                error = ngu.LastError();
+                return false;
+            }
+        }
+        else if (nativePlane)
         {
             bool ran = false;
             if (nguCpuPlanes)
@@ -762,7 +801,7 @@ struct PlaceboBackend::State
             if (sourceResource.Get() != nguSource.Get())
                 nguSourceView.Reset();
         }
-        if (!nativePlane && !nguSourceView)
+        if (!nativePlane && !class3Plane && !nguSourceView)
         {
             if (FAILED(d3d->device->CreateShaderResourceView(
                     nguSource.Get(), nullptr, &nguSourceView)))
@@ -771,7 +810,7 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        const bool ran = nativePlane ||
+        const bool ran = nativePlane || class3Plane ||
             (description.width == 1280
                 ? ngu.RunNativeLuma4x720Full(
                       nguSourceView.Get(), 1280, 720, nguOutputView.Get())
@@ -2623,7 +2662,9 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     s.nguCpuPlanes = false;
     if (s.settings.nativeScaler == NativeScalerKind::NguSharp &&
         (frame.format == PixelFormat::P010 ||
-         frame.format == PixelFormat::P016))
+         frame.format == PixelFormat::P016 ||
+         frame.format == PixelFormat::P210 ||
+         frame.format == PixelFormat::P216))
     {
         hr = s.UploadNguCpuPlanes(frame, data, stride);
         if (FAILED(hr))

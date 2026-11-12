@@ -297,20 +297,49 @@ int CompareR16ToExpandedCapture(const std::vector<uint8_t>& actual,
     }
     return different;
 }
+
+int CompareRgbBytes(const std::vector<uint8_t>& actual,
+                    const std::vector<uint8_t>& expected,
+                    int& maximum,
+                    int& overOne)
+{
+    Require(actual.size() == expected.size() && actual.size() % 4 == 0,
+            "RGB comparison size");
+    maximum = 0;
+    overOne = 0;
+    int different = 0;
+    for (size_t offset = 0; offset < actual.size(); offset += 4)
+    {
+        bool pixelOverOne = false;
+        for (int channel = 0; channel < 3; ++channel)
+        {
+            const int delta =
+                std::abs(int(actual[offset + channel]) -
+                         int(expected[offset + channel]));
+            different += delta != 0;
+            maximum = std::max(maximum, delta);
+            pixelOverOne = pixelOverOne || delta > 1;
+        }
+        overOne += pixelOverOne;
+    }
+    return different;
+}
 } // namespace
 
 int main(int argc, char** argv)
 {
     try
     {
-        Require(argc >= 2 && argc <= 5,
+        Require(argc >= 2 && argc <= 6,
                 "usage: test_ngu_class3 <capture-root> [label] [p210-raw] "
-                "[core-target-root]");
+                "[core-target-root] [final-root]");
         const std::filesystem::path root(argv[1]);
         const char* label = argc >= 3 ? argv[2] : "class3";
         const std::filesystem::path p210Raw = argc >= 4 ? argv[3] : "";
         const std::filesystem::path coreTargetRoot =
-            argc == 5 ? argv[4] : "";
+            argc >= 5 ? argv[4] : "";
+        const std::filesystem::path finalRoot =
+            argc == 6 ? argv[5] : root;
 
         NguScalerRequest request;
         request.sourceWidth = 1280;
@@ -1490,6 +1519,135 @@ int main(int argc, char** argv)
                     targetBaseMaximum,
                     targetBaseOverOne);
             }
+            auto combinedOutput = CreateTexture(
+                device,
+                3840,
+                2160,
+                D3D11_BIND_RENDER_TARGET |
+                    D3D11_BIND_SHADER_RESOURCE,
+                nullptr,
+                DXGI_FORMAT_B8G8R8A8_UNORM);
+            ComPtr<ID3D11RenderTargetView> combinedView;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        combinedOutput.Get(), nullptr, &combinedView)),
+                    "combined class-3 RTV");
+            if (!core.PrepareNativeNguClass3_720(d3d->gpu) ||
+                !core.RunNativeNguClass3_720(coreUvView.Get(),
+                                             coreYView.Get(),
+                                             combinedView.Get()))
+            {
+                const std::string message =
+                    std::string("run combined class-3 NGU: ") +
+                    core.LastError();
+                throw std::runtime_error(message);
+            }
+            if (!coreTargetRoot.empty())
+            {
+                const auto lumaScaleXExpected = ReadBytes(
+                    FindFirstCapture(coreTargetRoot,
+                                     "PS_520_4a9505a4",
+                                     "5120x720",
+                                     size_t(5120) * 720 * 8),
+                    size_t(5120) * 720 * 8);
+                auto lumaScaleXOutput = CreateTexture(
+                    device,
+                    5120,
+                    720,
+                    D3D11_BIND_RENDER_TARGET |
+                        D3D11_BIND_SHADER_RESOURCE,
+                    nullptr,
+                    DXGI_FORMAT_R16_UNORM);
+                ComPtr<ID3D11RenderTargetView> lumaScaleXView;
+                Require(SUCCEEDED(device->CreateRenderTargetView(
+                            lumaScaleXOutput.Get(), nullptr, &lumaScaleXView)),
+                        "luma scale-X RTV");
+                Require(core.CopyNativeLuma4x720ScaleX(
+                            lumaScaleXView.Get()),
+                        core.LastError());
+                const auto lumaScaleXActual =
+                    Download(device, context.Get(), lumaScaleXOutput.Get());
+                int lumaScaleXMaximum = 0;
+                int lumaScaleXOverOne = 0;
+                size_t lumaScaleXMaximumOffset = 0;
+                const int lumaScaleXDifferent =
+                    CompareR16ToExpandedCapture(
+                        lumaScaleXActual,
+                        lumaScaleXExpected,
+                        lumaScaleXMaximum,
+                        lumaScaleXOverOne,
+                        lumaScaleXMaximumOffset);
+                std::printf(
+                    "class3 combined luma PS_520 X different=%d maximum=%d "
+                    "diff_gt_1_channels=%d\n",
+                    lumaScaleXDifferent,
+                    lumaScaleXMaximum,
+                    lumaScaleXOverOne);
+                Require(lumaScaleXMaximum <= 1 &&
+                            lumaScaleXOverOne == 0,
+                        "combined luma PS520 X exceeds one code");
+                const auto ps460Expected = ReadBytes(
+                    FindFirstCapture(coreTargetRoot,
+                                     "PS_460_bfe50921",
+                                     "1280x720",
+                                     size_t(1280) * 720 * 8),
+                    size_t(1280) * 720 * 8);
+                auto ps460Output = CreateTexture(
+                    device,
+                    1280,
+                    720,
+                    D3D11_BIND_RENDER_TARGET |
+                        D3D11_BIND_SHADER_RESOURCE,
+                    nullptr,
+                    DXGI_FORMAT_R16_UNORM);
+                ComPtr<ID3D11RenderTargetView> ps460View;
+                Require(SUCCEEDED(device->CreateRenderTargetView(
+                            ps460Output.Get(), nullptr, &ps460View)),
+                        "PS460 RTV");
+                Require(core.CopyNativeLuma4x720SplitY(ps460View.Get()),
+                        core.LastError());
+                const auto ps460Actual =
+                    Download(device, context.Get(), ps460Output.Get());
+                int ps460Maximum = 0;
+                int ps460OverOne = 0;
+                size_t ps460MaximumOffset = 0;
+                const int ps460Different = CompareR16ToExpandedCapture(
+                    ps460Actual,
+                    ps460Expected,
+                    ps460Maximum,
+                    ps460OverOne,
+                    ps460MaximumOffset);
+                std::printf(
+                    "class3 combined PS_460 different=%d maximum=%d "
+                    "diff_gt_1_channels=%d\n",
+                    ps460Different,
+                    ps460Maximum,
+                    ps460OverOne);
+                Require(ps460Maximum <= 1 && ps460OverOne == 0,
+                        "combined class-3 PS460 exceeds one code");
+            }
+            const auto combinedActual =
+                Download(device, context.Get(), combinedOutput.Get());
+            const auto combinedExpected = ReadBytes(
+                FindCapture(finalRoot,
+                            "PS_1352_6992f6f0",
+                            "3840x2160",
+                            size_t(3840) * 2160 * 4),
+                size_t(3840) * 2160 * 4);
+            int combinedMaximum = 0;
+            int combinedOverOne = 0;
+            const int combinedDifferent = CompareRgbBytes(
+                combinedActual,
+                combinedExpected,
+                combinedMaximum,
+                combinedOverOne);
+            std::printf(
+                "class3 combined PS_1352 different=%d maximum=%d "
+                "diff_gt_1_pixels=%d\n",
+                combinedDifferent,
+                combinedMaximum,
+                combinedOverOne);
+            Require(combinedMaximum <= 1 && combinedOverOne == 0,
+                    "combined class-3 PS1352 exceeds one code");
             const auto coreActual =
                 Download(device, context.Get(), coreOutput.Get());
             int coreMaximum = 0;

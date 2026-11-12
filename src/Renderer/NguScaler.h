@@ -274,7 +274,8 @@ class NguScaler
     bool PrepareNativeLuma4x720Low(pl_gpu gpu);
     bool RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                                int sourceWidth,
-                               int sourceHeight);
+                               int sourceHeight,
+                               bool sourcePacked = false);
     bool CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720SplitCbCr(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output);
@@ -284,7 +285,8 @@ class NguScaler
     bool PrepareNativeLuma4x720High(pl_gpu gpu);
     bool RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
                                 int sourceWidth,
-                                int sourceHeight);
+                                int sourceHeight,
+                                bool sourcePacked = false);
     bool CopyNativeLuma4x720Upsample(int feature,
                                      int part,
                                      ID3D11RenderTargetView* output);
@@ -293,7 +295,8 @@ class NguScaler
     bool PrepareNativeLuma4x720DenseAdd(pl_gpu gpu);
     bool RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
                                     int sourceWidth,
-                                    int sourceHeight);
+                                    int sourceHeight,
+                                    bool sourcePacked = false);
     bool CopyNativeLuma4x720Dense(ID3D11RenderTargetView* output);
     bool CopyNativeLuma4x720Add(ID3D11RenderTargetView* output);
     bool PrepareNativeLuma4x720Tail(pl_gpu gpu);
@@ -322,6 +325,9 @@ class NguScaler
                                 int sourceWidth,
                                 int sourceHeight,
                                 ID3D11RenderTargetView* finalOutput);
+    bool RunNativeLuma4x720FromPacked(
+        ID3D11ShaderResourceView* sourcePacked,
+        ID3D11RenderTargetView* finalOutput);
     bool PrepareNativeLuma4x720SuperResFull(pl_gpu gpu);
     bool RunNativeLuma4x720SuperResFull(ID3D11ShaderResourceView* source,
                                         ID3D11ShaderResourceView* diffOriginal,

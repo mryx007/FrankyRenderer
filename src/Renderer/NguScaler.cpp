@@ -3767,10 +3767,8 @@ bool NguScaler::RunNativeNguClass3_720(
             packedUv,
             yInput,
             nativeChromaCoreClass3_720_->ps4576View.Get()) ||
-        !RunNativeLuma4x720Full(
+        !RunNativeLuma4x720FromPacked(
             nativeChromaCoreClass3_720_->ps4576ShaderView.Get(),
-            1280,
-            720,
             finalOutput))
         return false;
     error_ = "";
@@ -6861,7 +6859,8 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
 
 bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                                       int sourceWidth,
-                                      int sourceHeight)
+                                      int sourceHeight,
+                                      bool sourcePacked)
 {
     if (!nativeLuma4x720Low_ || !nativeLumaSplit_ || !sourceRgb ||
         sourceWidth != 1280 || sourceHeight != 720)
@@ -6878,7 +6877,8 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
 
     auto& state = *nativeLuma4x720Low_;
     ID3D11Device* device = pl_d3d11_get(gpu_)->device;
-    if (!RunNativeLumaSplit(sourceRgb,
+    if (!sourcePacked &&
+        !RunNativeLumaSplit(sourceRgb,
                             sourceWidth,
                             sourceHeight,
                             state.splitLumaView.Get(),
@@ -7202,10 +7202,12 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
 
 bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
                                        int sourceWidth,
-                                       int sourceHeight)
+                                       int sourceHeight,
+                                       bool sourcePacked)
 {
     if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ ||
-        !RunNativeLuma4x720Low(sourceRgb, sourceWidth, sourceHeight))
+        !RunNativeLuma4x720Low(
+            sourceRgb, sourceWidth, sourceHeight, sourcePacked))
     {
         if (nativeLuma4x720High_ && error_.empty())
             error_ = "NGU 720p 4x high-core request is unavailable";
@@ -7469,11 +7471,13 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
 
 bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
                                            int sourceWidth,
-                                           int sourceHeight)
+                                           int sourceHeight,
+                                           bool sourcePacked)
 {
     if (!nativeLuma4x720DenseAdd_ || !nativeLuma4x720High_ ||
         !nativeLuma4x720Low_ ||
-        !RunNativeLuma4x720High(sourceRgb, sourceWidth, sourceHeight))
+        !RunNativeLuma4x720High(
+            sourceRgb, sourceWidth, sourceHeight, sourcePacked))
         return false;
 
     auto& low = *nativeLuma4x720Low_;
@@ -8308,6 +8312,63 @@ bool NguScaler::RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
             tail.chromaYShaderView.Get(),
             tail.mergeView.Get()) ||
         !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma4x720FromPacked(
+    ID3D11ShaderResourceView* sourcePacked,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ ||
+        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
+        !nativeLumaFinal_ || !sourcePacked || !finalOutput ||
+        !ViewMatchesTexture(sourcePacked,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            1280,
+                            720) ||
+        !ViewMatchesTexture(finalOutput,
+                            DXGI_FORMAT_B8G8R8A8_UNORM,
+                            3840,
+                            2160))
+    {
+        error_ = "NGU 720p packed luma request is outside the verified path";
+        return false;
+    }
+    auto& low = *nativeLuma4x720Low_;
+    auto& tail = *nativeLuma4x720Tail_;
+    if (!RunNativeLumaSplit(sourcePacked,
+                            1280,
+                            720,
+                            low.splitLumaView.Get(),
+                            low.splitCbCrView.Get()) ||
+        !RunNativeLuma4x720DenseAdd(sourcePacked, 1280, 720, true) ||
+        !RunNativeLuma4x720TailYcbcr(
+            nativeLuma4x720DenseAdd_->addShaderView.Get(),
+            tail.ycbcrView.Get()) ||
+        !RunNativeLuma4x720TailDownX(
+            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(
+            tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(
+            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+        !RunNativeLuma4x720TailSsimFinal(
+            tail.ssimRtShaderView.Get(),
+            tail.downYShaderView.Get(),
+            tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(
+            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !RunNativeLuma4x720TailChromaX(
+            low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
+        !RunNativeLuma4x720TailChromaY(
+            tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
+        !RunNativeLuma4x720TailMerge(
+            tail.sharpenArShaderView.Get(),
+            tail.chromaYShaderView.Get(),
+            tail.mergeView.Get()) ||
+        !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(),
+                                       finalOutput))
         return false;
     error_ = "";
     return true;

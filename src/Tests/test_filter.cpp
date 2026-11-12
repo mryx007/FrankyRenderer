@@ -57,6 +57,11 @@ static bool explicitP016 = false;
 static std::wstring p016FixtureInputPath;
 static std::wstring nguCpuPlaneOutputPath;
 static std::vector<BYTE> p016FixtureInput;
+static bool explicitP210 = false;
+static bool explicitP216 = false;
+static std::wstring class3FixtureInputPath;
+static std::vector<BYTE> class3FixtureInput;
+static std::wstring nguFinalOraclePath;
 
 static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
 {
@@ -194,6 +199,10 @@ static int P010InputTextureWidth()
 
 static DWORD FourCC()
 {
+    if (explicitP210)
+        return MAKEFOURCC('P', '2', '1', '0');
+    if (explicitP216)
+        return MAKEFOURCC('P', '2', '1', '6');
     if (nguTest && !hardware && !explicitP016)
         return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
@@ -203,6 +212,8 @@ static DWORD FourCC()
 
 static long SampleBytes()
 {
+    if (explicitP210 || explicitP216)
+        return static_cast<long>(class3FixtureInput.size());
     if (nguTest && !hardware && !explicitP016)
         return nguSourceWidth * nguSourceHeight * 6;
     if (nguTest && !hardware && explicitP016)
@@ -850,7 +861,9 @@ class PatternStream final : public CSourceStream
         info->bmiHeader.biHeight = nguTest ? -nguSourceHeight : 64;
         info->bmiHeader.biPlanes = 1;
         info->bmiHeader.biBitCount =
-            nguTest && !hardware && !explicitP016
+            (explicitP210 || explicitP216)
+                ? 32
+                : nguTest && !hardware && !explicitP016
                 ? 48
                 : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
         info->bmiHeader.biCompression = p010.Data1;
@@ -933,7 +946,13 @@ class PatternStream final : public CSourceStream
             if (FAILED(hr))
                 return hr;
         }
-        if (nguTest && !hardware && !explicitP016)
+        if (explicitP210 || explicitP216)
+        {
+            std::memcpy(bytes,
+                        class3FixtureInput.data(),
+                        class3FixtureInput.size());
+        }
+        else if (nguTest && !hardware && !explicitP016)
         {
             auto data = reinterpret_cast<uint16_t*>(bytes);
             if (!nguCapturedInput.empty())
@@ -1330,6 +1349,18 @@ int wmain(int argc, wchar_t** argv)
             p010FixtureOutputPath = argv[++i];
         if (wcscmp(argv[i], L"--p016-input") == 0 && i + 1 < argc)
             p016FixtureInputPath = argv[++i];
+        if (wcscmp(argv[i], L"--p210-input") == 0 && i + 1 < argc)
+        {
+            explicitP210 = true;
+            class3FixtureInputPath = argv[++i];
+        }
+        if (wcscmp(argv[i], L"--p216-input") == 0 && i + 1 < argc)
+        {
+            explicitP216 = true;
+            class3FixtureInputPath = argv[++i];
+        }
+        if (wcscmp(argv[i], L"--ngu-final") == 0 && i + 1 < argc)
+            nguFinalOraclePath = argv[++i];
         if (wcscmp(argv[i], L"--ngu-output") == 0 && i + 1 < argc)
             nguCpuPlaneOutputPath = argv[++i];
         if (wcscmp(argv[i], L"--ngu-frame-count") == 0 && i + 1 < argc)
@@ -1347,7 +1378,8 @@ int wmain(int argc, wchar_t** argv)
             textureFormat = DXGI_FORMAT_P016;
         }
     }
-    if (nguTest && !nguCaptureRoot.empty())
+    if (nguTest && !nguCaptureRoot.empty() &&
+        !explicitP210 && !explicitP216)
     {
         nguCapturedInput = ReadFile(
             nguCaptureRoot + L"\\input_00224_PS_460_bfe50921_s0.bin",
@@ -1369,6 +1401,30 @@ int wmain(int argc, wchar_t** argv)
         puts("FAIL the captured NGU oracle is RGB48; GPU mode is a P010 "
              "playback smoke and cannot use --ngu-root");
         return 1;
+    }
+    if (explicitP210 && explicitP216)
+    {
+        puts("FAIL choose either --p210-input or --p216-input");
+        return 1;
+    }
+    if ((explicitP210 || explicitP216) &&
+        (!nguTest || hardware || !nguCaptureRoot.empty()))
+    {
+        puts("FAIL class-3 input requires --ngu without --gpu or --ngu-root");
+        return 1;
+    }
+    if (explicitP210 || explicitP216)
+    {
+        class3FixtureInput = ReadFile(
+            class3FixtureInputPath,
+            size_t(nguSourceWidth) * nguSourceHeight * 4);
+        if (class3FixtureInput.empty())
+        {
+            printf("FAIL class-3 input must be %dx%d P210/P216\n",
+                   nguSourceWidth,
+                   nguSourceHeight);
+            return 1;
+        }
     }
     if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())
     {
@@ -1832,6 +1888,33 @@ int wmain(int argc, wchar_t** argv)
                 return 1;
             }
         }
+        else if (!nguFinalOraclePath.empty())
+        {
+            std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
+            Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()),
+                  "class-3 DirectShow pixels");
+            const auto expected =
+                ReadFile(nguFinalOraclePath, size_t(3840) * 2160 * 4);
+            if (expected.empty() ||
+                !CompareNguRgb(pixels, expected, different, maximum, overOne) ||
+                maximum > 1 || overOne != 0)
+            {
+                printf("FAIL_PRODUCT class-3 DirectShow RGB "
+                       "different=%d maximum=%d diff_gt_1_pixels=%d "
+                       "actual=%zu expected=%zu\n",
+                       different,
+                       maximum,
+                       overOne,
+                       pixels.size(),
+                       expected.size());
+                return 1;
+            }
+            printf("class-3 DirectShow different=%d maximum=%d "
+                   "diff_gt_1_pixels=%d\n",
+                   different,
+                   maximum,
+                   overOne);
+        }
         else if (!p010FixtureOraclePath.empty())
         {
             std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
@@ -2030,10 +2113,89 @@ int wmain(int argc, wchar_t** argv)
                    nguSourceWidth,
                    nguSourceHeight);
         }
+        if (explicitP210 || explicitP216)
+        {
+            const auto baseline = status.rendered;
+            Check(control->Pause(), "pause class-3 NGU graph");
+            OAFilterState paused = State_Stopped;
+            Check(control->GetState(3000, &paused),
+                  "class-3 NGU paused state");
+            if (paused != State_Paused)
+            {
+                puts("FAIL_PRODUCT class-3 NGU did not enter paused state");
+                return 1;
+            }
+            Check(control->Run(), "resume class-3 NGU graph");
+            const DWORD resumeDeadline = GetTickCount();
+            do
+            {
+                Sleep(10);
+                MSG message;
+                while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                Check(config->GetStatus(&status),
+                      "class-3 NGU resume status");
+            } while (status.rendered < baseline + 2 &&
+                     SUCCEEDED(sourceFailure.load()) &&
+                     GetTickCount() - resumeDeadline < 5000);
+            if (status.rendered < baseline + 2 ||
+                FAILED(status.lastResult))
+            {
+                printf("FAIL_PRODUCT class-3 NGU pause/resume "
+                       "rendered=%llu last=%08lX source=%08lX\n",
+                       static_cast<unsigned long long>(status.rendered),
+                       static_cast<unsigned long>(status.lastResult),
+                       static_cast<unsigned long>(sourceFailure.load()));
+                return 1;
+            }
+            Check(control->Pause(), "pause resumed class-3 NGU graph");
+            Check(control->Stop(), "stop paused class-3 NGU graph");
+            Check(input->BeginFlush(), "class-3 NGU begin flush");
+            Check(input->NewSegment(0, 0, 1.), "class-3 NGU new segment");
+            Check(input->EndFlush(), "class-3 NGU end flush");
+            Check(config->GetStatus(&status),
+                  "class-3 NGU segment baseline");
+            const auto segmentBaseline = status.rendered;
+            Check(control->Run(), "run class-3 NGU after new segment");
+            const DWORD segmentDeadline = GetTickCount();
+            do
+            {
+                Sleep(10);
+                MSG message;
+                while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+                Check(config->GetStatus(&status),
+                      "class-3 NGU segment status");
+            } while (status.rendered < segmentBaseline + 2 &&
+                     SUCCEEDED(sourceFailure.load()) &&
+                     GetTickCount() - segmentDeadline < 5000);
+            if (status.rendered < segmentBaseline + 2 ||
+                FAILED(status.lastResult))
+            {
+                printf("FAIL_PRODUCT class-3 NGU flush/new-segment "
+                       "rendered=%llu last=%08lX source=%08lX\n",
+                       static_cast<unsigned long long>(status.rendered),
+                       static_cast<unsigned long>(status.lastResult),
+                       static_cast<unsigned long>(sourceFailure.load()));
+                return 1;
+            }
+            Check(control->Pause(), "pause class-3 NGU after new segment");
+            Check(control->Stop(), "stop class-3 NGU after new segment");
+            printf("PASS_PRODUCT %s DirectShow pause, flush and restart\n",
+                   explicitP210 ? "P210" : "P216");
+        }
         Check(control->Stop(), "stop NGU graph");
         printf("PASS_PRODUCT ngu_sharp DirectShow %s %dx%d graph "
                "rendered=%llu different=%d maximum=%d\n",
                hardware ? "P010"
+                        : explicitP210 ? "P210"
+                        : explicitP216 ? "P216"
                         : explicitP016 ? "P016" : "RGB48",
                nguSourceWidth,
                nguSourceHeight,

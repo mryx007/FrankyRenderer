@@ -35,6 +35,26 @@ std::vector<uint8_t> ReadBytes(const std::filesystem::path& path, size_t expecte
     return bytes;
 }
 
+std::filesystem::path FindFinalCapture(const std::filesystem::path& root)
+{
+    std::filesystem::path result;
+    int matches = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(root))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        const std::string name = entry.path().filename().string();
+        if (name.find("PS_1352_6992f6f0") == std::string::npos ||
+            name.find("3840x2160") == std::string::npos ||
+            entry.file_size() != size_t(3840) * 2160 * 4)
+            continue;
+        result = entry.path();
+        ++matches;
+    }
+    Require(matches > 0, "final capture");
+    return result;
+}
+
 int CompareRgb(const std::vector<uint8_t>& actual,
                const std::vector<uint8_t>& expected,
                int& maximum,
@@ -67,7 +87,10 @@ int main(int argc, char** argv)
 {
     try
     {
-        Require(argc == 2, "usage: test_ngu_backend <capture-root>");
+        Require(argc == 2 || argc == 10,
+                "usage: test_ngu_backend <capture-root> "
+                "[p210-raw p210-capture p216-raw p216-capture "
+                "p210-raw2 p210-capture2 p216-raw2 p216-capture2]");
         Require(ResolveNativeScaler("ngu_sharp") == NativeScalerKind::NguSharp,
                 "native scaler resolver NGU");
         Require(ResolveNativeScaler("ewa_lanczos") == NativeScalerKind::None,
@@ -269,8 +292,68 @@ int main(int argc, char** argv)
         Require(p010Pixels[0] || p010Pixels[1] || p010Pixels[2],
                 "NGU P010 output is not black");
 
+        if (argc == 10)
+        {
+            const struct
+            {
+                const char* label;
+                PixelFormat format;
+                const char* raw;
+                const char* capture;
+            } class3Cases[] = {
+                {"P210", PixelFormat::P210, argv[2], argv[3]},
+                {"P216", PixelFormat::P216, argv[4], argv[5]},
+                {"P210-second", PixelFormat::P210, argv[6], argv[7]},
+                {"P216-second", PixelFormat::P216, argv[8], argv[9]},
+            };
+            for (const auto& test : class3Cases)
+            {
+                VideoFrame class3;
+                class3.width = 1280;
+                class3.height = 720;
+                class3.stride = 1280 * 2;
+                class3.format = test.format;
+                class3.matrix = PL_COLOR_SYSTEM_BT_709;
+                class3.levels = PL_COLOR_LEVELS_LIMITED;
+                class3.color = pl_color_space_bt709;
+                const auto class3Bytes =
+                    ReadBytes(test.raw, size_t(1280) * 720 * 4);
+                Require(SUCCEEDED(backend.Upload(
+                            class3,
+                            class3Bytes.data(),
+                            class3Bytes.size())),
+                        "class-3 backend upload");
+                std::vector<uint8_t> class3Pixels;
+                const HRESULT class3Render =
+                    backend.RenderOffscreen(3840, 2160, class3Pixels);
+                if (FAILED(class3Render))
+                    throw std::runtime_error(
+                        std::string(test.label) +
+                        " backend render: " + backend.LastError());
+                const auto expectedClass3 = ReadBytes(
+                    FindFinalCapture(test.capture),
+                    size_t(3840) * 2160 * 4);
+                int class3Maximum = 0;
+                int class3OverOne = 0;
+                const int class3Different = CompareRgb(
+                    class3Pixels,
+                    expectedClass3,
+                    class3Maximum,
+                    class3OverOne);
+                std::printf(
+                    "NGU backend %s different=%d maximum=%d "
+                    "diff_gt_1_pixels=%d\n",
+                    test.label,
+                    class3Different,
+                    class3Maximum,
+                    class3OverOne);
+                Require(class3Maximum <= 1 && class3OverOne == 0,
+                        "class-3 backend acceptance");
+            }
+        }
+
         std::printf(
-            "PASS_PRODUCT ngu_sharp backend RGB48 + P010 -> 4K\n");
+            "PASS_PRODUCT ngu_sharp backend RGB48 + P010 + class-3 -> 4K\n");
         return 0;
     }
     catch (const std::exception& error)
