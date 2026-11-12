@@ -10,8 +10,6 @@ cbuffer NguChromaParams : register(b0)
     float4 U[67];
 };
 
-static const float2 RasterSize = float2(642.0, 362.0);
-
 struct VSOut { float4 position : SV_Position; };
 
 VSOut VSMain(uint vertex : SV_VertexID)
@@ -66,6 +64,9 @@ float4 Fetch3(float4 position) { return Fetch3(position.xy); }
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
+    int width, height;
+    Feature0.GetDimensions(width, height);
+    const float2 RasterSize = float2(width + 2, height + 2);
     const float4 HOOKED_pos = float4(position.xy / RasterSize, 0.0, 1.0);
 
     float4 DL67 = float4(-1,1,0,0);

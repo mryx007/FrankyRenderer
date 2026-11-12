@@ -10,8 +10,6 @@ cbuffer NguChromaParams : register(b0)
     float4 U[147];
 };
 
-static const float2 RasterSize = float2(640.0, 360.0);
-
 struct VSOut { float4 position : SV_Position; };
 
 VSOut VSMain(uint vertex : SV_VertexID)
@@ -116,7 +114,9 @@ float4 LeakyReLU(float4 value)
 
 float4 PSMain(float4 position : SV_Position) : SV_Target0
 {
-    const float2 uv = position.xy / RasterSize;
+    int width, height;
+    Feature0.GetDimensions(width, height);
+    const float2 uv = position.xy / float2(width, height);
     const float2 step = U[146].xy;
 
     const precise float4 center = Tap(uv, 16);

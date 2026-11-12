@@ -316,13 +316,14 @@ The `3 x 16-bit RGB` SuperChromaRes restriction is therefore no longer a
 transport blocker. Target arithmetic, pass order, bindings and fallback behavior
 remain evidence-bound, and unsupported contracts still fail closed.
 
-The current chroma geometry WIP builds successfully and preserves the recorded
-720p regression. Cubici2, layer and dense shaders derive their raster dimensions
-from their inputs and accept either 640x360 or 960x540. This is not complete
-1080p support: the network still loads only the 720p immutable constant
-buffers, and the full chroma scheduler remains fixed to 720p surfaces. The next
-implementation boundary is separate evidence-backed 1080p constants followed by
-the complete 960x540 -> 1920x1080 chroma scheduler.
+The native chroma core now owns separate immutable 720p and 1080p constant sets.
+Cubici2, layer and dense shaders derive raster dimensions from their inputs, and
+the scheduler selects the 960x540 geometry only after validating its views.
+Native 1080p PS_1672 matches all four captured float outputs exactly; the Cb/Cr
+28-layer cascades reach PS_2672 with `maximum_abs` `3.28422e-05` and
+`3.15905e-05`. The 720p regression is unchanged. This is core support, not the
+complete 1080p chroma chain: combine, Realign, PS_396 and SuperChromaRes still
+need their 1920x1080 surface scheduler and same-frame acceptance.
 
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured

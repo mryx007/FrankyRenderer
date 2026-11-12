@@ -45,7 +45,9 @@ struct PSOut
 
 PSOut PSMain(float4 position : SV_Position)
 {
-    const float2 uv = position.xy / float2(640.0, 360.0);
+    int width, height;
+    SourceTex.GetDimensions(width, height);
+    const float2 uv = position.xy / float2(width, height);
     const float down_left = Fetch(int2(-1, -1), uv);
     const float down = Fetch(int2(0, -1), uv);
     const float down_right = Fetch(int2(1, -1), uv);

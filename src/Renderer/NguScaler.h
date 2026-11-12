@@ -120,6 +120,9 @@ class NguScaler
     bool PrepareNativeChromaVeryHigh720(pl_gpu gpu);
     bool RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb,
                                     ID3D11RenderTargetView* denseOutput);
+    bool PrepareNativeChromaVeryHigh1080(pl_gpu gpu);
+    bool RunNativeChromaVeryHigh1080(ID3D11ShaderResourceView* cb,
+                                     ID3D11RenderTargetView* denseOutput);
     bool PrepareNativeChromaCombines(pl_gpu gpu);
     bool RunNativeChromaCombine1(ID3D11ShaderResourceView* addInput,
                                  ID3D11ShaderResourceView* nnInput,
@@ -311,7 +314,7 @@ class NguScaler
     struct NativeChromaSplit;
     struct NativeChromaScale;
     struct NativeChromaNetwork;
-    struct NativeChromaVeryHigh720;
+    struct NativeChromaVeryHighResources;
     struct NativeChromaCombines;
     struct NativeChromaRealign;
     struct NativeChromaYCbCr;
@@ -330,6 +333,17 @@ class NguScaler
     struct NativeLuma4x720High;
     struct NativeLuma4x720DenseAdd;
     struct NativeLuma4x720Tail;
+    bool PrepareNativeChromaVeryHigh(
+        pl_gpu gpu,
+        int width,
+        int height,
+        std::unique_ptr<NativeChromaVeryHighResources>& state,
+        const char* geometry);
+    bool RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
+                                 ID3D11RenderTargetView* denseOutput,
+                                 int width,
+                                 int height,
+                                 NativeChromaVeryHighResources& state);
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -342,7 +356,8 @@ class NguScaler
     std::unique_ptr<NativeChromaSplit> nativeChromaSplit_;
     std::unique_ptr<NativeChromaScale> nativeChromaScale_;
     std::unique_ptr<NativeChromaNetwork> nativeChromaNetwork_;
-    std::unique_ptr<NativeChromaVeryHigh720> nativeChromaVeryHigh720_;
+    std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh720_;
+    std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh1080_;
     std::unique_ptr<NativeChromaCombines> nativeChromaCombines_;
     std::unique_ptr<NativeChromaRealign> nativeChromaRealign_;
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
