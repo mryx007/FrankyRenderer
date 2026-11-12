@@ -638,7 +638,8 @@ struct PlaceboBackend::State
                      : ngu.RunNativeNgu1080FromPlanes(
                            nguPlaneUvShaderView.Get(),
                            nguPlaneYShaderView.Get(),
-                           nguOutputView.Get()));
+                           nguOutputView.Get(),
+                           description.format == PixelFormat::P010));
             TraceNgu("P010: native NGU plane entry complete");
             if (!ran)
             {

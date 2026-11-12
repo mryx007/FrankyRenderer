@@ -481,6 +481,95 @@ int main(int argc, char** argv)
                     "P010 SuperChromaRes base constants");
         }
 
+        if (const char* p010Root1080Env =
+                std::getenv("NGU_P010_1080_CAPTURE_ROOT"))
+        {
+            const std::filesystem::path p010Root1080(p010Root1080Env);
+            const auto originalBytes =
+                ReadBytes(p010Root1080 /
+                              "input_00086_PS_4576_b7830945_s0.bin",
+                          size_t(1920) * 1080 * 8);
+            auto original = CreateTexture(
+                device,
+                1920,
+                1080,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                originalBytes.data());
+            ComPtr<ID3D11ShaderResourceView> originalSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        original.Get(), nullptr, &originalSrv)),
+                    "P010 1080 base original SRV");
+            const auto workBytes =
+                ReadBytes(p010Root1080 /
+                              "input_00086_PS_4576_b7830945_s2.bin",
+                          size_t(1920) * 1080 * 8);
+            auto work = CreateTexture(
+                device,
+                1920,
+                1080,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                workBytes.data());
+            ComPtr<ID3D11ShaderResourceView> workSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        work.Get(), nullptr, &workSrv)),
+                    "P010 1080 base work SRV");
+            const auto differenceBytes =
+                ReadBytes(p010Root1080 /
+                              "input_00086_PS_4576_b7830945_s3.bin",
+                          size_t(960) * 540 * 4);
+            auto difference = CreateTexture(
+                device,
+                960,
+                540,
+                DXGI_FORMAT_R16G16_FLOAT,
+                D3D11_BIND_SHADER_RESOURCE,
+                differenceBytes.data());
+            ComPtr<ID3D11ShaderResourceView> differenceSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        difference.Get(), nullptr, &differenceSrv)),
+                    "P010 1080 base difference SRV");
+            auto output = CreateTexture(
+                device,
+                1920,
+                1080,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET |
+                    D3D11_BIND_SHADER_RESOURCE);
+            ComPtr<ID3D11RenderTargetView> outputView;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        output.Get(), nullptr, &outputView)),
+                    "P010 1080 base output RTV");
+            Require(ngu.RunNativeSuperResToRgbBase1080(
+                        originalSrv.Get(),
+                        workSrv.Get(),
+                        differenceSrv.Get(),
+                        outputView.Get(),
+                        true),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto actual =
+                Download(device, context.Get(), output.Get());
+            int maximum = 0;
+            const int differences = CountWords(
+                actual,
+                ReadBytes(
+                    p010Root1080 /
+                        "draw_00086_PS_4576_b7830945_"
+                        "rt0_1920x1080_f36.bin",
+                    size_t(1920) * 1080 * 8),
+                maximum);
+            std::printf(
+                "P010 1080 PS_4576 different=%d maximum=%d "
+                "diff_gt_8=%d\n",
+                differences,
+                maximum,
+                maximum > 8 ? 1 : 0);
+            Require(differences == 0,
+                    "P010 1080 SuperChromaRes base constants");
+        }
+
         constexpr int benchmarkFrames = 20;
         const auto benchmarkStart = std::chrono::steady_clock::now();
         for (int frame = 0; frame < benchmarkFrames; ++frame)

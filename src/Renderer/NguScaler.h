@@ -154,7 +154,8 @@ class NguScaler
         ID3D11ShaderResourceView* diffOriginal,
         ID3D11ShaderResourceView* mainOriginal,
         ID3D11ShaderResourceView* baseOriginal,
-        ID3D11RenderTargetView* output);
+        ID3D11RenderTargetView* output,
+        bool p010 = false);
     bool PrepareNativeNgu720FromPlanes(pl_gpu gpu);
     bool RunNativeNgu720FromPlanes(
         ID3D11ShaderResourceView* packedUv,
@@ -165,7 +166,8 @@ class NguScaler
     bool RunNativeNgu1080FromPlanes(
         ID3D11ShaderResourceView* packedUv,
         ID3D11ShaderResourceView* yInput,
-        ID3D11RenderTargetView* finalOutput);
+        ID3D11RenderTargetView* finalOutput,
+        bool p010 = false);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -238,7 +240,8 @@ class NguScaler
                                          ID3D11ShaderResourceView* diffOriginal,
                                          ID3D11ShaderResourceView* mainOriginal,
                                          ID3D11ShaderResourceView* baseOriginal,
-                                         ID3D11RenderTargetView* output);
+                                         ID3D11RenderTargetView* output,
+                                         bool p010 = false);
     bool RunNativeSuperResDownX1080(ID3D11ShaderResourceView* input,
                                     ID3D11RenderTargetView* output);
     bool RunNativeSuperResDownY1080(ID3D11ShaderResourceView* input,
@@ -253,7 +256,8 @@ class NguScaler
     bool RunNativeSuperResToRgbBase1080(ID3D11ShaderResourceView* original,
                                         ID3D11ShaderResourceView* work,
                                         ID3D11ShaderResourceView* difference,
-                                        ID3D11RenderTargetView* output);
+                                        ID3D11RenderTargetView* output,
+                                        bool p010 = false);
     bool PrepareNativeLuma4x720Low(pl_gpu gpu);
     bool RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                                int sourceWidth,

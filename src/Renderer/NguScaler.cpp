@@ -653,6 +653,7 @@ struct NguScaler::NativeSuperResPrimitives
     ComPtr<ID3D11Buffer> downYConstants1080;
     ComPtr<ID3D11Buffer> toRgbMainConstants1080;
     ComPtr<ID3D11Buffer> toRgbBaseConstants1080;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsP0101080;
     ComPtr<ID3D11Texture2D> downXTable1080;
     ComPtr<ID3D11Texture2D> downYTable1080;
     ComPtr<ID3D11ShaderResourceView> downXTableView1080;
@@ -2861,7 +2862,8 @@ bool NguScaler::RunNativeChromaVeryHigh1080Full(
     ID3D11ShaderResourceView* diffOriginal,
     ID3D11ShaderResourceView* mainOriginal,
     ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output)
+    ID3D11RenderTargetView* output,
+    bool p010)
 {
     if (!nativeChromaVeryHigh1080Full_)
     {
@@ -2877,7 +2879,7 @@ bool NguScaler::RunNativeChromaVeryHigh1080Full(
                                960,
                                540,
                                true,
-                               false,
+                               p010,
                                *nativeChromaVeryHigh1080Full_);
 }
 
@@ -3035,7 +3037,8 @@ bool NguScaler::RunNativeNguFromPlanes(
                                                 packedUv,
                                                 state.yShaderView.Get(),
                                                 state.yShaderView.Get(),
-                                                state.chromaView.Get())
+                                                state.chromaView.Get(),
+                                                p010)
              : !RunNativeChromaVeryHigh720Full(packedUv,
                                                yInput,
                                                packedUv,
@@ -3092,7 +3095,8 @@ bool NguScaler::PrepareNativeNgu1080FromPlanes(pl_gpu gpu)
 bool NguScaler::RunNativeNgu1080FromPlanes(
     ID3D11ShaderResourceView* packedUv,
     ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput)
+    ID3D11RenderTargetView* finalOutput,
+    bool p010)
 {
     if (!nativeNgu1080FromPlanes_)
     {
@@ -3105,7 +3109,7 @@ bool NguScaler::RunNativeNgu1080FromPlanes(
                                   1920,
                                   1080,
                                   true,
-                                  false,
+                                  p010,
                                   *nativeNgu1080FromPlanes_);
 }
 
@@ -4760,6 +4764,10 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_main_constants.bin", 2 * sizeof(float) * 4);
     const auto toRgbBaseConstants1080 =
         LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants.bin", 6 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsP0101080 =
+        LoadBundledBytes(
+            L"shaders\\Ngu\\superres_1080_asm_base_constants_p010.bin",
+            6 * sizeof(float) * 4);
     const auto downXTable1080 =
         LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_table.bin", 4 * 960 * 8);
     const auto downYTable1080 =
@@ -4779,6 +4787,7 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         toRgbBaseCso1080.empty() || downXConstants1080.empty() ||
         downYConstants1080.empty() || toRgbMainConstants1080.empty() ||
         toRgbBaseConstants1080.empty() || downXTable1080.empty() ||
+        toRgbBaseConstantsP0101080.empty() ||
         downYTable1080.empty() || uvLut1080.empty() || downXUvLut1080.empty() ||
         downYUvLut1080.empty())
     {
@@ -4870,7 +4879,9 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         !createConstants(downXConstants1080, state->downXConstants1080) ||
         !createConstants(downYConstants1080, state->downYConstants1080) ||
         !createConstants(toRgbMainConstants1080, state->toRgbMainConstants1080) ||
-        !createConstants(toRgbBaseConstants1080, state->toRgbBaseConstants1080))
+        !createConstants(toRgbBaseConstants1080, state->toRgbBaseConstants1080) ||
+        !createConstants(toRgbBaseConstantsP0101080,
+                         state->toRgbBaseConstantsP0101080))
     {
         error_ = "NGU SuperChromaRes constants could not be created";
         return false;
@@ -5376,7 +5387,8 @@ bool NguScaler::RunNativeSuperResToRgbMain1080(ID3D11ShaderResourceView* origina
 bool NguScaler::RunNativeSuperResToRgbBase1080(ID3D11ShaderResourceView* original,
                                                ID3D11ShaderResourceView* work,
                                                ID3D11ShaderResourceView* difference,
-                                               ID3D11RenderTargetView* output)
+                                               ID3D11RenderTargetView* output,
+                                               bool p010)
 {
     if (!nativeSuperRes_ || !original || !work || !difference || !output)
     {
@@ -5385,10 +5397,13 @@ bool NguScaler::RunNativeSuperResToRgbBase1080(ID3D11ShaderResourceView* origina
     }
     ID3D11ShaderResourceView* inputs[4] = {
         original, work, difference, nativeSuperRes_->uvLutView1080.Get()};
+    ID3D11Buffer* constants =
+        p010 ? nativeSuperRes_->toRgbBaseConstantsP0101080.Get()
+             : nativeSuperRes_->toRgbBaseConstants1080.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbBase1080.Get(),
-                  nativeSuperRes_->toRgbBaseConstants1080.Get(),
+                  constants,
                   nativeSuperRes_->rasterizer.Get(),
                   inputs,
                   4,
@@ -5463,7 +5478,8 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
                                                 ID3D11ShaderResourceView* diffOriginal,
                                                 ID3D11ShaderResourceView* mainOriginal,
                                                 ID3D11ShaderResourceView* baseOriginal,
-                                                ID3D11RenderTargetView* output)
+                                                ID3D11RenderTargetView* output,
+                                                bool p010)
 {
     const bool diffIsBgra8 =
         diffOriginal &&
@@ -5501,7 +5517,11 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
         !RunNativeSuperResDiff1080(
             diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
         !RunNativeSuperResToRgbBase1080(
-            baseOriginal, state.mainShaderView.Get(), state.diffShaderView.Get(), output))
+            baseOriginal,
+            state.mainShaderView.Get(),
+            state.diffShaderView.Get(),
+            output,
+            p010))
         return false;
     error_ = "";
     return true;
