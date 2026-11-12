@@ -130,7 +130,7 @@ struct Mt19937
                 state[i] = state[(i + 397) % 624] ^ (mixed >> 1) ^ magic[mixed & 1u];
             }
             const uint32_t mixed = ((state[623] ^ state[0]) & 0x7fffffffu) ^ state[623];
-            state[623] = state[396] ^ (mixed >> 1) ^ magic[mixed & 1u];
+            state[623] = (state[396] & (mixed >> 1)) ^ magic[mixed & 1u];
             index = 0;
         }
         uint32_t value = state[index++];
