@@ -233,6 +233,22 @@ int main(int argc, char** argv)
         ComPtr<ID3D11DeviceContext> context;
         device->GetImmediateContext(&context);
 
+        NguScalerRequest capability;
+        capability.sourceWidth = 1920;
+        capability.sourceHeight = 1080;
+        capability.quality = NguQuality::VeryHigh;
+        capability.stage = NguScalerStage::VeryHighNguClass3_1080;
+        Require(ProbeNguScaler(capability) == NguScalerSupport::Ready,
+                "VeryHigh 1080p class-3 capability");
+        for (NguQuality quality :
+             {NguQuality::Low, NguQuality::Medium, NguQuality::High})
+        {
+            capability.quality = quality;
+            Require(ProbeNguScaler(capability) ==
+                        NguScalerSupport::ExperimentalUnimplemented,
+                    "unobserved NGU quality must fail closed");
+        }
+
         auto yTexture = CreateTexture(
             device, 1920, 1080, DXGI_FORMAT_R16_UNORM,
             D3D11_BIND_SHADER_RESOURCE, raw.data(), 1920 * 2);
