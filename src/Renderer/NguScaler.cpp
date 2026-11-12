@@ -454,6 +454,46 @@ struct NguScaler::NativeChromaYCbCr
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
+struct NguScaler::NativeChromaVeryHigh720Full
+{
+    ComPtr<ID3D11Texture2D> cbTexture;
+    ComPtr<ID3D11RenderTargetView> cbView;
+    ComPtr<ID3D11ShaderResourceView> cbShaderView;
+    ComPtr<ID3D11Texture2D> crTexture;
+    ComPtr<ID3D11RenderTargetView> crView;
+    ComPtr<ID3D11ShaderResourceView> crShaderView;
+    ComPtr<ID3D11Texture2D> cbScaleXTexture;
+    ComPtr<ID3D11RenderTargetView> cbScaleXView;
+    ComPtr<ID3D11ShaderResourceView> cbScaleXShaderView;
+    ComPtr<ID3D11Texture2D> cbScaleYTexture;
+    ComPtr<ID3D11RenderTargetView> cbScaleYView;
+    ComPtr<ID3D11ShaderResourceView> cbScaleYShaderView;
+    ComPtr<ID3D11Texture2D> crScaleXTexture;
+    ComPtr<ID3D11RenderTargetView> crScaleXView;
+    ComPtr<ID3D11ShaderResourceView> crScaleXShaderView;
+    ComPtr<ID3D11Texture2D> crScaleYTexture;
+    ComPtr<ID3D11RenderTargetView> crScaleYView;
+    ComPtr<ID3D11ShaderResourceView> crScaleYShaderView;
+    ComPtr<ID3D11Texture2D> denseCbTexture;
+    ComPtr<ID3D11RenderTargetView> denseCbView;
+    ComPtr<ID3D11ShaderResourceView> denseCbShaderView;
+    ComPtr<ID3D11Texture2D> denseCrTexture;
+    ComPtr<ID3D11RenderTargetView> denseCrView;
+    ComPtr<ID3D11ShaderResourceView> denseCrShaderView;
+    ComPtr<ID3D11Texture2D> combine1Texture;
+    ComPtr<ID3D11RenderTargetView> combine1View;
+    ComPtr<ID3D11ShaderResourceView> combine1ShaderView;
+    ComPtr<ID3D11Texture2D> combine2Texture;
+    ComPtr<ID3D11RenderTargetView> combine2View;
+    ComPtr<ID3D11ShaderResourceView> combine2ShaderView;
+    ComPtr<ID3D11Texture2D> realignTexture;
+    ComPtr<ID3D11RenderTargetView> realignView;
+    ComPtr<ID3D11ShaderResourceView> realignShaderView;
+    ComPtr<ID3D11Texture2D> ycbcrTexture;
+    ComPtr<ID3D11RenderTargetView> ycbcrView;
+    ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
+};
+
 struct NguScaler::NativeLumaLayers
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -2290,6 +2330,171 @@ bool NguScaler::RunNativeChromaYCbCr(
                   1280,
                   720,
                   nativeChromaYCbCr_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU full VeryHigh chroma requires a GPU";
+        return false;
+    }
+    if (nativeChromaVeryHigh720Full_ && gpu == gpu_)
+        return true;
+    if (!PrepareNativeChromaSplit(gpu) ||
+        !PrepareNativeChromaScale(gpu) ||
+        !PrepareNativeChromaVeryHigh720(gpu) ||
+        !PrepareNativeChromaCombines(gpu) ||
+        !PrepareNativeChromaRealign(gpu) ||
+        !PrepareNativeChromaYCbCr(gpu) ||
+        !PrepareNativeSuperResStrength3(gpu))
+        return false;
+
+    ID3D11Device* device = pl_d3d11_get(gpu)->device;
+    auto state = std::make_unique<NativeChromaVeryHigh720Full>();
+    auto create = [&](UINT width,
+                      UINT height,
+                      DXGI_FORMAT format,
+                      ComPtr<ID3D11Texture2D>& texture,
+                      ComPtr<ID3D11RenderTargetView>& renderTarget,
+                      ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET |
+                         D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!create(640, 360, DXGI_FORMAT_R16_UNORM,
+                state->cbTexture, state->cbView, state->cbShaderView) ||
+        !create(640, 360, DXGI_FORMAT_R16_UNORM,
+                state->crTexture, state->crView, state->crShaderView) ||
+        !create(1280, 360, DXGI_FORMAT_R16_UNORM,
+                state->cbScaleXTexture,
+                state->cbScaleXView,
+                state->cbScaleXShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
+                state->cbScaleYTexture,
+                state->cbScaleYView,
+                state->cbScaleYShaderView) ||
+        !create(1280, 360, DXGI_FORMAT_R16_UNORM,
+                state->crScaleXTexture,
+                state->crScaleXView,
+                state->crScaleXShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
+                state->crScaleYTexture,
+                state->crScaleYView,
+                state->crScaleYShaderView) ||
+        !create(642, 362, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                state->denseCbTexture,
+                state->denseCbView,
+                state->denseCbShaderView) ||
+        !create(642, 362, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                state->denseCrTexture,
+                state->denseCrView,
+                state->denseCrShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16_UNORM,
+                state->combine1Texture,
+                state->combine1View,
+                state->combine1ShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16G16_UNORM,
+                state->combine2Texture,
+                state->combine2View,
+                state->combine2ShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->realignTexture,
+                state->realignView,
+                state->realignShaderView) ||
+        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->ycbcrTexture,
+                state->ycbcrView,
+                state->ycbcrShaderView))
+    {
+        error_ = "NGU full VeryHigh chroma surfaces could not be created";
+        return false;
+    }
+    nativeChromaVeryHigh720Full_ = std::move(state);
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeChromaVeryHigh720Full(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11ShaderResourceView* diffOriginal,
+    ID3D11ShaderResourceView* mainOriginal,
+    ID3D11ShaderResourceView* baseOriginal,
+    ID3D11RenderTargetView* output)
+{
+    const bool packedUvIsRgba16 =
+        packedUv &&
+        ViewMatchesTexture(
+            packedUv, DXGI_FORMAT_R16G16B16A16_UNORM, 640, 360);
+    const bool packedUvIsBgra8 =
+        packedUv &&
+        ViewMatchesTexture(packedUv, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
+    if (!nativeChromaVeryHigh720Full_ || !packedUv || !yInput ||
+        !diffOriginal || !mainOriginal || !baseOriginal || !output ||
+        (!packedUvIsRgba16 && !packedUvIsBgra8) ||
+        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(
+            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360) ||
+        !ViewMatchesTexture(
+            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(
+            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(
+            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
+    {
+        error_ = "NGU full VeryHigh chroma request is invalid";
+        return false;
+    }
+
+    auto& state = *nativeChromaVeryHigh720Full_;
+    if (!RunNativeChromaSplit(
+            packedUv, 640, 360, state.cbView.Get(), state.crView.Get()) ||
+        !RunNativeChromaVeryHigh720(
+            state.cbShaderView.Get(), state.denseCbView.Get()) ||
+        !RunNativeChromaScaleX(
+            state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
+        !RunNativeChromaScaleY(
+            state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()) ||
+        !RunNativeChromaCombine1(state.cbScaleYShaderView.Get(),
+                                 state.denseCbShaderView.Get(),
+                                 state.combine1View.Get()) ||
+        !RunNativeChromaVeryHigh720(
+            state.crShaderView.Get(), state.denseCrView.Get()) ||
+        !RunNativeChromaScaleX(
+            state.crShaderView.Get(), state.crScaleXView.Get()) ||
+        !RunNativeChromaScaleY(
+            state.crScaleXShaderView.Get(), state.crScaleYView.Get()) ||
+        !RunNativeChromaCombine2(state.crScaleYShaderView.Get(),
+                                 state.combine1ShaderView.Get(),
+                                 state.denseCrShaderView.Get(),
+                                 state.combine2View.Get()) ||
+        !RunNativeChromaRealign(state.combine2ShaderView.Get(),
+                                state.realignView.Get()) ||
+        !RunNativeChromaYCbCr(yInput,
+                              state.realignShaderView.Get(),
+                              state.ycbcrView.Get()) ||
+        !RunNativeSuperResStrength3(state.ycbcrShaderView.Get(),
+                                    diffOriginal,
+                                    mainOriginal,
+                                    baseOriginal,
+                                    output))
+        return false;
     error_ = "";
     return true;
 }
@@ -6440,6 +6645,7 @@ void NguScaler::Reset()
     nativeChromaCombines_.reset();
     nativeChromaRealign_.reset();
     nativeChromaYCbCr_.reset();
+    nativeChromaVeryHigh720Full_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();

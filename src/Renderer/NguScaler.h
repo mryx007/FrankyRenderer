@@ -135,6 +135,14 @@ class NguScaler
     bool RunNativeChromaYCbCr(ID3D11ShaderResourceView* yInput,
                               ID3D11ShaderResourceView* cbcrInput,
                               ID3D11RenderTargetView* output);
+    bool PrepareNativeChromaVeryHigh720Full(pl_gpu gpu);
+    bool RunNativeChromaVeryHigh720Full(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11ShaderResourceView* diffOriginal,
+        ID3D11ShaderResourceView* mainOriginal,
+        ID3D11ShaderResourceView* baseOriginal,
+        ID3D11RenderTargetView* output);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -302,6 +310,7 @@ class NguScaler
     struct NativeChromaCombines;
     struct NativeChromaRealign;
     struct NativeChromaYCbCr;
+    struct NativeChromaVeryHigh720Full;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -331,6 +340,7 @@ class NguScaler
     std::unique_ptr<NativeChromaCombines> nativeChromaCombines_;
     std::unique_ptr<NativeChromaRealign> nativeChromaRealign_;
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
+    std::unique_ptr<NativeChromaVeryHigh720Full> nativeChromaVeryHigh720Full_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;

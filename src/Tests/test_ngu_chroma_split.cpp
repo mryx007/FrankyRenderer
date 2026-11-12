@@ -413,6 +413,11 @@ std::vector<uint8_t> ExtractRg16(const std::vector<uint8_t>& expanded)
     return bytes;
 }
 
+std::vector<uint8_t> ExtractBgra8(const std::vector<uint8_t>& expanded)
+{
+    return ExtractRg16(expanded);
+}
+
 void CompareWrittenTriangle(const std::vector<uint8_t>& actual,
                             const std::vector<uint8_t>& expected,
                             UINT width,
@@ -1369,6 +1374,60 @@ int main(int argc, char** argv)
                 8,
                 1280,
                 "PS_4576 chained");
+
+            const auto packedUvBytes =
+                ReadBytes(networkRoot /
+                              "input_00088_PS_260_cdfc6b55_s0.bin",
+                          size_t(640) * 360 * 4);
+            ComPtr<ID3D11ShaderResourceView> packedUvView;
+            auto packedUvTexture =
+                CreateBgra8Input(d3d->device,
+                                 packedUvBytes,
+                                 640,
+                                 360,
+                                 packedUvView);
+            if (!ngu.PrepareNativeChromaVeryHigh720Full(d3d->gpu))
+                throw std::runtime_error(ngu.LastError());
+            ComPtr<ID3D11RenderTargetView> fullView;
+            ComPtr<ID3D11ShaderResourceView> fullShaderView;
+            auto fullTexture =
+                CreateRgbaUnormOutput(d3d->device,
+                                      1280,
+                                      720,
+                                      fullView,
+                                      fullShaderView);
+            if (!ngu.RunNativeChromaVeryHigh720Full(packedUvView.Get(),
+                                                    yInputView.Get(),
+                                                    diffuseSourceView.Get(),
+                                                    mainOriginalView.Get(),
+                                                    baseOriginalView.Get(),
+                                                    fullView.Get()))
+                throw std::runtime_error(ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto fullActual =
+                Download(d3d->device,
+                         context.Get(),
+                         fullTexture.Get(),
+                         8);
+            DumpIfRequested(fullActual, "ps4576_full_native.bin");
+            CompareUnormOutput(
+                fullActual,
+                ReadBytes(networkRoot /
+                              ([&] {
+                                  char fileName[128] = {};
+                                  std::snprintf(
+                                      fileName,
+                                      sizeof(fileName),
+                                      "draw_%05d_PS_4576_b7830945_"
+                                      "rt0_1280x720_f36.bin",
+                                      ycbcrDraw + 8);
+                                  return std::string(fileName);
+                              })(),
+                          size_t(1280) * 720 * 8),
+                4,
+                8,
+                1280,
+                "PS_4576 full native");
         }
 
         std::puts("PASS_PRODUCT native PS_260/PS_748/PS_1672...PS_2672 chroma");
