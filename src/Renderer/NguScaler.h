@@ -145,7 +145,8 @@ class NguScaler
         ID3D11ShaderResourceView* diffOriginal,
         ID3D11ShaderResourceView* mainOriginal,
         ID3D11ShaderResourceView* baseOriginal,
-        ID3D11RenderTargetView* output);
+        ID3D11RenderTargetView* output,
+        bool p010 = false);
     bool PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu);
     bool RunNativeChromaVeryHigh1080Full(
         ID3D11ShaderResourceView* packedUv,
@@ -158,7 +159,8 @@ class NguScaler
     bool RunNativeNgu720FromPlanes(
         ID3D11ShaderResourceView* packedUv,
         ID3D11ShaderResourceView* yInput,
-        ID3D11RenderTargetView* finalOutput);
+        ID3D11RenderTargetView* finalOutput,
+        bool p010 = false);
     bool PrepareNativeNgu1080FromPlanes(pl_gpu gpu);
     bool RunNativeNgu1080FromPlanes(
         ID3D11ShaderResourceView* packedUv,
@@ -222,13 +224,15 @@ class NguScaler
     bool RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
                                     ID3D11ShaderResourceView* work,
                                     ID3D11ShaderResourceView* difference,
-                                    ID3D11RenderTargetView* output);
+                                    ID3D11RenderTargetView* output,
+                                    bool p010 = false);
     bool PrepareNativeSuperResStrength3(pl_gpu gpu);
     bool RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
                                     ID3D11ShaderResourceView* diffOriginal,
                                     ID3D11ShaderResourceView* mainOriginal,
                                     ID3D11ShaderResourceView* baseOriginal,
-                                    ID3D11RenderTargetView* output);
+                                    ID3D11RenderTargetView* output,
+                                    bool p010 = false);
     bool PrepareNativeSuperResStrength3_1080(pl_gpu gpu);
     bool RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source,
                                          ID3D11ShaderResourceView* diffOriginal,
@@ -373,6 +377,7 @@ class NguScaler
         int width,
         int height,
         bool is1080,
+        bool p010,
         NativeChromaFullResources& state);
     bool PrepareNativeNguFromPlanes(
         pl_gpu gpu,
@@ -387,6 +392,7 @@ class NguScaler
         int width,
         int height,
         bool is1080,
+        bool p010,
         NativeNguFromPlanesResources& state);
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;

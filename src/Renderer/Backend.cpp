@@ -633,7 +633,8 @@ struct PlaceboBackend::State
                      ? ngu.RunNativeNgu720FromPlanes(
                            nguPlaneUvShaderView.Get(),
                            nguPlaneYShaderView.Get(),
-                           nguOutputView.Get())
+                           nguOutputView.Get(),
+                           description.format == PixelFormat::P010)
                      : ngu.RunNativeNgu1080FromPlanes(
                            nguPlaneUvShaderView.Get(),
                            nguPlaneYShaderView.Get(),

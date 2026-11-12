@@ -46,8 +46,13 @@ static bool measureTest = false;
 static bool startupTest = false;
 static bool mpcbeOwnerTest = false;
 static bool nguTest = false;
+static int nguInitialFrames = 5;
 static std::wstring nguCaptureRoot;
 static std::vector<BYTE> nguCapturedInput;
+static std::wstring p010FixtureInputPath;
+static std::wstring p010FixtureOraclePath;
+static std::wstring p010FixtureOutputPath;
+static std::vector<BYTE> p010FixtureInput;
 
 static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
 {
@@ -59,6 +64,13 @@ static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
     if (!file.read(reinterpret_cast<char*>(bytes.data()), std::streamsize(expected)))
         return {};
     return bytes;
+}
+
+static bool WriteFile(const std::wstring& path, const std::vector<BYTE>& bytes)
+{
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    return file && file.write(reinterpret_cast<const char*>(bytes.data()),
+                              std::streamsize(bytes.size()));
 }
 
 static bool CompareNguRgb(const std::vector<BYTE>& actual,
@@ -141,6 +153,14 @@ static std::atomic<HRESULT> sourceFailure = S_OK;
 static constexpr int NguWidth = 1280;
 static constexpr int NguHeight = 720;
 
+static int P010InputTextureWidth()
+{
+    if (p010FixtureInput.empty())
+        return NguWidth;
+    return static_cast<int>(p010FixtureInput.size() /
+                            (size_t(NguHeight) * 3));
+}
+
 static DWORD FourCC()
 {
     if (nguTest && !hardware)
@@ -155,7 +175,9 @@ static long SampleBytes()
     if (nguTest && !hardware)
         return NguWidth * NguHeight * 6;
     if (nguTest)
-        return NguWidth * NguHeight * 3;
+        return p010FixtureInput.empty()
+                   ? NguWidth * NguHeight * 3
+                   : static_cast<long>(p010FixtureInput.size());
     return 64 * 64 * 3 / (textureFormat == DXGI_FORMAT_NV12 ? 2 : 1);
 }
 
@@ -712,7 +734,8 @@ class PatternStream final : public CSourceStream
             return S_OK;
         }
         D3D11_TEXTURE2D_DESC desc = {};
-        desc.Width = nguTest ? NguWidth : 64;
+        const int textureWidth = nguTest ? P010InputTextureWidth() : 64;
+        desc.Width = textureWidth;
         desc.Height = nguTest ? NguHeight : 64;
         desc.MipLevels = 1;
         desc.ArraySize = 1;
@@ -735,22 +758,29 @@ class PatternStream final : public CSourceStream
         if (nguTest)
         {
             nguSourceStage = 6;
-            std::vector<BYTE> data(size_t(NguWidth) * NguHeight * 3);
-            auto yPlane = reinterpret_cast<uint16_t*>(data.data());
-            for (int y = 0; y < NguHeight; ++y)
-                for (int x = 0; x < NguWidth; ++x)
-                    yPlane[size_t(y) * NguWidth + x] =
-                        uint16_t((16 + (x * 219) / (NguWidth - 1)) << 6);
-            auto uvPlane = reinterpret_cast<uint16_t*>(
-                data.data() + size_t(NguWidth) * NguHeight * 2);
-            for (size_t i = 0; i < size_t(NguWidth / 2) * (NguHeight / 2);
-                 ++i)
+            std::vector<BYTE> generated;
+            const BYTE* data = p010FixtureInput.data();
+            if (p010FixtureInput.empty())
             {
-                uvPlane[i * 2] = 128 << 6;
-                uvPlane[i * 2 + 1] = 128 << 6;
+                generated.resize(size_t(NguWidth) * NguHeight * 3);
+                auto yPlane = reinterpret_cast<uint16_t*>(generated.data());
+                for (int y = 0; y < NguHeight; ++y)
+                    for (int x = 0; x < NguWidth; ++x)
+                        yPlane[size_t(y) * NguWidth + x] =
+                            uint16_t((16 + (x * 219) / (NguWidth - 1)) << 6);
+                auto uvPlane = reinterpret_cast<uint16_t*>(
+                    generated.data() + size_t(NguWidth) * NguHeight * 2);
+                for (size_t i = 0;
+                     i < size_t(NguWidth / 2) * (NguHeight / 2);
+                     ++i)
+                {
+                    uvPlane[i * 2] = 128 << 6;
+                    uvPlane[i * 2 + 1] = 128 << 6;
+                }
+                data = generated.data();
             }
             context->UpdateSubresource(
-                texture.Get(), 0, nullptr, data.data(), NguWidth * 2, 0);
+                texture.Get(), 0, nullptr, data, textureWidth * 2, 0);
             NguTrace("source delivery texture update complete");
         }
         *out = new TextureSample(base.Get(), texture.Get());
@@ -1212,6 +1242,14 @@ int wmain(int argc, wchar_t** argv)
             nguTest = true;
         if (wcscmp(argv[i], L"--ngu-root") == 0 && i + 1 < argc)
             nguCaptureRoot = argv[++i];
+        if (wcscmp(argv[i], L"--p010-input") == 0 && i + 1 < argc)
+            p010FixtureInputPath = argv[++i];
+        if (wcscmp(argv[i], L"--p010-oracle") == 0 && i + 1 < argc)
+            p010FixtureOraclePath = argv[++i];
+        if (wcscmp(argv[i], L"--p010-output") == 0 && i + 1 < argc)
+            p010FixtureOutputPath = argv[++i];
+        if (wcscmp(argv[i], L"--ngu-frame-count") == 0 && i + 1 < argc)
+            nguInitialFrames = _wtoi(argv[++i]);
         if (wcscmp(argv[i], L"--nv12") == 0)
             textureFormat = DXGI_FORMAT_NV12;
         if (wcscmp(argv[i], L"--p016") == 0)
@@ -1232,6 +1270,28 @@ int wmain(int argc, wchar_t** argv)
     {
         puts("FAIL the captured NGU oracle is RGB48; GPU mode is a P010 "
              "playback smoke and cannot use --ngu-root");
+        return 1;
+    }
+    if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())
+    {
+        if (!nguTest || !hardware || !nguCaptureRoot.empty() ||
+            p010FixtureInputPath.empty() || p010FixtureOraclePath.empty())
+        {
+            puts("FAIL --p010-input and --p010-oracle require --gpu --ngu "
+                 "without --ngu-root");
+            return 1;
+        }
+        p010FixtureInput =
+            ReadFile(p010FixtureInputPath, size_t(2048) * NguHeight * 3);
+        if (p010FixtureInput.empty())
+        {
+            puts("FAIL P010 fixture input must be 2048x720 P010");
+            return 1;
+        }
+    }
+    if (nguInitialFrames <= 0)
+    {
+        puts("FAIL --ngu-frame-count must be positive");
         return 1;
     }
     for (int i = 1; i < argc; i++)
@@ -1581,6 +1641,8 @@ int wmain(int argc, wchar_t** argv)
     }
     Check(control->Run(), "run");
     PlaceboStatus status;
+    const uint64_t initialFrames =
+        nguTest ? static_cast<uint64_t>(nguInitialFrames) : 5;
     const DWORD start = GetTickCount();
     do
     {
@@ -1592,10 +1654,13 @@ int wmain(int argc, wchar_t** argv)
             DispatchMessageW(&msg);
         }
         Check(config->GetStatus(&status), "status");
-    } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    } while (status.rendered < initialFrames &&
+             SUCCEEDED(sourceFailure.load()) &&
+             GetTickCount() - start < 30000);
     if (nguTest)
     {
-        if (FAILED(sourceFailure.load()) || status.rendered < 5)
+        if (FAILED(sourceFailure.load()) ||
+            status.rendered < initialFrames)
         {
             printf("FAIL_PRODUCT ngu_sharp DirectShow rendered=%llu source=%08lX\n",
                    static_cast<unsigned long long>(status.rendered),
@@ -1624,6 +1689,39 @@ int wmain(int argc, wchar_t** argv)
                        expected.empty() ? 0u : expected[0],
                        expected.size() < 2 ? 0u : expected[1],
                        expected.size() < 3 ? 0u : expected[2]);
+                return 1;
+            }
+        }
+        else if (!p010FixtureOraclePath.empty())
+        {
+            std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
+            Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()),
+                  "P010 fixture pixels");
+            if (!p010FixtureOutputPath.empty() &&
+                !WriteFile(p010FixtureOutputPath, pixels))
+            {
+                puts("FAIL could not write P010 fixture output");
+                return 1;
+            }
+            const auto expected =
+                ReadFile(p010FixtureOraclePath, size_t(3840) * 2160 * 4);
+            if (expected.empty() ||
+                !CompareNguRgb(pixels, expected, different, maximum, overOne))
+            {
+                printf("FAIL_PRODUCT P010 fixture comparison unavailable "
+                       "actual=%zu expected=%zu\n",
+                       pixels.size(),
+                       expected.size());
+                return 1;
+            }
+            printf("P010 fixture different=%d maximum=%d "
+                   "diff_gt_1_pixels=%d\n",
+                   different,
+                   maximum,
+                   overOne);
+            if (maximum > 1 || overOne != 0)
+            {
+                puts("FAIL_PRODUCT P010 fixture final image gate");
                 return 1;
             }
         }

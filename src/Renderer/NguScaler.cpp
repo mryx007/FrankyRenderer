@@ -629,6 +629,7 @@ struct NguScaler::NativeSuperResPrimitives
     ComPtr<ID3D11Buffer> downYConstants;
     ComPtr<ID3D11Buffer> toRgbMainConstants;
     ComPtr<ID3D11Buffer> toRgbBaseConstants;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsP010;
     ComPtr<ID3D11Texture2D> downXTable;
     ComPtr<ID3D11Texture2D> downYTable;
     ComPtr<ID3D11ShaderResourceView> downXTableView;
@@ -2693,6 +2694,7 @@ bool NguScaler::RunNativeChromaFull(
     int width,
     int height,
     bool is1080,
+    bool p010,
     NativeChromaFullResources& state)
 {
     const UINT outputWidth = UINT(width * 2);
@@ -2807,7 +2809,8 @@ bool NguScaler::RunNativeChromaFull(
                                            diffOriginal,
                                            mainOriginal,
                                            baseOriginal,
-                                           output)))
+                                           output,
+                                           p010)))
         return false;
     error_ = "";
     return true;
@@ -2825,7 +2828,8 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
     ID3D11ShaderResourceView* diffOriginal,
     ID3D11ShaderResourceView* mainOriginal,
     ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output)
+    ID3D11RenderTargetView* output,
+    bool p010)
 {
     if (!nativeChromaVeryHigh720Full_)
     {
@@ -2841,6 +2845,7 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
                                640,
                                360,
                                false,
+                               p010,
                                *nativeChromaVeryHigh720Full_);
 }
 
@@ -2872,6 +2877,7 @@ bool NguScaler::RunNativeChromaVeryHigh1080Full(
                                960,
                                540,
                                true,
+                               false,
                                *nativeChromaVeryHigh1080Full_);
 }
 
@@ -2996,6 +3002,7 @@ bool NguScaler::RunNativeNguFromPlanes(
     int width,
     int height,
     bool is1080,
+    bool p010,
     NativeNguFromPlanesResources& state)
 {
     if (state.width != UINT(width) || state.height != UINT(height) ||
@@ -3034,7 +3041,8 @@ bool NguScaler::RunNativeNguFromPlanes(
                                                packedUv,
                                                state.yShaderView.Get(),
                                                state.yShaderView.Get(),
-                                               state.chromaView.Get())) ||
+                                               state.chromaView.Get(),
+                                               p010)) ||
         (is1080 ? !RunNativeLumaVeryHigh1080(state.chromaShaderView.Get(),
                                              UINT(width),
                                              UINT(height),
@@ -3057,7 +3065,8 @@ bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
 bool NguScaler::RunNativeNgu720FromPlanes(
     ID3D11ShaderResourceView* packedUv,
     ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput)
+    ID3D11RenderTargetView* finalOutput,
+    bool p010)
 {
     if (!nativeNgu720FromPlanes_)
     {
@@ -3070,6 +3079,7 @@ bool NguScaler::RunNativeNgu720FromPlanes(
                                   1280,
                                   720,
                                   false,
+                                  p010,
                                   *nativeNgu720FromPlanes_);
 }
 
@@ -3095,6 +3105,7 @@ bool NguScaler::RunNativeNgu1080FromPlanes(
                                   1920,
                                   1080,
                                   true,
+                                  false,
                                   *nativeNgu1080FromPlanes_);
 }
 
@@ -4724,6 +4735,9 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants.bin", 2 * sizeof(float) * 4);
     const auto toRgbBaseConstants =
         LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants.bin", 6 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsP010 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_p010.bin",
+                         6 * sizeof(float) * 4);
     const auto downXTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_table.bin", 4 * 640 * 8);
     const auto downYTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_table.bin", 4 * 360 * 8);
     const auto uvLut = LoadBundledBytes(L"shaders\\Ngu\\superres_uv_lut.bin", 2048 * 8);
@@ -4758,6 +4772,7 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     if (vertexText.empty() || downXCso.empty() || downYCso.empty() || diffCso.empty() ||
         toRgbMainCso.empty() || toRgbBaseCso.empty() || downXConstants.empty() ||
         downYConstants.empty() || toRgbMainConstants.empty() || toRgbBaseConstants.empty() ||
+        toRgbBaseConstantsP010.empty() ||
         downXTable.empty() || downYTable.empty() || uvLut.empty() ||
         downXUvLut.empty() || downYUvLut.empty() || downXCso1080.empty() ||
         downYCso1080.empty() || diffCso1080.empty() || toRgbMainCso1080.empty() ||
@@ -4850,6 +4865,8 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         !createConstants(downYConstants, state->downYConstants) ||
         !createConstants(toRgbMainConstants, state->toRgbMainConstants) ||
         !createConstants(toRgbBaseConstants, state->toRgbBaseConstants) ||
+        !createConstants(toRgbBaseConstantsP010,
+                         state->toRgbBaseConstantsP010) ||
         !createConstants(downXConstants1080, state->downXConstants1080) ||
         !createConstants(downYConstants1080, state->downYConstants1080) ||
         !createConstants(toRgbMainConstants1080, state->toRgbMainConstants1080) ||
@@ -5093,7 +5110,8 @@ bool NguScaler::RunNativeSuperResToRgbMain(ID3D11ShaderResourceView* original,
 bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
                                            ID3D11ShaderResourceView* work,
                                            ID3D11ShaderResourceView* difference,
-                                           ID3D11RenderTargetView* output)
+                                           ID3D11RenderTargetView* output,
+                                           bool p010)
 {
     if (!nativeSuperRes_ || !original || !work || !difference || !output)
     {
@@ -5102,10 +5120,13 @@ bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
     }
     ID3D11ShaderResourceView* inputs[4] = {
         original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11Buffer* constants =
+        p010 ? nativeSuperRes_->toRgbBaseConstantsP010.Get()
+             : nativeSuperRes_->toRgbBaseConstants.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbBase.Get(),
-                  nativeSuperRes_->toRgbBaseConstants.Get(),
+                  constants,
                   nativeSuperRes_->rasterizer.Get(),
                   inputs,
                   4,
@@ -5180,7 +5201,8 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
                                            ID3D11ShaderResourceView* diffOriginal,
                                            ID3D11ShaderResourceView* mainOriginal,
                                            ID3D11ShaderResourceView* baseOriginal,
-                                           ID3D11RenderTargetView* output)
+                                           ID3D11RenderTargetView* output,
+                                           bool p010)
 {
     const bool mainIsRgba16 =
         mainOriginal &&
@@ -5230,7 +5252,11 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
         !RunNativeSuperResDownY(state.downXShaderView.Get(), state.downYView.Get()) ||
         !RunNativeSuperResDiff(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
         !RunNativeSuperResToRgbBase(
-            baseOriginal, state.mainShaderView.Get(), state.diffShaderView.Get(), output))
+            baseOriginal,
+            state.mainShaderView.Get(),
+            state.diffShaderView.Get(),
+            output,
+            p010))
         return false;
     error_ = "";
     return true;

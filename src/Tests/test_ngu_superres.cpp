@@ -389,6 +389,98 @@ int main(int argc, char** argv)
             ReadBytes(root / "draw_00164_PS_4576_b7830945_rt0_1280x720_f36.bin", size_t(1280) * 720 * 8),
             schedulerMaximum);
 
+        if (const char* p010RootEnv =
+                std::getenv("NGU_P010_CAPTURE_ROOT"))
+        {
+            const std::filesystem::path p010Root(p010RootEnv);
+            const auto p010OriginalBytes =
+                ReadBytes(p010Root /
+                              "input_00082_PS_4576_b7830945_s0.bin",
+                          size_t(1280) * 720 * 8);
+            auto p010Original = CreateTexture(
+                device,
+                1280,
+                720,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                p010OriginalBytes.data());
+            ComPtr<ID3D11ShaderResourceView> p010OriginalSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        p010Original.Get(), nullptr, &p010OriginalSrv)),
+                    "P010 base original SRV");
+            const auto p010WorkBytes =
+                ReadBytes(p010Root /
+                              "input_00082_PS_4576_b7830945_s2.bin",
+                          size_t(1280) * 720 * 8);
+            auto p010Work = CreateTexture(
+                device,
+                1280,
+                720,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_SHADER_RESOURCE,
+                p010WorkBytes.data());
+            ComPtr<ID3D11ShaderResourceView> p010WorkSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        p010Work.Get(), nullptr, &p010WorkSrv)),
+                    "P010 base work SRV");
+            const auto p010DifferenceBytes =
+                ReadBytes(p010Root /
+                              "input_00082_PS_4576_b7830945_s3.bin",
+                          size_t(640) * 360 * 4);
+            auto p010Difference = CreateTexture(
+                device,
+                640,
+                360,
+                DXGI_FORMAT_R16G16_FLOAT,
+                D3D11_BIND_SHADER_RESOURCE,
+                p010DifferenceBytes.data());
+            ComPtr<ID3D11ShaderResourceView> p010DifferenceSrv;
+            Require(SUCCEEDED(device->CreateShaderResourceView(
+                        p010Difference.Get(),
+                        nullptr,
+                        &p010DifferenceSrv)),
+                    "P010 base difference SRV");
+            auto p010Output = CreateTexture(
+                device,
+                1280,
+                720,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                D3D11_BIND_RENDER_TARGET |
+                    D3D11_BIND_SHADER_RESOURCE);
+            ComPtr<ID3D11RenderTargetView> p010OutputView;
+            Require(SUCCEEDED(device->CreateRenderTargetView(
+                        p010Output.Get(),
+                        nullptr,
+                        &p010OutputView)),
+                    "P010 base output RTV");
+            Require(ngu.RunNativeSuperResToRgbBase(
+                        p010OriginalSrv.Get(),
+                        p010WorkSrv.Get(),
+                        p010DifferenceSrv.Get(),
+                        p010OutputView.Get(),
+                        true),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            const auto p010Actual =
+                Download(device, context.Get(), p010Output.Get());
+            int p010Maximum = 0;
+            const int p010Differences = CountWords(
+                p010Actual,
+                ReadBytes(
+                    p010Root /
+                        "draw_00082_PS_4576_b7830945_"
+                        "rt0_1280x720_f36.bin",
+                    size_t(1280) * 720 * 8),
+                p010Maximum);
+            std::printf("P010 PS_4576 different=%d maximum=%d "
+                        "diff_gt_8=%d\n",
+                        p010Differences,
+                        p010Maximum,
+                        p010Maximum > 8 ? 1 : 0);
+            Require(p010Differences == 0,
+                    "P010 SuperChromaRes base constants");
+        }
+
         constexpr int benchmarkFrames = 20;
         const auto benchmarkStart = std::chrono::steady_clock::now();
         for (int frame = 0; frame < benchmarkFrames; ++frame)
