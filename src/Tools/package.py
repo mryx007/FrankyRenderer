@@ -111,6 +111,10 @@ def main(out=OUT, source=SOURCE):
     required_ngu_assets = (
         "Ngu/luma_1080_split.cso",
         "Ngu/ngu_chroma_split.cso",
+        "Ngu/ngu_class3_superxbr0.cso",
+        "Ngu/ngu_class3_superxbr1.cso",
+        "Ngu/ngu_class3_superxbr2.cso",
+        "Ngu/ngu_class3_tail_ycbcr.cso",
         "Ngu/luma_4x720_upsample.cso",
         "Ngu/superres_asm_main.cso",
     )

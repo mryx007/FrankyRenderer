@@ -49,6 +49,7 @@ const StageConfig* FindStage(NguScalerStage stage)
     static constexpr StageConfig Luma4x720TailDownY = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720Full = {nullptr, 1280, 720};
     static constexpr StageConfig Luma4x720SuperResFull = {nullptr, 1280, 720};
+    static constexpr StageConfig Class3ChromaTail720 = {nullptr, 1280, 720};
     static constexpr StageConfig Luma = {"ngu_sharp_veryhigh_luma_1080_core.glsl", 1920, 1080};
     switch (stage)
     {
@@ -103,6 +104,8 @@ const StageConfig* FindStage(NguScalerStage stage)
         return &Luma4x720Full;
     case NguScalerStage::VeryHighLuma4x720SuperResFull:
         return &Luma4x720SuperResFull;
+    case NguScalerStage::VeryHighClass3ChromaTail720:
+        return &Class3ChromaTail720;
     case NguScalerStage::VeryHighLuma1080Core:
         return &Luma;
     default:
@@ -347,6 +350,39 @@ bool CopyTextureToTarget(pl_gpu gpu, ID3D11Texture2D* source, ID3D11RenderTarget
         return false;
     context->CopyResource(destination.Get(), source);
     return true;
+}
+
+void FillClass3PostConstants(
+    std::array<float, 16>& constants,
+    UINT width,
+    UINT height,
+    bool swapAxes)
+{
+    static constexpr float coefficients[12] = {
+        -0.12963299453258514f, 0.6296330094337463f,
+        -0.17506800591945648f, 0.6750680208206177f,
+        -0.19444948434829712f, 0.6944494843482971f,
+        -0.2626020014286041f, 0.7626020312309265f,
+        -0.09722474217414856f, 0.597224771976471f,
+        -0.13130100071430206f, 0.6313009858131409f,
+    };
+    constants[0] = static_cast<float>(width);
+    constants[1] = static_cast<float>(height);
+    constants[2] = 1.0f / static_cast<float>(width);
+    constants[3] = 1.0f / static_cast<float>(height);
+    if (!swapAxes)
+    {
+        for (int index = 0; index < 12; ++index)
+            constants[4 + index] = coefficients[index];
+        return;
+    }
+    constexpr int order[6] = {1, 0, 3, 2, 5, 4};
+    for (int pair = 0; pair < 6; ++pair)
+    {
+        const int sourcePair = order[pair];
+        constants[4 + pair * 2] = coefficients[sourcePair * 2];
+        constants[5 + pair * 2] = coefficients[sourcePair * 2 + 1];
+    }
 }
 } // namespace
 
@@ -836,6 +872,37 @@ struct NguScaler::NativeLuma4x720Tail
     ComPtr<ID3D11Texture2D> mergeTexture;
     ComPtr<ID3D11RenderTargetView> mergeView;
     ComPtr<ID3D11ShaderResourceView> mergeShaderView;
+};
+
+struct NguScaler::NativeClass3ChromaTail720
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> superXbr0;
+    ComPtr<ID3D11PixelShader> superXbr1;
+    ComPtr<ID3D11PixelShader> superXbr2;
+    ComPtr<ID3D11PixelShader> ycbcr;
+    std::array<ComPtr<ID3D11Buffer>, 6> constants;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+
+    ComPtr<ID3D11Texture2D> post6392Texture;
+    ComPtr<ID3D11RenderTargetView> post6392View;
+    ComPtr<ID3D11ShaderResourceView> post6392ShaderView;
+    ComPtr<ID3D11Texture2D> post5140Texture;
+    ComPtr<ID3D11RenderTargetView> post5140View;
+    ComPtr<ID3D11ShaderResourceView> post5140ShaderView;
+    ComPtr<ID3D11Texture2D> post4804Texture;
+    ComPtr<ID3D11RenderTargetView> post4804View;
+    ComPtr<ID3D11ShaderResourceView> post4804ShaderView;
+    ComPtr<ID3D11Texture2D> post6392SecondTexture;
+    ComPtr<ID3D11RenderTargetView> post6392SecondView;
+    ComPtr<ID3D11ShaderResourceView> post6392SecondShaderView;
+    ComPtr<ID3D11Texture2D> post5140SecondTexture;
+    ComPtr<ID3D11RenderTargetView> post5140SecondView;
+    ComPtr<ID3D11ShaderResourceView> post5140SecondShaderView;
+    ComPtr<ID3D11Texture2D> post4804SecondTexture;
+    ComPtr<ID3D11RenderTargetView> post4804SecondView;
+    ComPtr<ID3D11ShaderResourceView> post4804SecondShaderView;
 };
 
 const char* NguScalerSupportText(NguScalerSupport support)
@@ -7329,6 +7396,460 @@ bool NguScaler::RunNativeLumaVeryHigh1080SuperResFull(
         superRes.outputShaderView.Get(), 1920, 1080, finalOutput);
 }
 
+bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU class-3 chroma tail requires a GPU";
+        return false;
+    }
+    if (nativeClass3ChromaTail720_ && gpu == gpu_)
+    {
+        cached_.quality = NguQuality::VeryHigh;
+        cached_.stage = NguScalerStage::VeryHighClass3ChromaTail720;
+        cached_.sourceWidth = 1280;
+        cached_.sourceHeight = 720;
+        hasCached_ = true;
+        return true;
+    }
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    if (!PrepareNativeLuma4x720Tail(gpu))
+        return false;
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU class-3 chroma tail requires the D3D11 backend";
+        return false;
+    }
+
+    const std::string shaderText =
+        LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl",
+                        32 * 1024);
+    const auto superXbr0Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr0.cso", 0);
+    const auto superXbr1Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr1.cso", 0);
+    const auto superXbr2Bytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr2.cso", 0);
+    const auto ycbcrBytecode =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_tail_ycbcr.cso", 0);
+    if (shaderText.empty() || superXbr0Bytecode.empty() ||
+        superXbr1Bytecode.empty() || superXbr2Bytecode.empty() ||
+        ycbcrBytecode.empty())
+    {
+        error_ = "NGU class-3 SuperXbr shader assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags =
+        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const HRESULT hr = D3DCompile(shaderText.data(),
+                                  shaderText.size(),
+                                  "NGU_Class3_Vertex",
+                                  nullptr,
+                                  nullptr,
+                                  "VSMain",
+                                  "vs_5_0",
+                                  flags,
+                                  0,
+                                  &vertexBlob,
+                                  &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ?
+                     static_cast<const char*>(errors->GetBufferPointer()) :
+                     "NGU class-3 vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeClass3ChromaTail720>();
+    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
+                                          vertexBlob->GetBufferSize(),
+                                          nullptr,
+                                          &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            superXbr0Bytecode.data(),
+            static_cast<SIZE_T>(superXbr0Bytecode.size()),
+            nullptr,
+            &state->superXbr0)) ||
+        FAILED(device->CreatePixelShader(
+            superXbr1Bytecode.data(),
+            static_cast<SIZE_T>(superXbr1Bytecode.size()),
+            nullptr,
+            &state->superXbr1)) ||
+        FAILED(device->CreatePixelShader(
+            superXbr2Bytecode.data(),
+            static_cast<SIZE_T>(superXbr2Bytecode.size()),
+            nullptr,
+            &state->superXbr2)) ||
+        FAILED(device->CreatePixelShader(
+            ycbcrBytecode.data(),
+            static_cast<SIZE_T>(ycbcrBytecode.size()),
+            nullptr,
+            &state->ycbcr)))
+    {
+        error_ = "NGU class-3 SuperXbr shader objects could not be created";
+        return false;
+    }
+
+    const UINT dimensions[6][2] = {
+        {1280, 720},
+        {2560, 1440},
+        {2560, 1440},
+        {2560, 1440},
+        {5120, 2880},
+        {5120, 2880},
+    };
+    const bool swapAxes[6] = {false, true, false, false, true, false};
+    for (size_t pass = 0; pass < state->constants.size(); ++pass)
+    {
+        std::array<float, 16> values = {};
+        FillClass3PostConstants(values,
+                                dimensions[pass][0],
+                                dimensions[pass][1],
+                                swapAxes[pass]);
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = sizeof(values);
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA initial = {};
+        initial.pSysMem = values.data();
+        if (FAILED(device->CreateBuffer(
+                &desc, &initial, &state->constants[pass])))
+        {
+            error_ = "NGU class-3 post constants could not be created";
+            return false;
+        }
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(
+            &samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU class-3 point sampler could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(
+            &rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU class-3 rasterizer could not be created";
+        return false;
+    }
+
+    auto createSurface = [&](UINT width,
+                             UINT height,
+                             ComPtr<ID3D11Texture2D>& texture,
+                             ComPtr<ID3D11RenderTargetView>& view,
+                             ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags =
+            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(
+                   &desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(
+                   texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(
+                   texture.Get(), nullptr, &shaderView));
+    };
+    if (!createSurface(1280,
+                       720,
+                       state->post6392Texture,
+                       state->post6392View,
+                       state->post6392ShaderView) ||
+        !createSurface(2560,
+                       1440,
+                       state->post5140Texture,
+                       state->post5140View,
+                       state->post5140ShaderView) ||
+        !createSurface(2560,
+                       1440,
+                       state->post4804Texture,
+                       state->post4804View,
+                       state->post4804ShaderView) ||
+        !createSurface(2560,
+                       1440,
+                       state->post6392SecondTexture,
+                       state->post6392SecondView,
+                       state->post6392SecondShaderView) ||
+        !createSurface(5120,
+                       2880,
+                       state->post5140SecondTexture,
+                       state->post5140SecondView,
+                       state->post5140SecondShaderView) ||
+        !createSurface(5120,
+                       2880,
+                       state->post4804SecondTexture,
+                       state->post4804SecondView,
+                       state->post4804SecondShaderView))
+    {
+        error_ = "NGU class-3 post surfaces could not be created";
+        return false;
+    }
+
+    nativeClass3ChromaTail720_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighClass3ChromaTail720;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeClass3ChromaTail720(
+    ID3D11ShaderResourceView* sourcePs4576,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeClass3ChromaTail720_ || !nativeLuma4x720Tail_ ||
+        !ViewMatchesTexture(sourcePs4576,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            1280,
+                            720) ||
+        !ViewMatchesTexture(finalOutput,
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            3840,
+                            2160))
+    {
+        error_ = "NGU class-3 chroma tail requires 1280x720 input and 4K output";
+        return false;
+    }
+    auto& state = *nativeClass3ChromaTail720_;
+    auto& tail = *nativeLuma4x720Tail_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+
+    ID3D11RenderTargetView* post6392 = state.post6392View.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr0.Get(),
+                  state.constants[0].Get(),
+                  state.rasterizer.Get(),
+                  &sourcePs4576,
+                  1,
+                  &post6392,
+                  1,
+                  1280,
+                  720,
+                  state.pointSampler.Get());
+
+    ID3D11RenderTargetView* post5140 = state.post5140View.Get();
+    ID3D11ShaderResourceView* post5140Inputs[2] = {
+        state.post6392ShaderView.Get(), sourcePs4576};
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr1.Get(),
+                  state.constants[1].Get(),
+                  state.rasterizer.Get(),
+                  post5140Inputs,
+                  2,
+                  &post5140,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  state.pointSampler.Get());
+
+    ID3D11RenderTargetView* post4804 = state.post4804View.Get();
+    ID3D11ShaderResourceView* post4804Input =
+        state.post5140ShaderView.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr2.Get(),
+                  state.constants[2].Get(),
+                  state.rasterizer.Get(),
+                  &post4804Input,
+                  1,
+                  &post4804,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+
+    ID3D11RenderTargetView* post6392Second =
+        state.post6392SecondView.Get();
+    ID3D11ShaderResourceView* post6392SecondInput =
+        state.post4804ShaderView.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr0.Get(),
+                  state.constants[3].Get(),
+                  state.rasterizer.Get(),
+                  &post6392SecondInput,
+                  1,
+                  &post6392Second,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+
+    ID3D11RenderTargetView* post5140Second =
+        state.post5140SecondView.Get();
+    ID3D11ShaderResourceView* post5140SecondInputs[2] = {
+        state.post6392SecondShaderView.Get(),
+        state.post4804ShaderView.Get()};
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr1.Get(),
+                  state.constants[4].Get(),
+                  state.rasterizer.Get(),
+                  post5140SecondInputs,
+                  2,
+                  &post5140Second,
+                  1,
+                  5120,
+                  2880,
+                  state.pointSampler.Get(),
+                  nullptr,
+                  nullptr,
+                  state.pointSampler.Get());
+
+    ID3D11RenderTargetView* post4804Second =
+        state.post4804SecondView.Get();
+    ID3D11ShaderResourceView* post4804SecondInput =
+        state.post5140SecondShaderView.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.superXbr2.Get(),
+                  state.constants[5].Get(),
+                  state.rasterizer.Get(),
+                  &post4804SecondInput,
+                  1,
+                  &post4804Second,
+                  1,
+                  5120,
+                  2880,
+                  state.pointSampler.Get());
+
+    if (!ViewMatchesTexture(state.post4804SecondShaderView.Get(),
+                            DXGI_FORMAT_R16G16B16A16_UNORM,
+                            5120,
+                            2880))
+    {
+        error_ = "NGU class-3 SuperXbr2 surface is invalid";
+        return false;
+    }
+
+    // E-058/E-073: class-3 PS_536 consumes the target's f36
+    // A16B16G16R16 post-chain surface and reads channel .x. The
+    // existing P010/P016 path consumes R16_UNORM, so keep that contract
+    // untouched and bind the class-3 surface directly here.
+    ID3D11RenderTargetView* ycbcrTarget = tail.ycbcrView.Get();
+    ID3D11ShaderResourceView* ycbcrInput =
+        state.post4804SecondShaderView.Get();
+    DrawD3D11Pass(device,
+                  tail.vertex.Get(),
+                  state.ycbcr.Get(),
+                  nullptr,
+                  tail.rasterizer.Get(),
+                  &ycbcrInput,
+                  1,
+                  &ycbcrTarget,
+                  1,
+                  5120,
+                  2880,
+                  tail.pointSampler.Get());
+    if (
+        !RunNativeLuma4x720TailDownX(
+            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(
+            tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(
+            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+        !RunNativeLuma4x720TailSsimFinal(
+            tail.ssimRtShaderView.Get(),
+            tail.downYShaderView.Get(),
+            tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(
+            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !CopyTextureToTarget(
+            gpu_, tail.sharpenArTexture.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeClass3PostStage720(
+    int stage,
+    ID3D11RenderTargetView* output)
+{
+    if (!nativeClass3ChromaTail720_ || !nativeLuma4x720Tail_ || !output ||
+        stage < 0 || stage > 11)
+    {
+        error_ = "NGU class-3 post-stage copy request is invalid";
+        return false;
+    }
+    ID3D11Texture2D* source = nullptr;
+    switch (stage)
+    {
+    case 0:
+        source = nativeClass3ChromaTail720_->post6392Texture.Get();
+        break;
+    case 1:
+        source = nativeClass3ChromaTail720_->post5140Texture.Get();
+        break;
+    case 2:
+        source = nativeClass3ChromaTail720_->post4804Texture.Get();
+        break;
+    case 3:
+        source = nativeClass3ChromaTail720_->post6392SecondTexture.Get();
+        break;
+    case 4:
+        source = nativeClass3ChromaTail720_->post5140SecondTexture.Get();
+        break;
+    case 5:
+        source = nativeClass3ChromaTail720_->post4804SecondTexture.Get();
+        break;
+    case 6:
+        source = nativeLuma4x720Tail_->ycbcrTexture.Get();
+        break;
+    case 7:
+        source = nativeLuma4x720Tail_->downXTexture.Get();
+        break;
+    case 8:
+        source = nativeLuma4x720Tail_->downYTexture.Get();
+        break;
+    case 9:
+        source = nativeLuma4x720Tail_->ssimRtTexture.Get();
+        break;
+    case 10:
+        source = nativeLuma4x720Tail_->ssimFinalTexture.Get();
+        break;
+    case 11:
+        source = nativeLuma4x720Tail_->sharpenArTexture.Get();
+        break;
+    }
+    if (!CopyTextureToTarget(gpu_, source, output))
+    {
+        error_ = "NGU class-3 post-stage copy failed";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
 void NguScaler::Reset()
 {
     if (hook_)
@@ -7361,6 +7882,7 @@ void NguScaler::Reset()
     nativeLuma4x720High_.reset();
     nativeLuma4x720DenseAdd_.reset();
     nativeLuma4x720Tail_.reset();
+    nativeClass3ChromaTail720_.reset();
     gpu_ = nullptr;
     hasCached_ = false;
     cached_ = {};

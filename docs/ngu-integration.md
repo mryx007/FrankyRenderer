@@ -440,3 +440,18 @@ The decoder-backed paused-seek lifecycle now also passes with installed LAV
 0.80.0 and `test_paused_seek --ngu`: 4K paused preview, 5s/12s/2s seeks and
 resume all update actual product pixels. External player process automation
 remains a separate gate.
+
+E-154 adds the first isolated P210/P216 class-3 720p scheduler slice. The
+target `PS_6392/5140/4804` post-chain, class-3 `PS_536`, and the
+`PS_1200/1176/1208/1052` tail are channel-exact for both formats; `PS_5868`
+is `maximum=1` with no channel above one. The product continues to reject
+P210/P216 because the available class-3 capture is chroma-only and does not
+establish combined NGU-luma ordering. P210/P216 1080p class-3 also uses
+observed `PS_1152/PS_4280` labels that are not yet implemented.
+
+E-155 captures the combined target path at 720p. With NGU luma VeryHigh, NGU
+chroma VeryHigh and SuperRes strength 3, class-3 chroma reaches `PS_4576` at
+1280x720 and then enters the already implemented NGU-luma 4x scheduler at
+`PS_460`. The SuperXbr chain in E-154 is the chroma-only branch. Product
+admission therefore still waits on the exact class-3 `PS_4412/PS_4576`
+producer and the 1080p `PS_1152/PS_4280` topology.

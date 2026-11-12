@@ -49,6 +49,7 @@ enum class NguScalerStage
     VeryHighLuma4x720SuperResFull,
     VeryHighLuma1080Core,
     VeryHighLuma1080SuperResFull,
+    VeryHighClass3ChromaTail720,
 };
 
 enum class NguScalerSupport
@@ -321,6 +322,12 @@ class NguScaler
                                                ID3D11ShaderResourceView* mainOriginal,
                                                ID3D11ShaderResourceView* baseOriginal,
                                                ID3D11RenderTargetView* finalOutput);
+    bool PrepareNativeClass3ChromaTail720(pl_gpu gpu);
+    bool RunNativeClass3ChromaTail720(
+        ID3D11ShaderResourceView* sourcePs4576,
+        ID3D11RenderTargetView* finalOutput);
+    bool CopyNativeClass3PostStage720(int stage,
+                                      ID3D11RenderTargetView* output);
     void Reset();
 
     const pl_hook* Hook() const;
@@ -354,6 +361,7 @@ class NguScaler
     struct NativeLuma4x720High;
     struct NativeLuma4x720DenseAdd;
     struct NativeLuma4x720Tail;
+    struct NativeClass3ChromaTail720;
     bool PrepareNativeChromaVeryHigh(
         pl_gpu gpu,
         int width,
@@ -432,4 +440,5 @@ class NguScaler
     std::unique_ptr<NativeLuma4x720High> nativeLuma4x720High_;
     std::unique_ptr<NativeLuma4x720DenseAdd> nativeLuma4x720DenseAdd_;
     std::unique_ptr<NativeLuma4x720Tail> nativeLuma4x720Tail_;
+    std::unique_ptr<NativeClass3ChromaTail720> nativeClass3ChromaTail720_;
 };
