@@ -411,3 +411,8 @@ It remains experimental. P016 is exact through PS_1672 but first exceeds the
 declared PS_4620 layer tolerance at layer 8. The 720p combined final retains two
 pixels above one pending exact target dither-surface replay. P210/P216 and the
 real-player lifecycle matrix are still open.
+
+A nightly ZIP was assembled for artifact inspection, but a package-local
+DirectShow smoke currently returns `E_FAIL` before rendering. The development
+AX remains the verified artifact; the renamed-runtime ZIP is not a packaged
+acceptance claim until that failure is resolved.
