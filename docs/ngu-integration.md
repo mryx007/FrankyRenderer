@@ -333,6 +333,12 @@ The 720p and 1080p paths share `NativeChromaFullResources` and one scheduler
 implementation; geometry selects the observed constants and SuperRes variant.
 The one-call 1080 result matches the manually scheduled PS_4576 result.
 
+`PrepareNativeNgu1080FromPlanes` and `RunNativeNgu1080FromPlanes` extend that
+boundary through Y expansion and the 1080p luma network to 3840x2160. The
+same-frame capture proves packed UV = SuperRes diff original and Y =
+main/base originals. A captured plane-entry run is fully nonblack; it remains
+a smoke test until paired with a same-frame PS_1352 oracle.
+
 The native SuperChromaRes strength-3 scheduler can also feed its RGBA16 output
 directly into the 720p full path without a readback. With the four captured
 strength-3 inputs, the composed final result is `maximum=1` and
@@ -361,6 +367,7 @@ product integration, not another transport redesign:
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
 | Native 1080p chroma | one packed-UV call runs through native PS_4576 at `maximum=5`, no value above 8 | Production SuperRes originals, luma/playback |
+| Native 1080p plane entry | packed UV + Y executes chroma and luma to a complete nonblack 4K frame | Same-frame final oracle, decoder planes, playback |
 | Native product entry | packed UV + Y reaches the complete 4K graph; same-frame final is `maximum=5`, 18 pixels above one | Reduce final residual, Backend/DirectShow |
 | `ngu_sharp` peer | Generic resolver, RGB48 Backend and exact P010 plane-layout bridge pass | Wire decoder planes into the native chroma core and DirectShow lifecycle |
 | DirectShow | Five-frame RGB48 graph plus full 4K readback passes at `maximum=1` | Real YUV/P010/P016 playback and lifecycle matrix |

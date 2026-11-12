@@ -159,6 +159,11 @@ class NguScaler
         ID3D11ShaderResourceView* packedUv,
         ID3D11ShaderResourceView* yInput,
         ID3D11RenderTargetView* finalOutput);
+    bool PrepareNativeNgu1080FromPlanes(pl_gpu gpu);
+    bool RunNativeNgu1080FromPlanes(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* finalOutput);
     bool RunNativeLumaInitial(ID3D11ShaderResourceView* source,
                               int width,
                               int height,
@@ -327,7 +332,7 @@ class NguScaler
     struct NativeChromaRealign;
     struct NativeChromaYCbCr;
     struct NativeChromaFullResources;
-    struct NativeNgu720FromPlanes;
+    struct NativeNguFromPlanesResources;
     struct NativeLumaLayers;
     struct NativeLumaDense;
     struct NativeLumaScaleAdd;
@@ -369,6 +374,20 @@ class NguScaler
         int height,
         bool is1080,
         NativeChromaFullResources& state);
+    bool PrepareNativeNguFromPlanes(
+        pl_gpu gpu,
+        int width,
+        int height,
+        std::unique_ptr<NativeNguFromPlanesResources>& state,
+        const char* geometry);
+    bool RunNativeNguFromPlanes(
+        ID3D11ShaderResourceView* packedUv,
+        ID3D11ShaderResourceView* yInput,
+        ID3D11RenderTargetView* finalOutput,
+        int width,
+        int height,
+        bool is1080,
+        NativeNguFromPlanesResources& state);
     pl_gpu gpu_ = nullptr;
     const pl_hook* hook_ = nullptr;
     NguScalerRequest cached_ = {};
@@ -388,7 +407,8 @@ class NguScaler
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
     std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh720Full_;
     std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh1080Full_;
-    std::unique_ptr<NativeNgu720FromPlanes> nativeNgu720FromPlanes_;
+    std::unique_ptr<NativeNguFromPlanesResources> nativeNgu720FromPlanes_;
+    std::unique_ptr<NativeNguFromPlanesResources> nativeNgu1080FromPlanes_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;
     std::unique_ptr<NativeLumaDense> nativeLumaDense_;
     std::unique_ptr<NativeLumaScaleAdd> nativeLumaScaleAdd_;

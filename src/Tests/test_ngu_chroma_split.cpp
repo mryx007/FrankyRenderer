@@ -339,6 +339,30 @@ ComPtr<ID3D11Texture2D> CreateBgra8Input(
     return texture;
 }
 
+ComPtr<ID3D11Texture2D> CreateBgra8Output(
+    ID3D11Device* device,
+    UINT width,
+    UINT height,
+    ComPtr<ID3D11RenderTargetView>& view)
+{
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ComPtr<ID3D11Texture2D> texture;
+    Require(SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)),
+            "create BGRA output");
+    Require(SUCCEEDED(device->CreateRenderTargetView(
+                texture.Get(), nullptr, &view)),
+            "create BGRA output RTV");
+    return texture;
+}
+
 ComPtr<ID3D11Texture2D> CreateRgbaFloatInput(
     ID3D11Device* device,
     const std::vector<uint8_t>& bytes,
@@ -1549,6 +1573,38 @@ int main(int argc, char** argv)
                     8,
                     1920,
                     "PS_4576 1080 full native");
+
+                Require(ngu.PrepareNativeNgu1080FromPlanes(d3d->gpu),
+                        ngu.LastError());
+                ComPtr<ID3D11RenderTargetView> planeFinalView;
+                auto planeFinalTexture =
+                    CreateBgra8Output(d3d->device,
+                                      3840,
+                                      2160,
+                                      planeFinalView);
+                Require(ngu.RunNativeNgu1080FromPlanes(
+                            packedUvView.Get(),
+                            yInputView.Get(),
+                            planeFinalView.Get()),
+                        ngu.LastError());
+                pl_gpu_finish(d3d->gpu);
+                const auto planeFinal =
+                    Download(d3d->device,
+                             context.Get(),
+                             planeFinalTexture.Get(),
+                             4);
+                int nonBlackPixels = 0;
+                for (size_t pixel = 0; pixel < planeFinal.size() / 4; ++pixel)
+                {
+                    if (planeFinal[pixel * 4] ||
+                        planeFinal[pixel * 4 + 1] ||
+                        planeFinal[pixel * 4 + 2])
+                        ++nonBlackPixels;
+                }
+                std::printf("NGU 1080 plane final nonblack=%d\n",
+                            nonBlackPixels);
+                Require(nonBlackPixels > 0,
+                        "1080p plane final produced a black frame");
             }
 
             if (!core1080)

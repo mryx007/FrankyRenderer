@@ -505,8 +505,10 @@ struct NguScaler::NativeChromaFullResources
     ComPtr<ID3D11ShaderResourceView> ycbcrShaderView;
 };
 
-struct NguScaler::NativeNgu720FromPlanes
+struct NguScaler::NativeNguFromPlanesResources
 {
+    UINT width = 0;
+    UINT height = 0;
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> expandPixel;
     ComPtr<ID3D11RasterizerState> rasterizer;
@@ -2864,20 +2866,41 @@ bool NguScaler::RunNativeChromaVeryHigh1080Full(
                                *nativeChromaVeryHigh1080Full_);
 }
 
-bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
+bool NguScaler::PrepareNativeNguFromPlanes(
+    pl_gpu gpu,
+    int width,
+    int height,
+    std::unique_ptr<NativeNguFromPlanesResources>& state,
+    const char* geometry)
 {
-    if (!PrepareNativeChromaVeryHigh720Full(gpu) ||
-        !PrepareNativeLuma4x720Full(gpu))
+    if (!gpu || width <= 0 || height <= 0)
+    {
+        error_ = "NGU full plane entry requires a valid GPU and geometry";
+        return false;
+    }
+    if (state && gpu == gpu_ && state->width == UINT(width) &&
+        state->height == UINT(height))
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    const bool is1080 = width == 1920 && height == 1080;
+    if ((is1080 ? !PrepareNativeChromaVeryHigh1080Full(gpu)
+                : !PrepareNativeChromaVeryHigh720Full(gpu)) ||
+        (is1080 ? !PrepareNativeLumaVeryHigh1080(gpu)
+                : !PrepareNativeLuma4x720Full(gpu)))
         return false;
     ID3D11Device* device = pl_d3d11_get(gpu)->device;
-    auto state = std::make_unique<NativeNgu720FromPlanes>();
+    auto next = std::make_unique<NativeNguFromPlanesResources>();
+    next->width = UINT(width);
+    next->height = UINT(height);
     const std::string shaderText =
         LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
     const auto expandBytecode =
         LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
     if (shaderText.empty() || expandBytecode.empty())
     {
-        error_ = "NGU full 720p L8 expansion assets are unavailable";
+        error_ = std::string("NGU ") + geometry +
+                 " L8 expansion assets are unavailable";
         return false;
     }
     ComPtr<ID3DBlob> vertexBlob, errors;
@@ -2898,14 +2921,15 @@ bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
         FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
                                           vertexBlob->GetBufferSize(),
                                           nullptr,
-                                          &state->vertex)) ||
+                                          &next->vertex)) ||
         FAILED(device->CreatePixelShader(
             expandBytecode.data(),
             static_cast<SIZE_T>(expandBytecode.size()),
             nullptr,
-            &state->expandPixel)))
+            &next->expandPixel)))
     {
-        error_ = "NGU full 720p L8 expansion shaders could not be created";
+        error_ = std::string("NGU ") + geometry +
+                 " L8 expansion shaders could not be created";
         return false;
     }
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
@@ -2914,14 +2938,15 @@ bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
     if (FAILED(device->CreateRasterizerState(
-            &rasterizerDesc, &state->rasterizer)))
+            &rasterizerDesc, &next->rasterizer)))
     {
-        error_ = "NGU full 720p L8 expansion rasterizer could not be created";
+        error_ = std::string("NGU ") + geometry +
+                 " L8 expansion rasterizer could not be created";
         return false;
     }
     D3D11_TEXTURE2D_DESC desc = {};
-    desc.Width = 1280;
-    desc.Height = 720;
+    desc.Width = next->width;
+    desc.Height = next->height;
     desc.MipLevels = 1;
     desc.ArraySize = 1;
     desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
@@ -2929,43 +2954,51 @@ bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
     desc.Usage = D3D11_USAGE_DEFAULT;
     desc.BindFlags = D3D11_BIND_RENDER_TARGET |
                      D3D11_BIND_SHADER_RESOURCE;
-    if (FAILED(device->CreateTexture2D(&desc, nullptr, &state->yTexture)) ||
+    if (FAILED(device->CreateTexture2D(&desc, nullptr, &next->yTexture)) ||
         FAILED(device->CreateRenderTargetView(
-            state->yTexture.Get(), nullptr, &state->yView)) ||
+            next->yTexture.Get(), nullptr, &next->yView)) ||
         FAILED(device->CreateShaderResourceView(
-            state->yTexture.Get(), nullptr, &state->yShaderView)))
+            next->yTexture.Get(), nullptr, &next->yShaderView)))
     {
-        error_ = "NGU full 720p Y surface could not be created";
+        error_ = std::string("NGU ") + geometry +
+                 " Y surface could not be created";
         return false;
     }
-    if (FAILED(device->CreateTexture2D(&desc, nullptr, &state->chromaTexture)) ||
+    if (FAILED(device->CreateTexture2D(
+            &desc, nullptr, &next->chromaTexture)) ||
         FAILED(device->CreateRenderTargetView(
-            state->chromaTexture.Get(), nullptr, &state->chromaView)) ||
+            next->chromaTexture.Get(), nullptr, &next->chromaView)) ||
         FAILED(device->CreateShaderResourceView(
-            state->chromaTexture.Get(), nullptr, &state->chromaShaderView)))
+            next->chromaTexture.Get(), nullptr, &next->chromaShaderView)))
     {
-        error_ = "NGU full NGU 720p chroma surface could not be created";
+        error_ = std::string("NGU ") + geometry +
+                 " chroma surface could not be created";
         return false;
     }
-    nativeNgu720FromPlanes_ = std::move(state);
+    state = std::move(next);
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeNgu720FromPlanes(
+bool NguScaler::RunNativeNguFromPlanes(
     ID3D11ShaderResourceView* packedUv,
     ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput)
+    ID3D11RenderTargetView* finalOutput,
+    int width,
+    int height,
+    bool is1080,
+    NativeNguFromPlanesResources& state)
 {
-    if (!nativeNgu720FromPlanes_ || !packedUv || !yInput || !finalOutput ||
-        !ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+    if (state.width != UINT(width) || state.height != UINT(height) ||
+        !packedUv || !yInput || !finalOutput ||
+        !ViewMatchesTexture(
+            yInput, DXGI_FORMAT_R8_UNORM, UINT(width), UINT(height)) ||
         !ViewMatchesTexture(
             finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
     {
         error_ = "NGU full 720p plane request is invalid";
         return false;
     }
-    auto& state = *nativeNgu720FromPlanes_;
     ID3D11RenderTargetView* yTarget = state.yView.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -2976,21 +3009,82 @@ bool NguScaler::RunNativeNgu720FromPlanes(
                   1,
                   &yTarget,
                   1,
-                  1280,
-                  720);
-    if (!RunNativeChromaVeryHigh720Full(packedUv,
-                                        yInput,
-                                        packedUv,
-                                        state.yShaderView.Get(),
-                                        state.yShaderView.Get(),
-                                        state.chromaView.Get()) ||
-        !RunNativeLuma4x720Full(state.chromaShaderView.Get(),
-                                1280,
-                                720,
-                                finalOutput))
+                  UINT(width),
+                  UINT(height));
+    if ((is1080
+             ? !RunNativeChromaVeryHigh1080Full(packedUv,
+                                                yInput,
+                                                packedUv,
+                                                state.yShaderView.Get(),
+                                                state.yShaderView.Get(),
+                                                state.chromaView.Get())
+             : !RunNativeChromaVeryHigh720Full(packedUv,
+                                               yInput,
+                                               packedUv,
+                                               state.yShaderView.Get(),
+                                               state.yShaderView.Get(),
+                                               state.chromaView.Get())) ||
+        (is1080 ? !RunNativeLumaVeryHigh1080(state.chromaShaderView.Get(),
+                                             UINT(width),
+                                             UINT(height),
+                                             finalOutput)
+                : !RunNativeLuma4x720Full(state.chromaShaderView.Get(),
+                                          UINT(width),
+                                          UINT(height),
+                                          finalOutput)))
         return false;
     error_ = "";
     return true;
+}
+
+bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
+{
+    return PrepareNativeNguFromPlanes(
+        gpu, 1280, 720, nativeNgu720FromPlanes_, "720p");
+}
+
+bool NguScaler::RunNativeNgu720FromPlanes(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeNgu720FromPlanes_)
+    {
+        error_ = "NGU 720p full plane scheduler is not prepared";
+        return false;
+    }
+    return RunNativeNguFromPlanes(packedUv,
+                                  yInput,
+                                  finalOutput,
+                                  1280,
+                                  720,
+                                  false,
+                                  *nativeNgu720FromPlanes_);
+}
+
+bool NguScaler::PrepareNativeNgu1080FromPlanes(pl_gpu gpu)
+{
+    return PrepareNativeNguFromPlanes(
+        gpu, 1920, 1080, nativeNgu1080FromPlanes_, "1080p");
+}
+
+bool NguScaler::RunNativeNgu1080FromPlanes(
+    ID3D11ShaderResourceView* packedUv,
+    ID3D11ShaderResourceView* yInput,
+    ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeNgu1080FromPlanes_)
+    {
+        error_ = "NGU 1080p full plane scheduler is not prepared";
+        return false;
+    }
+    return RunNativeNguFromPlanes(packedUv,
+                                  yInput,
+                                  finalOutput,
+                                  1920,
+                                  1080,
+                                  true,
+                                  *nativeNgu1080FromPlanes_);
 }
 
 bool NguScaler::PrepareNativeLumaInitial(pl_gpu gpu)
@@ -7157,6 +7251,7 @@ void NguScaler::Reset()
     nativeChromaVeryHigh720Full_.reset();
     nativeChromaVeryHigh1080Full_.reset();
     nativeNgu720FromPlanes_.reset();
+    nativeNgu1080FromPlanes_.reset();
     nativeLumaLayers_.reset();
     nativeLumaDense_.reset();
     nativeLumaScaleAdd_.reset();
