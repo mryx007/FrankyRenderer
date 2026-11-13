@@ -89,4 +89,44 @@ Require ($script:existing.Contains($unrelated)) 'Unrelated CLSID must remain'
 Require ($script:existing.Contains('Registry::'+$unrelatedCategory)) 'Unrelated category must remain'
 $cmd=(Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\Tools\ForceUninstall.cmd') -Raw)
 Require ($cmd.Contains('-Action ForceRemove')) 'ForceUninstall.cmd must call ForceRemove'
-Write-Output 'PASS force uninstall: all known registry views removed, unrelated registrations kept'
+
+# Exercise the orchestration with missing package files and no ownership match.
+$replacements=@{
+'RemoveAllFrankyRegistrations'=@'
+function RemoveAllFrankyRegistrations {
+    $script:forceCalled=$true
+    return 2
+}
+'@
+'AssertOwnership'=@'
+function AssertOwnership {
+    throw 'ForceRemove must not enforce normal installation ownership'
+}
+'@
+}
+$flowSource=$source
+$flowFunctions=$ast.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+        $replacements.ContainsKey($node.Name)
+},$true)
+foreach($function in @($flowFunctions | Sort-Object {$_.Extent.StartOffset} -Descending)){
+    $flowSource=$flowSource.Substring(0,$function.Extent.StartOffset)+
+        $replacements[$function.Name]+
+        $flowSource.Substring($function.Extent.EndOffset)
+}
+$flowSource=$flowSource -replace '(?m)^\s*\$taskAdmin=.*$','$taskAdmin=$true'
+$flowSource=$flowSource.Replace('exit 1',"throw 'Expected force uninstall failure'").Replace('exit 0','return')
+$fixtureRoot=Join-Path $SourceRoot ('build\force-uninstall-flow-'+[guid]::NewGuid().ToString('N'))
+$null=New-Item -ItemType Directory -Path $fixtureRoot
+try {
+    $fixtureSetup=Join-Path $fixtureRoot 'setup.ps1'
+    Set-Content -LiteralPath $fixtureSetup -Value $flowSource
+    $script:forceCalled=$false
+    . $fixtureSetup -Action ForceRemove
+    Require $script:forceCalled 'ForceRemove must call registry cleanup without ownership checks'
+    Require (!(Test-Path -LiteralPath (Join-Path $fixtureRoot 'FrankyRenderer.ax'))) 'Flow fixture must not contain a renderer'
+} finally {
+    Microsoft.PowerShell.Management\Remove-Item -LiteralPath $fixtureRoot -Recurse -Force
+}
+Write-Output 'PASS force uninstall: all known registry views removed, unrelated registrations kept, missing files accepted'
