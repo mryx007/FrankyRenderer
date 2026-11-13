@@ -8,7 +8,7 @@ struct BlackBarSettings
     BOOL enabled = FALSE, crop = TRUE, keepSubtitles = TRUE;
     int zoom = 0;                       // 0=fit all active content, 1=fill output (may crop content)
     float threshold = 2.f, delay = 2.f; // percent of decoded SDR white; seconds
-    BOOL stableZoom = FALSE;
+    BOOL stableZoom = FALSE;            // no longer used; kept so saved settings and INI files still load
 };
 
 struct BlackBarStatus

@@ -117,6 +117,48 @@ int main()
                 Require(source.crop.x0 == 0 && source.crop.x1 == w, "source geometry unchanged");
                 auto changed = scaling.Get(d3d, context.Get(), source, 124, 1920, 1080, pl_render_default_params);
                 Require(bool(changed) && scaling.Evaluations() == before + 2, "new video frame is evaluated");
+                {
+                    // 40 more video frames: the 16-frame cache recycles its
+                    // output textures instead of creating one per frame.
+                    const auto created = scaling.TexturesCreated();
+                    for (uint64_t frame = 200; frame < 240; ++frame)
+                        Require(
+                            bool(scaling.Get(d3d, context.Get(), source, frame, 1920, 1080, pl_render_default_params)),
+                            "long run of video frames");
+                    Require(scaling.TexturesCreated() - created <= 16, "output textures are reused");
+                    printf("RTX output textures created for 40 frames: %llu\n",
+                           (unsigned long long)(scaling.TexturesCreated() - created));
+                }
+                {
+                    // Black bars move the crop and the zoom changes the picture
+                    // size: the driver's processor and cache stay, the frame is
+                    // evaluated once more and keeps its number.
+                    const pl_rect2df whole = source.crop;
+                    const auto params = pl_render_default_params;
+                    auto older = scaling.Get(
+                        d3d, context.Get(), source, 299, 1920, 1080, params, true, false, &whole, 1920, 1080);
+                    auto first = scaling.Get(
+                        d3d, context.Get(), source, 300, 1920, 1080, params, true, false, &whole, 1920, 1080);
+                    Require(older && first && first->index > older->index, "frames get rising numbers");
+                    const auto evaluated = scaling.Evaluations();
+                    const auto textures = scaling.TexturesCreated();
+                    pl_frame cropped = source;
+                    cropped.crop = {0, 8, float(w), float(h) - 8};
+                    auto moved = scaling.Get(
+                        d3d, context.Get(), cropped, 300, 1920, 1048, params, true, false, &whole, 1920, 1080);
+                    Require(moved && scaling.Evaluations() == evaluated + 1 && moved->index == first->index,
+                            "a new crop evaluates the frame once and keeps its number");
+                    Require(moved->image.crop.x1 == 1920 && moved->image.crop.y1 == 1048, "picture of the new size");
+                    Require(scaling.TexturesCreated() - textures <= 1, "a new crop needs one texture of the new size");
+                    Require(scaling.Get(
+                                d3d, context.Get(), source, 299, 1920, 1080, params, true, false, &whole, 1920, 1080) ==
+                                    older &&
+                                scaling.Evaluations() == evaluated + 1,
+                            "a new crop keeps the driver's processor and the other cached frames");
+                    auto next = scaling.Get(
+                        d3d, context.Get(), cropped, 301, 1920, 1048, params, true, false, &whole, 1920, 1080);
+                    Require(next && next->index > moved->index, "the next frame gets the next number");
+                }
                 Require(!scaling.Get(d3d, context.Get(), source, 124, w, h, pl_render_default_params),
                         "native-size output bypasses RTX");
                 source.crop = {3, 5, 952, 532};
@@ -229,6 +271,289 @@ int main()
             Require(scaling.Status().find(L"unavailable") != std::wstring::npos, "fallback status");
             scaling.Reset();
             pl_d3d11_destroy(&warp);
+        }
+        for (int variant : {0, 1, 2})
+        {
+            // A decoder picture goes to the driver as it is: no prepared
+            // picture, the crop is a rectangle in the decoder texture.
+            // 0: P010 SDR, 1: P010 HDR10, 2: NV12 SDR.
+            const bool hdrSource = variant == 1, eightBit = variant == 2;
+            RtxScaling scaling;
+            constexpr int w = 960, h = 540;
+            std::vector<uint8_t> pixels(size_t(w) * h * 3 / 2 * (eightBit ? 1 : 2));
+            if (eightBit)
+            {
+                std::fill(pixels.begin(), pixels.begin() + size_t(w) * h, uint8_t(128));
+                std::fill(pixels.begin() + size_t(w) * h, pixels.end(), uint8_t(128));
+            }
+            else
+            {
+                auto words = reinterpret_cast<uint16_t*>(pixels.data());
+                std::fill(words, words + size_t(w) * h * 3 / 2, uint16_t(512 << 6));
+            }
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = w;
+            desc.Height = h;
+            desc.MipLevels = desc.ArraySize = 1;
+            desc.Format = eightBit ? DXGI_FORMAT_NV12 : DXGI_FORMAT_P010;
+            desc.SampleDesc.Count = 1;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+            const D3D11_SUBRESOURCE_DATA initial = {pixels.data(), UINT(w * (eightBit ? 1 : 2)), 0};
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> decoded;
+            Require(SUCCEEDED(d3d->device->CreateTexture2D(&desc, &initial, &decoded)), "decoder picture");
+            pl_tex planes[2] = {};
+            for (int i = 0; i < 2; ++i)
+            {
+                pl_d3d11_wrap_params wrap = {};
+                wrap.tex = decoded.Get();
+                wrap.fmt = eightBit ? (i ? DXGI_FORMAT_R8G8_UNORM : DXGI_FORMAT_R8_UNORM)
+                                    : (i ? DXGI_FORMAT_R16G16_UNORM : DXGI_FORMAT_R16_UNORM);
+                wrap.w = w / (i ? 2 : 1);
+                wrap.h = h / (i ? 2 : 1);
+                planes[i] = pl_d3d11_wrap(d3d->gpu, &wrap);
+                Require(planes[i] != nullptr, "decoder plane wrap");
+            }
+            pl_frame source = {};
+            source.num_planes = 2;
+            source.planes[0].texture = planes[0];
+            source.planes[0].components = 1;
+            source.planes[0].component_mapping[0] = 0;
+            source.planes[1].texture = planes[1];
+            source.planes[1].components = 2;
+            source.planes[1].component_mapping[0] = 1;
+            source.planes[1].component_mapping[1] = 2;
+            source.repr.sys = hdrSource ? PL_COLOR_SYSTEM_BT_2020_NC : PL_COLOR_SYSTEM_BT_709;
+            source.repr.levels = PL_COLOR_LEVELS_LIMITED;
+            source.repr.bits = eightBit ? pl_bit_encoding{8, 8, 0} : pl_bit_encoding{16, 10, 6};
+            source.color = hdrSource ? pl_color_space_hdr10 : pl_color_space_bt709;
+            source.crop = {0, 0, float(w), float(h)};
+            auto processed = scaling.Get(d3d,
+                                         context.Get(),
+                                         source,
+                                         1,
+                                         1920,
+                                         1080,
+                                         pl_render_default_params,
+                                         true,
+                                         false,
+                                         nullptr,
+                                         0,
+                                         0,
+                                         decoded.Get());
+            if (!processed)
+                wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
+            Require(bool(processed), "decoder picture through RTX");
+            if (hdrSource)
+            {
+                // Smooth Motion alternates between adjacent pictures with their
+                // own HDR10+ metadata. These change tone mapping, not RTX's
+                // input format, and must not evict the other picture.
+                auto following = source;
+                source.color.hdr.scene_avg = 40;
+                source.color.hdr.scene_max[0] = 350;
+                following.color.hdr.scene_avg = 80;
+                following.color.hdr.scene_max[0] = 700;
+                scaling.Invalidate();
+                auto first = scaling.Get(d3d,
+                                         context.Get(),
+                                         source,
+                                         40,
+                                         1920,
+                                         1080,
+                                         pl_render_default_params,
+                                         true,
+                                         false,
+                                         nullptr,
+                                         0,
+                                         0,
+                                         decoded.Get());
+                auto second = scaling.Get(d3d,
+                                          context.Get(),
+                                          following,
+                                          41,
+                                          1920,
+                                          1080,
+                                          pl_render_default_params,
+                                          true,
+                                          false,
+                                          nullptr,
+                                          0,
+                                          0,
+                                          decoded.Get());
+                Require(first && second, "adjacent HDR10+ pictures");
+                const auto evaluations = scaling.Evaluations(), textures = scaling.TexturesCreated();
+                for (int tick = 0; tick < 20; ++tick)
+                {
+                    Require(scaling.Get(d3d,
+                                        context.Get(),
+                                        source,
+                                        40,
+                                        1920,
+                                        1080,
+                                        pl_render_default_params,
+                                        true,
+                                        false,
+                                        nullptr,
+                                        0,
+                                        0,
+                                        decoded.Get()) == first,
+                            "HDR10+ metadata does not evict the adjacent RTX picture");
+                    Require(scaling.Get(d3d,
+                                        context.Get(),
+                                        following,
+                                        41,
+                                        1920,
+                                        1080,
+                                        pl_render_default_params,
+                                        true,
+                                        false,
+                                        nullptr,
+                                        0,
+                                        0,
+                                        decoded.Get()) == second,
+                            "HDR10+ next picture stays cached");
+                }
+                Require(scaling.Evaluations() == evaluations && scaling.TexturesCreated() == textures,
+                        "HDR10+ refreshes neither resubmit nor allocate RTX pictures");
+                Require(first->image.color.hdr.scene_avg == 40 && second->image.color.hdr.scene_avg == 80,
+                        "each RTX picture keeps its own HDR10+ tone mapping metadata");
+                printf("RTX HDR10+ alternating metadata: 40 cache hits, no resubmissions or allocations\n");
+            }
+            Require(scaling.DecoderPicture() && scaling.Status().find(L"decoder picture") != std::wstring::npos,
+                    "decoder picture is read by the driver directly");
+            D3D11_TEXTURE2D_DESC actual;
+            processed->pixels->GetDesc(&actual);
+            Require(actual.Format == (eightBit ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R10G10B10A2_UNORM),
+                    "output depth follows the decoder picture");
+            actual.Usage = D3D11_USAGE_STAGING;
+            actual.BindFlags = actual.MiscFlags = 0;
+            actual.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> readback;
+            Require(SUCCEEDED(d3d->device->CreateTexture2D(&actual, nullptr, &readback)), "direct readback");
+            context->CopyResource(readback.Get(), processed->pixels.Get());
+            D3D11_MAPPED_SUBRESOURCE mapped;
+            Require(SUCCEEDED(context->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "direct readback map");
+            const UINT pixel =
+                reinterpret_cast<const UINT*>(static_cast<const BYTE*>(mapped.pData) + 540 * mapped.RowPitch)[960];
+            context->Unmap(readback.Get(), 0);
+            // Mid grey: about 0.51 of full scale in every channel.
+            const int bitsOut = eightBit ? 8 : 10, mask = (1 << bitsOut) - 1;
+            const int r = pixel & mask, g = (pixel >> bitsOut) & mask, b = (pixel >> (2 * bitsOut)) & mask;
+            const float scale = float(mask);
+            printf("RTX direct %s: grey -> %.3f %.3f %.3f\n",
+                   variant == 0   ? "P010 SDR"
+                   : variant == 1 ? "P010 HDR10"
+                                  : "NV12 SDR",
+                   r / scale,
+                   g / scale,
+                   b / scale);
+            Require(std::abs(r - g) < mask / 80 + 2 && std::abs(g - b) < mask / 80 + 2 &&
+                        std::abs(g / scale - .511f) < .03f,
+                    "decoder picture keeps its grey");
+            if (!hdrSource)
+            {
+                // RTX Video HDR on the decoder picture: plausible PQ output.
+                auto hdr = scaling.Get(d3d,
+                                       context.Get(),
+                                       source,
+                                       2,
+                                       1920,
+                                       1080,
+                                       pl_render_default_params,
+                                       true,
+                                       true,
+                                       nullptr,
+                                       0,
+                                       0,
+                                       decoded.Get());
+                if (!hdr)
+                    wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
+                Require(bool(hdr) && scaling.Status().find(L"Super Resolution + HDR") != std::wstring::npos,
+                        "RTX Video HDR on the decoder picture");
+                D3D11_TEXTURE2D_DESC hdrDesc;
+                hdr->pixels->GetDesc(&hdrDesc);
+                hdrDesc.Usage = D3D11_USAGE_STAGING;
+                hdrDesc.BindFlags = hdrDesc.MiscFlags = 0;
+                hdrDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+                Microsoft::WRL::ComPtr<ID3D11Texture2D> hdrReadback;
+                Require(SUCCEEDED(d3d->device->CreateTexture2D(&hdrDesc, nullptr, &hdrReadback)), "HDR readback");
+                context->CopyResource(hdrReadback.Get(), hdr->pixels.Get());
+                Require(SUCCEEDED(context->Map(hdrReadback.Get(), 0, D3D11_MAP_READ, 0, &mapped)), "HDR map");
+                const UINT code =
+                    reinterpret_cast<const UINT*>(static_cast<const BYTE*>(mapped.pData) + 540 * mapped.RowPitch)[960];
+                context->Unmap(hdrReadback.Get(), 0);
+                const float nits = pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, float((code >> 10) & 1023) / 1023.f);
+                printf("RTX direct %s with RTX Video HDR: grey -> %.1f nits\n", eightBit ? "NV12" : "P010", nits);
+                // The same as for a prepared picture (10.7 nits on a GeForce
+                // RTX 4080 SUPER): RTX Video HDR keeps mid grey dark.
+                Require(nits > 3 && nits < 400, "RTX Video HDR grey at a plausible level");
+                for (bool vsr : {false, true})
+                {
+                    RtxVideoProcessor reporterSize;
+                    Require(SUCCEEDED(reporterSize.Configure(d3d->device,
+                                                             w,
+                                                             h,
+                                                             1797,
+                                                             1011,
+                                                             eightBit ? RtxVideoProcessor::InputKind::Nv12
+                                                                      : RtxVideoProcessor::InputKind::P010,
+                                                             false,
+                                                             false,
+                                                             vsr,
+                                                             true)),
+                            "RTX HDR at issue 21's odd output size, with and without VSR");
+                    Require(reporterSize.FailureDescription().empty(), "successful HDR has no failure detail");
+                }
+            }
+            if (variant == 0)
+            {
+                // A refused RTX Video HDR leaves Super Resolution working.
+                RtxScaling refused;
+                refused.RefuseHdr(E_INVALIDARG, L"HDR extension");
+                Require(!refused.HdrUsable(), "refused RTX Video HDR is not usable");
+                auto upscaled = refused.Get(d3d,
+                                            context.Get(),
+                                            source,
+                                            3,
+                                            1920,
+                                            1080,
+                                            pl_render_default_params,
+                                            true,
+                                            true,
+                                            nullptr,
+                                            0,
+                                            0,
+                                            decoded.Get());
+                Require(bool(upscaled) && refused.Upscaling() && !pl_color_space_is_hdr(&upscaled->image.color),
+                        "Super Resolution works without the refused RTX Video HDR");
+                Require(refused.Status().find(L"RTX HDR unavailable") != std::wstring::npos,
+                        "statistics name the refused RTX Video HDR");
+                Require(refused.Status().find(L"HDR extension") != std::wstring::npos &&
+                            refused.Status().find(L"80070057") != std::wstring::npos,
+                        "statistics preserve the actual HDR error and failure stage");
+                upscaled.reset();
+                Require(!refused.Get(d3d,
+                                     context.Get(),
+                                     source,
+                                     4,
+                                     w,
+                                     h,
+                                     pl_render_default_params,
+                                     true,
+                                     true,
+                                     nullptr,
+                                     0,
+                                     0,
+                                     decoded.Get()),
+                        "no upscaling and no RTX Video HDR leaves the picture to libplacebo");
+                refused.Reset();
+                Require(refused.HdrUsable(), "a new start tries RTX Video HDR again");
+                puts("PASS refused RTX Video HDR keeps Super Resolution and is retried after a reset");
+            }
+            processed.reset();
+            scaling.Reset();
+            for (auto& plane : planes)
+                pl_tex_destroy(d3d->gpu, &plane);
         }
         pl_d3d11_destroy(&d3d);
         puts(

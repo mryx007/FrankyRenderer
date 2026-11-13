@@ -59,12 +59,32 @@ struct MotionTick
     float position, duration;
 };
 
+// Whether the next picture continues the previous one's timeline: it starts
+// after the previous start and at most two of the previous picture's own
+// durations (plus 2 ms) later. That includes a next start exactly at the
+// previous stop, tolerates stops that miss the next start for a while
+// (PotPlayer with VC-1 after a seek) and does not depend on the stream's
+// nominal frame rate, which only stands in when a picture has no duration.
+// Backward steps and larger gaps are discontinuities.
+inline bool MotionTimelineContinuous(LONGLONG previousStart,
+                                     LONGLONG previousStop,
+                                     LONGLONG nextStart,
+                                     LONGLONG nominalDuration = 0)
+{
+    const double own = double(previousStop) - double(previousStart);
+    const double duration = own > 0 && own <= 10000000                           ? own
+                            : nominalDuration > 0 && nominalDuration <= 10000000 ? double(nominalDuration)
+                                                                                 : 0;
+    const double step = double(nextStart) - double(previousStart);
+    return duration > 0 && step > 0 && step <= 2 * duration + 20000;
+}
+
 // A nominal sample duration can overlap the next millisecond-rounded PTS.
 // Use the already buffered next frame to partition the output timeline; keep
 // genuine discontinuities and the final frame's nominal end unchanged.
-inline LONGLONG MotionIntervalEnd(LONGLONG start, LONGLONG stop, LONGLONG nextStart)
+inline LONGLONG MotionIntervalEnd(LONGLONG start, LONGLONG stop, LONGLONG nextStart, LONGLONG nominalDuration = 0)
 {
-    return stop > start && nextStart > start && std::abs(double(nextStart) - double(stop)) <= 20000 ? nextStart : stop;
+    return stop > start && MotionTimelineContinuous(start, stop, nextStart, nominalDuration) ? nextStart : stop;
 }
 
 // Decide from the stream's nominal cadence, not each rounded PTS interval.

@@ -77,7 +77,7 @@ def main(out=OUT, source=SOURCE):
     setup = (ROOT / "Tools/setup.ps1").read_text(encoding="utf-8-sig")
     (out / "setup.ps1").write_text(setup, encoding="utf-8-sig")
     (out / "INSTALL.txt").write_text(
-        f"FrankyRenderer 1.2 - Windows x64\n\n"
+        f"FrankyRenderer 1.2.1 - Windows x64\n\n"
         "Extract this package to a permanent folder and close all video players.\n"
         "Run Install.cmd. Administrator approval may be requested.\n"
         "Run Uninstall.cmd before moving or removing the installed folder.\n"
@@ -102,10 +102,21 @@ def main(out=OUT, source=SOURCE):
         "See LICENSE, THIRD_PARTY.md and licenses for notices.\n"
         "Source: https://github.com/mryx007/FrankyRenderer\n", encoding="utf-8",
     )
-    shutil.copytree(ROOT / "Shaders", out / "shaders", dirs_exist_ok=True)
+    # The other files in Shaders are compiled into the renderer when it is built.
+    shutil.rmtree(out / "shaders", ignore_errors=True)
+    for folder in ("PlayKit", "Custom"):
+        shutil.copytree(ROOT / "Shaders" / folder, out / "shaders" / folder)
 
     licenses = out / "licenses"
     licenses.mkdir(exist_ok=True)
+    (licenses / "adaptive-sharpen").mkdir(exist_ok=True)
+    notice = []
+    for line in (ROOT / "Shaders/adaptive-sharpen.glsl").read_text(encoding="utf-8").splitlines():
+        if not line.startswith("//"):
+            break
+        notice.append(line[2:].strip())
+    (licenses / "adaptive-sharpen/LICENSE.txt").write_text("\n".join(notice).strip() + "\n", encoding="utf-8")
+    shutil.copy2(ROOT / "Shaders/source.json", licenses / "adaptive-sharpen/source.json")
     (licenses / "runtime-names.json").write_text(json.dumps(runtime_manifest, indent=2) + "\n")
     shutil.copytree(
         ROOT / "deps/msys/ucrt64/share/licenses",

@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-03 15:19+0000\n"
-"Last-Translator: wushantao <wushantao@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-10 12:50+0000\n"
+"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -14,10 +14,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.11.1.dev0\n"
+"X-Generator: Weblate 2026.11.2.dev0\n"
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "General"
 msgstr "常规"
 
@@ -28,6 +29,7 @@ msgstr "输出精度、显示模式切换、背景与图像分析。"
 
 #. Tab (General)
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Output"
 msgstr "输出"
 
@@ -36,10 +38,11 @@ msgid "Background"
 msgstr "背景"
 
 #. Tab (General)
-msgid "Themes"
-msgstr "主题"
+msgid "Appearance"
+msgstr "外观"
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Output Texture Format"
 msgstr "输出纹理格式"
 
@@ -50,22 +53,27 @@ msgid ""
 msgstr "最终输出纹理的精度。自动模式下跟随渲染器的输出选择。"
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Auto (libplacebo)"
 msgstr "自动（libplacebo）"
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "8-bit Integer (SDR)"
 msgstr "8 位整数（SDR）"
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Prefer 10-bit Integer"
 msgstr "10 位整数优先"
 
 #. Choice (General > Output > Output Texture Format)
+#. Setting name (Shortcuts > )
 msgid "Prefer 16-bit Float"
 msgstr "16 位浮点优先"
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "RGB Output Levels"
 msgstr "RGB 输出级别"
 
@@ -74,18 +82,22 @@ msgid "Match the RGB range used by the display and GPU driver."
 msgstr "匹配显示器和 GPU 驱动使用的 RGB 范围。"
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "Auto (Output)"
 msgstr "自动 (输出)"
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "PC Levels (0–255)"
 msgstr "PC 级别 (0–255)"
 
 #. Choice (General > Output > RGB Output Levels)
+#. Setting name (Shortcuts > )
 msgid "TV Levels (16–235)"
 msgstr "TV 级别 (16–235)"
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Dither Target Bit Depth"
 msgstr "抖动目标位深"
 
@@ -94,40 +106,49 @@ msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr "按实际输出精度进行抖动；选择\"自动\"时会跟随输出纹理。"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "Auto (Output Texture)"
 msgstr "自动 (输出纹理)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "4 Bit"
 msgstr "4 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "5 Bit"
 msgstr "5 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "6 Bit"
 msgstr "6 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "8 Bit"
 msgstr "8 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "10 Bit"
 msgstr "10 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "12 Bit"
 msgstr "12 位"
 
 #. Choice (General > Output > Dither Target Bit Depth)
+#. Setting name (Shortcuts > )
 msgid "16 Bit"
 msgstr "16 位"
 
 #. Setting name (General > Output)
+#. Setting name (Shortcuts > )
 msgid "Max Frames in Flight"
-msgstr "最大在途帧"
+msgstr "最大在途帧数"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
@@ -135,18 +156,29 @@ msgstr "0 表示保留设备默认值。缓冲越多，延迟越高。"
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
+#. Setting name (Shortcuts > )
 msgid "Image Analysis"
 msgstr "图像分析"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
-"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/"
-"after color mapping; excludes subtitles. SDR nits are nominal."
+"Waveform, histogram, RGB parade, false color and gray ramp, before or after "
+"color mapping, without subtitles."
 msgstr ""
-"波形图、直方图、RGB 分量图、伪彩色与灰阶渐变。采样于色彩映射前/后；不含字幕。"
-"SDR 尼特为标称值。"
+"波形、直方图、RGB 分量、伪色和灰阶，取样于色彩映射之前或之后，不含字幕。"
+
+#. Setting name (General > Image Analysis)
+#. Setting name (Shortcuts > )
+msgid "Statistics in Video Area"
+msgstr "统计信息显示在画面内"
+
+#. Setting description (General > Image Analysis > Statistics in Video Area)
+msgid ""
+"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+msgstr "Ctrl+J 统计信息和图像分析显示在画面上，而不是黑边中。"
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Display Mode"
 msgstr "显示模式"
 
@@ -157,14 +189,15 @@ msgid ""
 msgstr "全屏时切换到与视频帧率匹配的所列显示模式，退出全屏或停止播放时恢复。"
 
 #. Setting name (General > Display Mode)
+#. Setting name (Shortcuts > )
 msgid "Switch Display Mode in Fullscreen"
 msgstr "全屏切换显示模式"
 
 #. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
-"Uses the listed mode with the lowest refresh rate that is a whole multiple "
-"of the video frame rate. Applies to this display profile only."
-msgstr "使用所列模式中刷新率最低且为视频帧率整数倍的模式。仅适用于此显示配置。"
+"Uses the listed mode whose refresh rate is the lowest whole multiple of the "
+"frame rate. Only for this display."
+msgstr "使用列表中刷新率为帧率最小整数倍的模式。仅适用于此显示器。"
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
@@ -190,6 +223,7 @@ msgstr ""
 "输入显示模式，如 2160p23、2160p24、2160p50、2160p60，或仅输入 23、24、60。"
 
 #. Setting name (General > Display Mode)
+#. Setting name (Shortcuts > )
 msgid "Pause After Switching (seconds)"
 msgstr "切换后暂停时长（秒）"
 
@@ -198,10 +232,12 @@ msgid "Pauses playback while the display resynchronises after a mode change."
 msgstr "在显示模式切换后，等待显示器重新同步期间暂停播放。"
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
 msgid "Background & Transparency"
 msgstr "背景与透明度"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Red"
 msgstr "红色背景"
 
@@ -211,6 +247,7 @@ msgid ""
 msgstr "红色通道用于显示未覆盖边框及透明像素。RGB 范围：0 到 1。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Green"
 msgstr "绿色背景"
 
@@ -221,6 +258,7 @@ msgid ""
 msgstr "绿色通道用于显示未覆盖边框及透明像素。RGB 范围：0 到 1。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Blue"
 msgstr "蓝色背景"
 
@@ -230,6 +268,7 @@ msgid ""
 msgstr "蓝色通道用于显示未覆盖边框及透明像素。RGB 范围：0 到 1。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Background Transparency"
 msgstr "背景透明度"
 
@@ -238,10 +277,11 @@ msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
-"0 表示不透明；1 表示透明。仅影响渲染时的透明度，不影响操作系统和窗口的透明"
+"0 表示不透明；1 表示透明。仅影响渲染时的透明度，不影响 Windows 桌面/窗口透明"
 "度。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Corner Rounding"
 msgstr "圆角"
 
@@ -252,16 +292,15 @@ msgid ""
 msgstr "视频圆角的相对程度。0 表示保持直角；1 表示应用最大程度的圆角。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Skip Target Clearing"
 msgstr "跳过目标清除"
 
 #. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
-"Skip clearing uncovered output borders. May leave old or undefined pixels "
-"there; no benefit for full-frame video. Default is Off."
-msgstr ""
-"跳过清除未覆盖的输出边框。可能会导致该区域出现残留或无效像素；对全屏视频无益"
-"处。默认为关闭。"
+"Skips clearing the borders around the picture. Old pixels may remain there. "
+"Default: Off."
+msgstr "跳过清除画面周围的边框。那里可能残留旧像素。默认：关。"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
@@ -282,6 +321,7 @@ msgid "On"
 msgstr "开启"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Blend Against Tiles"
 msgstr "棋盘格混合"
 
@@ -292,6 +332,7 @@ msgid ""
 msgstr "在棋盘格上合成透明图像区域。默认关闭。方格颜色不会重新着色不透明视频。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Red"
 msgstr "浅色方格：红色"
 
@@ -301,6 +342,7 @@ msgid ""
 msgstr "浅色棋盘格的红色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Green"
 msgstr "浅色方格：绿色"
 
@@ -310,6 +352,7 @@ msgid ""
 msgstr "浅色棋盘格的绿色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Light Tile Blue"
 msgstr "浅色方格：蓝色"
 
@@ -319,6 +362,7 @@ msgid ""
 msgstr "浅色棋盘格的蓝色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Red"
 msgstr "深色方格：红色"
 
@@ -328,6 +372,7 @@ msgid ""
 msgstr "深色棋盘格的红色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Green"
 msgstr "深色方格：绿色"
 
@@ -337,6 +382,7 @@ msgid ""
 msgstr "深色棋盘格的绿色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Dark Tile Blue"
 msgstr "深色方格：蓝色"
 
@@ -346,6 +392,7 @@ msgid ""
 msgstr "深色棋盘格的蓝色通道值。需配合\"棋盘格混合\"使用。"
 
 #. Setting name (General > Background & Transparency)
+#. Setting name (Shortcuts > )
 msgid "Tile Size (pixels)"
 msgstr "方格大小（像素）"
 
@@ -356,12 +403,38 @@ msgid ""
 msgstr "输出画面中的棋盘格重复大小（像素）。默认值：32；手动范围：2 至 256。"
 
 #. Section heading (General)
+#. Setting name (Shortcuts > )
+msgid "Diagnostics"
+msgstr "诊断"
+
+#. Setting name (General > Diagnostics)
+msgid "Diagnostic Log"
+msgstr "诊断日志"
+
+#. Setting description (General > Diagnostics > Diagnostic Log)
+msgid ""
+"Records the next start of the player for a bug report, then turns itself off."
+msgstr "为错误报告记录下一次播放器启动，然后自动关闭。"
+
+#. Setting name (General > Diagnostics)
+msgid "Save Report"
+msgstr "保存报告"
+
+#. Setting description (General > Diagnostics > Save Report)
+msgid "Saves a report for a bug report on the desktop."
+msgstr "将错误报告保存到桌面。"
+
+#. Button (General > Diagnostics > Save Report)
+msgid "Save"
+msgstr "保存"
+
+#. Section heading (General)
 msgid "Menu Appearance"
 msgstr "菜单外观"
 
 #. Section description (General > Menu Appearance)
-msgid "Colours of this settings window. Applies immediately."
-msgstr "此设置窗口的颜色。立即生效。"
+msgid "Look and behaviour of this settings window. Applies immediately."
+msgstr "此设置窗口的外观和行为。立即生效。"
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
@@ -439,8 +512,17 @@ msgstr "自动（跟随 Windows）"
 msgid "English"
 msgstr "英语"
 
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr "记住上次的页面"
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr "打开此窗口时显示上次离开时的页面。"
+
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Processing"
 msgstr "处理"
 
@@ -462,6 +544,7 @@ msgstr "黑边与缩放"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Debanding"
 msgstr "去色带"
 
@@ -472,6 +555,7 @@ msgid ""
 msgstr "减少平滑渐变中的可见色阶。设置过度可能丢失细节。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Iterations"
 msgstr "迭代次数"
 
@@ -480,6 +564,7 @@ msgid "More iterations remove stronger banding; may lose detail."
 msgstr "更多迭代次数可去除更严重的色带；但可能丢失细节。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Threshold"
 msgstr "阈值"
 
@@ -498,6 +583,7 @@ msgid "Search radius in pixels."
 msgstr "搜索半径（像素）。"
 
 #. Setting name (Processing > Debanding)
+#. Setting name (Shortcuts > )
 msgid "Grain"
 msgstr "颗粒"
 
@@ -506,10 +592,13 @@ msgid "Grain added after debanding."
 msgstr "在去色带处理后添加颗粒。"
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "Adaptive Sharpen"
 msgstr "自适应锐化"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Shortcuts > )
 msgid "Enhance Edges and Details"
 msgstr "增强边缘与细节"
 
@@ -518,6 +607,7 @@ msgid "Apply adaptive sharpening with built-in anti-ringing."
 msgstr "应用带内置抗振铃的自适应锐化。"
 
 #. Setting name (Processing > Adaptive Sharpen)
+#. Setting name (Shortcuts > )
 msgid "Strength"
 msgstr "强度"
 
@@ -526,28 +616,32 @@ msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr "自适应锐化的强度。设为 0 时禁用锐化效果。"
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Deinterlacing"
 msgstr "去隔行扫描"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
+#. Setting name (Shortcuts > )
 msgid "Algorithm"
 msgstr "算法"
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
-#. Setting description (Processing > Dithering > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
 msgstr "选择处理方法。设为\"关闭\"时跳过此处理阶段。"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Bwdif"
 msgstr "Bwdif (自适应补偿)"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Yadif"
 msgstr "Yadif (基础补偿)"
 
 #. Setting name (Processing > Deinterlacing)
+#. Setting name (Shortcuts > )
 msgid "Field Order"
 msgstr "场序"
 
@@ -558,34 +652,98 @@ msgid ""
 msgstr "自动模式跟随源文件标记。仅当隔行运动的场序错误时，才进行覆盖。"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Auto (Source Flags)"
 msgstr "自动 (源标记)"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Top Field First"
 msgstr "顶场优先"
 
 #. Choice (Processing > Deinterlacing > Field Order)
+#. Setting name (Shortcuts > )
 msgid "Bottom Field First"
 msgstr "底场优先"
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Dithering"
 msgstr "抖动"
 
+#. Setting description (Processing > Dithering > Algorithm)
+msgid ""
+"Error diffusion costs more GPU time. Large kernels fall back to Blue Noise "
+"at high resolutions."
+msgstr "误差扩散需要更多 GPU 时间。在高分辨率下，大型算法会回退到蓝噪声。"
+
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Blue Noise (recommended)"
 msgstr "蓝噪声 (推荐)"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Ordered Dithering"
 msgstr "有序抖动"
 
 #. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
 msgid "Random Dithering"
 msgstr "随机抖动"
 
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Simple"
+msgstr "误差扩散：Simple"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: False Floyd-Steinberg"
+msgstr "误差扩散：False Floyd-Steinberg"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra Lite"
+msgstr "误差扩散：Sierra Lite"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Floyd-Steinberg"
+msgstr "误差扩散：Floyd-Steinberg"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Atkinson"
+msgstr "误差扩散：Atkinson"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Jarvis-Judice-Ninke"
+msgstr "误差扩散：Jarvis-Judice-Ninke"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Stucki"
+msgstr "误差扩散：Stucki"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Burkes"
+msgstr "误差扩散：Burkes"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 2"
+msgstr "误差扩散：Sierra 2"
+
+#. Choice (Processing > Dithering > Algorithm)
+#. Setting name (Shortcuts > )
+msgid "Error Diffusion: Sierra 3"
+msgstr "误差扩散：Sierra 3"
+
 #. Setting name (Processing > Dithering)
+#. Setting name (Shortcuts > )
 msgid "Change Dither for Every Frame"
 msgstr "逐帧变换抖动"
 
@@ -594,10 +752,12 @@ msgid "Vary the dither pattern over time instead of keeping a static pattern."
 msgstr "使抖动图案随时间变化，而非保持固定图案。"
 
 #. Section heading (Processing)
+#. Setting name (Shortcuts > )
 msgid "Detection & Zoom"
 msgstr "检测与缩放"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
 msgstr "检测硬编码黑边"
 
@@ -606,6 +766,7 @@ msgid "Analyze decoded pixels to find bars encoded into the video."
 msgstr "分析解码像素，以识别视频中已编码的黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Crop Black Bars"
 msgstr "裁剪黑边"
 
@@ -615,6 +776,7 @@ msgid ""
 msgstr "在适配或缩放前，从当前画面中移除已检测到的黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Protect Burned-in Subtitles"
 msgstr "保护内嵌字幕"
 
@@ -623,16 +785,7 @@ msgid "Temporarily restore bars if they contain visible content."
 msgstr "若黑边内存在可见内容，则暂时恢复黑边。"
 
 #. Setting name (Processing > Detection & Zoom)
-msgid "Keep a Stable Zoom"
-msgstr "保持稳定缩放"
-
-#. Setting description (Processing > Detection & Zoom > Keep a Stable Zoom)
-msgid ""
-"Prefer a common zoom that preserves content when the detected active area "
-"changes."
-msgstr "当检测到有效区域变化时，优先采用能保留内容的通用缩放比例。"
-
-#. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Zoom Mode"
 msgstr "缩放模式"
 
@@ -644,14 +797,17 @@ msgstr ""
 "适应模式保留所有有效内容。填充模式覆盖整个输出画面，但可能裁剪图像内容。"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Setting name (Shortcuts > )
 msgid "Fit (Keep All Content)"
 msgstr "适应 (保留全部内容)"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
+#. Setting name (Shortcuts > )
 msgid "Fill (May Crop Content)"
 msgstr "填充 (可能裁剪内容)"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Black Threshold"
 msgstr "黑色阈值"
 
@@ -660,6 +816,7 @@ msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr "检测到的最大黑边亮度，以解码后 SDR 白色的百分比表示。"
 
 #. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detection Stability (seconds)"
 msgstr "检测稳定性（秒）"
 
@@ -669,6 +826,7 @@ msgstr "新检测到的黑边布局达到稳定所需的时间。"
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Scaling"
 msgstr "图像缩放"
 
@@ -679,6 +837,7 @@ msgstr "内置缩放滤镜、RTX 视频超分辨率以及自定义滤镜。"
 
 #. Tab (Scaling)
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Filters"
 msgstr "滤镜"
 
@@ -688,6 +847,7 @@ msgstr "自定义滤镜"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Image Upscaler"
 msgstr "图像放大器"
 
@@ -704,7 +864,6 @@ msgid "Use the renderer's default filter."
 msgstr "使用渲染器的默认滤镜。"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
-#. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "No filter, only use basic GPU texture sampling"
 msgstr "不使用滤镜，仅使用基础 GPU 纹理采样"
 
@@ -776,6 +935,7 @@ msgstr "极锐利版 EWA Lanczos，含抗振铃 (极慢)"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Image Downscaler"
 msgstr "图像缩小器"
 
@@ -786,9 +946,8 @@ msgid ""
 msgstr "缩小视频时对图像进行滤波。\"自定义\"将复制所选滤镜以供编辑。"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
-#. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
-msgstr "使用与升频器相同的滤镜"
+msgstr "使用与放大器相同的滤镜"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -816,8 +975,9 @@ msgstr "Mitchell-Netravali 三次样条"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr "平面升频器 (色度/透明)"
+msgstr "平面放大器（色度 / Alpha）"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
@@ -825,14 +985,14 @@ msgstr "在图像缩放前，重建子采样的色度或透明平面。"
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
-#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
 msgstr "使用对应的图像缩放滤镜。"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr "平面降频器 (色度/透明)"
+msgstr "平面缩小器（色度 / Alpha）"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
@@ -840,6 +1000,7 @@ msgstr "在降低色度或透明平面的分辨率时对其进行滤波。"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
+#. Setting name (Shortcuts > )
 msgid "Frame Mixer"
 msgstr "帧混合器"
 
@@ -850,7 +1011,6 @@ msgid ""
 msgstr "平滑运动使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
-#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Disable frame mixing, show nearest frame to target PTS"
 msgstr "禁用帧混合，显示距目标呈现时间戳最近的帧"
 
@@ -874,7 +1034,13 @@ msgstr "线性帧混合"
 msgid "Cubic B-spline frame mixing"
 msgstr "三次 B-样条帧混合"
 
+#. Choice description (Scaling > Filters > Frame Mixer)
+#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
+msgid "Clamped Mitchell spline frame mixing"
+msgstr "钳制 Mitchell 样条帧混合"
+
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Global Anti-Ringing"
 msgstr "全局抗振铃"
 
@@ -883,6 +1049,7 @@ msgid "Suppress overshoot around edges."
 msgstr "抑制边缘附近的过冲。"
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Enable Smooth Motion"
 msgstr "启用平滑运动"
 
@@ -893,78 +1060,84 @@ msgid ""
 msgstr "混合视频帧以减少因视频与显示刷新率差异导致的抖动。"
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Present in Advance"
 msgstr "预呈现帧数"
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
-"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-"render peaks on slower PCs but adds latency. Automatic starts at one and "
-"adds more only after late pictures."
+"Pictures handed to the display ahead of time. More absorbs render peaks but "
+"adds latency. Automatic adds more only after late pictures."
 msgstr ""
-"预先提交给显示器显示的平滑运动帧数。数值越大越能吸收慢速 PC 上的渲染峰值，但"
-"会增加延迟。自动模式从 1 开始，仅在出现迟到的画面后才增加更多。"
+"提前交给显示器的画面数。更多可吸收渲染峰值但增加延迟。自动仅在画面迟到后增"
+"加。"
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "Automatic"
 msgstr "自动"
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "1 Refresh"
 msgstr "1 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "2 Refreshes"
 msgstr "2 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "3 Refreshes"
 msgstr "3 次刷新"
 
 #. Choice (Scaling > Filters > Present in Advance)
+#. Setting name (Shortcuts > )
 msgid "4 Refreshes"
 msgstr "4 次刷新"
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Oversample Threshold"
 msgstr "过采样阈值"
 
 #. Setting description (Scaling > Filters > Oversample Threshold)
 msgid ""
-"Smooth Motion shows a whole picture instead of a blend when the other "
-"picture would cover less than this share of a refresh. Fewer double edges on "
-"motion; 0 always blends. Used with the oversample frame mixer."
+"Shows a whole picture instead of a blend when the other would cover less "
+"than this share of a refresh. Fewer double edges; 0 always blends."
 msgstr ""
-"当另一幅画面在一个刷新周期内的占比低于此值时，平滑运动将显示完整画面而非混合"
-"结果。可减少运动中的重影；设为 0 时始终混合。用于过采样帧混合器。"
+"当另一画面在一次刷新中所占比例低于此值时，显示完整画面而非混合。减少重影；0 "
+"表示始终混合。"
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Skip Downscale Anti-Aliasing"
 msgstr "跳过降采样抗锯齿"
 
 #. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid ""
-"Faster downscaling by skipping anti-aliasing. Can introduce moire and jagged "
-"edges. Default: Off; leave Off for best quality."
-msgstr ""
-"通过跳过抗锯齿来加速降采样。可能会引入莫尔纹和锯齿边缘。默认为关闭；为获得最"
-"佳画质请保持关闭。"
+"Faster downscaling without anti-aliasing. Can cause moire and jagged edges. "
+"Default: Off."
+msgstr "跳过抗锯齿以加快缩小。可能产生摩尔纹和锯齿。默认：关。"
 
 #. Setting name (Scaling > Filters)
+#. Setting name (Shortcuts > )
 msgid "Preserve Frame Mixer Cache"
 msgstr "保留帧混合器缓存"
 
 #. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
 msgid ""
-"Reuse mixed frames after resizing or parameter changes. May make transitions "
-"smoother but briefly reuse lower-quality or older processing. Default: Off; "
-"used with Smooth Motion."
+"Reuses mixed frames after resizing or setting changes. Smoother transitions, "
+"but briefly older quality. Default: Off."
 msgstr ""
-"调整大小或更改参数后复用混合帧。可让过渡更平滑，但会短暂复用较低质量或较早的"
-"处理结果。默认为关闭；用于平滑运动。"
+"调整大小或更改设置后复用已混合的帧。过渡更平滑，但短时间内画质较旧。默认："
+"关。"
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
+#. Setting name (Shortcuts > )
 msgid "RTX Video Super Resolution"
 msgstr "RTX 视频超分辨率"
 
@@ -995,6 +1168,7 @@ msgid "Scaler role whose custom filter is edited."
 msgstr "正在编辑其自定义滤镜的缩放器角色。"
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Image Upscaler"
 msgstr "自定义：图像放大器"
 
@@ -1187,23 +1361,28 @@ msgid "Inherit Starting Filter"
 msgstr "继承起始滤镜"
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Image Downscaler"
 msgstr "自定义：图像缩小器"
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
-msgstr "自定义：平面升频器 (色度/透明)"
+msgstr "自定义：平面放大器（色度 / Alpha）"
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Plane Downscaler (Chroma / Alpha)"
-msgstr "自定义：平面降频器 (色度/透明)"
+msgstr "自定义：平面缩小器（色度 / Alpha）"
 
 #. Section heading (Scaling)
+#. Setting name (Shortcuts > )
 msgid "Custom: Frame Mixer"
 msgstr "自定义：帧混合器"
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Color"
 msgstr "色彩"
 
@@ -1213,6 +1392,7 @@ msgstr "画面控制与显示校准。"
 
 #. Tab (Color)
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "Picture Controls"
 msgstr "画面控制"
 
@@ -1221,6 +1401,7 @@ msgid "Calibration"
 msgstr "校准"
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Enable Color Adjustment"
 msgstr "启用色彩调整"
 
@@ -1231,6 +1412,7 @@ msgid ""
 msgstr "启用本节中的画面控制。中性值保留原始图像。"
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Brightness"
 msgstr "亮度"
 
@@ -1261,6 +1443,7 @@ msgstr "调节颜色强度：0 去除颜色；1 保留原始饱和度。"
 
 #. Setting name (Color > Picture Controls)
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Gamma"
 msgstr "伽马"
 
@@ -1269,6 +1452,7 @@ msgid "Change the picture's tonal response. 1 preserves the original gamma."
 msgstr "更改画面的色调响应。1 保留原始伽马。"
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Hue (degrees)"
 msgstr "色相（度）"
 
@@ -1277,14 +1461,15 @@ msgid "Rotate chroma hue. 0 preserves the original colors."
 msgstr "旋转色度色相。0 保留原始颜色。"
 
 #. Setting name (Color > Picture Controls)
+#. Setting name (Shortcuts > )
 msgid "Temperature (K)"
-msgstr "色温（开）"
+msgstr "色温（K）"
 
 #. Setting description (Color > Picture Controls > Temperature (K))
 msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
-msgstr "调节白平衡（偏暖至中性）。6500 保留原始白平衡。"
+msgstr "调节白平衡（偏暖至中性）。6500 K 保留原始白平衡。"
 
 #. Section heading (Color)
 #. Section heading (Profiles)
@@ -1293,34 +1478,48 @@ msgid "Display"
 msgstr "显示"
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Gamut"
 msgstr "显示器色域"
 
+#. Setting description (Color > Display > Display Gamut)
+msgid ""
+"For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
+"looking oversaturated."
+msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
+
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "BT.709"
 msgstr "BT.709"
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "SMPTE C"
 msgstr "SMPTE C"
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "EBU / PAL"
 msgstr "EBU / PAL"
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "BT.2020"
 msgstr "BT.2020"
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "DCI-P3 (DCI white)"
 msgstr "DCI-P3（DCI 白点）"
 
 #. Choice (Color > Display > Display Gamut)
+#. Setting name (Shortcuts > )
 msgid "P3-D65 (Display P3)"
 msgstr "P3-D65（Display P3）"
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Gamma"
 msgstr "显示器伽马"
 
@@ -1332,14 +1531,17 @@ msgstr ""
 "显示器解码信号的方式，例如许多电视为 2.4。在 HDR 色调映射到 SDR 时使用。"
 
 #. Choice (Color > Display > Display Gamma)
+#. Setting name (Shortcuts > )
 msgid "Auto"
 msgstr "自动"
 
 #. Choice (Color > Display > Display Gamma)
+#. Setting name (Shortcuts > )
 msgid "BT.1886"
 msgstr "BT.1886"
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "Display Contrast"
 msgstr "显示器对比度"
 
@@ -1352,6 +1554,7 @@ msgstr ""
 "此时 BT.1886 等同于 2.40。"
 
 #. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "SDR Gamma Processing"
 msgstr "SDR 伽马处理"
 
@@ -1361,6 +1564,7 @@ msgid ""
 msgstr "关闭时 SDR 保持不变。否则 SDR 在显示器上呈现为此伽马。"
 
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "ICC Profile"
 msgstr "ICC 色彩配置"
 
@@ -1379,6 +1583,7 @@ msgid "Browse…"
 msgstr "浏览…"
 
 #. Setting name (Color > ICC Profile)
+#. Setting name (Shortcuts > )
 msgid "Enable ICC Profile"
 msgstr "启用 ICC 色彩配置"
 
@@ -1387,6 +1592,7 @@ msgid "Apply color correction from the selected display profile."
 msgstr "应用所选显示配置文件中的色彩校正。"
 
 #. Setting name (Color > ICC Profile)
+#. Setting name (Shortcuts > )
 msgid "ICC Rendering Intent"
 msgstr "ICC 渲染方式"
 
@@ -1396,15 +1602,18 @@ msgstr "选择 ICC 配置文件将颜色映射到显示器色域的方式。"
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Relative Colorimetric"
 msgstr "相对色度"
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Perceptual"
 msgstr "感知"
 
 #. Section heading (Color)
+#. Setting name (Shortcuts > )
 msgid "3D LUT"
 msgstr "3D LUT（三维查找表）"
 
@@ -1417,6 +1626,7 @@ msgid "Select a .cube 3D LUT before enabling LUT processing."
 msgstr "启用 LUT 处理前，请先选择一个 .cube 3D LUT。"
 
 #. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "Enable 3D LUT"
 msgstr "启用 3D LUT"
 
@@ -1425,42 +1635,60 @@ msgid "Apply the selected 3D LUT at the stage selected by LUT Type."
 msgstr "在 LUT 类型指定的阶段应用所选 3D LUT。"
 
 #. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
+msgid "LUT from Video Folder"
+msgstr "使用视频文件夹中的 LUT"
+
+#. Setting description (Color > 3D LUT > LUT from Video Folder)
+msgid ""
+"Uses a .cube file next to the video: first one named like the video, else "
+"the folder's only one. Otherwise the LUT above."
+msgstr ""
+"使用视频旁的 .cube 文件：优先使用与视频同名的文件，否则使用文件夹中唯一"
+"的 .cube 文件。都没有时使用上方的 LUT。"
+
+#. Setting name (Color > 3D LUT)
+#. Setting name (Shortcuts > )
 msgid "LUT Type"
 msgstr "LUT 类型"
 
 #. Setting description (Color > 3D LUT > LUT Type)
 msgid ""
-"Default keeps the existing SDR calibration LUT stage. Manual types use this "
-"file as a color-mapping LUT. Normalized uses linear-light RGB; Conversion "
-"replaces color conversion, tone mapping and ICC correction. Match the LUT's "
-"intended data representation."
+"Default keeps the SDR calibration LUT. Normalized uses linear-light RGB; "
+"Conversion replaces color conversion, tone mapping and ICC. Must match the "
+"LUT."
 msgstr ""
-"默认：保留现有 SDR 校准 LUT 阶段。手动类型：将此文件用作色彩映射 LUT。归一"
-"化：使用线性光 RGB；转换：替换色彩转换、色调映射与 ICC 校正。请匹配 LUT 预期"
-"的数据表示方式。"
+"默认保留 SDR 校准 LUT。归一化使用线性光 RGB；转换将替代色彩转换、色调映射和 "
+"ICC。须与 LUT 匹配。"
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Default (SDR Calibration)"
 msgstr "默认（SDR 校准）"
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Unknown"
 msgstr "未知"
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Native"
 msgstr "原生"
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Normalized"
 msgstr "归一化"
 
 #. Choice (Color > 3D LUT > LUT Type)
+#. Setting name (Shortcuts > )
 msgid "Conversion"
 msgstr "转换"
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "HDR"
 msgstr "HDR"
 
@@ -1485,58 +1713,87 @@ msgid "Tone Controls"
 msgstr "色调控制"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "HDR Output"
 msgstr "HDR 输出"
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "HDR Mode"
 msgstr "HDR 模式"
 
 #. Setting description (HDR > HDR Output > HDR Mode)
 msgid ""
-"Pass HDR and its metadata to the display; keep HDR output but roll off "
-"highlights above the display's peak, for monitors and laptops that do not "
-"tone map themselves; or tone map HDR to SDR."
+"Pass HDR to the display; keep HDR but roll off highlights above the "
+"display's peak, for screens without own tone mapping; or tone map to SDR."
 msgstr ""
-"将 HDR 及其元数据直通给显示器；保持 HDR 输出，但将高于显示器峰值的亮部滚降"
-"（适用于自身不做色调映射的显示器和笔记本）；或将 HDR 色调映射为 SDR。"
+"将 HDR 直通显示器；保持 HDR 但压缩超出显示器峰值的高光，适用于自身不做色调映"
+"射的屏幕；或映射为 SDR。"
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Passthrough HDR to Display"
 msgstr "将 HDR 直通到显示器"
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Tone Map HDR to Display Peak"
 msgstr "HDR 色调映射至显示器峰值"
 
 #. Choice (HDR > HDR Output > HDR Mode)
+#. Setting name (Shortcuts > )
 msgid "Tone Map HDR to SDR"
 msgstr "HDR 色调映射为 SDR"
 
 #. Setting name (HDR > HDR Output)
-msgid "Clipping Protection"
-msgstr "削波保护"
+#. Setting name (Shortcuts > )
+msgid "Switch Windows HDR"
+msgstr "切换 Windows HDR"
 
-#. Setting description (HDR > HDR Output > Clipping Protection)
-msgid ""
-"Automatically compress HDR highlights to the target peak. Bypassed during "
-"HDR passthrough."
-msgstr "自动将 HDR 高光压缩至目标峰值。HDR 直通时绕过此处理。"
+#. Setting description (HDR > HDR Output > Switch Windows HDR)
+msgid "Turns Windows HDR on or off for playback and restores it afterwards."
+msgstr "在播放时开启或关闭 Windows HDR，并在结束后恢复。"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Do Not Change"
+msgstr "不更改"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On in Fullscreen"
+msgstr "全屏时开启"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On"
+msgstr "开启"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off in Fullscreen"
+msgstr "全屏时开启/关闭"
+
+#. Choice (HDR > HDR Output > Switch Windows HDR)
+#. Setting name (Shortcuts > )
+msgid "Turn On/Off"
+msgstr "开启/关闭"
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
 msgstr "HDR 目标峰值（0 = 自动）"
 
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid ""
-"Display peak for Tone Map HDR to Display Peak, in nits. 0 uses the peak "
-"Windows reports for the display, which on some laptops follows the "
-"brightness setting."
+"Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
+"reports; on some laptops it follows brightness."
 msgstr ""
-"'HDR 色调映射至显示器峰值'所用的显示器峰值，单位：尼特。0 表示使用 Windows 报"
-"告的显示器峰值；部分笔记本上该值随亮度设置变化。"
+"“映射到显示器峰值”使用的峰值亮度（尼特）。0 使用 Windows 报告的值，部分笔记本"
+"会随亮度变化。"
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "SDR Target Brightness (nits)"
 msgstr "SDR 目标亮度（尼特）"
 
@@ -1547,6 +1804,7 @@ msgid ""
 msgstr "用于 HDR→SDR 色调映射的目标亮度，以及 HDR 输出中的 SDR 参考白。"
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Function"
 msgstr "色调映射函数"
 
@@ -1558,56 +1816,69 @@ msgstr "将源亮度压缩至输出范围。下方显示算法相关控件。"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "Auto (Metadata)"
 msgstr "自动（元数据）"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Spline"
 msgstr "样条曲线"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "BT.2390"
 msgstr "BT.2390"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "BT.2446A"
 msgstr "BT.2446A"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Reinhard"
 msgstr "Reinhard"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Mobius"
 msgstr "Mobius"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Hable"
 msgstr "Hable"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "ST 2094-40 (HDR10+)"
 msgstr "ST 2094-40 (HDR10+)"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "ST 2094-10"
 msgstr "ST 2094-10"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Clip"
-msgstr "剪切"
+msgstr "削波"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Linear"
 msgstr "线性"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Linear Light"
 msgstr "线性光"
 
 #. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "Gamut Mapping Function"
 msgstr "色域映射函数"
 
@@ -1616,55 +1887,55 @@ msgid "Map source colors into the output display's supported color gamut."
 msgstr "将源颜色映射到输出显示器支持的色域。"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Default (libplacebo)"
 msgstr "默认（libplacebo）"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Softclip"
-msgstr "软剪切"
+msgstr "软削波"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Desaturate"
 msgstr "降低饱和度"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Darken"
 msgstr "压暗"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Absolute Colorimetric"
 msgstr "绝对色度"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
+#. Setting name (Shortcuts > )
 msgid "Highlight Out-of-Gamut"
 msgstr "高亮超出色域"
 
 #. Setting name (HDR > HDR Output)
-msgid "Show Clipping"
-msgstr "显示剪切"
-
-#. Setting description (HDR > HDR Output > Show Clipping)
-msgid ""
-"Highlight values outside the target range to help evaluate mapping settings."
-msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
-
-#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
 msgstr "RTX 视频 HDR"
 
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
-"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, "
-"an RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."
+"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "
+"GPU and RTX Video HDR in the NVIDIA app."
 msgstr ""
-"通过 NVIDIA 驱动将 SDR 视频 AI 转换为 HDR。需启用 Windows HDR、使用 RTX GPU，"
-"并在 NVIDIA 应用中开启 RTX 视频 HDR；亮度设置也在其中。"
+"由 NVIDIA 驱动通过 AI 将 SDR 转为 HDR。需要 Windows HDR、RTX 显卡并在 NVIDIA "
+"App 中开启 RTX Video HDR。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"
 msgstr "HDR 峰值检测"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Enable Peak Detection"
 msgstr "启用峰值检测"
 
@@ -1673,6 +1944,7 @@ msgid "Measure scene brightness to adapt HDR tone mapping to the video."
 msgstr "测量场景亮度以使 HDR 色调映射适应视频。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Allow Delayed Peak Detection"
 msgstr "启用延迟峰值检测"
 
@@ -1682,6 +1954,17 @@ msgid ""
 msgstr "使用延迟的亮度测量以减少同步开销。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
+msgid "Show Clipping"
+msgstr "显示削波"
+
+#. Setting description (HDR > HDR Peak Detection > Show Clipping)
+msgid ""
+"Highlight values outside the target range to help evaluate mapping settings."
+msgstr "高亮显示超出目标范围的值，以帮助评估映射设置。"
+
+#. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Smoothing Period"
 msgstr "平滑周期"
 
@@ -1691,6 +1974,7 @@ msgid ""
 msgstr "随时间平滑峰值测量。较高的值使适应过程更缓慢。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Scene Threshold Low"
 msgstr "场景阈值下限"
 
@@ -1701,6 +1985,7 @@ msgid ""
 msgstr "较低的场景变化阈值。与上限一起，控制峰值检测的反应速度。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Scene Threshold High"
 msgstr "场景阈值上限"
 
@@ -1709,6 +1994,7 @@ msgid "Upper scene-change threshold. Must not be below the Low threshold."
 msgstr "较高的场景变化阈值。不得低于下限阈值。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Percentile"
 msgstr "百分位"
 
@@ -1719,6 +2005,7 @@ msgid ""
 msgstr "使用亮度百分位而不是最亮的单个像素。100 表示使用最大值。"
 
 #. Setting name (HDR > HDR Peak Detection)
+#. Setting name (Shortcuts > )
 msgid "Black Cutoff"
 msgstr "黑色截止"
 
@@ -1727,10 +2014,12 @@ msgid "Exclude very dark pixels from HDR peak-detection statistics."
 msgstr "从 HDR 峰值检测统计中排除非常暗的像素。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Knee"
 msgstr "色调映射膝点"
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Adaptation"
 msgstr "膝点自适应"
 
@@ -1739,6 +2028,7 @@ msgid "Adapt the knee to scene brightness. Used by ST 2094 and Spline."
 msgstr "使膝点适应场景亮度。由 ST 2094 和样条曲线使用。"
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Minimum"
 msgstr "膝点最小值"
 
@@ -1747,6 +2037,7 @@ msgid "Lower bound for the adaptive knee, in PQ-normalized space."
 msgstr "自适应膝点下限（PQ 归一化空间）。"
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Maximum"
 msgstr "膝点最大值"
 
@@ -1755,6 +2046,7 @@ msgid "Upper bound for the adaptive knee, in PQ-normalized space."
 msgstr "自适应膝点的上限（PQ 归一化空间）。"
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "Knee Default"
 msgstr "膝点默认值"
 
@@ -1765,6 +2057,7 @@ msgid ""
 msgstr "当平均场景亮度不可用时使用的膝点。保持在最小值/最大值之间。"
 
 #. Setting name (HDR > Tone Mapping Knee)
+#. Setting name (Shortcuts > )
 msgid "BT.2390 Knee Offset"
 msgstr "BT.2390 膝点偏移"
 
@@ -1775,10 +2068,12 @@ msgid ""
 msgstr "BT.2390 肩部偏移。规范使用 0.5；libplacebo 默认为 1。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Constants"
 msgstr "色调映射常量"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Slope Tuning"
 msgstr "样条斜率调整"
 
@@ -1787,6 +2082,7 @@ msgid "Strength of scene-dependent Spline slope adjustment."
 msgstr "依赖于场景的样条斜率调整的强度。"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Slope Offset"
 msgstr "Spline 斜率偏移"
 
@@ -1795,6 +2091,7 @@ msgid "Offset for Spline slope adjustment."
 msgstr "样条斜率调整的偏移量。"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Spline Contrast"
 msgstr "样条对比度"
 
@@ -1803,6 +2100,7 @@ msgid "Spline contrast around the knee. Only affects the Spline function."
 msgstr "膝点周围的样条对比度。仅影响样条函数。"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Reinhard Contrast"
 msgstr "Reinhard 对比度"
 
@@ -1811,6 +2109,7 @@ msgid "Contrast for Reinhard. Larger values increase contrast."
 msgstr "Reinhard 的对比度。较大的值增加对比度。"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Mobius / Gamma Knee"
 msgstr "Mobius / 伽马膝点"
 
@@ -1819,6 +2118,7 @@ msgid "Transition point for Mobius and Gamma tone mapping."
 msgstr "Mobius 和伽马色调映射的过渡点。"
 
 #. Setting name (HDR > Tone Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Linear Exposure"
 msgstr "线性曝光"
 
@@ -1829,6 +2129,7 @@ msgstr "线性和线性光色调映射的曝光倍增因子。1 保持不变。"
 
 #. Section heading (HDR)
 #. Setting name (HDR > Contrast Recovery)
+#. Setting name (Shortcuts > )
 msgid "Contrast Recovery"
 msgstr "对比度恢复"
 
@@ -1837,6 +2138,7 @@ msgid "Recover local contrast lost in tone mapping. 0 disables recovery."
 msgstr "恢复在色调映射中丢失的局部对比度。0 禁用恢复。"
 
 #. Setting name (HDR > Contrast Recovery)
+#. Setting name (Shortcuts > )
 msgid "Contrast Smoothness"
 msgstr "对比度平滑度"
 
@@ -1846,10 +2148,12 @@ msgid ""
 msgstr "对比度恢复的空间尺度。仅在恢复值大于 0 时使用。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Gamut Mapping Constants"
 msgstr "色域映射常量"
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Perceptual Deadzone"
 msgstr "感知死区"
 
@@ -1859,6 +2163,7 @@ msgid ""
 msgstr "保护已在目标色域内的颜色免受感知重映射的影响。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Perceptual Strength"
 msgstr "感知强度"
 
@@ -1867,35 +2172,40 @@ msgid "Balance perceptual gamut compression and colorimetric mapping."
 msgstr "平衡感知色域压缩和色度映射。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Colorimetric Gamma"
 msgstr "色度伽马"
 
 #. Setting description (HDR > Gamut Mapping Constants > Colorimetric Gamma)
 msgid ""
 "Gamma used for colorimetric clipping; affects Relative and related mapping."
-msgstr "用于色度剪切的伽马；影响相对色度及相关映射。"
+msgstr "用于色度削波的伽马；影响相对色度及相关映射。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Softclip Knee"
-msgstr "软剪切膝点"
+msgstr "软削波膝点"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Knee)
 msgid "Saturation threshold where soft clipping starts."
-msgstr "开始软剪切的饱和度阈值。"
+msgstr "开始软削波的饱和度阈值。"
 
 #. Setting name (HDR > Gamut Mapping Constants)
+#. Setting name (Shortcuts > )
 msgid "Softclip Desaturation"
-msgstr "软剪切去饱和"
+msgstr "软削波去饱和"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Desaturation)
 msgid "Desaturation near the gamut boundary when using Softclip."
-msgstr "使用软剪切时在色域边界附近的去饱和程度。"
+msgstr "使用软削波时在色域边界附近的去饱和程度。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Mapping LUT Quality"
 msgstr "映射 LUT 质量"
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Intensity Size"
 msgstr "色域 LUT 强度尺寸"
 
@@ -1905,6 +2215,7 @@ msgid ""
 msgstr "沿强度方向的内部色域 LUT 分辨率。0 选择库默认大小。"
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Chroma Size"
 msgstr "色域 LUT 色度尺寸"
 
@@ -1913,6 +2224,7 @@ msgid "Internal gamut LUT resolution along chroma. 0 selects the library size."
 msgstr "沿色度方向的内部色域 LUT 分辨率。0 选择库默认大小。"
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Gamut LUT Hue Size"
 msgstr "色域 LUT 色相尺寸"
 
@@ -1921,6 +2233,7 @@ msgid "Internal gamut LUT resolution along hue. 0 selects the library size."
 msgstr "沿色相方向的内部色域 LUT 分辨率。0 选择库默认大小。"
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Tricubic Gamut Interpolation"
 msgstr "三立方色域插值"
 
@@ -1931,6 +2244,7 @@ msgid ""
 msgstr "对内部色域 LUT 使用三立方插值；会增加额外的 GPU 工作量。"
 
 #. Setting name (HDR > Mapping LUT Quality)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping LUT Size"
 msgstr "色调映射 LUT 尺寸"
 
@@ -1939,10 +2253,12 @@ msgid "Internal tone curve lookup resolution. 0 selects the library size."
 msgstr "内部色调曲线查找分辨率。0 选择库默认大小。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Mapping Visualization"
 msgstr "映射可视化"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Force Tone Mapping LUT"
 msgstr "强制色调映射 LUT"
 
@@ -1952,6 +2268,7 @@ msgid ""
 msgstr "即使对于可以直接计算的色调曲线，也使用查找表。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualize Mapping LUT"
 msgstr "可视化映射 LUT"
 
@@ -1960,6 +2277,7 @@ msgid "Draw a diagnostic visualization over the video."
 msgstr "在视频上绘制诊断可视化。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Left"
 msgstr "可视化左边缘"
 
@@ -1969,6 +2287,7 @@ msgid ""
 msgstr "可视化的左边缘（归一化输出坐标，0–1）。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Top"
 msgstr "可视化上边缘"
 
@@ -1978,6 +2297,7 @@ msgid ""
 msgstr "可视化上边缘（归一化输出坐标，0–1）。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Right"
 msgstr "可视化右边缘"
 
@@ -1987,6 +2307,7 @@ msgid ""
 msgstr "可视化右边缘（归一化输出坐标，0–1）。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Bottom"
 msgstr "可视化下边缘"
 
@@ -1996,6 +2317,7 @@ msgid ""
 msgstr "可视化的下边缘（归一化输出坐标，0–1）。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Hue (radians)"
 msgstr "可视化色相（弧度）"
 
@@ -2004,6 +2326,7 @@ msgid "Gamut visualization hue slice, from -pi to pi."
 msgstr "色域可视化的色相切片，范围为 -π 到 π。"
 
 #. Setting name (HDR > Mapping Visualization)
+#. Setting name (Shortcuts > )
 msgid "Visualization Rotation (radians)"
 msgstr "可视化旋转（弧度）"
 
@@ -2012,10 +2335,12 @@ msgid "Gamut visualization angle, from 0 to pi/2."
 msgstr "色域可视化的角度，范围为 0 到 π/2。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Expansion & Metadata"
 msgstr "扩展与元数据"
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Inverse Tone Mapping"
 msgstr "逆色调映射"
 
@@ -2025,6 +2350,7 @@ msgid ""
 msgstr "允许将 SDR 亮度扩展到 HDR。需要支持的色调曲线。"
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Gamut Expansion"
 msgstr "色域扩展"
 
@@ -2033,6 +2359,7 @@ msgid "Allow expansion into a wider display gamut."
 msgstr "允许扩展到更宽的显示色域。"
 
 #. Setting name (HDR > Expansion & Metadata)
+#. Setting name (Shortcuts > )
 msgid "Tone Mapping Metadata"
 msgstr "色调映射元数据"
 
@@ -2043,22 +2370,28 @@ msgid ""
 msgstr "默认保留自动的杜比视界 / HDR10+ 元数据选择。手动选择将覆盖它。"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
 msgid "None"
 msgstr "无"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "HDR10"
 msgstr "HDR10"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "HDR10+"
 msgstr "HDR10+"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
+#. Setting name (Shortcuts > )
 msgid "CIE Y"
 msgstr "CIE Y"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Shadows"
 msgstr "阴影"
 
@@ -2095,15 +2428,18 @@ msgid "Change color intensity within this HDR zone. 0 is neutral."
 msgstr "在此 HDR 区域内改变颜色强度。0 为中性。"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Midtones"
 msgstr "中间调"
 
 #. Section heading (HDR)
+#. Setting name (Shortcuts > )
 msgid "Highlights"
 msgstr "高光"
 
 #. Category
 #. Category heading
+#. Setting name (Shortcuts > )
 msgid "Shaders"
 msgstr "着色器"
 
@@ -2118,101 +2454,121 @@ msgstr "滤镜链控制"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "AMD CAS"
 msgstr "AMD CAS"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "FineDehalo"
 msgstr "FineDehalo"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "PixelClipper"
 msgstr "PixelClipper"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "KrigBilateral"
 msgstr "KrigBilateral"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "CfL Prediction"
 msgstr "CfL 预测"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "NLMeans"
 msgstr "NLMeans"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Bilateral Denoise"
 msgstr "双边降噪"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Chroma Denoise"
 msgstr "色度降噪"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Guided Detail Enhance"
 msgstr "引导细节增强"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Clarity"
 msgstr "清晰度"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "FSRCNNX 2x"
 msgstr "FSRCNNX 2x"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "AiUpscale Photo 2x"
 msgstr "AiUpscale 照片 2x"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R2"
 msgstr "RAVU Zoom AR R2"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom R3"
 msgstr "RAVU Zoom R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R3"
 msgstr "RAVU Zoom AR R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "Anime4K CNN 2x M"
 msgstr "Anime4K CNN 2x M"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "ArtCNN C4F16"
 msgstr "ArtCNN C4F16"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "CuNNy 2x12 DS"
 msgstr "CuNNy 2x12 DS"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "SSimDownscaler"
 msgstr "SSIM 缩小算法"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
+#. Setting name (Shortcuts > )
 msgid "DPID"
 msgstr "DPID"
 
@@ -2235,6 +2591,18 @@ msgid "Contrast-adaptive sharpening after scaling."
 msgstr "缩放后的对比度自适应锐化。"
 
 #. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
+msgid "On/Off"
+msgstr "开/关"
+
+#. Setting description (Shaders > AMD CAS > On/Off)
+#. Setting description (Shaders > FineDehalo > On/Off)
+#. Setting description (Shaders > Anti-Ringing > On/Off)
+msgid "Switches this shader on or off."
+msgstr "开启或关闭此着色器。"
+
+#. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Guided Detail Enhance)
 msgid "Strength (STR)"
@@ -2247,6 +2615,19 @@ msgid ""
 "Adjust Strength for this shader. The default preserves the shader author's "
 "setting."
 msgstr "调整此着色器的强度。默认保留着色器作者的设定。"
+
+#. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
+msgid "Automatic Order"
+msgstr "自动排序"
+
+#. Setting description (Shaders > AMD CAS > Automatic Order)
+#. Setting description (Shaders > FineDehalo > Automatic Order)
+#. Setting description (Shaders > Anti-Ringing > Automatic Order)
+msgid ""
+"Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr "先清理，再缩放，最后锐化。关闭后可手动设置位置。"
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
@@ -2267,6 +2648,7 @@ msgid "Reduce bright and dark halos around edges."
 msgstr "减少边缘处的亮暗光晕。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Horizontal Radius (RX)"
 msgstr "水平半径 (RX)"
 
@@ -2277,6 +2659,7 @@ msgid ""
 msgstr "调整此着色器的水平半径。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Vertical Radius (RY)"
 msgstr "垂直半径 (RY)"
 
@@ -2287,6 +2670,7 @@ msgid ""
 msgstr "调整此着色器的垂直半径。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Strong Edge Low (THMI)"
 msgstr "强边缘低 (THMI)"
 
@@ -2297,6 +2681,7 @@ msgid ""
 msgstr "调整此着色器的强边缘低值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Strong Edge High (THMA)"
 msgstr "强边缘高 (THMA)"
 
@@ -2307,6 +2692,7 @@ msgid ""
 msgstr "调整此着色器的 Strong Edge High。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Light Edge Low (THLIMI)"
 msgstr "弱边缘低 (THLIMI)"
 
@@ -2317,6 +2703,7 @@ msgid ""
 msgstr "调整此着色器的弱边缘低值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Light Edge High (THLIMA)"
 msgstr "弱边缘高 (THLIMA)"
 
@@ -2327,6 +2714,7 @@ msgid ""
 msgstr "调整此着色器的 Light Edge High。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Dark Halo Strength (STR_D)"
 msgstr "暗光晕强度 (STR_D)"
 
@@ -2337,6 +2725,7 @@ msgid ""
 msgstr "调整此着色器的暗光晕强度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Bright Halo Strength (STR_B)"
 msgstr "亮光晕强度 (STR_B)"
 
@@ -2347,6 +2736,7 @@ msgid ""
 msgstr "调整此着色器的亮光晕强度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "Low Sensitivity (SENS_L)"
 msgstr "低灵敏度 (SENS_L)"
 
@@ -2357,6 +2747,7 @@ msgid ""
 msgstr "调整此着色器的低灵敏度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > FineDehalo)
+#. Setting name (Shortcuts > )
 msgid "High Sensitivity (SENS_H)"
 msgstr "高灵敏度 (SENS_H)"
 
@@ -2386,6 +2777,7 @@ msgstr "限制由图像放大引入的振铃。"
 
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Bilateral Denoise)
+#. Setting name (Shortcuts > )
 msgid "Sample Taps (TAP)"
 msgstr "采样抽头 (TAP)"
 
@@ -2401,6 +2793,7 @@ msgid "Limit overshoot during image and chroma scaling."
 msgstr "在图像与色度缩放时限制过冲。"
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Image Sampling Mode (TAPS_scale)"
 msgstr "图像采样模式 (TAPS_scale)"
 
@@ -2411,6 +2804,7 @@ msgid ""
 msgstr "调整此着色器的图像采样模式。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Chroma Sampling Mode (TAPS_cscale)"
 msgstr "色度采样模式 (TAPS_cscale)"
 
@@ -2421,6 +2815,7 @@ msgid ""
 msgstr "调整此着色器的色度采样模式。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Upscaling Limit (CLIP_scale)"
 msgstr "放大限制 (CLIP_scale)"
 
@@ -2431,6 +2826,7 @@ msgid ""
 msgstr "调整此着色器的放大限制。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Chroma Limit (CLIP_cscale)"
 msgstr "色度限制 (CLIP_cscale)"
 
@@ -2441,6 +2837,7 @@ msgid ""
 msgstr "调整此着色器的色度限制。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > PixelClipper)
+#. Setting name (Shortcuts > )
 msgid "Downscaling Limit (CLIP_dscale)"
 msgstr "缩小限制 (CLIP_dscale)"
 
@@ -2459,6 +2856,7 @@ msgid "Predict chroma from luma. Requires subsampled YUV input."
 msgstr "由亮度预测色度。要求输入为子采样 YUV。"
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "chroma offset x (chroma_offset_x)"
 msgstr "色度 X 偏移 (chroma_offset_x)"
 
@@ -2469,6 +2867,7 @@ msgid ""
 msgstr "调整此着色器的色度 X 偏移。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "chroma offset y (chroma_offset_y)"
 msgstr "色度 Y 偏移 (chroma_offset_y)"
 
@@ -2479,6 +2878,7 @@ msgid ""
 msgstr "调整此着色器的色度 Y 偏移。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "distance coeff (distance_coeff)"
 msgstr "距离系数 (distance_coeff)"
 
@@ -2489,6 +2889,7 @@ msgid ""
 msgstr "调整此着色器的距离系数。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > CfL Prediction)
+#. Setting name (Shortcuts > )
 msgid "intensity coeff (intensity_coeff)"
 msgstr "强度系数 (intensity_coeff)"
 
@@ -2503,6 +2904,7 @@ msgid "Reduce luma noise using similar image patches."
 msgstr "使用相似图像块减少亮度噪声。"
 
 #. Setting name (Shaders > NLMeans)
+#. Setting name (Shortcuts > )
 msgid "Reference Mode (REF)"
 msgstr "参考模式 (REF)"
 
@@ -2517,6 +2919,7 @@ msgid "Edge-aware luma noise reduction."
 msgstr "边缘感知的亮度降噪。"
 
 #. Setting name (Shaders > Bilateral Denoise)
+#. Setting name (Shortcuts > )
 msgid "SS (SS)"
 msgstr "空间 sigma (SS)"
 
@@ -2527,6 +2930,7 @@ msgstr "调整此着色器的空间 sigma。默认保留着色器作者的设定
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SR (SR)"
 msgstr "范围 sigma (SR)"
 
@@ -2542,6 +2946,7 @@ msgstr "减少颜色噪声。"
 
 #. Setting name (Shaders > Chroma Denoise)
 #. Setting name (Shaders > SSimDownscaler)
+#. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
 msgstr "阈值 (THR)"
 
@@ -2557,6 +2962,7 @@ msgid "Reduce banding in smooth gradients."
 msgstr "减少平滑渐变中的色带。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "S (S)"
 msgstr "S (S)"
 
@@ -2566,6 +2972,7 @@ msgid ""
 msgstr "调整此着色器的 S。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SI (SI)"
 msgstr "SI (SI)"
 
@@ -2575,6 +2982,7 @@ msgid ""
 msgstr "调整此着色器的 SI。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SW (SW)"
 msgstr "SW (SW)"
 
@@ -2584,6 +2992,7 @@ msgid ""
 msgstr "调整此着色器的 SW。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "Radius (RADIUS)"
 msgstr "半径 (RADIUS)"
 
@@ -2596,6 +3005,7 @@ msgid ""
 msgstr "调整此着色器的半径。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "SPARSITY (SPARSITY)"
 msgstr "稀疏性 (SPARSITY)"
 
@@ -2606,6 +3016,7 @@ msgid ""
 msgstr "调整此着色器的稀疏性。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "DIRECTIONS (DIRECTIONS)"
 msgstr "方向 (DIRECTIONS)"
 
@@ -2616,6 +3027,7 @@ msgid ""
 msgstr "调整此着色器的方向。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "RUN START (RUN_START)"
 msgstr "运行起始 (RUN_START)"
 
@@ -2626,6 +3038,7 @@ msgid ""
 msgstr "调整此着色器的运行起始。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > hdeband)
+#. Setting name (Shortcuts > )
 msgid "TOLERANCE (TOLERANCE)"
 msgstr "容差 (TOLERANCE)"
 
@@ -2640,6 +3053,7 @@ msgid "Reduce gradient banding with adjustable thresholds and grain."
 msgstr "使用可调阈值和颗粒减少渐变色带。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "RANGE (RANGE)"
 msgstr "范围 (RANGE)"
 
@@ -2650,6 +3064,7 @@ msgid ""
 msgstr "调整此着色器的范围。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Grain (GRAIN)"
 msgstr "颗粒 (GRAIN)"
 
@@ -2660,6 +3075,7 @@ msgid ""
 msgstr "调整此着色器的颗粒。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "GRAD (GRAD)"
 msgstr "梯度 (GRAD)"
 
@@ -2670,6 +3086,7 @@ msgid ""
 msgstr "调整此着色器的梯度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Average Threshold (THR_AVG)"
 msgstr "平均阈值 (THR_AVG)"
 
@@ -2680,6 +3097,7 @@ msgid ""
 msgstr "调整此着色器的平均阈值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Maximum Threshold (THR_MAX)"
 msgstr "最大阈值（THR_MAX）"
 
@@ -2690,6 +3108,7 @@ msgid ""
 msgstr "调整此着色器的最大阈值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Middle Threshold (THR_MID)"
 msgstr "中间阈值 (THR_MID)"
 
@@ -2700,6 +3119,7 @@ msgid ""
 msgstr "调整此着色器的中间阈值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "Combined Threshold (THR_ALL)"
 msgstr "组合阈值 (THR_ALL)"
 
@@ -2710,6 +3130,7 @@ msgid ""
 msgstr "调整此着色器的组合阈值。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "AB (AB)"
 msgstr "AB (AB)"
 
@@ -2719,6 +3140,7 @@ msgid ""
 msgstr "调整此着色器的 AB。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > neo-f3kdb)
+#. Setting name (Shortcuts > )
 msgid "AM (AM)"
 msgstr "AM (AM)"
 
@@ -2733,10 +3155,12 @@ msgstr "使用引导滤波增强细节。"
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Radius (RAD)"
 msgstr "半径 (RAD)"
 
 #. Setting name (Shaders > Guided Detail Enhance)
+#. Setting name (Shortcuts > )
 msgid "Regularization (EPS)"
 msgstr "正则化 (EPS)"
 
@@ -2747,6 +3171,7 @@ msgid ""
 msgstr "调整此着色器的正则化。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Guided Detail Enhance)
+#. Setting name (Shortcuts > )
 msgid "Subsampling (SUBSAM)"
 msgstr "子采样 (SUBSAM)"
 
@@ -2761,6 +3186,7 @@ msgid "Adjust local contrast in dark and bright areas."
 msgstr "调整暗部和亮部的局部对比度。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "SHIFT (SHIFT)"
 msgstr "位移 (SHIFT)"
 
@@ -2771,6 +3197,7 @@ msgid ""
 msgstr "调整此着色器的位移。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Shadow Strength (STRD)"
 msgstr "阴影强度 (STRD)"
 
@@ -2781,6 +3208,7 @@ msgid ""
 msgstr "调整此着色器的阴影强度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "Highlight Strength (STRL)"
 msgstr "高光强度 (STRL)"
 
@@ -2791,6 +3219,7 @@ msgid ""
 msgstr "调整此着色器的高光强度。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "BM (BM)"
 msgstr "BM (BM)"
 
@@ -2800,6 +3229,7 @@ msgid ""
 msgstr "调整此着色器的 BM。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "CD (CD)"
 msgstr "CD (CD)"
 
@@ -2809,6 +3239,7 @@ msgid ""
 msgstr "调整此着色器的 CD。默认保留着色器作者的设定。"
 
 #. Setting name (Shaders > Clarity)
+#. Setting name (Shortcuts > )
 msgid "CL (CL)"
 msgstr "CL (CL)"
 
@@ -2826,6 +3257,7 @@ msgid "Photo-oriented neural 2x upscaling."
 msgstr "面向照片的神经 2 倍放大。"
 
 #. Setting name (Shaders > AiUpscale Photo 2x)
+#. Setting name (Shortcuts > )
 msgid "Sharpen (SHARP)"
 msgstr "锐化 (SHARP)"
 
@@ -2870,6 +3302,7 @@ msgid "Detail-preserving downscaling. Requires a smaller output size."
 msgstr "保细节缩小。需要较小的输出尺寸。"
 
 #. Setting name (Shaders > DPID)
+#. Setting name (Shortcuts > )
 msgid "LBD (LBD)"
 msgstr "LBD (LBD)"
 
@@ -2908,6 +3341,16 @@ msgstr "文件夹"
 #. Section heading (Profiles)
 msgid "Displays"
 msgstr "显示器"
+
+#. Setting name (Profiles > Display)
+msgid "Same Settings on All Displays"
+msgstr "所有显示器使用相同设置"
+
+#. Setting description (Profiles > Display > Same Settings on All Displays)
+msgid ""
+"Changes apply to every display. Off: each keeps them and can be changed "
+"alone."
+msgstr "更改应用于所有显示器。关闭：各显示器保留这些设置，并可单独更改。"
 
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
@@ -2975,6 +3418,225 @@ msgstr "在单独的标签页中添加一个空配置文件。"
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
 msgstr "创建"
+
+#. Category
+#. Category heading
+msgid "Shortcuts"
+msgstr "快捷键"
+
+#. Category description
+msgid ""
+"Keys for the playing video. Open a group, click a field and press the keys."
+msgstr "用于正在播放的视频。展开分组，点击输入框并按下按键。"
+
+#. Setting name (Shortcuts > )
+#. Menu text; keep %d and %s placeholders
+msgid "Reset Shortcuts"
+msgstr "重置快捷键"
+
+#. Setting name (Shortcuts > )
+msgid "Renderer"
+msgstr "渲染器"
+
+#. Setting name (Shortcuts > )
+msgid "Statistics"
+msgstr "统计信息"
+
+#. Setting description (Shortcuts >  > Statistics)
+msgid "Shows or hides the statistics."
+msgstr "显示或隐藏统计信息。"
+
+#. Setting name (Shortcuts > )
+msgid "All Shaders Off / Back On"
+msgstr "全部着色器 关闭/恢复"
+
+#. Setting description (Shortcuts >  > All Shaders Off / Back On)
+msgid "Turns all shaders off; pressed again, back on."
+msgstr "关闭所有着色器；再按一次重新开启。"
+
+#. Setting name (Shortcuts > )
+msgid "Next Quality Preset"
+msgstr "下一个画质预设"
+
+#. Setting description (Shortcuts >  > Next Quality Preset)
+msgid "Switches to the next quality preset."
+msgstr "切换到下一个画质预设。"
+
+#. Setting name (Shortcuts > )
+msgid "Next Profile"
+msgstr "下一个配置文件"
+
+#. Setting description (Shortcuts >  > Next Profile)
+msgid "Switches this file to the next profile."
+msgstr "为此文件切换到下一个配置文件。"
+
+#. Setting name (Shortcuts > )
+msgid "Reset Picture Controls"
+msgstr "重置画面控制"
+
+#. Setting description (Shortcuts >  > Reset Picture Controls)
+msgid "Sets brightness, contrast, saturation and gamma back to neutral."
+msgstr "将亮度、对比度、饱和度和伽马恢复为中性值。"
+
+#. Setting name (Shortcuts > )
+msgid "Reset Statistics"
+msgstr "重置统计信息"
+
+#. Setting description (Shortcuts >  > Reset Statistics)
+msgid "Counters, averages and peaks start from zero."
+msgstr "计数、平均值和峰值从零开始。"
+
+#. Setting name (Shortcuts > )
+msgid "Next"
+msgstr "下一个值"
+
+#. Setting description (Shortcuts >  > Next)
+msgid "Next value; after the last one, the first again."
+msgstr "下一个值；最后一个之后回到第一个。"
+
+#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > 8-bit Integer (SDR))
+#. Setting description (Shortcuts >  > Prefer 10-bit Integer)
+msgid "Sets exactly this value."
+msgstr "直接设为此值。"
+
+#. Setting name (Shortcuts > )
+msgid "Increase"
+msgstr "增加"
+
+#. Setting description (Shortcuts >  > Increase)
+msgid "Raises the value by %s."
+msgstr "将数值增加 %s。"
+
+#. Setting name (Shortcuts > )
+msgid "Decrease"
+msgstr "降低"
+
+#. Setting description (Shortcuts >  > Decrease)
+msgid "Lowers the value by %s."
+msgstr "将数值降低 %s。"
+
+#. Setting description (Shortcuts >  > Image Analysis)
+#. Setting description (Shortcuts >  > Statistics in Video Area)
+#. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+msgid "Switches on or off; each press changes it."
+msgstr "开启或关闭，每按一次切换一次。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Ctrl"
+msgstr "Ctrl"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Alt"
+msgstr "Alt"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Shift"
+msgstr "Shift"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Space"
+msgstr "Space"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Enter"
+msgstr "Enter"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Tab"
+msgstr "Tab"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Backspace"
+msgstr "Backspace"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Left"
+msgstr "Left"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Right"
+msgstr "Right"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Up"
+msgstr "Up"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Down"
+msgstr "Down"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Up"
+msgstr "Page Up"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Page Down"
+msgstr "Page Down"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Home"
+msgstr "Home"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: End"
+msgstr "End"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Insert"
+msgstr "Insert"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Key name: Delete"
+msgstr "Delete"
+
+#. Menu text; keep %d and %s placeholders
+msgid "not available"
+msgstr "不可用"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Press the keys…"
+msgstr "请按下按键…"
+
+#. Menu text; keep %d and %s placeholders
+msgid "%s is already used by \"%s\"."
+msgstr "%s 已被“%s”使用。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Quality"
+msgstr "画质"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Custom"
+msgstr "自定义"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Reset"
+msgstr "重置"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Smooth Motion"
+msgstr "平滑运动"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Black Bar Detection"
+msgstr "黑边检测"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr "LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr "视频文件夹中没有 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr "视频文件夹中有多个 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr "无法读取视频文件夹中的 LUT"
 
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
@@ -3051,6 +3713,30 @@ msgstr "重置页面"
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
 msgstr "重置着色器"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr "输入"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr "亮度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr "色度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr "图像"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr "缩放前"
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr "缩放后"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Saved"
@@ -3133,14 +3819,6 @@ msgid "Enter a number within the supported range."
 msgstr "输入支持范围内的数字。"
 
 #. Menu text; keep %d and %s placeholders
-msgid "Quality"
-msgstr "画质"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Custom"
-msgstr "自定义"
-
-#. Menu text; keep %d and %s placeholders
 msgid "Measured"
 msgstr "实测"
 
@@ -3177,6 +3855,14 @@ msgid "Reset All"
 msgstr "全部重置"
 
 #. Menu text; keep %d and %s placeholders
+msgid "Range"
+msgstr "范围"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
+msgstr "移除所有快捷键？Ctrl+J 保留用于统计信息。"
+
+#. Menu text; keep %d and %s placeholders
 msgid ""
 "Reset all settings for this display to their defaults? Theme and language "
 "stay."
@@ -3205,15 +3891,3 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
-
-#. Setting description (Color > Display > Display Gamut)
-msgid "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from looking oversaturated."
-msgstr "用于原生模式下的广色域显示器，例如 P3-D65。防止颜色过饱和。"
-
-#. Setting name (Profiles > Display)
-msgid "Same Settings on All Displays"
-msgstr "所有显示器使用相同设置"
-
-#. Setting description (Profiles > Display > Same Settings on All Displays)
-msgid "Changes apply to every display. Off: each keeps them and can be changed alone."
-msgstr "更改应用于所有显示器。关闭：各显示器保留这些设置，并可单独更改。"

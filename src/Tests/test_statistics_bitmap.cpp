@@ -93,24 +93,28 @@ int main()
         const auto fresh = Wait(raster, 1000);
         Check(fresh && fresh->width < wide->width, "box starts over after a reset");
         // Markup: headings and rows draw in their own colours, values can be
-        // green, yellow or red; the overlay texture is RGB.
-        Check(raster.Submit(L"\x01Performance\nDrops\t\x02g0 dropped\nRender\t\x02r120% of 8 ms", 1100, 600),
-              "markup text");
+        // white, yellow or red; the overlay texture is RGB.
+        Check(raster.Submit(L"\x01Performance\nDrops\t0 dropped\nRender\t\x02r120% of 8 ms", 1100, 600), "markup text");
         const auto colors = Wait(raster, 1100);
         Check(colors.has_value(), "markup rasterized");
-        bool green = false, red = false, blue = false;
+        bool white = false, red = false, blue = false;
         for (size_t i = 0; i < colors->pixels.size(); i += 4)
         {
             const int r = colors->pixels[i], g = colors->pixels[i + 1], b = colors->pixels[i + 2];
-            green |= g > 180 && g > r + 60 && g > b + 60;
-            red |= r > 180 && r > g + 80 && r > b + 80;
+            white |= r > 220 && g > 220 && b > 220;
+            red |= r > 180 && r > g + 50 && r > b + 50;
             blue |= b > 200 && b > r + 60;
         }
-        Check(green && red && blue, "green and red values and a blue heading in RGB order");
+        Check(white && red && blue, "white and red values and a blue heading in RGB order");
         raster.Stop();
         Check(!raster.Submit(L"stopped", 1280, 1080), "no work after shutdown");
     }
-    puts("PASS worker pixels, paused notification, reset, bounded queue and shutdown");
+    // Statistics in the video area: start at the top of the picture, move up
+    // into the top bar only as far as needed, never above the window.
+    Check(OverlayTop(140, 940, 500) == 140, "box starts at the top of the picture");
+    Check(OverlayTop(140, 940, 900) == 40, "taller box moves up so it ends with the picture");
+    Check(OverlayTop(140, 640, 900) == 0, "box never leaves the window");
+    puts("PASS worker pixels, paused notification, reset, bounded queue and shutdown, overlay placement");
     auto params = pl_d3d11_default_params;
     auto d3d = pl_d3d11_create(nullptr, &params);
     Check(d3d != nullptr, "D3D11 device");
@@ -131,7 +135,7 @@ int main()
         pl_overlay overlay = {};
         pl_overlay_part part = {};
         bitmap.Describe(overlay, part);
-        Check(overlay.tex && overlay.tex->params.w == int(part.src.x1) && part.dst.x0 == 16,
+        Check(overlay.tex && overlay.tex->params.w == int(part.src.x1) && part.dst.x0 == 0,
               "GPU texture dimensions and left margin");
         Check(!bitmap.Update(d3d->gpu, L"statistics", 640, 360), "old viewport is not displayed after resize");
         Check(update(640, 360), "replacement viewport uploaded");

@@ -59,11 +59,6 @@ inline std::string ScalingNumber(float value)
     return converted.ec == std::errc{} ? std::string(text, converted.ptr) : std::string{};
 }
 
-inline pl_filter_usage ScalingUsage(int role)
-{
-    return role == 4 ? PL_FILTER_FRAME_MIXING : role % 2 ? PL_FILTER_DOWNSCALING : PL_FILTER_UPSCALING;
-}
-
 inline const pl_filter_config* ScalingFilter(pl_options o, int role)
 {
     switch (role)

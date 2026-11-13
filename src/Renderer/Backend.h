@@ -67,14 +67,16 @@ struct RenderSettings
     float debandThreshold = 3, debandRadius = 16, debandGrain = 4;
     bool ditherTemporal = false;
     bool deband = false, hdrPassthrough = false, autoHdr = false;
-    bool clippingProtection = false;
-    int deinterlacing = 1; // 0=off, 1=Bwdif, 2=Yadif
+    bool clippingProtection = false; // no longer used
+    int deinterlacing = 1;           // 0=off, 1=Bwdif, 2=Yadif
     std::string upscaler = "ewa_lanczos", downscaler = "mitchell";
     std::string chromaUpscaler = "auto";
     int outputFormat = 0;
     int outputLevels = 0, displayDepth = 0; // levels: auto/full/limited; depth: 0=auto
     int hdrMode = 2;
+    int windowsHdrToggle = 0; // WindowsHdr::Toggle
     bool peakDetect = true, allowDelayedPeak = false;
+    bool shaderAutoOrder = true;
     float peakSmoothing = 20, sceneLow = 1, sceneHigh = 3, peakPercentile = 100;
     float contrastRecovery = 0, contrastSmoothness = 3.5f;
     int gamutMapping = 0;
@@ -93,6 +95,7 @@ struct RenderSettings
     bool smoothMotion = false;
     bool rtxSuperResolution = false, rtxHdr = false;
     bool imageAnalysis = false;
+    bool statisticsInVideo = false; // statistics and analysis follow the picture
     std::optional<ScalingSettings> scaling;
     float motionRadius = 0;
     bool iccEnabled = false, lutEnabled = false;
@@ -171,23 +174,43 @@ class PlaceboBackend
                             bool windowGeometry = false);
     void Flush(bool preserveBlackBars = true);
     ID3D11Device* Device() const;
+    // Creates the render device when no frame has done so yet.
+    ID3D11Device* EnsureDevice();
     std::string LastError() const;
     int OutputTextureFormat() const; // positive=integer depth, negative=float depth
     int SharpenState() const;
     int CacheLoadedObjects() const;
     int CacheObjects() const;
     void ShowStatistics(bool enabled);
+    // Short text in the picture for about two seconds, e.g. after a shortcut.
+    void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;
+    // Latest Ctrl+J text with its on-screen markup; empty while Ctrl+J is off.
+    std::wstring StatisticsSnapshot() const;
+
+    // What the window thread needs for the Windows HDR switch. The listener
+    // runs on the render thread when it changes.
+    struct DisplayHdrInput
+    {
+        bool known = false, hdrSource = false, rtxHdr = false;
+    };
+
+    DisplayHdrInput DisplayHdr() const;
+    void SetDisplayHdrListener(std::function<void()> listener);
+    // Windows HDR state found by the switch, as DXGI can report the old state
+    // after a switch; -1 asks DXGI. rebuildOutput recreates the swapchain.
+    void SetDisplayHdrState(int enabled, bool rebuildOutput);
     uint64_t RtxFrames() const;
     void SetSourceCodec(const std::string& codec);
     // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
     void SetContentProfile(const std::wstring& label);
     void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
-    std::wstring StatisticsText() const;
     // refreshLead: Smooth Motion scheduled this present on its own display
     // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
     void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
+    // Ctrl+J from zero: lost pictures, DXGI counters, averages and peaks.
+    void ResetStatistics();
     // Last observed vsync (QPC, absolute refresh count) and refresh period in
     // QPC units; false while DXGI feedback is missing, stale or irregular.
     bool VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) const;

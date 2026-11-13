@@ -1,8 +1,13 @@
 #pragma once
+#include "UI/SettingsModelTypes.h"
 #include "Settings/SettingsChoices.h"
 #include <functional>
 #include <cstring>
 #include "UI/Direct2DSettingsHelp.h"
+#include "Renderer/DiagnosticReport.h"
+#include "Renderer/UserShaderSource.h"
+#include "Settings/CustomShaders.h"
+#include "Settings/SettingsIni.h"
 #include "Settings/ShaderParameterLabels.h"
 #include "Renderer/DisplayModes.h"
 #include "UI/Translation.h"
@@ -41,6 +46,7 @@ inline constexpr D2DScalerPreset D2DScalerPresets[] = {
     {"hermite", L"Hermite-weighted frame mixing", 4},
     {"linear", L"Linear frame mixing", 4},
     {"cubic", L"Cubic B-spline frame mixing", 4},
+    {"mitchell_clamp", L"Clamped Mitchell spline frame mixing", 4},
 };
 
 inline std::wstring D2DScalerDescription(int role, const char* name)
@@ -264,6 +270,8 @@ inline float D2DScalingDefault(const PlaceboSettings& s, int role, int i)
 
 inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
 {
+    CustomShaders::Refresh();
+    MoveEmptyShaderSlotsLast(s.userShaders.order);
     std::vector<D2DPage> pages;
     auto page = [&](const wchar_t* name, const wchar_t* title, const wchar_t* help) -> D2DPage&
     {
@@ -327,18 +335,22 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto& analysis = card(p, L"Image Analysis");
         auto scope = D2DBool(s, L"Image Analysis", &s.imageAnalysis);
         scope.desc =
-            L"Waveform, histogram, RGB parade, false color and a gray ramp. Samples before/after color mapping; excludes subtitles. SDR nits are nominal.";
+            L"Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles.";
         analysis.controls.push_back(std::move(scope));
+        analysis.controls.push_back(
+            D2DBool(s,
+                    L"Statistics in Video Area",
+                    &s.statisticsInVideo,
+                    L"Ctrl+J statistics and image analysis sit on the picture, not in black bars."));
         auto& mode = card(p,
                           L"Display Mode",
                           L"Switches the display to a listed mode matching the video frame rate in fullscreen and "
                           L"restores it when leaving fullscreen or stopping.");
-        mode.controls.push_back(
-            D2DBool(s,
-                    L"Switch Display Mode in Fullscreen",
-                    &s.displayModeSwitch,
-                    L"Uses the listed mode with the lowest refresh rate that is a whole multiple of the "
-                    L"video frame rate. Applies to this display profile only."));
+        mode.controls.push_back(D2DBool(
+            s,
+            L"Switch Display Mode in Fullscreen",
+            &s.displayModeSwitch,
+            L"Uses the listed mode whose refresh rate is the lowest whole multiple of the frame rate. Only for this display."));
         D2DControl list;
         list.name = L"Allowed Modes";
         list.kind = ControlKind::Text;
@@ -382,6 +394,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         auto& b = card(p, L"Background & Transparency");
         for (int i = 0; i < 14; i++)
             extra(b, i);
+        auto& diagnostics = card(p, L"Diagnostics");
+        D2DControl log;
+        log.name = L"Diagnostic Log";
+        log.desc = L"Records the next start of the player for a bug report, then turns itself off.";
+        log.kind = ControlKind::Toggle;
+        log.get = [] { return Diagnostics::Armed() || TraceEnabled() ? 1.f : 0.f; };
+        log.set = [](float v) { Diagnostics::SetArmed(v != 0); };
+        diagnostics.controls.push_back(std::move(log));
+        diagnostics.controls.push_back(D2DAction(
+            L"Save Report",
+            L"Save",
+            [&s](HWND owner) { Diagnostics::SaveReport(SettingsIni::Serialize(s), owner); },
+            L"Saves a report for a bug report on the desktop."));
     }
     {
         auto& p = page(L"Processing", L"Processing", L"Image cleanup, field processing and output dithering.");
@@ -425,8 +450,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                       &s.fieldOverride,
                       {{0, L"Auto (Source Flags)"}, {1, L"Top Field First"}, {2, L"Bottom Field First"}}));
         auto& t = card(p, L"Dithering");
-        t.controls.push_back(D2DChoice(s, L"Algorithm", &s.ditherMethod, D2DChoices(DitherChoices)));
-        t.controls.push_back(D2DBool(s, L"Change Dither for Every Frame", &s.ditherTemporal));
+        t.controls.push_back(D2DChoice(
+            s,
+            L"Algorithm",
+            &s.ditherMethod,
+            D2DChoices(DitherChoices),
+            L"Error diffusion costs more GPU time. Large kernels fall back to Blue Noise at high resolutions."));
+        auto temporal = D2DBool(s, L"Change Dither for Every Frame", &s.ditherTemporal);
+        temporal.enabled = [&s] { return s.ditherMethod < 3; };
+        t.controls.push_back(std::move(temporal));
     }
     {
         auto& p = page(
@@ -478,18 +510,23 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             L"Present in Advance",
             &s.presentAhead,
             {{0, L"Automatic"}, {1, L"1 Refresh"}, {2, L"2 Refreshes"}, {3, L"3 Refreshes"}, {4, L"4 Refreshes"}},
-            L"Smooth Motion pictures handed to the display ahead of time. More absorbs "
-            L"render peaks on slower PCs but adds latency. Automatic starts at one and "
-            L"adds more only after late pictures."));
-        c.controls.push_back(D2DNumber(s,
-                                       L"Oversample Threshold",
-                                       &s.motionThreshold,
-                                       0,
-                                       .5f,
-                                       .01f,
-                                       L"Smooth Motion shows a whole picture instead of a blend when the other "
-                                       L"picture would cover less than this share of a refresh. Fewer double "
-                                       L"edges on motion; 0 always blends. Used with the oversample frame mixer."));
+            L"Pictures handed to the display ahead of time. More absorbs render peaks but adds latency. Automatic adds more only after late pictures."));
+        auto threshold = D2DNumber(
+            s,
+            L"Oversample Threshold",
+            &s.motionThreshold,
+            0,
+            .5f,
+            .01f,
+            L"Shows a whole picture instead of a blend when the other would cover less than this share of a refresh. Fewer double edges; 0 always blends.");
+        // Only the oversample mixer drops short frames.
+        threshold.enabled = [&s]
+        {
+            const char* mixer = s.scaling.filters[4].filter;
+            return strcmp(mixer, "none") && strcmp(mixer, "linear") && strcmp(mixer, "hermite") &&
+                   strcmp(mixer, "cubic") && strcmp(mixer, "mitchell_clamp");
+        };
+        c.controls.push_back(std::move(threshold));
         extra(c, 15);
         extra(c, 16);
         auto& rtx = card(p,
@@ -522,14 +559,25 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             for (int kind = 0; kind < 3; kind++)
             {
                 char* field = kind == 0 ? f.preset : kind == 1 ? f.kernel : f.window;
-                std::vector<std::string> names = {"auto", "none"};
+                // Only the window can be "none" (no windowing). A custom filter
+                // always needs a kernel, and "auto" already starts from the
+                // renderer's filter, so "none" there could only be rejected.
+                std::vector<std::string> names = {"auto"};
+                if (kind == 2)
+                    names.emplace_back("none");
                 if (kind == 0)
                 {
                     names = D2DScalerNames(role, false, field);
+                    if (strcmp(field, "none"))
+                        names.erase(std::remove(names.begin(), names.end(), "none"), names.end());
                 }
                 else
                     for (int j = 0; j < pl_num_filter_functions; j++)
-                        names.emplace_back(pl_filter_functions[j]->name);
+                        if (strcmp(pl_filter_functions[j]->name, "none"))
+                            names.emplace_back(pl_filter_functions[j]->name);
+                // A value saved before stays visible and selectable.
+                if (std::find(names.begin(), names.end(), field) == names.end())
+                    names.emplace_back(field);
                 D2DControl n;
                 n.name = kind == 0 ? L"Starting Filter" : kind == 1 ? L"Kernel" : L"Window";
                 n.kind = ControlKind::Choice;
@@ -613,7 +661,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                      L"Protect Burned-in Subtitles",
                                      &s.blackBars.keepSubtitles,
                                      L"Temporarily restore bars if they contain visible content."));
-        c.controls.push_back(D2DBool(s, L"Keep a Stable Zoom", &s.blackBars.stableZoom));
         c.controls.push_back(D2DChoice(
             s, L"Zoom Mode", &s.blackBars.zoom, {{0, L"Fit (Keep All Content)"}, {1, L"Fill (May Crop Content)"}}));
         c.controls.push_back(D2DNumber(s, L"Black Threshold", &s.blackBars.threshold, 0, 10, .01f));
@@ -625,11 +672,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"Neutral values are Brightness 0, Contrast / Saturation / Gamma 1 and Temperature 6500 K.");
         auto& c = card(p, L"Picture Controls");
         c.controls.push_back(D2DBool(s, L"Enable Color Adjustment", &s.colorAdjustment));
-        c.controls.push_back(D2DNumber(s, L"Brightness", &s.brightness, -1, 1, .001f));
-        c.controls.push_back(D2DNumber(s, L"Contrast", &s.contrast, 0, 100, .001f));
-        c.controls.push_back(D2DNumber(s, L"Saturation", &s.saturation, 0, 100, .001f));
-        c.controls.push_back(D2DNumber(s, L"Gamma", &s.gamma, 0, 100, .001f));
+        // Keys step these like the former picture shortcuts.
+        const auto picture = [&](const wchar_t* name, float* value, float low, float high, float key)
+        {
+            auto n = D2DNumber(s, name, value, low, high, .001f);
+            n.keyStep = key;
+            c.controls.push_back(std::move(n));
+        };
+        picture(L"Brightness", &s.brightness, -1, 1, .02f);
+        picture(L"Contrast", &s.contrast, 0, 100, .05f);
+        picture(L"Saturation", &s.saturation, 0, 100, .05f);
+        picture(L"Gamma", &s.gamma, 0, 100, .05f);
         auto h = D2DNumber(s, L"Hue (degrees)", &s.hue, -180, 180, .01f);
+        h.keyStep = 1;
         h.defaultValue = [] { return 0.f; };
         h.get = [&s] { return s.hue * 180 / 3.141593f; };
         h.set = [&s](float v) { s.hue = v * 3.141593f / 180; };
@@ -638,6 +693,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         t.defaultValue = [] { return 6500.f; };
         t.get = [&s] { return 6500 + 3500 * s.temperature; };
         t.set = [&s](float v) { s.temperature = (v - 6500) / 3500; };
+        t.keyStep = 100;
         c.controls.push_back(std::move(t));
     }
     {
@@ -656,9 +712,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             s.hdrPassthrough = int(v) != 2;
         };
         c.controls.push_back(std::move(mode));
-        auto protection = D2DBool(s, L"Clipping Protection", &s.clippingProtection);
-        protection.enabled = [&s] { return s.hdrMode != 1; };
-        c.controls.push_back(std::move(protection));
+        c.controls.push_back(D2DChoice(s,
+                                       L"Switch Windows HDR",
+                                       &s.windowsHdrToggle,
+                                       {{0, L"Do Not Change"},
+                                        {1, L"Turn On in Fullscreen"},
+                                        {2, L"Turn On"},
+                                        {3, L"Turn On/Off in Fullscreen"},
+                                        {4, L"Turn On/Off"}},
+                                       L"Turns Windows HDR on or off for playback and restores it afterwards."));
         auto peak = D2DNumber(s, L"HDR Target Peak (0 = Auto)", &s.hdrNits, 0, 10000, 1);
         // Values between 0 and 80 nits are not valid peaks; skip them.
         peak.set = [&s](float v) { s.hdrNits = v > 0 && v < 80 ? (v < s.hdrNits ? 0.f : 80.f) : v; };
@@ -667,15 +729,15 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DNumber(s, L"SDR Target Brightness (nits)", &s.sdrNits, 40, 1000, 1));
         c.controls.push_back(D2DChoice(s, L"Tone Mapping Function", &s.toneMapping, D2DChoices(ToneChoices)));
         c.controls.push_back(D2DChoice(s, L"Gamut Mapping Function", &s.gamutMapping, D2DChoices(GamutChoices)));
-        c.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
-        c.controls.push_back(D2DBool(s,
-                                     L"RTX Video HDR",
-                                     &s.rtxHdr,
-                                     L"AI conversion of SDR videos to HDR by the NVIDIA driver. Needs Windows HDR, an "
-                                     L"RTX GPU and RTX Video HDR on in the NVIDIA app, where brightness is set."));
+        c.controls.push_back(D2DBool(
+            s,
+            L"RTX Video HDR",
+            &s.rtxHdr,
+            L"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));
+        d.controls.push_back(D2DBool(s, L"Show Clipping", &s.showClipping));
         d.controls.push_back(D2DNumber(s, L"Smoothing Period", &s.peakSmoothing, 0, 1000, .01f));
         d.controls.push_back(D2DNumber(s, L"Scene Threshold Low", &s.sceneLow, 0, 100, .001f));
         d.controls.push_back(D2DNumber(s, L"Scene Threshold High", &s.sceneHigh, 0, 100, .001f));
@@ -861,13 +923,17 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         n.reset = [&s] { s.lutPath[0] = 0; };
         l.controls.push_back(std::move(n));
         l.controls.push_back(D2DBool(s, L"Enable 3D LUT", &s.lutEnabled));
+        l.controls.push_back(D2DBool(s,
+                                     L"LUT from Video Folder",
+                                     &s.lutFromFolder,
+                                     L"Uses a .cube file next to the video: first one named like the video, else "
+                                     L"the folder's only one. Otherwise the LUT above."));
         extra(l, 14);
     }
     {
-        auto& p = page(
-            L"Shaders",
-            L"Shader Chain",
-            L"Enable shaders individually. Chain position follows the stored order; separate input and output stages are retained.");
+        auto& p = page(L"Shaders",
+                       L"Shader Chain",
+                       L"Enable shaders individually. They run by stage; Automatic Order sorts shaders of one stage.");
         auto& chain = card(p, L"Chain Controls");
         chain.controls.push_back(D2DAction(L"Disable All Shaders",
                                            L"All Off",
@@ -876,12 +942,34 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                                for (auto& c : s.userShaders.shaders)
                                                    c.enabled = 0;
                                            }));
+        // The shaders that run, in the order they run.
+        const auto activeChain = [&s]
+        {
+            std::vector<int> active;
+            for (int id : ShaderChainOrder(s.userShaders, s.shaderAutoOrder != FALSE))
+                if (s.userShaders.shaders[id].enabled && ShaderListed(id))
+                    active.push_back(id);
+            return active;
+        };
         for (int id : s.userShaders.order)
         {
+            if (!ShaderListed(id))
+                continue;
             const auto& info = ShaderCatalog[id];
             auto& c = card(p, info.label, info.help);
             auto& f = s.userShaders.shaders[id];
-            // Shaders are switched on in the list above; the card holds their parameters.
+            // Shaders are switched on in the list above; the card holds their
+            // parameters. The hidden switch serves keyboard shortcuts and the
+            // search, which does not show that list.
+            D2DControl on;
+            on.name = L"On/Off";
+            on.desc = L"Switches this shader on or off.";
+            on.kind = ControlKind::Toggle;
+            on.hidden = true;
+            on.searchByCard = true;
+            on.get = [&f] { return f.enabled ? 1.f : 0.f; };
+            on.set = [&f, usable = info.usable](float v) { f.enabled = usable && v != 0; };
+            c.controls.push_back(std::move(on));
             for (int i = 0; i < info.count; i++)
             {
                 const auto& param = info.parameters[i];
@@ -897,6 +985,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 n.minVal = param.minimum;
                 n.maxVal = param.maximum;
                 n.stepVal = param.integer ? 1 : .001f;
+                // A parameter the shader defines as a list of names.
+                if (info.choices)
+                    if (const auto& names = info.choices[i]; !names.empty())
+                    {
+                        n.kind = ControlKind::Choice;
+                        for (size_t k = 0; k < names.size(); k++)
+                            n.choices.push_back({int(k), names[k]});
+                    }
                 n.defaultValue = [initial = param.initial] { return initial; };
                 n.get = [&f, i, initial = param.initial] { return f.overrides & (1u << i) ? f.values[i] : initial; };
                 n.set = [&f, i](float v)
@@ -911,34 +1007,63 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                 };
                 c.controls.push_back(std::move(n));
             }
+            // One switch for the whole chain, in the card of every shader it
+            // places; a custom shader that does not clearly scale is always
+            // placed by hand.
+            const bool autoSorted = ShaderAutoSorted(id);
+            if (autoSorted)
+                c.controls.push_back(D2DBool(s, L"Automatic Order", &s.shaderAutoOrder));
             auto position = D2DControl{};
             position.name = L"Chain Position";
             position.kind = ControlKind::Choice;
-            for (int j = 0; j < ShaderCount; j++)
-                position.choices.push_back({j, std::to_wstring(j + 1)});
-            position.defaultValue = [id] { return float(id); };
-            position.get = [&s, id]
+            position.refreshChoices = [activeChain]
             {
-                for (int j = 0; j < ShaderCount; j++)
-                    if (s.userShaders.order[j] == id)
-                        return float(j);
-                return 0.f;
+                std::vector<ChoiceItem> items;
+                const int count = std::max(1, int(activeChain().size()));
+                for (int j = 0; j < count; j++)
+                    items.push_back({j, std::to_wstring(j + 1)});
+                return items;
             };
+            position.choices = position.refreshChoices();
+            // Only two or more running shaders have an order to choose.
+            // Automatic Order sets the positions; turn it off to choose them.
+            position.enabled = [&s, &f, activeChain, autoSorted]
+            { return (!s.shaderAutoOrder || !autoSorted) && f.enabled && activeChain().size() > 1; };
+            position.get = [id, activeChain]
+            {
+                const auto active = activeChain();
+                const auto found = std::find(active.begin(), active.end(), id);
+                return found == active.end() ? 0.f : float(found - active.begin());
+            };
+            position.defaultValue = position.get;
+            // The stored order of the running shaders: Automatic Order keeps the
+            // place a hand-placed shader has among them.
             position.set = [&s, id](float v)
             {
-                int at = 0;
-                while (s.userShaders.order[at] != id)
-                    at++;
-                int to = int(v);
-                if (at < to)
-                    std::rotate(s.userShaders.order + at, s.userShaders.order + at + 1, s.userShaders.order + to + 1);
-                else
-                    std::rotate(s.userShaders.order + to, s.userShaders.order + at, s.userShaders.order + at + 1);
+                std::vector<int> active;
+                for (int other : s.userShaders.order)
+                    if (s.userShaders.shaders[other].enabled && ShaderListed(other))
+                        active.push_back(other);
+                const auto self = std::find(active.begin(), active.end(), id);
+                if (self == active.end())
+                    return;
+                active.erase(self);
+                std::vector<int> order(std::begin(s.userShaders.order), std::end(s.userShaders.order));
+                order.erase(std::find(order.begin(), order.end(), id));
+                const size_t to = size_t(v);
+                auto at = order.begin();
+                if (to < active.size())
+                    at = std::find(order.begin(), order.end(), active[to]);
+                else if (!active.empty())
+                    at = std::find(order.begin(), order.end(), active.back()) + 1;
+                order.insert(at, id);
+                std::copy(order.begin(), order.end(), s.userShaders.order);
             };
             position.reset = [&s]
             {
                 for (int j = 0; j < ShaderCount; j++)
                     s.userShaders.order[j] = j;
+                MoveEmptyShaderSlotsLast(s.userShaders.order);
             };
             c.controls.push_back(std::move(position));
         }

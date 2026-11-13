@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/ImageAnalysisPlot.h"
+#include "Renderer/StatisticsBitmap.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/shaders/custom.h>
@@ -238,6 +239,15 @@ class ImageAnalysis
         capture = failed = false;
     }
 
+    // Another setting changes the output: sample the current picture again at
+    // the next render, also when paused, but keep the textures and the plot.
+    void Refresh()
+    {
+        for (auto& s : stages)
+            s.captured = 0;
+        last = 0;
+    }
+
     void Begin(pl_d3d11 device, ID3D11DeviceContext* ctx, HWND hwnd, uint64_t frameKey, bool mixing = false)
     {
         if (d3d && d3d != device)
@@ -359,7 +369,9 @@ class ImageAnalysis
         return ramp;
     }
 
-    bool Describe(pl_overlay& overlay, pl_overlay_part& part, int width, int height)
+    // Top right of the window, or of the picture (x0, y0, x1, y1) when given.
+    bool
+    Describe(pl_overlay& overlay, pl_overlay_part& part, int width, int height, const pl_rect2df* picture = nullptr)
     {
         if (!bitmap)
             return false;
@@ -371,7 +383,9 @@ class ImageAnalysis
             return false;
         const float w = ImageAnalysisPlot::Width * scale, h = ImageAnalysisPlot::Height * scale;
         part.src = {0, 0, float(ImageAnalysisPlot::Width), float(ImageAnalysisPlot::Height)};
-        part.dst = {width - w - 16, 16, width - 16.f, h + 16};
+        const float right = picture ? std::min(float(width), picture->x1) - 16 : width - 16.f;
+        const float top = picture ? OverlayTop(picture->y0 + 16, picture->y1, h) : 16.f;
+        part.dst = {right - w, top, right, top + h};
         overlay = {};
         overlay.tex = bitmap;
         overlay.mode = PL_OVERLAY_NORMAL;

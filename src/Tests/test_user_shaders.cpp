@@ -1,7 +1,11 @@
 // Every catalogue shader must load from the shipped folder and parse; the
 // RAVU Zoom variants must also render a 2x upscale of a YCbCr frame.
 #define NOMINMAX
-#include "Renderer/UserShaderSource.h"
+#include "Renderer/ShaderHooks.h"
+#include "Renderer/ShaderWarmup.h"
+#include <dxgi.h>
+#include <wrl/client.h>
+#include "Settings/CustomShaders.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/shaders/custom.h>
@@ -27,8 +31,8 @@ int main()
         Require(d3d != nullptr, "D3D11 GPU");
         const pl_gpu gpu = d3d->gpu;
 
-        const pl_hook* hooks[ShaderCount] = {};
-        for (int id = 0; id < ShaderCount; ++id)
+        const pl_hook* hooks[ShaderBuiltinCount] = {};
+        for (int id = 0; id < ShaderBuiltinCount; ++id)
         {
             const auto source = LoadUserShaderSource(id);
             Require(!source.empty(), ShaderCatalog[id].file);
@@ -100,9 +104,9 @@ int main()
         for (const char* file : {"ravu_zoom_ar_r2.glsl", "ravu_zoom_r3.glsl", "ravu_zoom_ar_r3.glsl"})
         {
             int id = 0;
-            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, file))
+            while (id < ShaderBuiltinCount && strcmp(ShaderCatalog[id].file, file))
                 ++id;
-            Require(id < ShaderCount, "RAVU catalogue entry");
+            Require(id < ShaderBuiltinCount, "RAVU catalogue entry");
             auto render = pl_render_default_params;
             render.hooks = &hooks[id];
             render.num_hooks = 1;
@@ -133,6 +137,71 @@ int main()
                    ms,
                    100.0 * changed / (pixels.size() / 4));
         }
+        {
+            // A file from the custom folder loads like a catalogue shader, and
+            // a saved value is limited to what the file allows now.
+            wchar_t root[80];
+            swprintf_s(root, L"Software\\PlaceboRendererTest_shader_%lu", GetCurrentProcessId());
+            SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", root);
+            const auto folder = CustomShaders::Folder();
+            std::error_code error;
+            std::filesystem::remove_all(folder, error);
+            std::filesystem::create_directories(folder);
+            std::ofstream(folder / L"tint.glsl", std::ios::binary)
+                << "//!PARAM amount\n//!TYPE float\n//!MINIMUM 0.0\n//!MAXIMUM 2.0\n0.5\n\n"
+                   "//!HOOK MAIN\n//!BIND HOOKED\nvec4 hook() { return HOOKED_tex(HOOKED_pos) * amount; }\n";
+            CustomShaders::Refresh();
+            int id = ShaderBuiltinCount;
+            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, "tint.glsl"))
+                ++id;
+            Require(id < ShaderCount, "custom shader listed");
+            ShaderConfig config;
+            config.enabled = 1;
+            config.overrides = 1;
+            config.values[0] = 9;
+            const pl_hook* custom = ParseUserShader(gpu, id, config);
+            Require(custom != nullptr, "custom shader parses from its folder");
+            Require(custom->num_parameters == 1 && custom->parameters[0].data->f == 2.f,
+                    "saved value reaches the shader within the file's limits");
+            pl_mpv_user_shader_destroy(&custom);
+            {
+                // A worker device compiles the shader; its cache reaches this device.
+                ShaderWarmupJob job;
+                job.source = LoadUserShaderSource(id);
+                Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
+                Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+                DXGI_ADAPTER_DESC adapterDesc = {};
+                Require(SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+                            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&adapterDesc)),
+                        "adapter of the playing device");
+                job.adapter = adapterDesc.AdapterLuid;
+                job.width = 320;
+                job.height = 180;
+                Require(WarmUpShader(job) && !job.cache.empty(), "a worker device compiles the shader");
+                auto cacheParams = pl_cache_default_params;
+                pl_cache cache = pl_cache_create(&cacheParams);
+                Require(pl_cache_load(cache, job.cache.data(), job.cache.size()) > 0, "its cache can be loaded");
+                pl_cache_destroy(&cache);
+            }
+            // A chain from a package runs as one shader.
+            std::filesystem::create_directories(folder / L"shaders");
+            for (const wchar_t* part : {L"one.glsl", L"two.glsl"})
+                std::ofstream(folder / L"shaders" / part, std::ios::binary)
+                    << "//!HOOK MAIN\n//!BIND HOOKED\nvec4 hook() { return HOOKED_tex(HOOKED_pos); }\n";
+            std::ofstream(folder / L"input.conf", std::ios::binary)
+                << "K glsl-shaders set \"~~/shaders/one.glsl;~~/shaders/two.glsl\"; show-text \"Both\"\n";
+            CustomShaders::Refresh();
+            int chain = ShaderBuiltinCount;
+            while (chain < ShaderCount && wcscmp(ShaderCatalog[chain].label, L"Both"))
+                ++chain;
+            Require(chain < ShaderCount, "package chain listed");
+            const pl_hook* joined = ParseUserShader(gpu, chain, {});
+            Require(joined != nullptr, "package chain parses as one shader");
+            pl_mpv_user_shader_destroy(&joined);
+            std::filesystem::remove_all(folder, error);
+            CustomShaders::Refresh();
+            RegDeleteTreeW(HKEY_CURRENT_USER, root);
+        }
         pl_renderer_destroy(&renderer);
         pl_tex_destroy(gpu, &target);
         for (auto& tex : planes)
@@ -141,7 +210,71 @@ int main()
             pl_mpv_user_shader_destroy(&hook);
         pl_d3d11_destroy(&d3d);
         printf("PASS user shaders: %d catalogue shaders load and parse; RAVU Zoom R2/R3 variants render\n",
-               ShaderCount);
+               ShaderBuiltinCount);
+
+        // Stages come from the files; every packaged shader has one.
+        const auto find = [](const char* file)
+        {
+            for (int id = 0; id < ShaderBuiltinCount; id++)
+                if (!strcmp(ShaderCatalog[id].file, file))
+                    return id;
+            throw std::runtime_error(file);
+        };
+        for (int id = 0; id < ShaderBuiltinCount; id++)
+            Require(ShaderStage(id) != ShaderStageUnknown && *ShaderStageLabel(ShaderStage(id)),
+                    ShaderCatalog[id].file);
+        const int cas = find("AMD_CAS_scl_RT.glsl"), nlmeans = find("nlmeans_luma_RT.glsl"),
+                  artcnn = find("ArtCNN_C4F16.glsl"), clarity = find("eq_clarity_RT.glsl"),
+                  hdeband = find("hdeband_rgb_RT.glsl"), krig = find("KrigBilateral.glsl"),
+                  ssim = find("SSimDownscaler_RT.glsl"), antiring = find("kantiring_ms_RT.glsl"),
+                  dehalo = find("FineDehalo_lite_RT.glsl");
+        Require(ShaderStage(artcnn) == 1 && ShaderStage(krig) == 2 && ShaderStage(clarity) == 8 &&
+                    ShaderStage(ssim) == 12 && ShaderStage(cas) == 13,
+                "stages from //!HOOK lines");
+        Require(ShaderStageOfSource("//!HOOK MAINPRESUB\n//!HOOK OUTPUT\n") == 8 &&
+                    ShaderStageOfSource("//!HOOK  LUMA\r\n") == 1 &&
+                    ShaderStageOfSource("no hooks") == ShaderStageUnknown,
+                "earliest stage, MAINPRESUB as MAIN, CRLF and missing hooks");
+
+        // Stored order runs sharpening and contrast first; the automatic order
+        // puts cleanup, scaling and sharpening of each stage in turn.
+        UserShaderSettings chain;
+        const int stored[] = {cas, clarity, antiring, ssim, artcnn, hdeband, krig, nlmeans, dehalo};
+        int at = 0;
+        for (int id : stored)
+            chain.shaders[id].enabled = 1;
+        std::vector<int> rest;
+        for (int id : chain.order)
+            if (std::find(std::begin(stored), std::end(stored), id) == std::end(stored))
+                rest.push_back(id);
+        for (int id : stored)
+            chain.order[at++] = id;
+        for (int id : rest)
+            chain.order[at++] = id;
+        const auto manual = ShaderChainOrder(chain, false);
+        Require(std::equal(std::begin(chain.order), std::end(chain.order), manual.begin()), "manual order unchanged");
+        const auto automatic = ShaderChainOrder(chain, true);
+        std::vector<int> running;
+        for (int id : automatic)
+            if (chain.shaders[id].enabled)
+                running.push_back(id);
+        const std::vector<int> expected = {nlmeans, dehalo, artcnn, krig, hdeband, clarity, ssim, antiring, cas};
+        Require(running == expected, "automatic order: stage, then cleanup, scaling, sharpening");
+        for (size_t i = std::size(stored); i < automatic.size(); i++)
+            Require(automatic[i] == chain.order[i], "switched-off shaders keep their places");
+        Require(ShaderScalesOfSource("//!WIDTH LUMA.w 2 *\n") && ShaderScalesOfSource("//!HEIGHT LUMA.h 4.0 *\r\n") &&
+                    ShaderScalesOfSource("//!WIDTH OUTPUT.w\n") && !ShaderScalesOfSource("//!WIDTH HOOKED.w 2 /\n") &&
+                    !ShaderScalesOfSource("//!WIDTH MAIN.w\n") && !ShaderScalesOfSource("//!WIDTH HOOKED.w 1 *\n") &&
+                    !ShaderScalesOfSource("//!DESC 2x upscale\n"),
+                "scalers recognized only from enlarging or output-sized passes");
+        for (int id = 0; id < ShaderBuiltinCount; id++)
+            Require(ShaderAutoSorted(id), "packaged shaders are placed automatically");
+        // Hand-placed shaders (7, 8) keep their positions while the others sort
+        // around them.
+        const auto fixedChain =
+            AutomaticShaderChain({5, 7, 1, 8, 3}, [](int id) { return id; }, [](int id) { return id != 7 && id != 8; });
+        Require(fixedChain == std::vector<int>({1, 7, 3, 8, 5}), "hand-placed shaders keep their positions");
+        puts("PASS shader stages and automatic chain order");
         return 0;
     }
     catch (const std::exception& e)

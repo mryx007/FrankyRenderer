@@ -192,6 +192,22 @@ class ShaderCache
         pl_gpu_set_cache(gpu, cache);
     }
 
+    // A copy of everything cached, for a worker device.
+    std::vector<uint8_t> Snapshot() const
+    {
+        std::vector<uint8_t> data(pl_cache_save(cache, nullptr, 0));
+        if (!data.empty() && pl_cache_save(cache, data.data(), data.size()) != data.size())
+            data.clear();
+        return data;
+    }
+
+    // Adds what a worker device compiled.
+    void Import(const std::vector<uint8_t>& data)
+    {
+        if (!data.empty())
+            pl_cache_load(cache, data.data(), data.size());
+    }
+
     int Loaded() const
     {
         return loaded;
@@ -200,11 +216,6 @@ class ShaderCache
     int Objects() const
     {
         return pl_cache_objects(cache);
-    }
-
-    size_t Bytes() const
-    {
-        return pl_cache_size(cache);
     }
 
     pl_cache Handle() const

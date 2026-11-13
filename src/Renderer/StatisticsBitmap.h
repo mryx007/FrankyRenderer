@@ -2,6 +2,15 @@
 #include <libplacebo/gpu.h>
 #include <libplacebo/renderer.h>
 #include "Renderer/StatisticsRasterizer.h"
+#include <algorithm>
+
+// Top edge of an overlay box placed at the top of the picture (top..bottom):
+// a box taller than the picture moves up into the top bar so it does not
+// reach below the picture, but never above the window.
+inline float OverlayTop(float top, float bottom, float boxHeight)
+{
+    return std::max(0.f, std::min(top, bottom - boxHeight));
+}
 
 // Independent sRGB overlay. Only texture uploads run on the video thread.
 // Uploads rotate through three textures: the shown one is still read by the
@@ -87,10 +96,31 @@ class StatisticsBitmap
         return texture && lastViewWidth == viewWidth && lastViewHeight == viewHeight;
     }
 
-    void Describe(pl_overlay& overlay, pl_overlay_part& part)
+    int Width() const
     {
+        return texture ? width : 0;
+    }
+
+    int Height() const
+    {
+        return texture ? height : 0;
+    }
+
+    // At a position in the window, e.g. a centred shortcut message.
+    void DescribeAt(pl_overlay& overlay, pl_overlay_part& part, float x, float y)
+    {
+        const pl_rect2df whole = {0, 0, 0, 0};
+        Describe(overlay, part, &whole);
+        part.dst = {x, y, x + float(width), y + float(height)};
+    }
+
+    // Top left of the window, or of the picture (x0, y0, x1, y1) when given.
+    void Describe(pl_overlay& overlay, pl_overlay_part& part, const pl_rect2df* picture = nullptr)
+    {
+        const float x = picture ? std::max(0.f, picture->x0) : 0,
+                    y = picture ? OverlayTop(picture->y0, picture->y1, float(height)) : 0;
         part.src = {0, 0, float(width), float(height)};
-        part.dst = {16, 0, float(width + 16), float(height)};
+        part.dst = {x, y, x + float(width), y + float(height)};
         overlay = {};
         overlay.tex = texture;
         overlay.mode = PL_OVERLAY_NORMAL;

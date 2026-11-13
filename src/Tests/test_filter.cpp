@@ -87,6 +87,9 @@ class TestPresenter final : public IUnknown
 
 static bool interlacedTest = false, bottomFirst = false, weaveTest = false, eosTest = false, yadifTest = false,
             forceBffTest = false, motionTest = false, sharpenTest = false;
+// Broadcast TV (issue 24): the decoder's per-picture flags change while
+// playing. 1 = alternate woven and field pictures, 2 = alternate field order.
+static int mixedFields = 0;
 static bool flushRaceTest = false, rtxTest = false, rtxHdrTest = false;
 static std::atomic<bool> blockSampleTime = false;
 static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
@@ -709,7 +712,9 @@ class PatternStream final : public CSourceStream
 
     HRESULT FillBuffer(IMediaSample* sample) override
     {
-        if (index >= (eosTest ? 6u : 90u))
+        // The measurement starts after the other checks and needs pictures
+        // still playing then: 20 s instead of 3 s.
+        if (index >= (eosTest ? 6u : measureTest ? 600u : 90u))
             return S_FALSE;
         BYTE* bytes = nullptr;
         HRESULT hr = sample->GetPointer(&bytes);
@@ -721,6 +726,10 @@ class PatternStream final : public CSourceStream
             AM_SAMPLE2_PROPERTIES props = {};
             Check(propsSample->GetProperties(sizeof(props), reinterpret_cast<BYTE*>(&props)), "sample properties");
             props.dwTypeSpecificFlags = weaveTest ? AM_VIDEO_FLAG_WEAVE : bottomFirst ? 0 : AM_VIDEO_FLAG_FIELD1FIRST;
+            if (mixedFields == 1 && index % 2)
+                props.dwTypeSpecificFlags = AM_VIDEO_FLAG_WEAVE;
+            if (mixedFields == 2)
+                props.dwTypeSpecificFlags = index % 2 ? 0 : AM_VIDEO_FLAG_FIELD1FIRST;
             Check(propsSample->SetProperties(sizeof(props), reinterpret_cast<const BYTE*>(&props)),
                   "sample field flags");
         }
@@ -1103,6 +1112,10 @@ int wmain(int argc, wchar_t** argv)
             yadifTest = true;
         if (wcscmp(argv[i], L"--force-bff") == 0)
             forceBffTest = true;
+        if (wcscmp(argv[i], L"--mixed-weave") == 0)
+            mixedFields = 1;
+        if (wcscmp(argv[i], L"--mixed-order") == 0)
+            mixedFields = 2;
     }
     setvbuf(stdout, nullptr, _IONBF, 0);
     g_hInst = GetModuleHandleW(nullptr);
@@ -1155,13 +1168,14 @@ int wmain(int argc, wchar_t** argv)
         if (!StatisticsKey::Handle(key, true, false, false, keyWindow) || key.message != WM_NULL)
             exit(101);
         MSG posted = {};
-        if (!PeekMessageW(&posted, keyWindow, StatisticsKey::ToggleMessage, StatisticsKey::ToggleMessage, PM_REMOVE))
+        if (!PeekMessageW(&posted, keyWindow, StatisticsKey::ActionMessage, StatisticsKey::ActionMessage, PM_REMOVE) ||
+            posted.wParam != WPARAM(Shortcuts::Action::Statistics))
             exit(102);
         key.message = WM_KEYDOWN;
         key.wParam = 'J';
         key.lParam = 1LL << 30;
         if (!StatisticsKey::Handle(key, true, false, false, keyWindow) ||
-            PeekMessageW(&posted, keyWindow, StatisticsKey::ToggleMessage, StatisticsKey::ToggleMessage, PM_REMOVE))
+            PeekMessageW(&posted, keyWindow, StatisticsKey::ActionMessage, StatisticsKey::ActionMessage, PM_REMOVE))
             exit(103);
         key.message = WM_SYSKEYDOWN;
         key.wParam = 'A';
@@ -1383,6 +1397,24 @@ int wmain(int argc, wchar_t** argv)
             exit(254);
         }
         puts("PASS new video child fills its owner before the first explicit placement");
+        {
+            // MPC-BE sizes its subtitle buffer right after SetWindowPosition and
+            // only on size changes; it must have the device by then (issue 28).
+            ComPtr<ISubRender11> subtitles;
+            Check(renderer.As(&subtitles), "MPC-BE subtitle interface");
+            ComPtr<SubtitleProbe> early;
+            early.Attach(new SubtitleProbe);
+            Check(subtitles->SetCallback11(early.Get()), "MPC-BE subtitle callback before playback");
+            Check(window->SetWindowPosition(0, 0, 320, 240), "MPC-BE first window size");
+            if (early->attached != 1)
+            {
+                printf("FAIL subtitle device not attached before the first window size: attached=%u\n",
+                       early->attached);
+                exit(248);
+            }
+            Check(subtitles->SetCallback11(nullptr), "MPC-BE subtitle callback detach");
+            puts("PASS MPC-BE subtitle device attached before the first window size");
+        }
         for (const SIZE size : {SIZE{320, 240}, SIZE{960, 540}, SIZE{128, 128}})
         {
             Check(window->SetWindowPosition(0, 0, size.cx, size.cy), "MPC-BE video window resize");
@@ -1423,6 +1455,53 @@ int wmain(int argc, wchar_t** argv)
         }
         Check(config->GetStatus(&status), "status");
     } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    if (mixedFields)
+    {
+        // Pictures must keep coming although their flags change every frame.
+        const auto first = status.rendered;
+        Sleep(1500);
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+            DispatchMessageW(&msg);
+        Check(config->GetStatus(&status), "status after changing field flags");
+        printf("%s %s with changing %s: %llu pictures shown (%llu more in 1.5 s), %llu fields, %llu mixed\n",
+               status.rendered >= 5 && status.rendered > first ? "PASS" : "FAIL",
+               motionTest ? "Smooth Motion" : "playback",
+               mixedFields == 1 ? "woven/field pictures" : "field order",
+               status.rendered,
+               status.rendered - first,
+               status.deinterlacedFields,
+               status.mixedFrames);
+        control->Stop();
+        return status.rendered >= 5 && status.rendered > first ? 0 : 50;
+    }
+    if (GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", nullptr, 0) && !eosTest)
+    {
+        // PotPlayer's Preferences > Video renderer opens the settings through a
+        // second renderer without a video; its changes reach the playing one.
+        ComPtr<IBaseFilter> settingsOnly;
+        Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&settingsOnly)), "settings-only renderer");
+        ComPtr<IPlaceboSettings> settingsConfig;
+        Check(settingsOnly.As(&settingsConfig), "settings-only interface");
+        PlaceboSettings shown = {}, playing = {}, after = {};
+        Check(settingsConfig->GetSettings(&shown), "settings-only read");
+        Check(config->GetSettings(&playing), "playing read");
+        if (wcscmp(shown.displayProfile, playing.displayProfile) || shown.brightness != playing.brightness)
+        {
+            puts("FAIL settings-only renderer shows the playing renderer's settings");
+            ExitProcess(1);
+        }
+        shown.brightness = playing.brightness > .5f ? playing.brightness - .1f : playing.brightness + .1f;
+        Check(settingsConfig->SetSettings(&shown), "settings-only change");
+        Check(config->GetSettings(&after), "playing read after change");
+        if (after.brightness != shown.brightness)
+        {
+            printf("FAIL settings-only change reaches the playing renderer: %.3f\n", double(after.brightness));
+            ExitProcess(1);
+        }
+        Check(settingsConfig->SetSettings(&playing), "settings-only restore");
+        puts("PASS settings opened without a video apply live to the playing renderer");
+    }
     if (rtxTest)
     {
         __int64 processed = 0;
@@ -1697,7 +1776,11 @@ int wmain(int argc, wchar_t** argv)
     }
     if (measureTest)
     {
-        const auto deadline = GetTickCount64() + 5000;
+        // Windows confirms presents of a small background window only now and
+        // then (often no valid sync time); give it time instead of failing.
+        // A few confirmed presents prove the feedback reaches the measurement.
+        constexpr __int64 wanted = 10;
+        const auto deadline = GetTickCount64() + 15000;
         __int64 confirmed = 0;
         do
         {
@@ -1709,14 +1792,18 @@ int wmain(int argc, wchar_t** argv)
             }
             Sleep(10);
             Check(hostConfig->Flt_GetInt64("placeboStatsConfirmed", &confirmed), "confirmed presentation feedback");
-        } while (confirmed < 20 && GetTickCount64() < deadline);
+        } while (confirmed < wanted && GetTickCount64() < deadline);
         __int64 glitches = 0, repeats = 0;
         double gpuMs = 0;
         Check(hostConfig->Flt_GetInt64("placeboStatsGlitches", &glitches), "clocked DXGI glitch counter");
         Check(hostConfig->Flt_GetInt64("placeboStatsRepeats", &repeats), "clocked DXGI repeat counter");
         Check(hostConfig->Flt_GetDouble("placeboStatsRenderGpuMs", &gpuMs), "asynchronous render GPU measurement");
-        if (confirmed < 20 || gpuMs <= 0)
+        if (confirmed < wanted || gpuMs <= 0)
+        {
+            printf("FAIL DXGI presentation feedback: %lld of %lld confirmed, GPU=%.3fms\n", confirmed, wanted, gpuMs);
+            fflush(stdout);
             exit(107);
+        }
         printf(
             "PASS actual DirectShow reference clock -> DXGI: %lld confirmed, repeats=%lld glitches=%lld GPU=%.3fms\n",
             confirmed,
@@ -1793,11 +1880,19 @@ int wmain(int argc, wchar_t** argv)
         shaderSettings.userShaders.shaders[0].enabled = 1;
         Check(config->SetSettings(&shaderSettings), "packaged AMD CAS enable");
         std::vector<BYTE> shaderPixels(color.size());
-        Check(config->ReadPixels(64, 64, shaderPixels.data(), shaderPixels.size()), "packaged custom shader pixels");
+        // The shader is prepared in the background and switches on when ready.
         long long delta = 0;
-        for (size_t i = 0; i < color.size(); i++)
-            if (i % 4 != 3)
-                delta += std::abs(int(color[i]) - int(shaderPixels[i]));
+        for (int attempt = 0; attempt < 100 && delta < 10; attempt++)
+        {
+            if (attempt)
+                Sleep(100);
+            Check(config->ReadPixels(64, 64, shaderPixels.data(), shaderPixels.size()),
+                  "packaged custom shader pixels");
+            delta = 0;
+            for (size_t i = 0; i < color.size(); i++)
+                if (i % 4 != 3)
+                    delta += std::abs(int(color[i]) - int(shaderPixels[i]));
+        }
         if (delta < 10)
             exit(211);
         Check(config->SetSettings(&settings), "packaged custom shader disable");
@@ -2082,6 +2177,68 @@ int wmain(int argc, wchar_t** argv)
             }
             Check(config->GetStatus(&status), "reconnect status");
         } while (status.rendered < beforeFrames + 5 && GetTickCount() - deadline < 5000);
+        if (phase == 0)
+        {
+            // VapourSynth Filter reconnects while playing and stops the video
+            // when the renderer refuses. The next picture brings the format.
+            AM_MEDIA_TYPE connected = {};
+            Check(input->ConnectionMediaType(&connected), "reconnect current type");
+            CMediaType p010(connected), nv12(connected);
+            FreeMediaType(connected);
+            const DWORD nv12Code = MAKEFOURCC('N', 'V', '1', '2');
+            nv12.subtype.Data1 = nv12Code;
+            auto nv12Info = reinterpret_cast<VIDEOINFOHEADER2*>(nv12.pbFormat);
+            nv12Info->bmiHeader.biCompression = nv12Code;
+            nv12Info->bmiHeader.biBitCount = 12;
+            nv12Info->bmiHeader.biSizeImage = 64 * 64 * 3 / 2;
+            nv12.lSampleSize = 64 * 64 * 3 / 2;
+            const auto waitForFormat = [&](const char* name)
+            {
+                const DWORD began = GetTickCount();
+                do
+                {
+                    Sleep(10);
+                    MSG msg;
+                    while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                    {
+                        TranslateMessage(&msg);
+                        DispatchMessageW(&msg);
+                    }
+                    actual = {};
+                    Check(diagnosticConfig->GetDiagnostics(&actual), "reconnect diagnostics");
+                } while (strcmp(actual.pixelFormat, name) && GetTickCount() - began < 3000);
+                return !strcmp(actual.pixelFormat, name);
+            };
+            if (input->ReceiveConnection(input.Get(), &p010) != VFW_E_ALREADY_CONNECTED)
+            {
+                puts("FAIL reconnect accepted from a pin that is not connected");
+                return 124;
+            }
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &p010), "reconnect with the same type");
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &nv12), "reconnect with a new type");
+            if (!waitForFormat("NV12"))
+            {
+                printf("FAIL reconnected type not applied: %s\n", actual.pixelFormat);
+                return 125;
+            }
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &p010), "reconnect back");
+            if (!waitForFormat("P010"))
+            {
+                printf("FAIL reconnect back not applied: %s\n", actual.pixelFormat);
+                return 126;
+            }
+            Check(config->GetStatus(&status), "status after playing reconnect");
+            const auto afterReconnect = status.rendered;
+            Sleep(250);
+            Check(config->GetStatus(&status), "status after playing reconnect wait");
+            if (status.rendered <= afterReconnect || FAILED(status.lastResult))
+            {
+                printf("FAIL playback stopped after reconnect, last result %08lX\n",
+                       static_cast<unsigned long>(status.lastResult));
+                return 127;
+            }
+            puts("PASS filter reconnect during playback: same and new type, next picture uses it, playback continues");
+        }
         Check(control->Pause(), "pause reconnected decoder");
         Check(control->GetState(3000, &paused), "reconnected paused state");
         if (status.rendered < beforeFrames + 5 || FAILED(status.lastResult) ||
@@ -2110,6 +2267,43 @@ int wmain(int argc, wchar_t** argv)
             strcmp(actual.pixelFormat, phase == 1 ? "NV12" : "P010"))
             exit(33);
         Check(control->Stop(), "stop reconnected decoder");
+        if (phase == 0)
+        {
+            ComPtr<IMemAllocator> allocator;
+            Check(mem->GetAllocator(&allocator), "reconnect allocator");
+            Check(allocator->Commit(), "reconnect allocator commit");
+            AM_MEDIA_TYPE connected = {};
+            Check(input->ConnectionMediaType(&connected), "reconnect larger type");
+            CMediaType larger(connected);
+            FreeMediaType(connected);
+            auto info = reinterpret_cast<VIDEOINFOHEADER2*>(larger.pbFormat);
+            const auto resize = [&](int size)
+            {
+                info->bmiHeader.biWidth = info->bmiHeader.biHeight = size;
+                info->bmiHeader.biSizeImage = size * size * 3;
+                larger.lSampleSize = size * size * 3;
+            };
+            resize(128);
+            Check(input->ReceiveConnection(rawSource->GetPin(0), &larger), "reconnect with a larger picture");
+            ComPtr<IMediaSample> held;
+            Check(allocator->GetBuffer(&held, nullptr, nullptr, 0), "buffer after larger reconnect");
+            if (held->GetSize() < 128 * 128 * 3)
+            {
+                printf("FAIL reconnect kept small buffers: %ld bytes\n", held->GetSize());
+                return 128;
+            }
+            resize(256);
+            if (input->ReceiveConnection(rawSource->GetPin(0), &larger) != VFW_E_BUFFERS_OUTSTANDING)
+            {
+                puts("FAIL reconnect resized buffers that are still in use");
+                return 129;
+            }
+            held.Reset();
+            Check(allocator->GetBuffer(&held, nullptr, nullptr, 0), "allocator usable after refused reconnect");
+            held.Reset();
+            Check(allocator->Decommit(), "reconnect allocator decommit");
+            puts("PASS filter reconnect grows free buffers and refuses buffers in use");
+        }
         printf("PASS same renderer reconnect: %s %s, new frames and pixels verified\n",
                hardware ? "GPU" : "CPU",
                textureFormat == DXGI_FORMAT_NV12 ? "NV12" : "P010");

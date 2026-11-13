@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "UI/MenuTheme.h"
+#include "UI/Translation.h"
 
 // A bounded selection window; native popup menus do not support wheel scrolling.
 class ChoicePopup
@@ -293,7 +294,7 @@ class ChoicePopup
                            0,
                            CLEARTYPE_QUALITY,
                            0,
-                           L"Segoe UI");
+                           MenuGdiFont());
         descriptionFont = CreateFontW(-int(12 * scale),
                                       0,
                                       0,
@@ -307,7 +308,7 @@ class ChoicePopup
                                       0,
                                       CLEARTYPE_QUALITY,
                                       0,
-                                      L"Segoe UI");
+                                      MenuGdiFont());
         // As wide as the longest entry, at least the field; grow leftwards and
         // stay inside the settings window (and the monitor). Descriptions wider
         // than 480 pixels wrap to a second line instead.

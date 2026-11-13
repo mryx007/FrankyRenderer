@@ -14,10 +14,13 @@
 #include "Renderer/MotionTiming.h"
 #include "Settings/Settings.h"
 #include "Settings/ContentProfiles.h"
+#include "Settings/FolderLut.h"
 #include "Renderer/FieldSample.h"
 #include "Renderer/Diagnostics.h"
 #include "DolbyVision/Processor.h"
 #include "Renderer/DisplayModes.h"
+#include "Renderer/WindowsHdrSwitch.h"
+#include "Settings/CustomShaders.h"
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -32,9 +35,26 @@ class DecoderPin final : public CRendererInputPin,
     Renderer* owner;
     std::atomic<unsigned> queried = 0;
     std::atomic<bool> nativeDecoder = false;
+    // Our allocator, and the top-down RGB type the upstream filter accepted.
+    class SideDataAllocator* ownAllocator = nullptr;
+    CMediaType topDown;
+    bool wantTopDown = false;
+    // The type of a reconnect during playback, for the next picture.
+    std::mutex reconnectLock;
+    CMediaType reconnected;
+    bool hasReconnected = false;
 
   public:
     DecoderPin(Renderer*, HRESULT*);
+    // Bottom-up RGB: ask the upstream filter to write top-down instead, as MPC
+    // Video Renderer does. Filters such as DirectVobSub otherwise disagree
+    // with the renderer about the row order and the picture turns upside down.
+    void RequestTopDown(IPin* upstream);
+    // Filters such as VapourSynth Filter reconnect while connected, for example
+    // after loading a new script, and give up playback if that is refused.
+    STDMETHODIMP ReceiveConnection(IPin*, const AM_MEDIA_TYPE*) override;
+    bool TakeReconnected(CMediaType& type);
+    STDMETHODIMP NotifyAllocator(IMemAllocator*, BOOL) override;
     DECLARE_IUNKNOWN
     STDMETHODIMP NonDelegatingQueryInterface(REFIID, void**) override;
     STDMETHODIMP GetAllocator(IMemAllocator**) override;
@@ -141,9 +161,15 @@ class Renderer final : public CBaseVideoRenderer,
     // XySubFilter (ISubRenderConsumer) share the overlay; both may be active.
     std::mutex overlayLock;
     PlaceboBackend::OverlayPainter hostSubtitles;
+    // Hands the render device to the player's subtitle callback.
+    std::function<void(ID3D11Device*)> hostSubtitleDevice;
     std::shared_ptr<XySubBridge> xySub = std::make_shared<XySubBridge>();
     bool xySubInstalled = false;
     void InstallSubtitleOverlay();
+    // MPC-BE builds its subtitle buffer when it gets the device and sizes it
+    // only when the window size changes. Giving it the device before it
+    // applies the first size keeps text subtitles undistorted (issue 28).
+    void AttachSubtitleDevice();
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;
@@ -205,10 +231,32 @@ class Renderer final : public CBaseVideoRenderer,
 
     PlaceboSettings Effective(const PlaceboSettings& base) const
     {
-        return ContentProfiles::Apply(base, contentProfile);
+        auto result = ContentProfiles::Apply(base, contentProfile);
+        // A LUT next to the video replaces the configured one, also when that is off.
+        if (result.lutFromFolder && !folderLut.path.empty() && folderLut.path.size() < std::size(result.lutPath))
+        {
+            wcscpy_s(result.lutPath, folderLut.path.c_str());
+            result.lutEnabled = TRUE;
+        }
+        // Shortcut comparison: all shaders off for this playback, never saved.
+        if (shadersBypassed)
+            for (auto& shader : result.userShaders.shaders)
+                shader.enabled = 0;
+        return result;
     }
 
+    bool shadersBypassed = false;
+    // Profile chosen with the "Next Profile" shortcut for the playing file:
+    // empty = by folder, otherwise a profile name or ContentProfiles::DefaultName.
+    std::wstring forcedProfile;
+
     std::wstring contentPath;
+    // The LUT found next to contentPath (Settings/FolderLut.h); its path is
+    // cleared when the renderer could not use the file.
+    FolderLut::Found folderLut;
+    std::wstring folderLutFailed;
+    // Shows which LUT the folder gave, once per video.
+    void AnnounceFolderLut(bool unreadable);
     void UpdateMotionSettings();
     void UpdateContentProfile(IPin* peer);
     bool SelectContentProfile(const wchar_t* display);
@@ -220,12 +268,15 @@ class Renderer final : public CBaseVideoRenderer,
         bool enabled = false;
         std::vector<DisplayModes::Mode> modes;
         float delay = 0;
+        int windowsHdrToggle = 0;
+        bool hdrPassthrough = false;
     };
 
     std::mutex modeLock;
     ModeConfig modeConfig;
     std::shared_ptr<ModePause> modePause; // guarded by modeLock
     DisplayModes::Switcher modeSwitcher;
+    WindowsHdr::Switcher hdrSwitcher;
     RECT modeWindow = {}; // fullscreen window rectangle when the mode was switched
     std::atomic<uint64_t> modeHoldUntil = 0;
     // The source's frame duration. frameDuration follows the presented samples,
@@ -234,6 +285,9 @@ class Renderer final : public CBaseVideoRenderer,
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
     void CheckDisplayMode();
+    std::wstring GraphFilters();
+    void CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen);
+    void HoldForDisplayChange(float delay);
     void PausePlayback(DWORD milliseconds);
     bool ExternalStateChange();
 
@@ -270,6 +324,17 @@ class Renderer final : public CBaseVideoRenderer,
     bool WaitForQpc(int64_t until, int64_t deadline);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
+    // Runs a keyboard shortcut (Shortcuts::Action) on the window thread.
+    void RunShortcut(int action);
+    // The settings change itself; SetSettings adds forwarding to the playing
+    // renderer when this one only serves a settings window.
+    HRESULT ApplySettings(const PlaceboSettings* next);
+    // Whether this renderer plays a video (connected in a graph).
+    bool Playing();
+    // Another renderer of this process that plays a video while this one has
+    // none, e.g. PotPlayer's Preferences > Video renderer settings. Called
+    // with LiveRenderers::lock held, which keeps that renderer alive.
+    Renderer* PlayingPeer();
     STDMETHODIMP Stop() override;
     STDMETHODIMP Run(REFERENCE_TIME) override;
     STDMETHODIMP Pause() override;

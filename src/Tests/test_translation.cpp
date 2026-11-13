@@ -58,5 +58,19 @@ int main()
     Require(!text.count(L"One"), "plural entries are skipped");
     Require(text.at(L"Grün") == L"Vert", "UTF-8, LF endings and a final entry without newline");
     Require(Tr(L"General") == L"General", "no embedded catalogue falls back to English");
-    puts("PASS translation catalogue: entries, continuation, escapes, context, fuzzy, empty, plural, UTF-8, fallback");
+    // Issue #17: CJK text is laid out with the menu language, one font for all characters.
+    auto locale = [](const wchar_t* language)
+    {
+        g_menuLanguage = language;
+        ++g_menuLanguageVersion;
+        return MenuLocale();
+    };
+    Require(locale(L"en") == L"en-us" && !wcscmp(MenuGdiFont(), L"Segoe UI"), "English keeps Segoe UI");
+    Require(locale(L"zh_Hans") == L"zh-Hans" && !wcscmp(MenuGdiFont(), L"Microsoft YaHei UI"),
+            "Simplified Chinese uses zh-Hans and Microsoft YaHei UI");
+    Require(locale(L"zh_Hant") == L"zh-Hant" && !wcscmp(MenuGdiFont(), L"Microsoft JhengHei UI"),
+            "Traditional Chinese uses its own font");
+    Require(locale(L"pt_BR") == L"pt-BR" && locale(L"de") == L"de", "region and plain language tags");
+    puts("PASS translation catalogue: entries, continuation, escapes, context, fuzzy, empty, plural, UTF-8, fallback, "
+         "menu locale and CJK fonts");
 }

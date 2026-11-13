@@ -15,13 +15,16 @@
 #include "Renderer/RenderProbe.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/ShaderCache.h"
+#include "Renderer/ShaderWarmup.h"
 #include <deque>
+#include <filesystem>
 #include <sstream>
 #include <iomanip>
 #pragma comment(lib, "gdi32.lib")
 #include "Renderer/SharpenShader.h"
 #include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
+#include "Renderer/NvidiaAppSettings.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
@@ -82,6 +85,11 @@ struct PlaceboBackend::State
     uint64_t nextFrame = 1;
     uint64_t rtxSerial = 0, rtxKey = 0;
     RtxScaling rtx;
+    NvidiaAppSettings nvidiaApp;
+    // The picture being drawn was upscaled by RTX (statistics).
+    bool rtxUpscaled = false;
+    // RTX read the decoder picture itself: the driver scaled its chroma.
+    bool rtxDirect = false;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -102,6 +110,72 @@ struct PlaceboBackend::State
     const pl_hook* userHooks[ShaderCount] = {};
     ShaderConfig userCached[ShaderCount];
     bool userFailed[ShaderCount] = {};
+    // Shaders compiled on a worker device, once per session; see ShaderWarmup.h.
+    std::shared_ptr<ShaderWarmupJob> warmups[ShaderCount];
+    bool warmupMerged[ShaderCount] = {}, warmupReported[ShaderCount] = {};
+    uint64_t warmupStarted[ShaderCount] = {};
+
+    LUID AdapterLuid() const
+    {
+        ComPtr<IDXGIDevice> dxgi;
+        ComPtr<IDXGIAdapter> adapter;
+        DXGI_ADAPTER_DESC desc = {};
+        if (d3d && SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&desc)))
+            return desc.AdapterLuid;
+        return {};
+    }
+
+    // False while the worker still compiles: this frame runs without the shader.
+    bool ShaderReady(int id)
+    {
+        auto& job = warmups[id];
+        if (!job)
+        {
+            const auto layout = Layout(description.format);
+            job = std::make_shared<ShaderWarmupJob>();
+            job->source = LoadUserShaderSource(id);
+            job->cache = shaderCache.Snapshot();
+            job->adapter = AdapterLuid();
+            job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
+            job->width = description.width;
+            job->height = description.height;
+            job->deep = layout.depth > 8;
+            job->rgb = layout.rgb;
+            job->notify = window;
+            warmupMerged[id] = warmupReported[id] = false;
+            warmupStarted[id] = GetTickCount64();
+            Trace("Shader warm-up start: %s, feature level %x, video %dx%d deep=%d rgb=%d, cache %zu bytes",
+                  ShaderCatalog[id].file,
+                  unsigned(job->featureLevel),
+                  job->width,
+                  job->height,
+                  int(job->deep),
+                  int(job->rgb),
+                  job->cache.size());
+            StartShaderWarmup(job);
+        }
+        const int state = job->state.load();
+        // The statistics show the shader as preparing meanwhile.
+        if (state == 0)
+            return false;
+        if (!warmupReported[id])
+        {
+            warmupReported[id] = true;
+            Trace("Shader warm-up %s: %s after %llu ms",
+                  state == 1 ? "done" : "FAILED, compiling during playback",
+                  ShaderCatalog[id].file,
+                  GetTickCount64() - warmupStarted[id]);
+        }
+        if (state == 1 && !warmupMerged[id])
+        {
+            warmupMerged[id] = true;
+            shaderCache.Import(job->cache);
+            std::vector<uint8_t>().swap(job->cache);
+        }
+        return true;
+    }
+
     std::wstring userShaderMessage;
     // Content profile in use, or why none applies; shown in the statistics.
     std::wstring contentProfile;
@@ -121,6 +195,7 @@ struct PlaceboBackend::State
         const pl_hook* hook = ParseUserShader(d3d->gpu, id, c);
         if (!hook)
         {
+            Trace("Shader failed to load: %s", ShaderCatalog[id].file);
             userFailed[id] = true;
             userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
             return false;
@@ -134,6 +209,11 @@ struct PlaceboBackend::State
     float sharpenCached = -1;
     std::atomic<int> sharpenState = 0;
     StatisticsBitmap statisticsBitmap;
+    // Shortcut feedback shown at the top centre until messageUntil.
+    StatisticsBitmap messageBitmap;
+    std::mutex messageLock;
+    std::wstring message;
+    uint64_t messageUntil = 0;
     ImageAnalysis imageAnalysis;
     std::atomic<bool> showStatistics = false;
     std::string sourceCodec;
@@ -143,9 +223,6 @@ struct PlaceboBackend::State
     std::wstring statisticsText;
     bool statisticsShown = false;
     ULONGLONG statisticsUpdated = 0;
-    // Lost-picture totals over the render peak's window (as its measurements).
-    static constexpr ULONGLONG RenderPeakWindow = 5000;
-    std::deque<std::pair<ULONGLONG, uint64_t>> lostHistory;
     PresentationMeasurement presentation;
     DropMeasurement drops;
     std::mutex dropsLock;
@@ -208,6 +285,13 @@ struct PlaceboBackend::State
                 std::lock_guard guard(dropsLock);
                 drops.Reset();
             }
+            if (value & 4)
+            {
+                renderCpu.Reset();
+                renderGpu.duration.Reset();
+                renderGpu.skipped = renderGpu.disjoint = 0;
+                presentCpu.Reset();
+            }
             statisticsText.clear();
             statisticsUpdated = 0;
         }
@@ -228,6 +312,11 @@ struct PlaceboBackend::State
     NativeHdrDisplay nativeHdr;
     NativeHdrSwapchain nativeSwapchain;
     HMONITOR failedNativeMonitor = nullptr;
+
+    // Windows HDR switch, shared with the window thread.
+    std::atomic<int> displayHdrInput = 0, displayHdrState = -1;
+    std::atomic_bool displayHdrRebuild = false;
+    std::function<void()> displayHdrListener;
 
     ComPtr<IDXGISwapChain> OutputSwapchain()
     {
@@ -294,6 +383,7 @@ struct PlaceboBackend::State
         presentation.Reset(false);
         presentationTimed = false;
         periodUpdated = 0;
+        outputQueried = 0;
         measuredWidth = measuredHeight = 0;
         lastSyncQpc = 0;
         lastSyncRefresh = 0;
@@ -338,6 +428,11 @@ struct PlaceboBackend::State
     pl_tex felPlanes[3] = {};
     std::vector<uint8_t> unpacked;
     ComPtr<ID3D11Texture2D> copy;
+    // CPU memory NV12/P010 for RTX, written here and imported like a decoder texture.
+    // Several, used in turn: writing one never waits for the GPU's copy of the last.
+    ComPtr<ID3D11Texture2D> semiPlanarUploads[3];
+    int semiPlanarNext = 0;
+    bool semiPlanarUploadTraced = false;
     ComPtr<ID3D11DeviceContext> context;
     ComPtr<IDXGIDevice1> latencyDevice;
     UINT originalLatency = 0;
@@ -375,6 +470,7 @@ struct PlaceboBackend::State
             self->error = message;
         OutputDebugStringA(message);
         OutputDebugStringA("\n");
+        Trace("libplacebo: %s", message);
     }
 
     State()
@@ -408,6 +504,51 @@ struct PlaceboBackend::State
         unpack422.ResetFrame();
         image = {};
         valid = false;
+    }
+
+    // Copies an NV12 or P010 picture from CPU memory into one texture with
+    // both planes, as a hardware decoder delivers it.
+    HRESULT StageSemiPlanar(const VideoFrame& frame, const uint8_t* data, int stride, ID3D11Texture2D*& staged)
+    {
+        auto& semiPlanarUpload = semiPlanarUploads[semiPlanarNext];
+        semiPlanarNext = (semiPlanarNext + 1) % int(std::size(semiPlanarUploads));
+        D3D11_TEXTURE2D_DESC have = {};
+        if (semiPlanarUpload)
+            semiPlanarUpload->GetDesc(&have);
+        HRESULT hr = S_OK;
+        const auto format = frame.format == PixelFormat::NV12 ? DXGI_FORMAT_NV12 : DXGI_FORMAT_P010;
+        if (!semiPlanarUpload || have.Width != UINT(frame.width) || have.Height != UINT(frame.height) ||
+            have.Format != format)
+        {
+            semiPlanarUpload.Reset();
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = frame.width;
+            desc.Height = frame.height;
+            desc.MipLevels = desc.ArraySize = 1;
+            desc.Format = format;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_STAGING;
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            hr = d3d->device->CreateTexture2D(&desc, nullptr, &semiPlanarUpload);
+            if (FAILED(hr))
+                return hr;
+        }
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        hr = context->Map(semiPlanarUpload.Get(), 0, D3D11_MAP_WRITE, 0, &mapped);
+        if (FAILED(hr))
+            return hr;
+        const auto out = static_cast<uint8_t*>(mapped.pData);
+        const size_t row = size_t(frame.width) * (frame.format == PixelFormat::NV12 ? 1 : 2);
+        for (int y = 0; y < frame.height; ++y)
+            memcpy(out + size_t(y) * mapped.RowPitch, data + size_t(y) * stride, row);
+        // The chroma plane follows the luma rows of the mapped texture.
+        const auto chroma = out + size_t(mapped.RowPitch) * frame.height;
+        const auto source = data + size_t(stride) * frame.height;
+        for (int y = 0; y < frame.height / 2; ++y)
+            memcpy(chroma + size_t(y) * mapped.RowPitch, source + size_t(y) * stride, row);
+        context->Unmap(semiPlanarUpload.Get(), 0);
+        staged = semiPlanarUpload.Get();
+        return S_OK;
     }
 
     void ClearOverlay()
@@ -488,6 +629,7 @@ struct PlaceboBackend::State
         presentCpu.Reset();
         presentation.Reset(false);
         statisticsBitmap.Reset();
+        messageBitmap.Reset();
         imageAnalysis.Reset();
         statisticsText.clear();
         statisticsUpdated = 0;
@@ -515,11 +657,26 @@ struct PlaceboBackend::State
             pl_mpv_user_shader_destroy(&userHooks[i]);
             userFailed[i] = false;
             userCached[i] = {};
+            warmups[i].reset();
         }
         userShaderMessage.clear();
         pl_d3d11_destroy(&d3d);
         context.Reset();
         shaderCache.Save();
+    }
+
+    // The D3D11 texture behind a picture, when it is one decoder picture.
+    ID3D11Texture2D* NativePicture(const pl_frame& frame) const
+    {
+        const auto texture = frame.planes[0].texture;
+        if (!texture)
+            return nullptr;
+        if (copy && planes[0] == texture)
+            return copy.Get();
+        for (const auto& [id, stored] : history)
+            if (stored->copy && stored->image.planes[0].texture == texture)
+                return stored->copy.Get();
+        return nullptr;
     }
 
     bool DisplayReferences(const StoredFrame& stored) const
@@ -741,7 +898,7 @@ struct PlaceboBackend::State
         return hr;
     }
 
-    HRESULT Ensure()
+    HRESULT EnsureDevice()
     {
         if (!d3d)
         {
@@ -752,6 +909,13 @@ struct PlaceboBackend::State
             if (!d3d)
                 return E_FAIL;
         }
+        return S_OK;
+    }
+
+    HRESULT Ensure()
+    {
+        if (FAILED(EnsureDevice()))
+            return E_FAIL;
         if (!context)
             d3d->device->GetImmediateContext(&context);
         ComPtr<ID3D10Multithread> multithread;
@@ -800,12 +964,18 @@ struct PlaceboBackend::State
         }
         else
         {
-            if (previous.imageAnalysis || settings.imageAnalysis)
+            // Switching the analysis adds or removes its hooks: start over and
+            // render cached frames again. Any other change only needs a new
+            // sample; libplacebo renders again by itself when its parameters
+            // change, and peak detection and Smooth Motion keep their state.
+            if (previous.imageAnalysis != settings.imageAnalysis)
             {
                 imageAnalysis.Reset();
                 if (renderer)
                     pl_renderer_flush_cache(renderer);
             }
+            else if (settings.imageAnalysis)
+                imageAnalysis.Refresh();
             const bool scalingChanged = previous.scaling.has_value() != settings.scaling.has_value() ||
                                         (previous.scaling && settings.scaling &&
                                          memcmp(&*previous.scaling, &*settings.scaling, sizeof(ScalingSettings)));
@@ -1045,7 +1215,7 @@ struct PlaceboBackend::State
                                                                         : L"unknown range");
         {
             // Dolby Vision status lines "Name: value" become rows; the
-            // processing state is green when active, yellow otherwise.
+            // processing state is yellow unless active.
             std::wostringstream dv;
             AppendDolbyVisionStatus(
                 dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
@@ -1057,11 +1227,10 @@ struct PlaceboBackend::State
                     continue;
                 const auto label = line.substr(0, colon), value = line.substr(colon + 2);
                 if (label == L"Dolby Vision")
-                    colored(L"Dolby Vision",
-                            value.find(L"processing active") != std::wstring::npos &&
-                                    value.find(L"not processed") == std::wstring::npos
-                                ? L'g'
-                                : L'y')
+                    (value.find(L"processing active") != std::wstring::npos &&
+                             value.find(L"not processed") == std::wstring::npos
+                         ? row(L"Dolby Vision")
+                         : colored(L"Dolby Vision", L'y'))
                         << value;
                 else
                     row(label == L"Source" ? L"Format" : label.c_str()) << value;
@@ -1094,25 +1263,47 @@ struct PlaceboBackend::State
         }
 
         heading(L"Processing");
-        const auto* chromaFilter =
-            options->params.plane_upscaler ? options->params.plane_upscaler : options->params.upscaler;
-        row(L"Chroma") << L"upscale" << dot << wide(chromaFilter ? chromaFilter->name : "bilinear");
+        // libplacebo names a filter built from parts "custom"; spell out its
+        // preset, kernel and window, e.g. "custom (ewa_lanczos: jinc / jinc, EWA)".
+        // role indexes ScalingSettings::filters for the preset it started from.
+        const auto filterName = [&](const pl_filter_config* f, const char* none, int role) -> std::wstring
+        {
+            if (!f)
+                return wide(none);
+            if (!f->name || strcmp(f->name, "custom"))
+                return wide(f->name ? f->name : none);
+            std::wstring detail;
+            if (settings.scaling && strcmp(settings.scaling->filters[role].preset, "auto"))
+                detail = wide(settings.scaling->filters[role].preset) + L": ";
+            detail += wide(f->kernel && f->kernel->name ? f->kernel->name : "?");
+            if (f->window && f->window->name)
+                detail += L" / " + wide(f->window->name);
+            if (f->polar)
+                detail += L", EWA";
+            return L"custom (" + detail + L")";
+        };
+        const bool chromaPlane = options->params.plane_upscaler != nullptr;
+        const auto* chromaFilter = chromaPlane ? options->params.plane_upscaler : options->params.upscaler;
+        if (rtxDirect)
+            row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
+        else
+            row(L"Chroma") << L"upscale" << dot << filterName(chromaFilter, "bilinear", chromaPlane ? 2 : 0);
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
                           output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0;
-        row(L"Image") << (same   ? L"1:1 (scaler bypassed)"
-                          : down ? L"downscale"
-                                 : L"upscale")
+        row(L"Image") << (same && rtxUpscaled ? L"RTX Super Resolution"
+                          : same              ? L"native size"
+                          : down              ? L"downscale"
+                                              : L"upscale")
                       << (same ? L""
-                               : dot + wide((down ? options->params.downscaler : options->params.upscaler)
-                                                ? (down ? options->params.downscaler : options->params.upscaler)->name
-                                                : "bilinear"));
+                               : dot + filterName(down ? options->params.downscaler : options->params.upscaler,
+                                                  "bilinear",
+                                                  down ? 1 : 0));
         {
             auto& value = row(L"Smooth motion");
             if (mixing && settings.smoothMotion)
-                value << L"on (" << wide(options->params.frame_mixer ? options->params.frame_mixer->name : "none")
-                      << L")";
+                value << L"on (" << filterName(options->params.frame_mixer, "none", 4) << L")";
             else
                 value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
         }
@@ -1127,9 +1318,17 @@ struct PlaceboBackend::State
                                                    : L"off");
         {
             auto& value = row(L"RTX Video");
-            value << rtx.Status();
-            if (settings.rtxSuperResolution || settings.rtxHdr)
-                value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+            const bool appOff =
+                (!settings.rtxSuperResolution || nvidiaApp.SuperResolution() == NvidiaAppSettings::State::Off) &&
+                (!settings.rtxHdr || nvidiaApp.TrueHdr() == NvidiaAppSettings::State::Off);
+            if ((settings.rtxSuperResolution || settings.rtxHdr) && appOff)
+                value << L"off in the NVIDIA app";
+            else
+            {
+                value << rtx.Status();
+                if (settings.rtxSuperResolution || settings.rtxHdr)
+                    value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+            }
         }
         if (settings.blackBars.enabled)
         {
@@ -1145,16 +1344,38 @@ struct PlaceboBackend::State
                       << (settings.blackBars.crop ? L"crop on" : L"detect only");
         }
         {
+            // A long chain continues on further rows so the box fits the picture.
             std::wstring shaders;
-            for (int id : settings.userShaders.order)
-                if (settings.userShaders.shaders[id].enabled)
-                    shaders += (shaders.empty() ? L"" : L", ") + std::wstring(ShaderCatalog[id].label);
+            const wchar_t* label = L"Shaders";
+            const auto finishRow = [&]
+            {
+                row(label) << shaders;
+                label = L"";
+                shaders.clear();
+            };
+            for (int id : ShaderChainOrder(settings.userShaders, settings.shaderAutoOrder))
+            {
+                if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
+                    continue;
+                std::wstring name = ShaderCatalog[id].label;
+                if (warmups[id] && !warmups[id]->state.load())
+                    name += L" (preparing)";
+                if (!shaders.empty() && shaders.size() + name.size() > 70)
+                {
+                    shaders += L",";
+                    finishRow();
+                }
+                shaders += (shaders.empty() ? L"" : L", ") + name;
+            }
             if (!shaders.empty())
-                row(L"Shaders") << shaders;
+                finishRow();
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
         }
         row(L"Profile") << (contentProfile.empty() ? L"Default" : contentProfile);
+        // Which 3D LUT applies: the configured one or the one from the video's folder.
+        if (settings.lutEnabled && colors && colors->lut)
+            row(L"3D LUT") << std::filesystem::path(settings.lutPath).filename().wstring();
         row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
 
         heading(L"Performance");
@@ -1163,18 +1384,9 @@ struct PlaceboBackend::State
         const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
                               : statisticsFps > 0 ? 1000 / statisticsFps / (image.field != PL_FIELD_NONE ? 2 : 1)
                                                   : period / 1e4;
-        // Pictures lost in the peak's window (dropped, repeated or late). A
-        // slow picture the display queue absorbed is no visible problem, so
-        // the peak is coloured only when pictures were actually lost.
-        const uint64_t lost = uint64_t(statisticsDropped >= 0 ? DropTotal() : 0) +
-                              (presentation.haveCounters ? presentation.repeatedRefreshes + presentation.glitches : 0);
-        if (!lostHistory.empty() && lost < lostHistory.back().second)
-            lostHistory.clear(); // counters were reset
-        lostHistory.emplace_back(now, lost);
-        while (lostHistory.size() > 1 && now - lostHistory[1].first >= RenderPeakWindow)
-            lostHistory.pop_front();
-        const bool lostRecently = lost > lostHistory.front().second;
-        const auto render = [&](const wchar_t* label, bool maximum)
+        // Show recent sustained render load. A single expensive cache build
+        // must not dominate the display for five seconds as a peak did.
+        const auto render = [&]()
         {
             if (!renderCpu.count && !renderGpu.duration.count)
                 return;
@@ -1184,33 +1396,28 @@ struct PlaceboBackend::State
             value << std::fixed << std::setprecision(2);
             if (renderCpu.count)
             {
-                slowest = maximum ? renderCpu.Maximum(now) : renderCpu.Average();
+                slowest = renderCpu.RecentAverage(now);
                 value << slowest << L" ms CPU";
             }
             if (renderGpu.duration.count)
             {
-                const double gpu = maximum ? renderGpu.duration.Maximum(now) : renderGpu.duration.Average();
+                const double gpu = renderGpu.duration.RecentAverage(now);
                 slowest = std::max(slowest, gpu);
                 value << (renderCpu.count ? dot : L"") << gpu << L" ms GPU";
             }
             // CPU and GPU work overlap; the slower one must fit the budget.
-            wchar_t color = 0;
+            // Plain text: actual problems show in the Drops row.
             if (budget > 0)
             {
                 const double load = 100 * slowest / budget;
-                const bool absorbed = maximum && !lostRecently;
-                color = absorbed ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : L'g';
                 value << dot << std::setprecision(0) << load << L"% of " << std::setprecision(2) << budget << L" ms"
-                      << (absorbed && load > 100 ? L", absorbed by queue"
-                          : absorbed             ? L""
-                          : load > 100           ? L", over budget"
-                          : load >= 80           ? L", near limit"
-                                                 : L"");
+                      << (load > 100   ? L", over budget"
+                          : load >= 80 ? L", near limit"
+                                       : L"");
             }
-            (color ? colored(label, color) : row(label)) << value.str();
+            row(L"Render") << value.str();
         };
-        render(L"Render", false);
-        render(L"Render peak 5s", true);
+        render();
         if (const auto* peak = renderProbe.Peak(now))
         {
             int first = 0, second = 1;
@@ -1265,6 +1472,15 @@ struct PlaceboBackend::State
     {
         rtxKey = (uint64_t(1) << 63) | (++rtxSerial << 2);
         const auto layout = Layout(frame.format);
+        if (frame.width != description.width || frame.height != description.height ||
+            frame.format != description.format || frame.color.transfer != description.color.transfer)
+            Trace("Video %dx%d %s %d bit, transfer %d, primaries %d",
+                  frame.width,
+                  frame.height,
+                  layout.name,
+                  layout.depth,
+                  int(frame.color.transfer),
+                  int(frame.color.primaries));
         description = frame;
         image = {};
         image.num_planes = layout.planes;
@@ -1308,25 +1524,26 @@ struct PlaceboBackend::State
 
     // Peak luminance Windows reports for the display in HDR mode, in nits; 0 if
     // unknown or not in HDR mode. On some laptops it follows the brightness slider.
-    float DisplayPeak()
-    {
-        if (!swapchain)
-            return 0;
-        ComPtr<IDXGIOutput> output;
-        ComPtr<IDXGIOutput6> output6;
-        ComPtr<IDXGISwapChain> native;
-        native = OutputSwapchain();
-        DXGI_OUTPUT_DESC1 desc = {};
-        if (!native || FAILED(native->GetContainingOutput(&output)) || FAILED(output.As(&output6)) ||
-            FAILED(output6->GetDesc1(&desc)) || desc.ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
-            return 0;
-        return std::isfinite(desc.MaxLuminance) && desc.MaxLuminance >= 80 ? desc.MaxLuminance : 0;
-    }
+    // What Windows reports for the display: read at most once a second (and
+    // at once on another monitor or swapchain), since GetDesc1 is slow on
+    // some drivers and these are asked for every frame.
+    ULONGLONG outputQueried = 0;
+    HMONITOR outputMonitor = nullptr;
+    bool outputHdr = false;
+    float outputPeak = 0;
+    // Set when Windows HDR was switched: read again on the next frame.
+    std::atomic<bool> outputStale = false;
 
-    bool HdrActive()
+    void QueryOutput()
     {
-        if (!swapchain)
-            return false;
+        const auto now = GetTickCount64();
+        const auto monitor = window ? MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) : nullptr;
+        if (!outputStale.exchange(false) && outputQueried && now - outputQueried < 1000 && monitor == outputMonitor)
+            return;
+        outputQueried = now;
+        outputMonitor = monitor;
+        outputHdr = false;
+        outputPeak = 0;
         ComPtr<IDXGIOutput> output;
         ComPtr<IDXGIOutput6> output6;
         // unwrap returns an owned reference. Retaining it prevents replacement
@@ -1334,8 +1551,29 @@ struct PlaceboBackend::State
         ComPtr<IDXGISwapChain> native;
         native = OutputSwapchain();
         DXGI_OUTPUT_DESC1 desc = {};
-        return native && SUCCEEDED(native->GetContainingOutput(&output)) && SUCCEEDED(output.As(&output6)) &&
-               SUCCEEDED(output6->GetDesc1(&desc)) && desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+        if (!native || FAILED(native->GetContainingOutput(&output)) || FAILED(output.As(&output6)) ||
+            FAILED(output6->GetDesc1(&desc)) || desc.ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+            return;
+        outputHdr = true;
+        outputPeak = std::isfinite(desc.MaxLuminance) && desc.MaxLuminance >= 80 ? desc.MaxLuminance : 0;
+    }
+
+    float DisplayPeak()
+    {
+        if (!swapchain)
+            return 0;
+        QueryOutput();
+        return outputPeak;
+    }
+
+    bool HdrActive()
+    {
+        if (!swapchain)
+            return false;
+        if (const int known = displayHdrState.load(); known >= 0)
+            return known != 0;
+        QueryOutput();
+        return outputHdr;
     }
 
     HRESULT PresentNative(int64_t due, bool timed)
@@ -1469,6 +1707,19 @@ struct PlaceboBackend::State
         float aspect = cropBars ? originalAspect * ((image.crop.x1 - image.crop.x0) / description.width) /
                                       ((image.crop.y1 - image.crop.y0) / description.height)
                                 : originalAspect;
+        // With automatic crop the renderer chooses the frame, but an aspect ratio
+        // the player set (an override in MPC-HC or MPC-BE) still applies: its
+        // rectangle then has another shape than the video. A player that only
+        // reports the whole window sets no aspect ratio.
+        if (autoZoom && windowGeometry && !IsRectEmpty(&targetRect) && rotation % 180 == 0)
+        {
+            const auto* texture = target.planes[0].texture;
+            const bool wholeWindow = texture && targetRect.left == 0 && targetRect.top == 0 &&
+                                     targetRect.right == texture->params.w && targetRect.bottom == texture->params.h;
+            if (!wholeWindow)
+                aspect *= float(targetRect.right - targetRect.left) / float(targetRect.bottom - targetRect.top) /
+                          originalAspect;
+        }
         if (rotation % 180)
             aspect = 1.f / aspect;
         // With automatic crop, fit the active image into the complete output;
@@ -1477,7 +1728,17 @@ struct PlaceboBackend::State
             target.crop = {0, 0, float(target.planes[0].texture->params.w), float(target.planes[0].texture->params.h)};
         float width = target.crop.x1 - target.crop.x0, height = target.crop.y1 - target.crop.y0;
         const bool fill = autoZoom && settings.blackBars.zoom == 1 && !blackBars.detector.subtitleProtection;
-        if ((width / height > aspect) != fill)
+        // MPC-HC and MPC-BE compute the video rectangle themselves, with the
+        // aspect ratio, an override, stretching and zoom, like for MPC Video
+        // Renderer; draw exactly into it. The renderer fits the picture itself
+        // only when it decides the frame: automatic crop, its own rotation, or
+        // no rectangle from the player. libplacebo clips a zoomed rectangle
+        // that reaches past the window.
+        const bool playerRectangle = windowGeometry && !IsRectEmpty(&targetRect) && !autoZoom && rotation % 180 == 0;
+        if (playerRectangle)
+        {
+        }
+        else if ((width / height > aspect) != fill)
         {
             float pad = (width - height * aspect) * .5f;
             target.crop.x0 += pad;
@@ -1509,17 +1770,45 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
+        rtxUpscaled = rtxDirect = false;
         probe.Next(RenderProbe::Rtx);
+        // The switches only take effect when the NVIDIA app has the feature on;
+        // otherwise the driver would just scale plainly instead of libplacebo.
+        const bool rtxUpscale =
+            settings.rtxSuperResolution && nvidiaApp.SuperResolution() != NvidiaAppSettings::State::Off;
         // RTX Video HDR: an SDR source on HDR output becomes HDR10 in the driver.
-        const bool rtxHdr = settings.rtxHdr && hdrOutput && !pl_color_space_is_hdr(&image.color);
-        if (settings.rtxSuperResolution || rtxHdr)
+        const bool rtxHdr = settings.rtxHdr && nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off && hdrOutput &&
+                            !pl_color_space_is_hdr(&image.color);
+        if (rtxUpscale || rtxHdr)
         {
             int outW = int(std::lround(target.crop.x1 - target.crop.x0));
             int outH = int(std::lround(target.crop.y1 - target.crop.y0));
+            // The largest picture: the whole target. A crop that follows black
+            // bars or a zoom then only moves the driver's rectangles.
+            int targetW = target.planes[0].texture ? target.planes[0].texture->params.w : outW;
+            int targetH = target.planes[0].texture ? target.planes[0].texture->params.h : outH;
+            // A player zoom can make the rectangle larger than the window; the
+            // driver need not produce more than twice the window.
+            outW = std::min(outW, 2 * targetW);
+            outH = std::min(outH, 2 * targetH);
             if (rotation % 180)
+            {
                 std::swap(outW, outH);
-            auto current = rtx.Get(
-                d3d, context.Get(), image, rtxKey, outW, outH, options->params, settings.rtxSuperResolution, rtxHdr);
+                std::swap(targetW, targetH);
+            }
+            auto current = rtx.Get(d3d,
+                                   context.Get(),
+                                   image,
+                                   rtxKey,
+                                   outW,
+                                   outH,
+                                   options->params,
+                                   rtxUpscale,
+                                   rtxHdr,
+                                   &restore.main,
+                                   targetW,
+                                   targetH,
+                                   NativePicture(image));
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
@@ -1532,8 +1821,12 @@ struct PlaceboBackend::State
                                      outW,
                                      outH,
                                      options->params,
-                                     settings.rtxSuperResolution,
-                                     rtxHdr);
+                                     rtxUpscale,
+                                     rtxHdr,
+                                     &restore.saved[i],
+                                     targetW,
+                                     targetH,
+                                     NativePicture(mixFrames[i]));
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));
@@ -1541,6 +1834,8 @@ struct PlaceboBackend::State
             if (ready)
             {
                 processed.active = true;
+                rtxUpscaled = rtx.Upscaling();
+                rtxDirect = rtx.DecoderPicture();
                 processed.originals.assign(mixFrames, mixFrames + mixCount);
                 image = rtxFrames[0]->image;
                 if (mixing)
@@ -1559,6 +1854,19 @@ struct PlaceboBackend::State
                 display(image);
                 for (int i = 0; mixing && i < mixCount; ++i)
                     display(mixFrames[i]);
+                // RTX delivers whole pixels of the rounded size. Put the picture
+                // on whole pixels of that size, so libplacebo shows it 1:1
+                // instead of resampling it by a fraction of a pixel.
+                auto snap = [](float& a, float& b)
+                {
+                    const bool reversed = b < a;
+                    const float low = std::min(a, b), size = std::round(std::abs(b - a));
+                    const float start = std::round(low);
+                    a = reversed ? start + size : start;
+                    b = reversed ? start : start + size;
+                };
+                snap(target.crop.x0, target.crop.x1);
+                snap(target.crop.y0, target.crop.y1);
             }
         }
         // Apply after preprocessing, to the main image and every temporal sample.
@@ -1652,9 +1960,10 @@ struct PlaceboBackend::State
         }
         const int builtins = count;
         userShaderMessage.clear();
-        for (int id : settings.userShaders.order)
+        for (int id : ShaderChainOrder(settings.userShaders, settings.shaderAutoOrder))
         {
-            if (!settings.userShaders.shaders[id].enabled)
+            // A custom shader whose file was deleted simply drops out.
+            if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
             {
                 pl_mpv_user_shader_destroy(&userHooks[id]);
                 userCached[id] = {};
@@ -1663,6 +1972,8 @@ struct PlaceboBackend::State
             }
             if (PrepareUserShader(id))
             {
+                if (!ShaderReady(id))
+                    continue;
                 hooks[count++] = userHooks[id];
                 hookIds[users++] = id;
                 // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
@@ -1675,15 +1986,41 @@ struct PlaceboBackend::State
             else
                 userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
         }
+        // libplacebo turns off a shader that does not compile on this GPU.
+        const auto renderErrors = pl_renderer_get_errors(renderer);
+        for (int i = 0; i < renderErrors.num_disabled_hooks; i++)
+            for (int n = 0; n < users; n++)
+                if (userHooks[hookIds[n]]->signature == renderErrors.disabled_hooks[i])
+                    userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[hookIds[n]].label;
         // Observe after user filters; inject the test ramp last, immediately
         // before libplacebo's output dithering and target overlays.
         for (int i = 0; i < analysisCount; ++i)
             hooks[count++] = analysisHooks[i];
         params.hooks = hooks;
         params.num_hooks = count;
+        auto timedDraw = [&](auto&& draw)
+        {
+            // A render that compiles a shader stops playback; say which.
+            const uint64_t begin = GetTickCount64();
+            const size_t cached = pl_cache_size(shaderCache.Handle());
+            const bool drawn = draw();
+            const uint64_t took = GetTickCount64() - begin;
+            if (took > 500)
+            {
+                std::string names;
+                for (int n = 0; n < users; n++)
+                    names += std::string(n ? ", " : "") + ShaderCatalog[hookIds[n]].file;
+                Trace("Slow render %llu ms, shader cache %zu -> %zu bytes, shaders: %s",
+                      took,
+                      cached,
+                      pl_cache_size(shaderCache.Handle()),
+                      names.empty() ? "none" : names.c_str());
+            }
+            return drawn;
+        };
         auto renderWithRecovery = [&](auto&& draw)
         {
-            if (draw())
+            if (timedDraw(draw))
                 return true;
             if (!users)
                 return false;
@@ -1699,15 +2036,6 @@ struct PlaceboBackend::State
         };
         pl_color_map_params dynamicMap =
             params.color_map_params ? *params.color_map_params : pl_color_map_default_params;
-        const bool protectHighlights =
-            settings.clippingProtection && settings.hdrMode != 1 && pl_color_space_is_hdr(&image.color);
-        if (protectHighlights)
-        {
-            dynamicMap.tone_mapping_function = &pl_tone_map_spline;
-            dynamicMap.inverse_tone_mapping = false;
-            params.peak_detect_params = &options->peak_detect_params;
-            params.color_map_params = &dynamicMap;
-        }
         const bool explicitMetadata = settings.colorMapping.values[MappingIndex("tone_map_metadata")][0] != 0;
         if (image.repr.dovi && !explicitMetadata)
         {
@@ -1721,7 +2049,7 @@ struct PlaceboBackend::State
         {
             // Prefer authored scene metadata to libplacebo's measured peak.
             dynamicMap.metadata = PL_HDR_METADATA_HDR10PLUS;
-            if ((settings.toneMapping == "auto" || protectHighlights) && image.color.hdr.ootf.target_luma > 0)
+            if (settings.toneMapping == "auto" && image.color.hdr.ootf.target_luma > 0)
                 dynamicMap.tone_mapping_function = &pl_tone_map_st2094_40;
             params.color_map_params = &dynamicMap;
         }
@@ -1742,8 +2070,8 @@ struct PlaceboBackend::State
         }
         actualTone = dynamicMap.tone_mapping_function ? dynamicMap.tone_mapping_function->name : "n/a";
         actualTarget = target.color.hdr.max_luma;
-        pl_overlay overlays[3] = {};
-        pl_overlay_part parts[3] = {};
+        pl_overlay overlays[4] = {};
+        pl_overlay_part parts[4] = {};
         auto& overlayInfo = overlays[0];
         auto& part = parts[0];
 
@@ -1778,6 +2106,14 @@ struct PlaceboBackend::State
             target.num_overlays = 1;
         }
         const bool statistics = showStatistics.load();
+        // The visible picture inside the window, for statistics placed on it.
+        const float viewW = float(target.planes[0].texture->params.w),
+                    viewH = float(target.planes[0].texture->params.h);
+        const pl_rect2df picture = {std::clamp(std::min(target.crop.x0, target.crop.x1), 0.f, viewW),
+                                    std::clamp(std::min(target.crop.y0, target.crop.y1), 0.f, viewH),
+                                    std::clamp(std::max(target.crop.x0, target.crop.x1), 0.f, viewW),
+                                    std::clamp(std::max(target.crop.y0, target.crop.y1), 0.f, viewH)};
+        const pl_rect2df* placement = settings.statisticsInVideo ? &picture : nullptr;
         probe.Next(RenderProbe::StatisticsInfo);
         // The overlay box keeps its largest size while shown; start over each
         // time the statistics are switched on.
@@ -1795,7 +2131,34 @@ struct PlaceboBackend::State
                                         window))
             {
                 const int index = target.num_overlays;
-                statisticsBitmap.Describe(overlays[index], parts[index]);
+                statisticsBitmap.Describe(overlays[index], parts[index], placement);
+                target.overlays = overlays;
+                target.num_overlays = index + 1;
+            }
+        }
+        {
+            std::wstring note;
+            {
+                std::lock_guard guard(messageLock);
+                if (GetTickCount64() < messageUntil)
+                    note = message;
+            }
+            if (note.empty())
+            {
+                if (messageBitmap.Width())
+                    messageBitmap.Reset();
+            }
+            else if (messageBitmap.Update(d3d->gpu, note, int(viewW), int(viewH), window) && messageBitmap.Width())
+            {
+                // Top centre of the window, or of the picture like the statistics.
+                const float left = placement ? placement->x0 : 0, right = placement ? placement->x1 : viewW;
+                const float top =
+                    placement ? OverlayTop(placement->y0 + 16, placement->y1, float(messageBitmap.Height())) : 16.f;
+                const int index = target.num_overlays;
+                messageBitmap.DescribeAt(overlays[index],
+                                         parts[index],
+                                         std::max(0.f, (left + right - float(messageBitmap.Width())) / 2),
+                                         top);
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
             }
@@ -1807,7 +2170,8 @@ struct PlaceboBackend::State
             if (imageAnalysis.Describe(overlays[index],
                                        parts[index],
                                        target.planes[0].texture->params.w,
-                                       target.planes[0].texture->params.h))
+                                       target.planes[0].texture->params.h,
+                                       placement))
             {
                 target.overlays = overlays;
                 target.num_overlays = index + 1;
@@ -2081,9 +2445,6 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if (!ValidUserShaders(settings.userShaders))
         return E_INVALIDARG;
-    for (int i = 0; i < ShaderCount; i++)
-        if (settings.userShaders.shaders[i].enabled && LoadUserShaderSource(i).empty())
-            return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
     if (!ValidExtras(settings.extras))
         return E_INVALIDARG;
     if (!ValidCombinedMapping(settings))
@@ -2137,7 +2498,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     if ((settings.hdrNits != 0 && !range(settings.hdrNits, 80, 10000)) || !range(settings.antiringing, 0, 1))
         return E_INVALIDARG;
     if (settings.debandIterations < 0 || settings.debandIterations > 16 || settings.ditherMethod < 0 ||
-        settings.ditherMethod > 3 || !range(settings.debandThreshold, 0, 1000) ||
+        settings.ditherMethod >= int(std::size(DitherChoices)) || !range(settings.debandThreshold, 0, 1000) ||
         !range(settings.debandRadius, 0, 1000) || !range(settings.debandGrain, 0, 1000))
         return E_INVALIDARG;
     for (float width : {settings.upscalerBlur, settings.downscalerBlur})
@@ -2181,6 +2542,21 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     HRESULT hr = s.Ensure();
     if (FAILED(hr))
         return hr;
+    // With RTX, an NV12 or P010 picture from CPU memory becomes one texture, as a
+    // hardware decoder delivers it, so the driver can read it as it is (see
+    // RtxScaling). Planes as before if that fails.
+    ID3D11Texture2D* staged = nullptr;
+    if ((frame.format == PixelFormat::P010 || frame.format == PixelFormat::NV12) && !frame.bottomUp &&
+        (s.settings.rtxSuperResolution || s.settings.rtxHdr) &&
+        SUCCEEDED(s.StageSemiPlanar(frame, data, stride, staged)) && SUCCEEDED(Import(frame, staged, 0)))
+    {
+        if (!s.semiPlanarUploadTraced)
+        {
+            s.semiPlanarUploadTraced = true;
+            Trace("NV12/P010 from CPU memory uploaded as one texture for RTX");
+        }
+        return S_OK;
+    }
     if (s.copy)
         s.ClearFrame();
     s.Describe(frame);
@@ -2207,17 +2583,31 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
         const int c = layout.bytes;
         const size_t luma = static_cast<size_t>(frame.width) * frame.height * c;
         s.unpacked.resize(luma * 2);
-        for (int y = 0; y < frame.height; y++)
-            for (int x = 0; x < frame.width; x += 2)
+        // Typed copies per sample instead of a memcpy call for each byte group.
+        auto split = [&](auto sample)
+        {
+            using T = decltype(sample);
+            const int y0 = layout.vu ? 1 : 0, y1 = layout.vu ? 3 : 2, u = layout.vu ? 0 : 1, v = layout.vu ? 2 : 3;
+            for (int y = 0; y < frame.height; y++)
             {
-                const auto src = data + static_cast<size_t>(y) * stride + x * c * 2;
-                auto dstY = s.unpacked.data() + static_cast<size_t>(y) * frame.width * c + x * c;
-                auto dstUV = s.unpacked.data() + luma + static_cast<size_t>(y) * frame.width * c + x * c;
-                memcpy(dstY, src + (layout.vu ? 1 : 0) * c, c);
-                memcpy(dstY + c, src + (layout.vu ? 3 : 2) * c, c);
-                memcpy(dstUV, src + (layout.vu ? 0 : 1) * c, c);
-                memcpy(dstUV + c, src + (layout.vu ? 2 : 3) * c, c);
+                T src[4];
+                const auto row = data + static_cast<size_t>(y) * stride;
+                auto dstY = reinterpret_cast<T*>(s.unpacked.data() + static_cast<size_t>(y) * frame.width * c);
+                auto dstUV = reinterpret_cast<T*>(s.unpacked.data() + luma + static_cast<size_t>(y) * frame.width * c);
+                for (int x = 0; x < frame.width; x += 2)
+                {
+                    memcpy(src, row + static_cast<size_t>(x) * c * 2, sizeof(src));
+                    dstY[x] = src[y0];
+                    dstY[x + 1] = src[y1];
+                    dstUV[x] = src[u];
+                    dstUV[x + 1] = src[v];
+                }
             }
+        };
+        if (c == 2)
+            split(uint16_t());
+        else
+            split(uint8_t());
         data = s.unpacked.data();
         stride = frame.width * c;
         layout.packing = PixelPacking::SemiPlanar;
@@ -2226,14 +2616,30 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     {
         const int c = layout.bytes;
         s.unpacked.resize(static_cast<size_t>(frame.width) * frame.height * 4 * c);
-        for (int y = 0; y < frame.height; y++)
-            for (int x = 0; x < frame.width; x++)
+        // Typed copies per sample instead of a memcpy and memset call per pixel.
+        auto widen = [&](auto sample)
+        {
+            using T = decltype(sample);
+            const T opaque = T(~T(0));
+            for (int y = 0; y < frame.height; y++)
             {
-                auto src = data + static_cast<size_t>(y) * stride + x * 3 * c;
-                auto dst = s.unpacked.data() + (static_cast<size_t>(y) * frame.width + x) * 4 * c;
-                memcpy(dst, src, 3 * c);
-                memset(dst + 3 * c, 255, c);
+                const auto row = data + static_cast<size_t>(y) * stride;
+                auto dst = reinterpret_cast<T*>(s.unpacked.data() + static_cast<size_t>(y) * frame.width * 4 * c);
+                for (int x = 0; x < frame.width; x++)
+                {
+                    T src[3];
+                    memcpy(src, row + static_cast<size_t>(x) * 3 * c, sizeof(src));
+                    dst[4 * x] = src[0];
+                    dst[4 * x + 1] = src[1];
+                    dst[4 * x + 2] = src[2];
+                    dst[4 * x + 3] = opaque;
+                }
             }
+        };
+        if (c == 2)
+            widen(uint16_t());
+        else
+            widen(uint8_t());
         data = s.unpacked.data();
         stride = frame.width * 4 * c;
         layout.channels = 4;
@@ -2356,7 +2762,9 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
         own.ArraySize = 1;
         own.MipLevels = 1;
         own.Usage = D3D11_USAGE_DEFAULT;
-        own.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        // The driver's video processor reads NV12/P010 copies directly for
+        // RTX; its input views need a render target or decoder texture.
+        own.BindFlags = D3D11_BIND_SHADER_RESOURCE | (semi ? D3D11_BIND_RENDER_TARGET : 0);
         own.CPUAccessFlags = 0;
         own.MiscFlags = 0;
         hr = s.d3d->device->CreateTexture2D(&own, nullptr, &s.copy);
@@ -2478,8 +2886,16 @@ HRESULT PlaceboBackend::Present()
     if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
         return S_FALSE;
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
-    const bool nativeWanted =
-        s.settings.hdrMode == 1 && s.settings.hdrPassthrough && pl_color_space_is_hdr(&s.image.color);
+    const int hdrInput = 1 | (pl_color_space_is_hdr(&s.image.color) ? 2 : 0) |
+                         (s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off ? 4 : 0);
+    if (s.displayHdrInput.exchange(hdrInput) != hdrInput && s.displayHdrListener)
+        s.displayHdrListener();
+    if (s.displayHdrRebuild.exchange(false) && s.swapchain)
+        s.DestroySwapchain();
+    // Turning Windows HDR on replaces the driver session: Windows then knows
+    // about HDR and keeps the picture right under overlapping windows.
+    const bool nativeWanted = s.settings.hdrMode == 1 && s.settings.hdrPassthrough && !s.settings.windowsHdrToggle &&
+                              pl_color_space_is_hdr(&s.image.color);
     if (!nativeWanted || (s.nativeHdr.Monitor() && s.nativeHdr.Monitor() != monitor))
     {
         if (s.nativeHdr.Active())
@@ -2535,8 +2951,8 @@ HRESULT PlaceboBackend::Present()
     if (!pl_swapchain_resize(s.swapchain, &width, &height))
         return E_FAIL;
     // RTX Video HDR outputs HDR10 for SDR sources while Windows HDR is on.
-    const bool rtxHdr = s.settings.rtxHdr && s.HdrActive() && !pl_color_space_is_hdr(&s.image.color) &&
-                        s.rtx.HdrUsable() && s.image.num_planes;
+    const bool rtxHdr = s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off && s.HdrActive() &&
+                        !pl_color_space_is_hdr(&s.image.color) && s.rtx.HdrUsable() && s.image.num_planes;
     const bool hdr = rtxHdr || (s.settings.hdrMode != 2 && s.settings.hdrPassthrough && s.HdrActive() &&
                                 pl_color_space_is_hdr(&s.image.color));
     // The swapchain hint selects the signal format, not the tone-map peak.
@@ -2863,6 +3279,31 @@ void PlaceboBackend::SetFlip(bool mirror)
     state->flip = mirror;
 }
 
+PlaceboBackend::DisplayHdrInput PlaceboBackend::DisplayHdr() const
+{
+    const int input = state->displayHdrInput.load();
+    return {(input & 1) != 0, (input & 2) != 0, (input & 4) != 0};
+}
+
+void PlaceboBackend::SetDisplayHdrListener(std::function<void()> listener)
+{
+    state->displayHdrListener = std::move(listener);
+}
+
+void PlaceboBackend::SetDisplayHdrState(int enabled, bool rebuildOutput)
+{
+    state->displayHdrState = enabled;
+    state->outputStale = true;
+    if (rebuildOutput)
+        state->displayHdrRebuild = true;
+}
+
+std::wstring PlaceboBackend::StatisticsSnapshot() const
+{
+    std::lock_guard guard(state->lock);
+    return state->statisticsText;
+}
+
 bool PlaceboBackend::Flip() const
 {
     std::lock_guard guard(state->lock);
@@ -2872,6 +3313,13 @@ bool PlaceboBackend::Flip() const
 ID3D11Device* PlaceboBackend::Device() const
 {
     return state->d3d ? state->d3d->device : nullptr;
+}
+
+ID3D11Device* PlaceboBackend::EnsureDevice()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    return SUCCEEDED(s.EnsureDevice()) ? s.d3d->device : nullptr;
 }
 
 std::string PlaceboBackend::LastError() const
@@ -2902,6 +3350,13 @@ int PlaceboBackend::SharpenState() const
 void PlaceboBackend::ShowStatistics(bool enabled)
 {
     state->showStatistics = enabled;
+}
+
+void PlaceboBackend::ShowMessage(const std::wstring& text)
+{
+    std::lock_guard guard(state->messageLock);
+    state->message = text;
+    state->messageUntil = GetTickCount64() + 2000;
 }
 
 bool PlaceboBackend::StatisticsVisible() const
@@ -2952,13 +3407,6 @@ void PlaceboBackend::RestartDropMeasurement(int rawBeforeReset)
     s.drops.RestartSource();
 }
 
-std::wstring PlaceboBackend::StatisticsText() const
-{
-    auto& s = *state;
-    std::lock_guard guard(s.lock);
-    return s.statisticsText;
-}
-
 void PlaceboBackend::SetPresentationTiming(int64_t due, bool running, int64_t mediaTime, int refreshLead)
 {
     auto& s = *state;
@@ -2993,6 +3441,11 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)
 {
     state->measurementReset.fetch_or(counters ? 2u : 1u);
+}
+
+void PlaceboBackend::ResetStatistics()
+{
+    state->measurementReset.fetch_or(2u | 4u);
 }
 
 MeasurementSnapshot PlaceboBackend::Measurements() const

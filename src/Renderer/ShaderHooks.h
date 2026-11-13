@@ -2,8 +2,10 @@
 // Parsing of the user shader chain and Adaptive Sharpen, shared by playback
 // and the quality measurement so both run the same hooks.
 #include "Renderer/SharpenShader.h"
+#include "Renderer/Trace.h"
 #include "Renderer/UserShaderSource.h"
 #include <libplacebo/shaders/custom.h>
+#include <algorithm>
 #include <charconv>
 #include <cstring>
 #include <string>
@@ -12,30 +14,38 @@
 // when the file is missing, does not parse or lacks a configured parameter.
 inline const pl_hook* ParseUserShader(pl_gpu gpu, int id, const ShaderConfig& c)
 {
-    const auto source = LoadUserShaderSource(id);
+    const auto& info = ShaderCatalog[id];
+    const bool custom = id >= ShaderBuiltinCount;
+    const auto source = info.usable ? LoadUserShaderSource(id) : std::string();
     const pl_hook* hook = source.empty() ? nullptr : pl_mpv_user_shader_parse(gpu, source.data(), source.size());
     if (hook)
-        for (int p = 0; p < ShaderCatalog[id].count; p++)
+        for (int p = 0; p < info.count; p++)
             if (c.overrides & (1u << p))
             {
                 const pl_hook_par* found = nullptr;
                 for (int n = 0; n < hook->num_parameters; n++)
-                    if (!strcmp(hook->parameters[n].name, ShaderCatalog[id].parameters[p].name))
+                    if (!strcmp(hook->parameters[n].name, info.parameters[p].name))
                     {
                         found = &hook->parameters[n];
                         break;
                     }
+                // An edited custom file may have dropped a parameter or changed its limits.
+                if (!found && custom)
+                    continue;
                 if (!found)
                 {
                     pl_mpv_user_shader_destroy(&hook);
                     break;
                 }
+                const float value =
+                    custom ? std::clamp(c.values[p], info.parameters[p].minimum, info.parameters[p].maximum)
+                           : c.values[p];
                 if (found->type == PL_VAR_FLOAT)
-                    found->data->f = c.values[p];
+                    found->data->f = value;
                 else if (found->type == PL_VAR_SINT)
-                    found->data->i = static_cast<int>(c.values[p]);
+                    found->data->i = static_cast<int>(value);
                 else if (found->type == PL_VAR_UINT)
-                    found->data->u = static_cast<unsigned>(c.values[p]);
+                    found->data->u = static_cast<unsigned>(value);
             }
     return hook;
 }

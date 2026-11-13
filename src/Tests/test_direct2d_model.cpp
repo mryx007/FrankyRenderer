@@ -20,7 +20,7 @@ int wmain()
         PlaceboSettings s;
         auto pages = BuildD2DPages(s);
         int controls = 0, parameters = 0;
-        for (const auto& info : ShaderCatalog)
+        for (const auto& info : BuiltinShaderCatalog)
             parameters += info.count;
         Require(pages.size() == 8, "all sections");
         bool analysis = false;
@@ -39,9 +39,20 @@ int wmain()
         Require(MatchesFilter(L"HDR Highlights Exposure", L"  exposure HDR "),
                 "search ignores case and outer spaces; all words match");
         Require(!MatchesFilter(L"HDR Highlights Exposure", L"exposure Gamma"), "search excludes missing terms");
+        bool shaderSwitch = false;
+        for (const auto& page : pages)
+            for (const auto& card : page.cards)
+                for (const auto& c : card.controls)
+                    if (page.name == L"Shaders" && card.title == L"Clarity" && c.name == L"On/Off")
+                    {
+                        Require(c.hidden, "shader switch stays off the shader page");
+                        Require(SearchShows(c, card, page, L"clar"), "search by shader name offers its switch");
+                        Require(!SearchShows(c, card, page, L"off"), "search for off does not list every shader");
+                        shaderSwitch = true;
+                    }
+        Require(shaderSwitch, "shader switch exists");
         Require(MatchesFilter(L"Anything", L" \t"), "empty search");
         auto& hdrControls = pages[5].cards[0].controls;
-        bool hasProtection = false;
         for (auto& control : hdrControls)
         {
             if (control.name == L"HDR Mode")
@@ -50,18 +61,7 @@ int wmain()
                 for (const auto& choice : control.choices)
                     Require(choice.label.find(L"Protection") == std::wstring::npos, "protection is not an HDR mode");
             }
-            if (control.name == L"Clipping Protection")
-            {
-                hasProtection = true;
-                control.set(1);
-                Require(s.clippingProtection && s.hdrMode == 2, "switch does not change HDR mode");
-                s.hdrMode = 1;
-                Require(!control.enabled(), "pure passthrough bypasses protection");
-                s.hdrMode = 2;
-                control.set(0);
-            }
         }
-        Require(hasProtection, "independent protection switch exists");
         int exposureHits = 0, combinedHits = 0;
         for (const auto& p : pages)
             for (const auto& card : p.cards)
@@ -179,7 +179,7 @@ int wmain()
         rtx.reset();
         Require(!s.rtxSuperResolution && scaler.Enabled(), "RTX reset restores normal scaler");
         bool documentedSupported = true;
-        const int expectedCounts[] = {13, 11, 13, 11, 7};
+        const int expectedCounts[] = {13, 11, 13, 11, 8};
         for (int role = 0; role < 5; ++role)
         {
             const auto names = D2DScalerNames(role, true, "auto");
@@ -251,13 +251,68 @@ int wmain()
             toggle.reset();
             Require(toggle.Value() == 0 && !starting.Enabled(), "custom switch reset disables editor");
             filter = {};
+            // Every choice of the custom editor must be one the renderer accepts:
+            // "none" only for the window, never as kernel or starting filter.
+            auto& kernel = find(L"Scaling", title.c_str(), L"Kernel");
+            auto& window = find(L"Scaling", title.c_str(), L"Window");
+            const auto offers = [](const D2DControl& c, const wchar_t* label)
+            {
+                return std::any_of(
+                    c.choices.begin(), c.choices.end(), [&](const auto& choice) { return choice.label == label; });
+            };
+            Require(!offers(starting, L"none") && !offers(kernel, L"none") && offers(window, L"none"),
+                    "custom editor offers none only for the window");
+            toggle.set(1);
+            int rejected = 0;
+            for (auto* control : {&starting, &kernel, &window})
+                for (const auto& choice : control->choices)
+                {
+                    const auto saved = filter;
+                    control->set(float(choice.value));
+                    if (FAILED(ValidateSettings(s)))
+                    {
+                        printf("rejected: %ls %ls = %ls\n", title.c_str(), control->name.c_str(), choice.label.c_str());
+                        ++rejected;
+                    }
+                    filter = saved;
+                }
+            Require(!rejected, "every custom editor choice is accepted");
+            toggle.reset();
+            filter = {};
         }
         auto& exposure = find(L"HDR & Color Mapping", L"Highlights", L"Exposure");
         exposure.set(-.001f);
         Require(s.tonal.exposure[2] == -.001f && exposure.stepVal == .001f, "fine highlight adjustment");
+        auto& temporal = find(L"Processing", L"Dithering", L"Change Dither for Every Frame");
+        Require(temporal.Enabled(), "a changing pattern applies to ordinary dithering");
+        s.ditherMethod = 4;
+        Require(!temporal.Enabled() && find(L"Processing", L"Dithering", L"Algorithm").choices.size() == 14,
+                "error diffusion has no changing pattern");
+        s.ditherMethod = 0;
+        auto& oversample = find(L"Scaling", L"Filters", L"Oversample Threshold");
+        strcpy_s(s.scaling.filters[4].filter, "mitchell_clamp");
+        Require(!oversample.Enabled(), "the threshold belongs to the oversample mixer");
+        strcpy_s(s.scaling.filters[4].filter, "oversample");
+        Require(oversample.Enabled(), "the threshold works with the oversample mixer");
+        s.scaling.filters[4] = {};
         auto& order = find(L"Shaders", L"AMD CAS", L"Chain Position");
-        order.set(20);
-        Require(s.userShaders.order[20] == 0 && ValidUserShaders(s.userShaders), "shader reorder permutation");
+        Require(!order.Enabled(), "no chain order to choose with no shader running");
+        order.set(1);
+        Require(s.userShaders.order[0] == 0, "a shader that is off keeps its place");
+        for (int running : {s.userShaders.order[0], s.userShaders.order[1], s.userShaders.order[2]})
+            s.userShaders.shaders[running].enabled = 1;
+        const int first = s.userShaders.order[0], second = s.userShaders.order[1], third = s.userShaders.order[2];
+        Require(s.shaderAutoOrder && !order.Enabled(), "automatic order is the default and sets the positions");
+        s.shaderAutoOrder = FALSE;
+        Require(order.Enabled() && order.refreshChoices().size() == 3, "positions count the running shaders");
+        order.set(2);
+        Require(s.userShaders.order[0] == second && s.userShaders.order[1] == third &&
+                    s.userShaders.order[2] == first && order.get() == 2 && ValidUserShaders(s.userShaders),
+                "shader reorder among the running shaders");
+        order.set(0);
+        Require(s.userShaders.order[0] == first && ValidUserShaders(s.userShaders), "shader moves back to the front");
+        for (int running : {first, second, third})
+            s.userShaders.shaders[running].enabled = 0;
         order.reset();
         auto& recovery = find(L"HDR & Color Mapping", L"Contrast Recovery", L"Contrast Recovery");
         s.contrastRecovery = .5f;
@@ -495,15 +550,15 @@ int wmain()
             host->m_activePage = 0;
             host->m_scrollY = 0;
             host->m_pRenderTarget->SetDpi(96.f, 96.f);
-            // The reset action has its own header row above cards without tabs.
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 218))), "fitting layout target");
+            // The reset button has its own row, as high as a row of tabs, above cards without tabs.
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 204))), "fitting layout target");
             host->Render();
             Require(host->m_maxScrollY == 0, "last card fits without scrolling into trailing padding");
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 208))), "overflow layout target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 194))), "overflow layout target");
             host->Render();
             Require(host->m_maxScrollY > 0, "actual clipped content remains scrollable");
             host->m_scrollY = host->m_maxScrollY;
-            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 232))), "restore fitting target");
+            Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(960, 218))), "restore fitting target");
             host->Render();
             Require(host->m_maxScrollY == 0 && host->m_scrollY == 0, "resize removes stale scroll offset");
             for (const auto& hit : host->m_hitRegions)
@@ -631,8 +686,9 @@ int wmain()
                 "INI import applies once and refreshes accepted settings");
         Require(SUCCEEDED(host->ApplyImported(beforeImport)), "restore before import test");
         host->m_preview = {};
-        // General, Processing and Color: first tabs fit without scrolling.
-        for (int index : {0, 1, 3})
+        // Processing and Color: first tabs fit without scrolling. General's
+        // Output tab grew (image analysis placement, display mode) and scrolls.
+        for (int index : {1, 3})
         {
             host->m_activePage = index;
             host->m_scrollY = 0;
@@ -651,7 +707,7 @@ int wmain()
         }
         Require(shaderRows == 7 && enabledSwitches == 0 && shaderScrollbar,
                 "compact shader list switches shaders; the editor holds only parameters");
-        host->m_shaderOffset = ShaderCount - 7;
+        host->m_shaderOffset = ShaderListedCount() - 7;
         host->m_selectedShader = 20;
         host->Render();
         Require(host->m_shaderList.right > host->m_shaderList.left, "last shader reachable");
@@ -776,6 +832,35 @@ int wmain()
             host->m_preview = {};
         }
         Direct2DSettingsHost::Destroy(view);
+        {
+            // Remember Last Page: reopen on the page, tab and scroll position
+            // of the last close; switched off, the first page again.
+            SetMenuRememberPage(true);
+            HWND first = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* a = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(first, GWLP_USERDATA));
+            int scaling = -1;
+            for (int i = 0; i < int(a->m_pages.size()); ++i)
+                if (a->m_pages[size_t(i)].name == L"Scaling")
+                    scaling = i;
+            Require(scaling > 0, "scaling page for the remembered position");
+            const auto tabs = CardTabs(a->m_pages[size_t(scaling)]);
+            Require(tabs.size() > 1, "scaling page has several tabs");
+            a->m_activePage = scaling;
+            a->m_activeCard = int(tabs.size()) - 1;
+            a->m_scrollY = 120;
+            Direct2DSettingsHost::Destroy(first);
+            HWND second = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* b = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(second, GWLP_USERDATA));
+            Require(b->m_activePage == scaling && b->m_activeCard == int(tabs.size()) - 1 && b->m_scrollY == 120,
+                    "the menu reopens where it was closed");
+            Direct2DSettingsHost::Destroy(second);
+            SetMenuRememberPage(false);
+            HWND third = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* c = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(third, GWLP_USERDATA));
+            Require(c->m_activePage == 0 && c->m_activeCard == 0 && c->m_scrollY == 0,
+                    "switched off, the menu opens on the first page");
+            Direct2DSettingsHost::Destroy(third);
+        }
         DestroyWindow(parent);
         printf(
             "Direct2D model: %d controls, %d shader parameters; search, explanations, slider ranges, bindings, reset and ordering passed.\n",

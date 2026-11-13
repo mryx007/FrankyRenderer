@@ -33,14 +33,6 @@ inline constexpr RendererChoice ScalerChoices[] = {
     {"ewa_robidouxsharp", L"EWA Robidoux Sharp"},
 };
 
-inline bool ScalerHasWidth(size_t index)
-{
-    if (index >= std::size(ScalerChoices))
-        return false;
-    const std::string_view name = ScalerChoices[index].name;
-    return name != "bilinear" && name != "bicubic" && name != "nearest";
-}
-
 inline constexpr RendererChoice ToneChoices[] = {
     {"auto", L"Auto (Metadata)"},
     {"spline", L"Spline"},
@@ -56,8 +48,21 @@ inline constexpr RendererChoice ToneChoices[] = {
     {"linear", L"Linear"},
     {"linearlight", L"Linear Light"},
 };
-inline constexpr const wchar_t* DitherChoices[] = {
-    L"Blue Noise (recommended)", L"Ordered Dithering", L"Random Dithering", L"Off"};
+// Saved by position: new methods go at the end. See BuildRenderOptions.
+inline constexpr const wchar_t* DitherChoices[] = {L"Blue Noise (recommended)",
+                                                   L"Ordered Dithering",
+                                                   L"Random Dithering",
+                                                   L"Off",
+                                                   L"Error Diffusion: Simple",
+                                                   L"Error Diffusion: False Floyd-Steinberg",
+                                                   L"Error Diffusion: Sierra Lite",
+                                                   L"Error Diffusion: Floyd-Steinberg",
+                                                   L"Error Diffusion: Atkinson",
+                                                   L"Error Diffusion: Jarvis-Judice-Ninke",
+                                                   L"Error Diffusion: Stucki",
+                                                   L"Error Diffusion: Burkes",
+                                                   L"Error Diffusion: Sierra 2",
+                                                   L"Error Diffusion: Sierra 3"};
 inline constexpr const wchar_t* OutputChoices[] = {
     L"Auto (libplacebo)", L"8-bit Integer (SDR)", L"Prefer 10-bit Integer", L"Prefer 16-bit Float"};
 // The colour gamut the display shows; pictures are mapped into it.

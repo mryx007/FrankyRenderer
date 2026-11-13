@@ -13,6 +13,9 @@ struct MediaFormat
 };
 
 HRESULT ParseFormat(const AM_MEDIA_TYPE& type, MediaFormat& out);
+// Turns bottom-up RGB (positive height) into the same type top-down. Returns
+// false for every other type, which stays unchanged.
+bool MakeTopDown(AM_MEDIA_TYPE& type);
 
 struct HdrSideDataStatus
 {

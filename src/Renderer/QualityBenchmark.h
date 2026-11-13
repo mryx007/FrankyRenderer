@@ -268,7 +268,7 @@ class QualityBenchmark
         if (settings.adaptiveSharpen)
             if (const pl_hook* sharpen = ParseSharpenShader(d3d->gpu, settings.sharpenStrength))
                 hooks.push_back(sharpen);
-        for (int id : settings.userShaders.order)
+        for (int id : ShaderChainOrder(settings.userShaders, settings.shaderAutoOrder != FALSE))
             if (settings.userShaders.shaders[id].enabled)
                 if (const pl_hook* hook = ParseUserShader(d3d->gpu, id, settings.userShaders.shaders[id]))
                     hooks.push_back(hook);
