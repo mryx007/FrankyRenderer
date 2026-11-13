@@ -476,7 +476,8 @@ msgstr "Menügestaltung"
 
 #. Section description (General > Menu Appearance)
 msgid "Look and behaviour of this settings window. Applies immediately."
-msgstr "Aussehen und Verhalten dieses Einstellungsfensters. Wird sofort angewendet."
+msgstr ""
+"Aussehen und Verhalten dieses Einstellungsfensters. Wird sofort angewendet."
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
@@ -535,14 +536,6 @@ msgid "Windows"
 msgstr "Windows"
 
 #. Setting name (General > Menu Appearance)
-msgid "Remember Last Page"
-msgstr "Letzte Seite merken"
-
-#. Setting description (General > Menu Appearance > Remember Last Page)
-msgid "Opens this window on the page you left."
-msgstr "Öffnet dieses Fenster auf der zuletzt geöffneten Seite."
-
-#. Setting name (General > Menu Appearance)
 msgid "Language"
 msgstr "Sprache"
 
@@ -563,6 +556,14 @@ msgstr "Automatisch (Windows)"
 #. Menu text; keep %d and %s placeholders
 msgid "English"
 msgstr "Englisch"
+
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr "Letzte Seite merken"
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr "Öffnet dieses Fenster auf der zuletzt geöffneten Seite."
 
 #. Category
 #. Category heading
@@ -937,7 +938,6 @@ msgid "Use the renderer's default filter."
 msgstr "Den Standardfilter des Renderers verwenden."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
-#. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "No filter, only use basic GPU texture sampling"
 msgstr "Kein Filter, nur einfache Texturabtastung durch die GPU"
 
@@ -1028,7 +1028,6 @@ msgstr ""
 "den ausgewählten Filter zur Bearbeitung."
 
 #. Choice description (Scaling > Filters > Image Downscaler)
-#. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
 msgstr "Denselben Filter wie beim Hochskalieren verwenden"
 
@@ -1070,7 +1069,6 @@ msgstr ""
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
-#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
 msgstr "Den entsprechenden Bildskalierungsfilter verwenden."
 
@@ -1100,7 +1098,6 @@ msgstr ""
 "hinzuzufügen."
 
 #. Choice description (Scaling > Filters > Frame Mixer)
-#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Disable frame mixing, show nearest frame to target PTS"
 msgstr ""
 "Bildmischung deaktivieren; das Bild mit dem nächstgelegenen Zielzeitstempel "

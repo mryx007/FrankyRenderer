@@ -493,14 +493,6 @@ msgid "Windows"
 msgstr "系统"
 
 #. Setting name (General > Menu Appearance)
-msgid "Remember Last Page"
-msgstr "记住上次的页面"
-
-#. Setting description (General > Menu Appearance > Remember Last Page)
-msgid "Opens this window on the page you left."
-msgstr "打开此窗口时显示上次离开时的页面。"
-
-#. Setting name (General > Menu Appearance)
 msgid "Language"
 msgstr "语言"
 
@@ -519,6 +511,14 @@ msgstr "自动（跟随 Windows）"
 #. Menu text; keep %d and %s placeholders
 msgid "English"
 msgstr "英语"
+
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr "记住上次的页面"
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr "打开此窗口时显示上次离开时的页面。"
 
 #. Category
 #. Category heading
@@ -864,7 +864,6 @@ msgid "Use the renderer's default filter."
 msgstr "使用渲染器的默认滤镜。"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
-#. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "No filter, only use basic GPU texture sampling"
 msgstr "不使用滤镜，仅使用基础 GPU 纹理采样"
 
@@ -947,7 +946,6 @@ msgid ""
 msgstr "缩小视频时对图像进行滤波。\"自定义\"将复制所选滤镜以供编辑。"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
-#. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
 msgstr "使用与放大器相同的滤镜"
 
@@ -987,7 +985,6 @@ msgstr "在图像缩放前，重建子采样的色度或透明平面。"
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
-#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
 msgstr "使用对应的图像缩放滤镜。"
 
@@ -1014,7 +1011,6 @@ msgid ""
 msgstr "平滑运动使用的时域滤波器。它通过融合帧来工作，而非添加图像细节。"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
-#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Disable frame mixing, show nearest frame to target PTS"
 msgstr "禁用帧混合，显示距目标呈现时间戳最近的帧"
 
