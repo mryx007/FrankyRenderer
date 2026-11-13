@@ -17,6 +17,23 @@ static void Require(bool ok, const char* message)
 
 int main()
 {
+    DurationMeasurement duration;
+    Require(duration.RecentAverage(1000) == 0, "empty recent render average");
+    duration.Add(1000, 12);
+    for (uint64_t i = 1; i <= 5; ++i)
+        duration.Add(1000 + i, .6);
+    Require(std::abs(duration.RecentAverage(1005) - 2.5) < 1e-9,
+            "one expensive source picture and five cache outputs form their mean, not their peak");
+    duration.Add(6001, 1);
+    Require(std::abs(duration.RecentAverage(6001) - (5 * .6 + 1) / 6) < 1e-9,
+            "recent render average excludes samples older than five seconds");
+    Require(duration.RecentAverage(11001) == 1, "five-second boundary remains included");
+    Require(duration.RecentAverage(11002) == 0, "paused measurements expire without another sample");
+    Require(std::abs(duration.Average() - 16. / 7) < 1e-9, "lifetime diagnostic average is retained");
+    duration.Reset();
+    Require(duration.RecentAverage(11002) == 0, "reset clears recent render average");
+    puts("PASS rolling five-second render average, cached refreshes, expiration and reset");
+
     constexpr int64_t period = 100000, epoch = 1000000000;
     PresentationMeasurement original, fixed;
     original.Period(period);

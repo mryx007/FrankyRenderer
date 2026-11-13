@@ -251,6 +251,34 @@ int wmain()
             toggle.reset();
             Require(toggle.Value() == 0 && !starting.Enabled(), "custom switch reset disables editor");
             filter = {};
+            // Every choice of the custom editor must be one the renderer accepts:
+            // "none" only for the window, never as kernel or starting filter.
+            auto& kernel = find(L"Scaling", title.c_str(), L"Kernel");
+            auto& window = find(L"Scaling", title.c_str(), L"Window");
+            const auto offers = [](const D2DControl& c, const wchar_t* label)
+            {
+                return std::any_of(
+                    c.choices.begin(), c.choices.end(), [&](const auto& choice) { return choice.label == label; });
+            };
+            Require(!offers(starting, L"none") && !offers(kernel, L"none") && offers(window, L"none"),
+                    "custom editor offers none only for the window");
+            toggle.set(1);
+            int rejected = 0;
+            for (auto* control : {&starting, &kernel, &window})
+                for (const auto& choice : control->choices)
+                {
+                    const auto saved = filter;
+                    control->set(float(choice.value));
+                    if (FAILED(ValidateSettings(s)))
+                    {
+                        printf("rejected: %ls %ls = %ls\n", title.c_str(), control->name.c_str(), choice.label.c_str());
+                        ++rejected;
+                    }
+                    filter = saved;
+                }
+            Require(!rejected, "every custom editor choice is accepted");
+            toggle.reset();
+            filter = {};
         }
         auto& exposure = find(L"HDR & Color Mapping", L"Highlights", L"Exposure");
         exposure.set(-.001f);
@@ -804,6 +832,35 @@ int wmain()
             host->m_preview = {};
         }
         Direct2DSettingsHost::Destroy(view);
+        {
+            // Remember Last Page: reopen on the page, tab and scroll position
+            // of the last close; switched off, the first page again.
+            SetMenuRememberPage(true);
+            HWND first = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* a = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(first, GWLP_USERDATA));
+            int scaling = -1;
+            for (int i = 0; i < int(a->m_pages.size()); ++i)
+                if (a->m_pages[size_t(i)].name == L"Scaling")
+                    scaling = i;
+            Require(scaling > 0, "scaling page for the remembered position");
+            const auto tabs = CardTabs(a->m_pages[size_t(scaling)]);
+            Require(tabs.size() > 1, "scaling page has several tabs");
+            a->m_activePage = scaling;
+            a->m_activeCard = int(tabs.size()) - 1;
+            a->m_scrollY = 120;
+            Direct2DSettingsHost::Destroy(first);
+            HWND second = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* b = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(second, GWLP_USERDATA));
+            Require(b->m_activePage == scaling && b->m_activeCard == int(tabs.size()) - 1 && b->m_scrollY == 120,
+                    "the menu reopens where it was closed");
+            Direct2DSettingsHost::Destroy(second);
+            SetMenuRememberPage(false);
+            HWND third = Direct2DSettingsHost::Create(parent, bounds, &s);
+            auto* c = reinterpret_cast<Direct2DHostWindow*>(GetWindowLongPtrW(third, GWLP_USERDATA));
+            Require(c->m_activePage == 0 && c->m_activeCard == 0 && c->m_scrollY == 0,
+                    "switched off, the menu opens on the first page");
+            Direct2DSettingsHost::Destroy(third);
+        }
         DestroyWindow(parent);
         printf(
             "Direct2D model: %d controls, %d shader parameters; search, explanations, slider ranges, bindings, reset and ordering passed.\n",

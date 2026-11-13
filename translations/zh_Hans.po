@@ -38,8 +38,8 @@ msgid "Background"
 msgstr "背景"
 
 #. Tab (General)
-msgid "Themes"
-msgstr "主题"
+msgid "Appearance"
+msgstr "外观"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
@@ -433,8 +433,8 @@ msgid "Menu Appearance"
 msgstr "菜单外观"
 
 #. Section description (General > Menu Appearance)
-msgid "Colours of this settings window. Applies immediately."
-msgstr "此设置窗口的颜色。立即生效。"
+msgid "Look and behaviour of this settings window. Applies immediately."
+msgstr "此设置窗口的外观和行为。立即生效。"
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
@@ -491,6 +491,14 @@ msgstr "粉色"
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
 msgstr "系统"
+
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr "记住上次的页面"
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr "打开此窗口时显示上次离开时的页面。"
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"

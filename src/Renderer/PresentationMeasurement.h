@@ -348,6 +348,21 @@ class DurationMeasurement
         return count ? total / count : 0;
     }
 
+    // The visible load follows current playback, rather than all frames since
+    // playback started. Ignore stale samples even when playback is paused.
+    double RecentAverage(uint64_t now) const
+    {
+        double sum = 0;
+        size_t samples = 0;
+        for (const auto& sample : recent)
+            if (now - sample.first <= 5000)
+            {
+                sum += sample.second;
+                ++samples;
+            }
+        return samples ? sum / samples : 0;
+    }
+
     double Maximum(uint64_t now) const
     {
         double value = 0;

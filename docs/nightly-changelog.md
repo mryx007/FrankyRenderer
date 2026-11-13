@@ -104,4 +104,9 @@
 - Fixed no picture and no sound with Smooth Motion on some TV streams such as multicast IPTV ([#24](https://github.com/mryx007/FrankyRenderer/issues/24)).
 - Added "LUT from Video Folder" (Color > 3D LUT): uses a .cube file next to the video ([#25](https://github.com/mryx007/FrankyRenderer/issues/25)).
 - Ctrl+J shows custom scalers in detail instead of only "custom".
+- Custom scalers: Kernel and Starting Filter no longer offer "none"; rejected settings now show a message.
+- Black bar detection only crops bars at the top and bottom; dark sides of a scene no longer zoom in.
+- Ctrl+J: "Render" shows a recent average instead of a 5-second peak.
+- Added "Remember Last Page" (General > Appearance, formerly Themes): the settings window reopens where it was closed.
+- Fixed stretched subtitles in MPC-BE when the window size does not change after opening ([#28](https://github.com/mryx007/FrankyRenderer/issues/28)).
 - Better performance: less CPU work per frame (RTX Video, HDR displays, software decoding) and a smoother settings menu.

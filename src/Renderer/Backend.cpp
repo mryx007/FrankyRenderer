@@ -223,9 +223,6 @@ struct PlaceboBackend::State
     std::wstring statisticsText;
     bool statisticsShown = false;
     ULONGLONG statisticsUpdated = 0;
-    // Lost-picture totals over the render peak's window (as its measurements).
-    static constexpr ULONGLONG RenderPeakWindow = 5000;
-    std::deque<std::pair<ULONGLONG, uint64_t>> lostHistory;
     PresentationMeasurement presentation;
     DropMeasurement drops;
     std::mutex dropsLock;
@@ -294,7 +291,6 @@ struct PlaceboBackend::State
                 renderGpu.duration.Reset();
                 renderGpu.skipped = renderGpu.disjoint = 0;
                 presentCpu.Reset();
-                lostHistory.clear();
             }
             statisticsText.clear();
             statisticsUpdated = 0;
@@ -902,7 +898,7 @@ struct PlaceboBackend::State
         return hr;
     }
 
-    HRESULT Ensure()
+    HRESULT EnsureDevice()
     {
         if (!d3d)
         {
@@ -913,6 +909,13 @@ struct PlaceboBackend::State
             if (!d3d)
                 return E_FAIL;
         }
+        return S_OK;
+    }
+
+    HRESULT Ensure()
+    {
+        if (FAILED(EnsureDevice()))
+            return E_FAIL;
         if (!context)
             d3d->device->GetImmediateContext(&context);
         ComPtr<ID3D10Multithread> multithread;
@@ -1381,18 +1384,9 @@ struct PlaceboBackend::State
         const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
                               : statisticsFps > 0 ? 1000 / statisticsFps / (image.field != PL_FIELD_NONE ? 2 : 1)
                                                   : period / 1e4;
-        // Pictures lost in the peak's window (dropped, repeated or late). A
-        // slow picture the display queue absorbed is no visible problem, so
-        // the peak reads as over budget only when pictures were actually lost.
-        const uint64_t lost = uint64_t(statisticsDropped >= 0 ? DropTotal() : 0) +
-                              (presentation.haveCounters ? presentation.repeatedRefreshes + presentation.glitches : 0);
-        if (!lostHistory.empty() && lost < lostHistory.back().second)
-            lostHistory.clear(); // counters were reset
-        lostHistory.emplace_back(now, lost);
-        while (lostHistory.size() > 1 && now - lostHistory[1].first >= RenderPeakWindow)
-            lostHistory.pop_front();
-        const bool lostRecently = lost > lostHistory.front().second;
-        const auto render = [&](const wchar_t* label, bool maximum)
+        // Show recent sustained render load. A single expensive cache build
+        // must not dominate the display for five seconds as a peak did.
+        const auto render = [&]()
         {
             if (!renderCpu.count && !renderGpu.duration.count)
                 return;
@@ -1402,33 +1396,28 @@ struct PlaceboBackend::State
             value << std::fixed << std::setprecision(2);
             if (renderCpu.count)
             {
-                slowest = maximum ? renderCpu.Maximum(now) : renderCpu.Average();
+                slowest = renderCpu.RecentAverage(now);
                 value << slowest << L" ms CPU";
             }
             if (renderGpu.duration.count)
             {
-                const double gpu = maximum ? renderGpu.duration.Maximum(now) : renderGpu.duration.Average();
+                const double gpu = renderGpu.duration.RecentAverage(now);
                 slowest = std::max(slowest, gpu);
                 value << (renderCpu.count ? dot : L"") << gpu << L" ms GPU";
             }
             // CPU and GPU work overlap; the slower one must fit the budget.
-            wchar_t color = 0;
+            // Plain text: actual problems show in the Drops row.
             if (budget > 0)
             {
                 const double load = 100 * slowest / budget;
-                const bool absorbed = maximum && !lostRecently;
-                color = maximum ? 0 : load > 100 ? L'r' : load >= 80 ? L'y' : 0;
                 value << dot << std::setprecision(0) << load << L"% of " << std::setprecision(2) << budget << L" ms"
-                      << (absorbed && load > 100 ? L", absorbed by queue"
-                          : absorbed             ? L""
-                          : load > 100           ? L", over budget"
-                          : load >= 80           ? L", near limit"
-                                                 : L"");
+                      << (load > 100   ? L", over budget"
+                          : load >= 80 ? L", near limit"
+                                       : L"");
             }
-            (color ? colored(label, color) : row(label)) << value.str();
+            row(L"Render") << value.str();
         };
-        render(L"Render", false);
-        render(L"Render peak 5s", true);
+        render();
         if (const auto* peak = renderProbe.Peak(now))
         {
             int first = 0, second = 1;
@@ -3324,6 +3313,13 @@ bool PlaceboBackend::Flip() const
 ID3D11Device* PlaceboBackend::Device() const
 {
     return state->d3d ? state->d3d->device : nullptr;
+}
+
+ID3D11Device* PlaceboBackend::EnsureDevice()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    return SUCCEEDED(s.EnsureDevice()) ? s.d3d->device : nullptr;
 }
 
 std::string PlaceboBackend::LastError() const

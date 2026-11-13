@@ -161,9 +161,15 @@ class Renderer final : public CBaseVideoRenderer,
     // XySubFilter (ISubRenderConsumer) share the overlay; both may be active.
     std::mutex overlayLock;
     PlaceboBackend::OverlayPainter hostSubtitles;
+    // Hands the render device to the player's subtitle callback.
+    std::function<void(ID3D11Device*)> hostSubtitleDevice;
     std::shared_ptr<XySubBridge> xySub = std::make_shared<XySubBridge>();
     bool xySubInstalled = false;
     void InstallSubtitleOverlay();
+    // MPC-BE builds its subtitle buffer when it gets the device and sizes it
+    // only when the window size changes. Giving it the device before it
+    // applies the first size keeps text subtitles undistorted (issue 28).
+    void AttachSubtitleDevice();
     unsigned sideDataLogged = 0;
     bool fieldDecisionLogged = false;
     std::atomic<FILTER_STATE> windowState = State_Stopped;

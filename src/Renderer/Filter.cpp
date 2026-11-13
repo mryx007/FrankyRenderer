@@ -556,6 +556,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
         VideoBackground::Resize(GetOwnerWindow());
     if (owner->windowState.load() == State_Running)
         Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
+    // MPC-BE applies this size to its subtitle buffer right after this call.
+    owner->AttachSubtitleDevice();
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
 }
 
@@ -2431,6 +2433,23 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
         ISubRender11Callback* callback = nullptr;
         ComPtr<ISubRender11Callback> retained;
         ComPtr<ID3D11Device> device;
+        std::mutex lock;
+
+        HRESULT Attach(ID3D11Device* next)
+        {
+            std::lock_guard guard(lock);
+            if (device.Get() == next)
+                return S_OK;
+            if (device)
+            {
+                callback->SetDevice11(nullptr);
+                device.Reset();
+            }
+            HRESULT hr = callback->SetDevice11(next);
+            if (SUCCEEDED(hr))
+                device = next;
+            return hr;
+        }
 
         ~Bridge()
         {
@@ -2450,6 +2469,7 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
         {
             std::lock_guard guard(overlayLock);
             hostSubtitles = {};
+            hostSubtitleDevice = {};
         }
         InstallSubtitleOverlay();
         return S_OK;
@@ -2472,20 +2492,11 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     PlaceboBackend::OverlayPainter painter =
         [this, bridge](ID3D11Device* device, ID3D11DeviceContext*, int width, int height, const RECT& video) -> HRESULT
     {
-        if (bridge->device.Get() != device)
-        {
-            if (bridge->device)
-            {
-                bridge->callback->SetDevice11(nullptr);
-                bridge->device.Reset();
-            }
-            HRESULT hr = bridge->callback->SetDevice11(device);
-            if (FAILED(hr))
-                return hr;
-            bridge->device = device;
-        }
+        HRESULT hr = bridge->Attach(device);
+        if (FAILED(hr))
+            return hr;
         const RECT viewport = {0, 0, width, height};
-        HRESULT hr = bridge->callback->Render11(
+        hr = bridge->callback->Render11(
             frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
         // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
         // cleared before the callback; keep the video and its empty overlay.
@@ -2495,9 +2506,23 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     {
         std::lock_guard guard(overlayLock);
         hostSubtitles = std::move(painter);
+        hostSubtitleDevice = [bridge](ID3D11Device* device) { bridge->Attach(device); };
     }
     InstallSubtitleOverlay();
     return S_OK;
+}
+
+void Renderer::AttachSubtitleDevice()
+{
+    std::function<void(ID3D11Device*)> attach;
+    {
+        std::lock_guard guard(overlayLock);
+        attach = hostSubtitleDevice;
+    }
+    if (!attach)
+        return;
+    if (auto device = backend.EnsureDevice())
+        attach(device);
 }
 
 void Renderer::InstallSubtitleOverlay()

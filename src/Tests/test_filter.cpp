@@ -1397,6 +1397,24 @@ int wmain(int argc, wchar_t** argv)
             exit(254);
         }
         puts("PASS new video child fills its owner before the first explicit placement");
+        {
+            // MPC-BE sizes its subtitle buffer right after SetWindowPosition and
+            // only on size changes; it must have the device by then (issue 28).
+            ComPtr<ISubRender11> subtitles;
+            Check(renderer.As(&subtitles), "MPC-BE subtitle interface");
+            ComPtr<SubtitleProbe> early;
+            early.Attach(new SubtitleProbe);
+            Check(subtitles->SetCallback11(early.Get()), "MPC-BE subtitle callback before playback");
+            Check(window->SetWindowPosition(0, 0, 320, 240), "MPC-BE first window size");
+            if (early->attached != 1)
+            {
+                printf("FAIL subtitle device not attached before the first window size: attached=%u\n",
+                       early->attached);
+                exit(248);
+            }
+            Check(subtitles->SetCallback11(nullptr), "MPC-BE subtitle callback detach");
+            puts("PASS MPC-BE subtitle device attached before the first window size");
+        }
         for (const SIZE size : {SIZE{320, 240}, SIZE{960, 540}, SIZE{128, 128}})
         {
             Check(window->SetWindowPosition(0, 0, size.cx, size.cy), "MPC-BE video window resize");

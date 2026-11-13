@@ -136,15 +136,17 @@ class BlackBarDetector
             return at;
         };
         const std::vector<int> rr(rows.rbegin(), rows.rend()), cc(cols.rbegin(), cols.rend());
+        // Only letterbox bars (top and bottom) are cropped. A dark left or
+        // right part of a scene looks like a side bar and would zoom in;
+        // side bars need no crop, the picture is fitted to the window anyway.
+        const int left = 0, right = 0;
         auto bounds = [&](bool ignoreText)
         {
-            int top = 0, bottom = 0, left = 0, right = 0;
+            int top = 0, bottom = 0;
             if (ignoreText)
             {
                 top = edge(rows);
                 bottom = edge(rr);
-                left = edge(cols);
-                right = edge(cc);
             }
             else
             {
@@ -152,10 +154,6 @@ class BlackBarDetector
                     ++top;
                 while (bottom < h && !rr[bottom])
                     ++bottom;
-                while (left < w && !cols[left])
-                    ++left;
-                while (right < w && !cc[right])
-                    ++right;
             }
             // One probe-pixel safety margin; chroma-safe outward rounding.
             return RECT{LONG(std::max(0, left - 1) * sourceW / w) & ~1L,
@@ -188,11 +186,12 @@ class BlackBarDetector
         // spans a wide box but lights only part of it, even when the probe
         // downscale blurs its lines into near-solid rows.
         {
-            const int top = edge(rows), bottom = edge(rr), left = edge(cols), right = edge(cc);
+            // The lit width counts here (4:3 between side bars), not the crop.
+            const int top = edge(rows), bottom = edge(rr), litLeft = edge(cols), litRight = edge(cc);
             long long lit = 0;
             for (int y = top; y < h - bottom; ++y)
                 lit += rows[y];
-            const double area = double(std::max(1, w - left - right)) * std::max(1, h - top - bottom);
+            const double area = double(std::max(1, w - litLeft - litRight)) * std::max(1, h - top - bottom);
             // Measured: film frames, dark scenes included, fill >= 0.5 of their
             // bounds; end credits 0.15-0.25.
             if (lit < area * .4)

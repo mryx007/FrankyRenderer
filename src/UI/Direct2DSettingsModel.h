@@ -559,14 +559,25 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             for (int kind = 0; kind < 3; kind++)
             {
                 char* field = kind == 0 ? f.preset : kind == 1 ? f.kernel : f.window;
-                std::vector<std::string> names = {"auto", "none"};
+                // Only the window can be "none" (no windowing). A custom filter
+                // always needs a kernel, and "auto" already starts from the
+                // renderer's filter, so "none" there could only be rejected.
+                std::vector<std::string> names = {"auto"};
+                if (kind == 2)
+                    names.emplace_back("none");
                 if (kind == 0)
                 {
                     names = D2DScalerNames(role, false, field);
+                    if (strcmp(field, "none"))
+                        names.erase(std::remove(names.begin(), names.end(), "none"), names.end());
                 }
                 else
                     for (int j = 0; j < pl_num_filter_functions; j++)
-                        names.emplace_back(pl_filter_functions[j]->name);
+                        if (strcmp(pl_filter_functions[j]->name, "none"))
+                            names.emplace_back(pl_filter_functions[j]->name);
+                // A value saved before stays visible and selectable.
+                if (std::find(names.begin(), names.end(), field) == names.end())
+                    names.emplace_back(field);
                 D2DControl n;
                 n.name = kind == 0 ? L"Starting Filter" : kind == 1 ? L"Kernel" : L"Window";
                 n.kind = ControlKind::Choice;

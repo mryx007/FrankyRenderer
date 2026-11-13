@@ -37,8 +37,8 @@ msgid "Background"
 msgstr "Hintergrund"
 
 #. Tab (General)
-msgid "Themes"
-msgstr "Designs"
+msgid "Appearance"
+msgstr "Darstellung"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
@@ -475,8 +475,8 @@ msgid "Menu Appearance"
 msgstr "Menügestaltung"
 
 #. Section description (General > Menu Appearance)
-msgid "Colours of this settings window. Applies immediately."
-msgstr "Farben dieses Einstellungsfensters. Wird sofort angewendet."
+msgid "Look and behaviour of this settings window. Applies immediately."
+msgstr "Aussehen und Verhalten dieses Einstellungsfensters. Wird sofort angewendet."
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
@@ -533,6 +533,14 @@ msgstr "Rosa"
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
 msgstr "Windows"
+
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr "Letzte Seite merken"
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr "Öffnet dieses Fenster auf der zuletzt geöffneten Seite."
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"

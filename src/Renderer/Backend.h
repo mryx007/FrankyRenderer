@@ -174,6 +174,8 @@ class PlaceboBackend
                             bool windowGeometry = false);
     void Flush(bool preserveBlackBars = true);
     ID3D11Device* Device() const;
+    // Creates the render device when no frame has done so yet.
+    ID3D11Device* EnsureDevice();
     std::string LastError() const;
     int OutputTextureFormat() const; // positive=integer depth, negative=float depth
     int SharpenState() const;

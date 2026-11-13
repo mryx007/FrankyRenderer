@@ -29,6 +29,8 @@ inline std::wstring MenuAppearanceKey()
     return DisplayProfiles::Root() + L"\\Appearance";
 }
 
+inline void LoadMenuRememberPage();
+
 inline void LoadMenuAppearance()
 {
     DWORD value = 0, size = sizeof(value);
@@ -43,6 +45,79 @@ inline void LoadMenuAppearance()
             ERROR_SUCCESS &&
         value < std::size(MenuAccentNames))
         g_menuAccent = int(value);
+    LoadMenuRememberPage();
+}
+
+// "Remember Last Page": the window opens where it was closed (page, tab and
+// scroll position), stored by name so new pages in later versions do not
+// shift it.
+inline bool g_menuRememberPage = false;
+
+inline void LoadMenuRememberPage()
+{
+    DWORD value = 0, size = sizeof(value);
+    g_menuRememberPage = RegGetValueW(HKEY_CURRENT_USER,
+                                      MenuAppearanceKey().c_str(),
+                                      L"RememberPage",
+                                      RRF_RT_REG_DWORD,
+                                      nullptr,
+                                      &value,
+                                      &size) == ERROR_SUCCESS &&
+                         value == 1;
+}
+
+inline void SetMenuRememberPage(bool remember)
+{
+    g_menuRememberPage = remember;
+    const DWORD value = remember ? 1 : 0;
+    RegSetKeyValueW(HKEY_CURRENT_USER, MenuAppearanceKey().c_str(), L"RememberPage", REG_DWORD, &value, sizeof(value));
+}
+
+struct MenuPosition
+{
+    std::wstring page, tab;
+    int scroll = 0;
+};
+
+inline void SaveMenuPosition(const MenuPosition& at)
+{
+    const auto key = MenuAppearanceKey();
+    RegSetKeyValueW(HKEY_CURRENT_USER,
+                    key.c_str(),
+                    L"LastPage",
+                    REG_SZ,
+                    at.page.c_str(),
+                    DWORD((at.page.size() + 1) * sizeof(wchar_t)));
+    RegSetKeyValueW(HKEY_CURRENT_USER,
+                    key.c_str(),
+                    L"LastTab",
+                    REG_SZ,
+                    at.tab.c_str(),
+                    DWORD((at.tab.size() + 1) * sizeof(wchar_t)));
+    const DWORD scroll = DWORD(std::max(0, at.scroll));
+    RegSetKeyValueW(HKEY_CURRENT_USER, key.c_str(), L"LastScroll", REG_DWORD, &scroll, sizeof(scroll));
+}
+
+inline MenuPosition LoadMenuPosition()
+{
+    MenuPosition at;
+    const auto key = MenuAppearanceKey();
+    auto text = [&](const wchar_t* name)
+    {
+        wchar_t value[256] = {};
+        DWORD size = sizeof(value);
+        return RegGetValueW(HKEY_CURRENT_USER, key.c_str(), name, RRF_RT_REG_SZ, nullptr, value, &size) == ERROR_SUCCESS
+                   ? std::wstring(value)
+                   : std::wstring();
+    };
+    at.page = text(L"LastPage");
+    at.tab = text(L"LastTab");
+    DWORD scroll = 0, size = sizeof(scroll);
+    if (RegGetValueW(HKEY_CURRENT_USER, key.c_str(), L"LastScroll", RRF_RT_REG_DWORD, nullptr, &scroll, &size) ==
+            ERROR_SUCCESS &&
+        scroll < 100000)
+        at.scroll = int(scroll);
+    return at;
 }
 
 inline void SetMenuAppearance(int theme, int accent)

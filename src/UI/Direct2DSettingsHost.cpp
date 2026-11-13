@@ -765,11 +765,18 @@ class Direct2DHostWindow
         if (!m_editing.empty())
             LoadEditTarget();
         InitPages();
+        RestorePosition();
         InitD2D();
     }
 
+    // "Remember Last Page": back to the page, tab and scroll position of the
+    // last close. A page or tab that no longer exists keeps the first page.
+    void RestorePosition();
+    void SavePosition() const;
+
     ~Direct2DHostWindow()
     {
+        SavePosition();
         *m_alive = false;
         StopShortcutCapture();
         // The playing video returns to the profile its folder gives it.
@@ -866,7 +873,7 @@ static std::vector<D2DPage> PreviewPages(PlaceboSettings& settings)
             result[target].cards.push_back(std::move(card));
         }
     {
-        D2DCard look{L"Menu Appearance", L"Colours of this settings window. Applies immediately.", {}};
+        D2DCard look{L"Menu Appearance", L"Look and behaviour of this settings window. Applies immediately.", {}};
         auto choice = [](const wchar_t* name, const wchar_t* desc, const auto& names, int* field, bool theme)
         {
             D2DControl c;
@@ -910,6 +917,20 @@ static std::vector<D2DPage> PreviewPages(PlaceboSettings& settings)
             c.reset = [] { SetMenuLanguage(L""); };
             look.controls.push_back(std::move(c));
         }
+        {
+            D2DControl c;
+            c.name = L"Remember Last Page";
+            c.desc = L"Opens this window on the page you left.";
+            c.kind = ControlKind::Toggle;
+            c.minVal = 0;
+            c.maxVal = 1;
+            c.stepVal = 1;
+            c.get = [] { return g_menuRememberPage ? 1.f : 0.f; };
+            c.set = [](float v) { SetMenuRememberPage(v != 0); };
+            c.defaultValue = [] { return 0.f; };
+            c.reset = [] { SetMenuRememberPage(false); };
+            look.controls.push_back(std::move(c));
+        }
         result[0].cards.push_back(std::move(look));
     }
     result.push_back(ProfilePage::Build(settings));
@@ -924,7 +945,7 @@ static std::wstring TabGroup(const D2DPage& page, const D2DCard& card)
         return card.tab;
     if (page.name == L"General")
         return title == L"Background & Transparency" ? L"Background"
-               : title == L"Menu Appearance"         ? L"Themes"
+               : title == L"Menu Appearance"         ? L"Appearance"
                                                      : L"Output";
     if (page.name == L"Processing")
         return title == L"Debanding" || title == L"Adaptive Sharpen" ? L"Image Cleanup"
@@ -972,6 +993,37 @@ static std::vector<std::wstring> CardTabs(const D2DPage& page)
             result.push_back(group);
     }
     return result;
+}
+
+void Direct2DHostWindow::RestorePosition()
+{
+    if (!g_menuRememberPage)
+        return;
+    const auto at = LoadMenuPosition();
+    for (size_t i = 0; i < m_pages.size(); ++i)
+        if (m_pages[i].name == at.page)
+        {
+            m_activePage = int(i);
+            const auto tabs = CardTabs(m_pages[i]);
+            const auto tab = std::find(tabs.begin(), tabs.end(), at.tab);
+            m_activeCard = tab != tabs.end() ? int(tab - tabs.begin()) : 0;
+            // Render clamps it to the page's height.
+            m_scrollY = float(at.scroll);
+            return;
+        }
+}
+
+void Direct2DHostWindow::SavePosition() const
+{
+    if (!g_menuRememberPage || m_activePage < 0 || m_activePage >= int(m_pages.size()))
+        return;
+    MenuPosition at;
+    at.page = m_pages[size_t(m_activePage)].name;
+    const auto tabs = CardTabs(m_pages[size_t(m_activePage)]);
+    if (m_activeCard >= 0 && m_activeCard < int(tabs.size()))
+        at.tab = tabs[size_t(m_activeCard)];
+    at.scroll = int(m_scrollY);
+    SaveMenuPosition(at);
 }
 
 void Direct2DHostWindow::InitPages()
@@ -2673,6 +2725,9 @@ void Direct2DHostWindow::Changed()
                       ? L"Select a 3D LUT file first."
                       : L"Value or combination is outside the supported range.";
         *m_pSettings = m_accepted;
+        // The sidebar holding m_error is usually closed: say it where it is seen,
+        // otherwise a rejected choice looks like a click that did nothing.
+        ShowToast(Tr(m_error));
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
