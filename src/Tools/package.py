@@ -72,7 +72,7 @@ def main(out=OUT, source=SOURCE):
         (out / old).unlink(missing_ok=True)
     verify_runtime(out)
 
-    for name in ("Install.cmd", "Uninstall.cmd"):
+    for name in ("Install.cmd", "Uninstall.cmd", "ForceUninstall.cmd"):
         shutil.copy2(ROOT / "Tools" / name, out / name)
     setup = (ROOT / "Tools/setup.ps1").read_text(encoding="utf-8-sig")
     (out / "setup.ps1").write_text(setup, encoding="utf-8-sig")
@@ -81,6 +81,8 @@ def main(out=OUT, source=SOURCE):
         "Extract this package to a permanent folder and close all video players.\n"
         "Run Install.cmd. Administrator approval may be requested.\n"
         "Run Uninstall.cmd before moving or removing the installed folder.\n"
+        "If the original installation folder or Uninstall.cmd is unavailable,\n"
+        "Run ForceUninstall.cmd to remove FrankyRenderer registrations.\n"
         "No additional DV filter needs to be added in the player.\n"
         "Remove any previously configured Franky DV Filter from the player's preferred filters.\n\n"
         "Select FrankyRenderer in the player\'s video renderer settings.\n"

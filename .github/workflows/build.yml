@@ -84,6 +84,12 @@ jobs:
           if errorlevel 1 exit /b 1
           call src\Tests\build_dv_status_tests.cmd
           if errorlevel 1 exit /b 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File src\Tests\test_setup.ps1
+          if errorlevel 1 exit /b 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File src\Tests\test_setup_transaction.ps1
+          if errorlevel 1 exit /b 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File src\Tests\test_force_uninstall.ps1
+          if errorlevel 1 exit /b 1
       - name: Package and verify ZIP
         env:
           CHANNEL: ${{ inputs.channel }}

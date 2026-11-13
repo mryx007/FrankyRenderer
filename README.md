@@ -142,6 +142,11 @@ Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not
 
 Keep the installation folder in place. To remove the renderer, run `Uninstall.cmd`.
 
+If the original installation folder is gone, run `ForceUninstall.cmd` from any
+FrankyRenderer package. It removes all registrations for the known
+FrankyRenderer CLSIDs regardless of their registered file path, while keeping
+your settings.
+
 **Settings backup:** **Export** saves all display profiles to an INI file; **Import** restores them. Keep external ICC and LUT files separately.
 
 ## Downloads

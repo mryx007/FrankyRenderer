@@ -1,4 +1,4 @@
-param([ValidateSet('Install','Remove','Check')][string]$Action='Install',[switch]$Quiet,[string]$MessageFile)
+param([ValidateSet('Install','Remove','ForceRemove','Check')][string]$Action='Install',[switch]$Quiet,[string]$MessageFile)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'FrankyRenderer.ax'))
@@ -17,6 +17,46 @@ function RegisteredPath([string]$id,[string]$hive='HKEY_LOCAL_MACHINE') {
     $key="Registry::$hive\SOFTWARE\Classes\CLSID\$id\InprocServer32"
     if(Test-Path -LiteralPath $key){return (Get-Item -LiteralPath $key).GetValue('')}
     return $null
+}
+function IsFrankyId([string]$id) {
+    foreach($known in @($taskIds+$taskFilterIds)){
+        if([string]::Equals($id,$known,[StringComparison]::OrdinalIgnoreCase)){return $true}
+    }
+    return $false
+}
+function RemoveAllFrankyRegistrations {
+    $category='{083863F1-70DE-11D0-BD40-00A0C911CE86}'
+    $ids=@($taskIds+$taskFilterIds)
+    $paths=New-Object System.Collections.Generic.List[string]
+    $categoryRoots=@()
+    foreach($hive in @('HKEY_LOCAL_MACHINE','HKEY_CURRENT_USER')){
+        foreach($view in @('','WOW6432Node')){
+            $classRoot="Registry::$hive\SOFTWARE\Classes"
+            if($view){$classRoot+="\$view"}
+            foreach($id in $ids){
+                [void]$paths.Add("$classRoot\CLSID\$id")
+                [void]$paths.Add("$classRoot\CLSID\$category\Instance\$id")
+            }
+            $categoryRoots+="$classRoot\CLSID\$category\Instance"
+        }
+    }
+    foreach($root in $categoryRoots){
+        if(Test-Path -LiteralPath $root){
+            foreach($key in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)){
+                if(IsFrankyId ([string]$key.GetValue('CLSID'))){
+                    [void]$paths.Add('Registry::'+$key.Name)
+                }
+            }
+        }
+    }
+    $removed=0
+    foreach($path in @($paths | Select-Object -Unique)){
+        if(Test-Path -LiteralPath $path){
+            Remove-Item -LiteralPath $path -Recurse -Force
+            $removed++
+        }
+    }
+    return $removed
 }
 function ReadInstallationState {
     $state=Get-Content -LiteralPath $taskManifest -Raw | ConvertFrom-Json
@@ -93,8 +133,10 @@ function RestoreBackup($state,[string]$directory=(Split-Path $taskManifest),[swi
     }}
 }
 try {
-    foreach($component in $taskComponents){if(!(Test-Path -LiteralPath $component.file)){throw "Required file is missing: $($component.file)"}}
-    AssertOwnership
+    if($Action -eq 'Install' -or $Action -eq 'Remove'){
+        foreach($component in $taskComponents){if(!(Test-Path -LiteralPath $component.file)){throw "Required file is missing: $($component.file)"}}
+        AssertOwnership
+    }
     if($Action -eq 'Check') {
         foreach($component in $taskComponents){foreach($id in $component.ids){[pscustomobject]@{CLSID=$id;Machine=(RegisteredPath $id);User=(RegisteredPath $id 'HKEY_CURRENT_USER')}}}
         exit 0
@@ -115,6 +157,13 @@ try {
     # A running player can retain the old DLL even after registration changes.
     $taskPlayers=Get-Process -Name PotPlayerMini64,PotPlayer64,mpc-be64,mpc-hc64 -ErrorAction SilentlyContinue
     if($taskPlayers){throw 'Please close PotPlayer, MPC-BE and MPC-HC first. No changes were made.'}
+    if($Action -eq 'ForceRemove'){
+        $removed=RemoveAllFrankyRegistrations
+        if($removed -gt 0){$message="FrankyRenderer registrations were forcibly removed. Any registered installation path was ignored. Your settings were kept."}
+        else{$message='No registered FrankyRenderer installation was found. Your settings were kept.'}
+        ShowSetupMessage $message
+        exit 0
+    }
     $state=$null
     if(Test-Path -LiteralPath $taskManifest){
         $state=ReadInstallationState
