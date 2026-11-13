@@ -40,8 +40,10 @@ msgid "Background"
 msgstr "Arrière-plan"
 
 #. Tab (General)
-msgid "Themes"
-msgstr "Thèmes"
+#, fuzzy
+#| msgid "Menu Appearance"
+msgid "Appearance"
+msgstr "Apparence des menus"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
@@ -484,7 +486,9 @@ msgid "Menu Appearance"
 msgstr "Apparence des menus"
 
 #. Section description (General > Menu Appearance)
-msgid "Colours of this settings window. Applies immediately."
+#, fuzzy
+#| msgid "Colours of this settings window. Applies immediately."
+msgid "Look and behaviour of this settings window. Applies immediately."
 msgstr "Couleurs de cette fenêtre de paramètres. S'applique immédiatement."
 
 #. Setting name (General > Menu Appearance)
@@ -564,6 +568,14 @@ msgstr "Automatique (Windows)"
 #. Menu text; keep %d and %s placeholders
 msgid "English"
 msgstr "Anglais"
+
+#. Setting name (General > Menu Appearance)
+msgid "Remember Last Page"
+msgstr ""
+
+#. Setting description (General > Menu Appearance > Remember Last Page)
+msgid "Opens this window on the page you left."
+msgstr ""
 
 #. Category
 #. Category heading
@@ -932,7 +944,6 @@ msgid "Use the renderer's default filter."
 msgstr "Utiliser le filtre par défaut du moteur de rendu."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
-#. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "No filter, only use basic GPU texture sampling"
 msgstr ""
 "Aucun filtre, utilise uniquement l'échantillonnage de texture GPU de base"
@@ -1020,7 +1031,6 @@ msgstr ""
 "copie le filtre sélectionné pour le modifier."
 
 #. Choice description (Scaling > Filters > Image Downscaler)
-#. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Use the same filter as specified for upscaler"
 msgstr "Utiliser le même filtre que pour l'agrandissement"
 
@@ -1062,7 +1072,6 @@ msgstr ""
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
-#. Choice description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Starting Filter)
 msgid "Use the corresponding image scaling filter."
 msgstr "Utiliser le filtre de mise à l'échelle d'image correspondant."
 
@@ -1090,7 +1099,6 @@ msgid ""
 msgstr ""
 
 #. Choice description (Scaling > Filters > Frame Mixer)
-#. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Disable frame mixing, show nearest frame to target PTS"
 msgstr ""
 
@@ -3967,6 +3975,9 @@ msgstr ""
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr ""
+
+#~ msgid "Themes"
+#~ msgstr "Thèmes"
 
 #~ msgid ""
 #~ "Skip clearing uncovered output borders. May leave old or undefined pixels "
