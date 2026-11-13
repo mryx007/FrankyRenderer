@@ -1648,24 +1648,8 @@ msgid ""
 "Uses a .cube file next to the video: first one named like the video, else "
 "the folder's only one. Otherwise the LUT above."
 msgstr ""
-"使用视频旁的 .cube 文件：优先使用与视频同名的文件，否则使用文件夹中唯一的 "
-".cube 文件。都没有时使用上方的 LUT。"
-
-#. Menu text; keep %d and %s placeholders
-msgid "LUT"
-msgstr "LUT"
-
-#. Menu text; keep %d and %s placeholders
-msgid "No LUT in the video folder"
-msgstr "视频文件夹中没有 LUT"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Several LUTs in the video folder"
-msgstr "视频文件夹中有多个 LUT"
-
-#. Menu text; keep %d and %s placeholders
-msgid "LUT in the video folder unreadable"
-msgstr "无法读取视频文件夹中的 LUT"
+"使用视频旁的 .cube 文件：优先使用与视频同名的文件，否则使用文件夹中唯一"
+"的 .cube 文件。都没有时使用上方的 LUT。"
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
@@ -2635,6 +2619,19 @@ msgid ""
 "Adjust Strength for this shader. The default preserves the shader author's "
 "setting."
 msgstr "调整此着色器的强度。默认保留着色器作者的设定。"
+
+#. Setting name (Shaders > AMD CAS)
+#. Setting name (Shaders > FineDehalo)
+#. Setting name (Shaders > Anti-Ringing)
+msgid "Automatic Order"
+msgstr "自动排序"
+
+#. Setting description (Shaders > AMD CAS > Automatic Order)
+#. Setting description (Shaders > FineDehalo > Automatic Order)
+#. Setting description (Shaders > Anti-Ringing > Automatic Order)
+msgid ""
+"Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
+msgstr "先清理，再缩放，最后锐化。关闭后可手动设置位置。"
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
@@ -3630,6 +3627,22 @@ msgid "Black Bar Detection"
 msgstr "黑边检测"
 
 #. Menu text; keep %d and %s placeholders
+msgid "LUT"
+msgstr "LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "No LUT in the video folder"
+msgstr "视频文件夹中没有 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Several LUTs in the video folder"
+msgstr "视频文件夹中有多个 LUT"
+
+#. Menu text; keep %d and %s placeholders
+msgid "LUT in the video folder unreadable"
+msgstr "无法读取视频文件夹中的 LUT"
+
+#. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
 msgstr "在 %sp 下，此显示器提供 %s Hz。"
 
@@ -3704,6 +3717,30 @@ msgstr "重置页面"
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
 msgstr "重置着色器"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Input"
+msgstr "输入"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Luma"
+msgstr "亮度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Chroma"
+msgstr "色度"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Image"
+msgstr "图像"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Before Scaling"
+msgstr "缩放前"
+
+#. Menu text; keep %d and %s placeholders
+msgid "After Scaling"
+msgstr "缩放后"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Saved"
@@ -3858,35 +3895,3 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
-
-#. Setting name (Shaders > Chain Controls)
-msgid "Automatic Order"
-msgstr "自动排序"
-
-#. Setting description (Shaders > Chain Controls > Automatic Order)
-msgid "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
-msgstr "先清理，再缩放，最后锐化。关闭后可手动设置位置。"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Input"
-msgstr "输入"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Luma"
-msgstr "亮度"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Chroma"
-msgstr "色度"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Image"
-msgstr "图像"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Before Scaling"
-msgstr "缩放前"
-
-#. Menu text; keep %d and %s placeholders
-msgid "After Scaling"
-msgstr "缩放后"
