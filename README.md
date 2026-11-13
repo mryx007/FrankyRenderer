@@ -57,7 +57,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 - EWA Lanczos / Jinc, EWA Lanczos Sharp, Lanczos, Spline16/36/64, Mitchell, Bicubic, Robidoux and additional libplacebo filters.
 - Custom filter editor with a starting filter, kernel, window, radius, clamp, blur, taper, anti-ringing, kernel/window parameters and EWA mode.
 - Global anti-ringing strength and configurable downscaling anti-aliasing behavior.
-- Smooth Motion through temporal frame mixing, with selectable and customizable frame mixer filters, "Present in Advance" (1 to 4 refreshes or automatic, like madVR) and an "Oversample Threshold" for fewer double edges on motion.
+- Smooth Motion through temporal frame mixing, with selectable and customizable frame mixer filters (including Clamped Mitchell), "Present in Advance" (1 to 4 refreshes or automatic, like madVR) and an "Oversample Threshold" for fewer double edges on motion.
 - Optional NVIDIA RTX Video Super Resolution through the driver, without an additional NVIDIA runtime DLL or helper process. Enable Super Resolution and choose quality in the NVIDIA app or Control Panel. Supports SDR and HDR10/PQ with 8-/10-bit processing; unsupported formats and native-size/downscaled output keep normal libplacebo scaling.
 
 ### Image processing
@@ -65,7 +65,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 - Debanding with adjustable iterations, threshold, radius and grain.
 - Adaptive Sharpen with adjustable strength.
 - Bwdif and Yadif deinterlacing with temporal references, automatic field order and manual top/bottom-field overrides.
-- Blue-noise, ordered and random dithering, with optional temporal dithering.
+- Blue-noise, ordered, random and error diffusion dithering, with optional temporal dithering.
 - Image analysis overlay: waveform, histogram, RGB parade, false colour and a gray ramp, sampled before and after colour mapping.
 
 ### HDR and color mapping
@@ -73,7 +73,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 - Three HDR modes: Passthrough HDR to Display, Tone Map HDR to Display Peak (keeps HDR output but rolls off highlights above the display's peak, for monitors and laptops that do not tone map themselves) and Tone Map HDR to SDR.
 - Native NVIDIA HDR10 passthrough sends HDR metadata to the display while leaving the Windows HDR setting off. Moving the video between displays updates the HDR output, including while paused, and restores the previous display's state. AMD native HDR output is not implemented.
 - RTX Video HDR for SDR videos (NVIDIA RTX GPU, Windows HDR on).
-- A Clipping Protection switch for HDR-to-SDR tone mapping.
+- "Switch Windows HDR": turns Windows HDR on for HDR videos and off for SDR videos (always or only in fullscreen) and restores it afterwards.
 - Tone mapping functions including Spline, BT.2390, BT.2446A, Reinhard, Mobius, Hable and ST 2094 curves.
 - Adjustable SDR target brightness, HDR target peak and HDR peak override.
 - HDR peak detection with smoothing, scene-change thresholds, percentile selection, black cutoff and delayed peak detection control.
@@ -90,7 +90,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 - Display gamut (BT.709, SMPTE C, EBU / PAL, BT.2020, DCI-P3, P3-D65) for wide-gamut displays in their native mode.
 - Display gamma (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) for HDR tone mapped to SDR, and SDR gamma processing to make SDR look like a chosen gamma on that display.
 - SDR ICC profile support with selectable rendering intent.
-- Custom `.cube` LUT loading and LUT interpretation controls.
+- Custom `.cube` LUT loading and LUT interpretation controls, or "LUT from Video Folder" to use a `.cube` file next to the video.
 
 ### Shader chain
 
@@ -102,13 +102,14 @@ Click a preview to open the full-size image. The screenshots show example settin
 - Edge cleanup: FineDehalo, Anti-Ringing and PixelClipper.
 - Denoising and debanding: NLMeans, Bilateral Denoise, Chroma Denoise, hdeband and neo-f3kdb.
 - Detail-aware downscaling: SSimDownscaler and DPID.
-- Per-shader parameters (on/off switches where a parameter only knows 0 or 1) and a configurable processing order.
+- Your own mpv shaders (`.glsl` / `.hook`, packs such as Anime4K) from the `shaders\Custom` folder.
+- Per-shader parameters (on/off switches where a parameter only knows 0 or 1) and an automatic or manual processing order.
 
 ### Black bars and zoom
 
 - Automatic detection of hardcoded black bars from video pixels; end credits are not mistaken for black bars.
 - Crop and zoom controls to fit active content or fill the output.
-- Adjustable detection threshold, switching delay and stable zoom behavior.
+- Adjustable detection threshold and switching delay.
 - Protection for detected subtitle content in the black bars.
 
 ### Profiles and displays
@@ -123,8 +124,11 @@ Click a preview to open the full-size image. The screenshots show example settin
 - The player stays usable while the menu is open: pause, seek or switch to fullscreen and compare settings live. OK keeps the changes, Cancel restores the opening values.
 - Quality presets (Fast / Default / High Quality), "Measure this PC" to pick the best settings for the GPU, and "Custom" to return to your own settings.
 - Search across settings, readable descriptions, explicit default values and ranges, Reset Page and Reset All.
+- Keyboard shortcuts: any setting can get a key on the Shortcuts page.
+- "Remember Last Page": the settings window reopens where it was closed.
 - Configurable background color, transparency and rendering quality/performance options.
-- Ctrl+J statistics grouped into Display, Video, Processing and Performance, with render time against the time available per picture, drop counters and Dolby Vision status.
+- Ctrl+J statistics grouped into Display, Video, Processing and Performance, with render time against the time available per picture, drop counters, Dolby Vision status and custom scalers in detail. "Statistics in Video Area" places them on the picture instead of in the black bars.
+- Diagnostic Log and Save Report for bug reports.
 - Persistent shader cache for reusing compiled processing work across playback sessions.
 
 </details>
@@ -135,8 +139,9 @@ Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not
 
 - **MPC-BE:** Use MPC-BE 1.9.3 or newer and select **FrankyRenderer** in the video renderer settings.
 - **PotPlayer:** Use PotPlayer 261030 Beta 64-bit or a newer build with native FrankyRenderer support. Select **FrankyRenderer** in the video renderer settings.
+- **MPC-HC:** Use MPC-HC 2.8.5.14 or newer and select **FrankyRenderer** in the video renderer settings.
 
-**One package for both players.** FrankyRenderer now registers only its own native identity; separate MPC-BE and PotPlayer packages are no longer needed.
+**One package for all players.** FrankyRenderer registers only its own native identity; separate packages per player are not needed.
 
 **Upgrading from an older version:** Export your settings, close all players and uninstall the old FrankyRenderer package using its `Uninstall.cmd`. Then extract the new ZIP to a permanent folder and run `Install.cmd`.
 
