@@ -1,3 +1,4 @@
+- Stable 1.3.0: added the native NGU Sharp VeryHigh scaler peer with SuperChromaRes strength 3, P016 720p Double, observed P010 SDR/HDR source domains, shared arbitrary-window handling, and exact NGU-boundary verification.
 - Added: Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
 - Added: HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
 - Added display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).

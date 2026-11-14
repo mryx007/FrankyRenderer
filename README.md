@@ -55,6 +55,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 
 - Separate image upscaling, image downscaling, chroma/alpha upscaling and chroma/alpha downscaling filters.
 - EWA Lanczos / Jinc, EWA Lanczos Sharp, Lanczos, Spline16/36/64, Mitchell, Bicubic, Robidoux and additional libplacebo filters.
+- Native `ngu_sharp` renderer peer implementing NGU Sharp VeryHigh with SuperChromaRes strength 3. SDR is supported for the declared P010/P016/NV12/I420/P210/P216 paths; HDR supports the observed P010 BT.2020/PQ, BT.2020/HLG and BT.709/PQ source domains through the Franky color-management boundary. Arbitrary window sizes use the shared Franky renderer. Low/Medium/High remain fail-closed.
 - Custom filter editor with a starting filter, kernel, window, radius, clamp, blur, taper, anti-ringing, kernel/window parameters and EWA mode.
 - Global anti-ringing strength and configurable downscaling anti-aliasing behavior.
 - Smooth Motion through temporal frame mixing, with selectable and customizable frame mixer filters (including Clamped Mitchell), "Present in Advance" (1 to 4 refreshes or automatic, like madVR) and an "Oversample Threshold" for fewer double edges on motion.
@@ -94,7 +95,7 @@ Click a preview to open the full-size image. The screenshots show example settin
 
 ### Shader chain
 
-- 23 bundled mpv-compatible GLSL shaders, with original authorship and license notices preserved.
+- 28 bundled mpv-compatible GLSL shaders, with original authorship and license notices preserved.
 - Neural/adaptive upscaling options: FSRCNNX 2x, AiUpscale Photo 2x, RAVU Zoom, RAVU Zoom R3 and RAVU Zoom AR R3.
 - Animation-oriented upscaling: Anime4K CNN 2x M, ArtCNN C4F16 and CuNNy 2x12 DS.
 - Chroma reconstruction: KrigBilateral and CfL Prediction.

@@ -505,7 +505,8 @@ int main(int argc, char** argv)
 
         backend.ShowStatistics(true);
         Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, nv12WindowPixels)), "NGU NV12 statistics render");
-        Require(backend.StatisticsText().find(L"NGU Sharp (native hook)") != std::wstring::npos, "NGU statistics name");
+        Require(backend.StatisticsSnapshot().find(L"NGU Sharp (native hook)") != std::wstring::npos,
+                "NGU statistics name");
         backend.ShowStatistics(false);
         std::printf("NGU backend statistics native-hook name\n");
 

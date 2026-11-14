@@ -1603,6 +1603,8 @@ int wmain(int argc, wchar_t** argv)
             if (!strcmp(ScalerChoices[i].name, "ngu_sharp"))
                 settings.chromaScaler = i + 1;
     }
+    Check(ValidUserShaders(settings.userShaders), "NGU settings keep the shader catalogue valid");
+    Check(ValidScaling(settings.scaling), "NGU settings keep native scaling valid");
     if (hasExplicitTestRoot)
     {
         auto inactive = settings;
