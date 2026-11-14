@@ -2,6 +2,12 @@
 
 Branch: `FrankyRenderer_NGU`
 
+> This document is the Franky-side implementation log and Evidence map. It is
+> not the active roadmap. Scope and work order are defined by
+> `E:\OpenMadVR\docs\FRANKY_NGU_V1_PLAN.md`. Historical status paragraphs below
+> must not be treated as an active backlog. OpenMadVR is a capture/Evidence
+> corpus only; it is not a second renderer implementation target.
+
 ## Goal
 
 Add madVR-compatible NGU Sharp image processing to FrankyRenderer while keeping
@@ -11,6 +17,97 @@ madVR v0.92.17 binary and cited OpenMadVR Evidence remain the behavior oracle.
 On 2026-11-11 the user explicitly authorized direct source changes for this
 work. The preferred product form is a dedicated native scaling module selected
 as `ngu_sharp`, peer to `ewa_lanczos` and the other normal scaler choices.
+
+## Canonical source boundary (2026-11-14)
+
+Normal NGU execution now receives `NguSourceFrame` from the common Backend
+adapter. It describes dimensions, luma/chroma depth, chroma sampling/layout,
+range, color metadata, orientation and plane views. NV12, I420, P010, P016,
+P210, P216 and RGB48 no longer select separate execution branches in
+`Backend`; the adapter constructs one canonical descriptor.
+
+I420 is losslessly interleaved by the common CPU-plane adapter. `NguScaler`
+contains no `PixelFormat` dependency and selects its evidence-backed graph from
+canonical semantics plus `NguTargetPlan`. The plan preserves 720 Double,
+1080 no-luma, class-3 output-hook behavior and arbitrary `PL_HOOK_RGB` window
+handoff.
+
+Low/Medium/High are not part of the current mainline. They begin only after all
+SDR VeryHigh, lifecycle and packaging objectives are complete.
+
+## HDR ownership boundary (2026-11-14)
+
+This is an immutable interface rule. FrankyRenderer is the sole owner of the
+HDR presentation pipeline: HDR/SDR policy, linearization, transfer and
+primaries conversion, gamut mapping, tone mapping, peak detection, metadata
+propagation and output encoding. NGU is not a second HDR renderer.
+
+FrankyRenderer, not NGU, owns HDR scaling, transfer handling, primaries
+conversion, tone mapping, peak metadata and output encoding. The NGU module
+uses the observed source-domain constants for the P010 1280x720/1920x1080
+BT.2020/PQ chroma and SuperChromaRes strength-3 core, stops at source-resolution
+`PS_4576`, and returns `R16G16B16A16_UNORM` at `PL_HOOK_RGB`. Those constants
+select the NGU arithmetic input domain; they are not a madVR HDR renderer.
+The target's `PS_340/1200/1208/1012/1368` HDR presentation tail is not part of
+this implementation.
+
+`PS_396`, `PS_4412` and `PS_4576` are NGU source-domain arithmetic stages
+recovered from target Evidence. NGU must not linearize or tone-map the image,
+change HDR peak metadata, or make a second transfer/primaries conversion. The
+hook returns the source PQ/BT.2020 metadata unchanged so Franky performs the
+only HDR processing pass. `PL_HOOK_RGB` defines the handoff position; it does
+not transfer HDR ownership to NGU.
+
+Future work must be phrased and scoped as integrating NGU with Franky's HDR
+pipeline, never as implementing madVR's HDR pipeline in NGU. Any unobserved
+transfer, primaries, range, format or target relation fails closed.
+
+E-160 establishes the corresponding A/B evidence: the NGU feature network and
+inputs are unchanged, while color-domain constants require the HDR profile.
+E-171 adds the observed 1080p BT.2020/HLG and BT.709/PQ profiles, both exact
+through `PS_4576`. The admitted source contract remains limited-range P010 at
+720p/1080p, with only the observed BT.2020/PQ, BT.2020/HLG and BT.709/PQ
+combinations. Other transfers, primaries, ranges and geometries fail closed.
+
+E-166/STEP-156 close the frame-metadata integration gap. `NguSourceFrame`
+takes its color from the current sample and uses the media-type description
+only to fill unknown fields. A real DirectShow P010 source with PQ/BT.2020
+media information and HDR10 side data reports `hdr=1`, plans
+`1920x1080`, and returns a source-resolution HDR hook texture with
+1000-nit/MaxCLL 1200/MaxFALL 400 metadata. Source and packaged AX pass the
+same HDR lifecycle. Captured 1080p `PS_644/PS_1516/PS_396` are exact.
+
+E-168/STEP-158 correct the 1080p dense-Cr oracle attribution and repeat the
+raw stage audit with the canonical HDR plan selected before execution. The
+native `PS_2672` denseCr output is exact. Before E-169, the first residual was
+the target `PS_748` L16 write and propagated to `PS_4576`; the capture-backed
+`PS_644/PS_1516/PS_396` audit was exact. The residual was the known
+ps_3_0-to-SM5 output boundary, not a Franky HDR or madVR tail stage.
+
+E-169/STEP-159 close that boundary. E-099/E-156 identify `/Gis
+/Gfp:strict` as required for target PS_748 instruction order. The generic
+chroma-scale X/Y builds now use that contract. Raw P010 1080p BT.2020/PQ runs
+`PS_564 -> PS_4576` at `different=0 maximum=0`; captured 720p
+`PS_260 -> PS_4576` is also exact. Source and packaged AX pass the real 720p
+and 1080p HDR DirectShow lifecycle. The observed HDR NGU source-domain
+handoff is now byte-exact through `PS_4576`.
+
+The NGU source-format translation now lives in the common
+`Renderer/NguSourceFormat.h` adapter. NV12, I420, P010, P016, P210, P216 and
+RGB48 are mapped there; `Backend.cpp` no longer contains NGU format switches.
+E-170 correlates a same-frame P016 1280x720 Double source and closes the
+pre-presentation `PS_908` comparison at `different=0 maximum=0`. The target's
+following `PS_1368` remains presentation work and is handed to Franky through
+`PL_HOOK_RGB`.
+
+The Backend accepts both decoder-copy RGBA16 packed chroma and the common
+CPU-plane `R16G16_UNORM` representation. HDR never runs the SDR luma
+network/FinalStep. Final HDR BMP equality against madVR is not an NGU gate
+because post-`PS_4576` HDR presentation intentionally belongs to Franky.
+E-100/E-160 show that the observed `PS_4576` ToRGB stage performs the captured
+BT.2020 matrix conversion without a subsequent transfer conversion; the hook
+therefore keeps the source PQ transfer and BT.2020 primaries on the RGBA16
+handoff while Franky performs the only tone mapping and output encoding.
 
 ## Architecture decision: native scaler peer (accepted 2026-11-12)
 
@@ -253,9 +350,9 @@ comparisons and are no longer acceptance evidence.
 The native source bridge now imports P010 decoder planes through D3D11.3 plane
 views into `R16_UNORM` luma and `R16G16B16A16_UNORM` chroma without CPU
 readback. The active 1280x720 crop and packed U/V values match the captured
-target sample at zero difference. The local adapter reports no P016 resource
-support, so real P016 remains fail-closed until exercised on a supporting
-device.
+target sample at zero difference. The local adapter reports no P016 hardware
+resource support, so P016 continues through the common CPU-plane adapter;
+hardware import remains unobserved.
 
 The first chroma-core pass is native and exact: PS_260 SplitCb_Cr maps one
 packed CbCr sample into L16 Cb and Cr with byte-identical target output. Complete
@@ -372,9 +469,11 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native 1080p chroma | P210/P216 class-3 core is channel-exact through `PS_4576` | Out-of-scope ratios and HDR |
-| Native 1080p plane entry | packed UV + Y reaches the same-frame `PS_1352` target | Out-of-scope ratios and HDR |
+| Native HDR chroma | BT.2020/PQ 720p/1080p and BT.2020/HLG plus BT.709/PQ 1080p are exact through source-resolution `PS_4576`; arbitrary HDR targets hand off to Franky | Unobserved HDR combinations and target HDR presentation tail |
+| Native 1080p plane entry | packed UV + Y reaches the same-frame `PS_1352` target | Out-of-scope ratios |
 | Native product entry | P210/P216 1080p combined is `maximum=1`, `diff_gt_1_pixels=0` | Broader performance and format matrix |
+| High-bit 720p Double | P010 uses the distinct `PS_484/1412/6140/4280x3/1528/1672/4620x28/2672/908` graph. E-170 correlates P016 and matches `PS_4576` and pre-presentation `PS_908` exactly. | P010 and CPU-plane P016 admitted; hardware P016 remains unknown |
+| I420 720p Double | I420/NV12 canonical product equality is exact | No format-specific NGU branch |
 | `ngu_sharp` peer | Generic resolver, RGB48/P010 and P210/P216 Backend gates pass | Upstream review and release packaging |
 | DirectShow | P210/P216 720p and 1080p pass pause/flush/restart with final max 1 | Broader player matrix |
 | Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |

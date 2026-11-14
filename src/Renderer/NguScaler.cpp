@@ -6,6 +6,8 @@
 #include <libplacebo/d3d11.h>
 #include <wrl/client.h>
 #include <array>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -15,6 +17,58 @@
 namespace
 {
 using Microsoft::WRL::ComPtr;
+thread_local uint64_t gDrawCalls = 0;
+
+struct DrawCountScope
+{
+    bool enabled = std::getenv("FRANKY_NGU_COUNT_DRAWS") != nullptr;
+
+    DrawCountScope()
+    {
+        gDrawCalls = 0;
+    }
+
+    ~DrawCountScope()
+    {
+        if (enabled)
+            std::fprintf(stderr, "NGU_DRAW_CALLS %llu\n", static_cast<unsigned long long>(gDrawCalls));
+    }
+};
+
+// E-158: source-bound 1920x1080 target FinalStep PS_1352 constants. The
+// captured dither phase in U2.yz is replaced by NguDither per frame.
+constexpr std::array<float, 16> NguTarget1080FinalConstants = {0.00390625f,
+                                                               0.00125125889f,
+                                                               0.563585341f,
+                                                               0.03125f,
+                                                               1.16438353f,
+                                                               -0.0730593577f,
+                                                               1920.0f,
+                                                               1080.0f,
+                                                               255.0f,
+                                                               1.0f,
+                                                               1.0f,
+                                                               255.0f,
+                                                               0.00392156886f,
+                                                               0.00392156886f,
+                                                               0.0f,
+                                                               960.0f};
+constexpr std::array<float, 16> NguTarget720FinalConstants = {0.00390625f,
+                                                              0.350291461f,
+                                                              0.895962417f,
+                                                              0.03125f,
+                                                              1.16438353f,
+                                                              -0.0730593577f,
+                                                              2560.0f,
+                                                              1440.0f,
+                                                              255.0f,
+                                                              1.0f,
+                                                              1.0f,
+                                                              255.0f,
+                                                              0.00392156886f,
+                                                              0.00392156886f,
+                                                              0.0f,
+                                                              1280.0f};
 
 struct StageConfig
 {
@@ -204,6 +258,7 @@ void DrawD3D11Pass(ID3D11Device* device,
     device->GetImmediateContext(context.GetAddressOf());
     if (!context)
         return;
+    ++gDrawCalls;
 
     ID3D11RenderTargetView* oldTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
     ID3D11DepthStencilView* oldDepth = nullptr;
@@ -343,17 +398,19 @@ bool ViewMatchesTexture(ID3D11View* view, DXGI_FORMAT format, UINT width, UINT h
                 viewFormat = viewDesc.Format;
         }
     }
-    const bool formatMatches =
-        desc.Format == format ||
-        (desc.Format == DXGI_FORMAT_R16_TYPELESS &&
-         viewFormat == format &&
-         (format == DXGI_FORMAT_R16_UNORM || format == DXGI_FORMAT_R16_FLOAT)) ||
-        (desc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS &&
-         viewFormat == format &&
-         (format == DXGI_FORMAT_R16G16B16A16_UNORM ||
-          format == DXGI_FORMAT_R16G16B16A16_FLOAT));
-    return formatMatches && desc.Width == width && desc.Height == height &&
-           desc.ArraySize == 1 && desc.MipLevels == 1 && desc.SampleDesc.Count == 1;
+    const bool formatMatches = desc.Format == format ||
+                               (desc.Format == DXGI_FORMAT_R16_TYPELESS && viewFormat == format &&
+                                (format == DXGI_FORMAT_R16_UNORM || format == DXGI_FORMAT_R16_FLOAT)) ||
+                               (desc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS && viewFormat == format &&
+                                (format == DXGI_FORMAT_R16G16B16A16_UNORM || format == DXGI_FORMAT_R16G16B16A16_FLOAT));
+    return formatMatches && desc.Width == width && desc.Height == height && desc.ArraySize == 1 &&
+           desc.MipLevels == 1 && desc.SampleDesc.Count == 1;
+}
+
+bool ViewMatchesRgb8(ID3D11View* view, UINT width, UINT height)
+{
+    return ViewMatchesTexture(view, DXGI_FORMAT_B8G8R8A8_UNORM, width, height) ||
+           ViewMatchesTexture(view, DXGI_FORMAT_R8G8B8A8_UNORM, width, height);
 }
 
 bool CopyTextureToTarget(pl_gpu gpu, ID3D11Texture2D* source, ID3D11RenderTargetView* output)
@@ -372,19 +429,21 @@ bool CopyTextureToTarget(pl_gpu gpu, ID3D11Texture2D* source, ID3D11RenderTarget
     return true;
 }
 
-void FillClass3PostConstants(
-    std::array<float, 16>& constants,
-    UINT width,
-    UINT height,
-    bool swapAxes)
+void FillClass3PostConstants(std::array<float, 16>& constants, UINT width, UINT height, bool swapAxes)
 {
     static constexpr float coefficients[12] = {
-        -0.12963299453258514f, 0.6296330094337463f,
-        -0.17506800591945648f, 0.6750680208206177f,
-        -0.19444948434829712f, 0.6944494843482971f,
-        -0.2626020014286041f, 0.7626020312309265f,
-        -0.09722474217414856f, 0.597224771976471f,
-        -0.13130100071430206f, 0.6313009858131409f,
+        -0.12963299453258514f,
+        0.6296330094337463f,
+        -0.17506800591945648f,
+        0.6750680208206177f,
+        -0.19444948434829712f,
+        0.6944494843482971f,
+        -0.2626020014286041f,
+        0.7626020312309265f,
+        -0.09722474217414856f,
+        0.597224771976471f,
+        -0.13130100071430206f,
+        0.6313009858131409f,
     };
     constants[0] = static_cast<float>(width);
     constants[1] = static_cast<float>(height);
@@ -412,9 +471,7 @@ void NguDither::SeedColorFromClock()
     FILETIME fileTime = {};
     GetSystemTime(&systemTime);
     SystemTimeToFileTime(&systemTime, &fileTime);
-    SeedColor(static_cast<uint32_t>(GetTickCount()),
-              fileTime.dwLowDateTime,
-              fileTime.dwHighDateTime);
+    SeedColor(static_cast<uint32_t>(GetTickCount()), fileTime.dwLowDateTime, fileTime.dwHighDateTime);
 }
 
 struct NguScaler::NativeLumaInitial
@@ -499,8 +556,7 @@ struct NguScaler::NativeChromaVeryHighResources
     std::array<ComPtr<ID3D11ShaderResourceView>, 4> initialShaderViews;
     std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 2> groupTextures;
     std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 2> groupViews;
-    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 2>
-        groupShaderViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 2> groupShaderViews;
 };
 
 struct NguScaler::NativeChromaCombines
@@ -640,13 +696,28 @@ struct NguScaler::NativeLumaFinal
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11Buffer> constants;
+    ComPtr<ID3D11Buffer> constants1080;
+    ComPtr<ID3D11Buffer> constants720;
     std::array<float, 16> constantsData{};
+    std::array<float, 16> constantsData1080 = NguTarget1080FinalConstants;
+    std::array<float, 16> constantsData720 = NguTarget720FinalConstants;
     ComPtr<ID3D11Texture2D> weightTexture;
     ComPtr<ID3D11ShaderResourceView> weightView;
     ComPtr<ID3D11Texture2D> ditherTexture;
     ComPtr<ID3D11ShaderResourceView> ditherView;
+    ComPtr<ID3D11Texture2D> ditherTexture1080;
+    ComPtr<ID3D11ShaderResourceView> ditherView1080;
+    ComPtr<ID3D11Texture2D> ditherTexture720;
+    ComPtr<ID3D11ShaderResourceView> ditherView720;
     ComPtr<ID3D11SamplerState> clampSampler;
     ComPtr<ID3D11SamplerState> wrapSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+};
+
+struct NguScaler::NativeHookOutput
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -687,6 +758,111 @@ struct NguScaler::NativeLumaVeryHigh1080
     ComPtr<ID3D11ShaderResourceView> mergeShaderView;
 };
 
+struct NguScaler::NativeLuma720Double
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> split;
+    ComPtr<ID3D11PixelShader> initial;
+    ComPtr<ID3D11PixelShader> layer;
+    ComPtr<ID3D11PixelShader> dense;
+    ComPtr<ID3D11PixelShader> scaleX;
+    ComPtr<ID3D11PixelShader> scaleY;
+    ComPtr<ID3D11PixelShader> cbcrScaleX;
+    ComPtr<ID3D11PixelShader> cbcrScaleY;
+    ComPtr<ID3D11PixelShader> add;
+    ComPtr<ID3D11PixelShader> merge;
+    ComPtr<ID3D11Buffer> initialConstants;
+    std::array<ComPtr<ID3D11Buffer>, 15> layerConstants;
+    ComPtr<ID3D11Buffer> denseConstants;
+    ComPtr<ID3D11Buffer> scaleXConstants;
+    ComPtr<ID3D11Buffer> scaleYConstants;
+    ComPtr<ID3D11Buffer> chromaXConstants;
+    ComPtr<ID3D11Buffer> chromaYConstants;
+    ComPtr<ID3D11Buffer> addConstants;
+    ComPtr<ID3D11Buffer> mergeConstants;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+    ComPtr<ID3D11Texture2D> splitLumaTexture;
+    ComPtr<ID3D11RenderTargetView> splitLumaView;
+    ComPtr<ID3D11ShaderResourceView> splitLumaShaderView;
+    ComPtr<ID3D11Texture2D> splitCbCrTexture;
+    ComPtr<ID3D11RenderTargetView> splitCbCrView;
+    ComPtr<ID3D11ShaderResourceView> splitCbCrShaderView;
+    std::array<ComPtr<ID3D11Texture2D>, 3> initialTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 3> initialViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 3> initialShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 3>, 2> layerTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 3>, 2> layerViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 3>, 2> layerShaderViews;
+    ComPtr<ID3D11Texture2D> denseTexture;
+    ComPtr<ID3D11RenderTargetView> denseView;
+    ComPtr<ID3D11ShaderResourceView> denseShaderView;
+    ComPtr<ID3D11Texture2D> scaleXTexture;
+    ComPtr<ID3D11RenderTargetView> scaleXView;
+    ComPtr<ID3D11ShaderResourceView> scaleXShaderView;
+    ComPtr<ID3D11Texture2D> scaleYTexture;
+    ComPtr<ID3D11RenderTargetView> scaleYView;
+    ComPtr<ID3D11ShaderResourceView> scaleYShaderView;
+    ComPtr<ID3D11Texture2D> chromaXTexture;
+    ComPtr<ID3D11RenderTargetView> chromaXView;
+    ComPtr<ID3D11ShaderResourceView> chromaXShaderView;
+    ComPtr<ID3D11Texture2D> chromaYTexture;
+    ComPtr<ID3D11RenderTargetView> chromaYView;
+    ComPtr<ID3D11ShaderResourceView> chromaYShaderView;
+    ComPtr<ID3D11Texture2D> cbcrXTable;
+    ComPtr<ID3D11Texture2D> cbcrYTable;
+    ComPtr<ID3D11ShaderResourceView> cbcrXTableView;
+    ComPtr<ID3D11ShaderResourceView> cbcrYTableView;
+    ComPtr<ID3D11Texture2D> addTexture;
+    ComPtr<ID3D11RenderTargetView> addView;
+    ComPtr<ID3D11ShaderResourceView> addShaderView;
+    ComPtr<ID3D11Texture2D> mergeTexture;
+    ComPtr<ID3D11RenderTargetView> mergeView;
+    ComPtr<ID3D11ShaderResourceView> mergeShaderView;
+};
+
+struct NguScaler::NativeLuma720DoubleHighBit
+{
+    struct Surface
+    {
+        ComPtr<ID3D11Texture2D> texture;
+        ComPtr<ID3D11RenderTargetView> view;
+        ComPtr<ID3D11ShaderResourceView> shaderView;
+    };
+
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> split;
+    ComPtr<ID3D11PixelShader> initial;
+    ComPtr<ID3D11PixelShader> layer6140;
+    ComPtr<ID3D11PixelShader> layer4280;
+    ComPtr<ID3D11PixelShader> dense1528;
+    ComPtr<ID3D11PixelShader> toRgb;
+    std::array<ComPtr<ID3D11Buffer>, 2> initialConstants;
+    ComPtr<ID3D11Buffer> constants6140;
+    std::array<ComPtr<ID3D11Buffer>, 3> constants4280;
+    ComPtr<ID3D11Buffer> constants1528;
+    ComPtr<ID3D11Buffer> constantsToRgb;
+    ComPtr<ID3D11Buffer> constantsAdd;
+    ComPtr<ID3D11Buffer> constants1672;
+    std::array<ComPtr<ID3D11Buffer>, 28> constantsLumaLayer;
+    ComPtr<ID3D11Buffer> constantsLumaDense;
+    ComPtr<ID3D11SamplerState> pointSampler;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+
+    std::array<Surface, 3> splitSource;
+    std::array<Surface, 3> upX;
+    std::array<Surface, 3> upY;
+    std::array<Surface, 4> lumaInitial;
+    std::array<std::array<Surface, 4>, 2> lumaGroups;
+    Surface lumaDense;
+    std::array<Surface, 3> chromaInitial;
+    std::array<Surface, 2> chromaA;
+    std::array<Surface, 2> chromaB;
+    std::array<Surface, 2> chromaResult;
+    std::array<Surface, 2> chromaDense;
+    Surface rgb;
+};
+
 struct NguScaler::NativeSuperResPrimitives
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -700,6 +876,12 @@ struct NguScaler::NativeSuperResPrimitives
     ComPtr<ID3D11Buffer> toRgbMainConstants;
     ComPtr<ID3D11Buffer> toRgbBaseConstants;
     ComPtr<ID3D11Buffer> toRgbBaseConstantsP010;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsHdr;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsHdr;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsHlg;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsHlg;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsBt709Pq;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsBt709Pq;
     ComPtr<ID3D11Buffer> toRgbMainConstantsClass3;
     ComPtr<ID3D11Buffer> toRgbBaseConstantsClass3P010;
     ComPtr<ID3D11Buffer> toRgbMainConstantsClass3_1080;
@@ -728,6 +910,12 @@ struct NguScaler::NativeSuperResPrimitives
     ComPtr<ID3D11Buffer> toRgbMainConstants1080;
     ComPtr<ID3D11Buffer> toRgbBaseConstants1080;
     ComPtr<ID3D11Buffer> toRgbBaseConstantsP0101080;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsHdr1080;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsHdr1080;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsHlg1080;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsHlg1080;
+    ComPtr<ID3D11Buffer> toRgbMainConstantsBt709Pq1080;
+    ComPtr<ID3D11Buffer> toRgbBaseConstantsBt709Pq1080;
     ComPtr<ID3D11Texture2D> downXTable1080;
     ComPtr<ID3D11Texture2D> downYTable1080;
     ComPtr<ID3D11ShaderResourceView> downXTableView1080;
@@ -1116,10 +1304,8 @@ bool NguScaler::PrepareNativeLumaSplit(pl_gpu gpu)
         error_ = "NGU luma split requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\luma_1080_split.hlsl", 64 * 1024);
-    const auto pixelCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_split.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\luma_1080_split.hlsl", 64 * 1024);
+    const auto pixelCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_split.cso", 0);
     if (shaderText.empty() || pixelCso.empty())
     {
         error_ = "NGU luma split assets are unavailable";
@@ -1141,19 +1327,16 @@ bool NguScaler::PrepareNativeLumaSplit(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU luma split vertex shader failed";
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU luma split vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLumaSplit>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(
-            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU luma split shader objects could not be created";
         return false;
@@ -1188,11 +1371,8 @@ bool NguScaler::PrepareNativeLumaSplit(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLumaSplit(ID3D11ShaderResourceView* source,
-                                   int width,
-                                   int height,
-                                   ID3D11RenderTargetView* luma,
-                                   ID3D11RenderTargetView* cbcr)
+bool NguScaler::RunNativeLumaSplit(
+    ID3D11ShaderResourceView* source, int width, int height, ID3D11RenderTargetView* luma, ID3D11RenderTargetView* cbcr)
 {
     if (!nativeLumaSplit_ || !source || width <= 0 || height <= 0 || !luma || !cbcr)
     {
@@ -1233,10 +1413,8 @@ bool NguScaler::PrepareNativeDecoderSource(pl_gpu gpu)
         error_ = "NGU decoder source import requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_source_copy.hlsl", 16 * 1024);
-    const auto pixelCso =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_source_copy.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_source_copy.hlsl", 16 * 1024);
+    const auto pixelCso = LoadBundledBytes(L"shaders\\Ngu\\ngu_source_copy.cso", 0);
     if (shaderText.empty() || pixelCso.empty())
     {
         error_ = "NGU decoder source import assets are unavailable";
@@ -1258,26 +1436,23 @@ bool NguScaler::PrepareNativeDecoderSource(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU decoder source vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU decoder source vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeDecoderSource>();
-    if (FAILED(device->QueryInterface(
-            __uuidof(ID3D11Device3),
-            reinterpret_cast<void**>(state->device3.GetAddressOf()))))
+    if (FAILED(
+            device->QueryInterface(__uuidof(ID3D11Device3), reinterpret_cast<void**>(state->device3.GetAddressOf()))))
     {
         error_ = "NGU decoder source import requires D3D11.3 plane views";
         return false;
     }
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(
-            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU decoder source shader objects could not be created";
         return false;
@@ -1319,56 +1494,52 @@ bool NguScaler::RunNativeDecoderSourceCopy(ID3D11Texture2D* source,
                                            ID3D11RenderTargetView* luma,
                                            ID3D11RenderTargetView* chroma)
 {
-    if (!nativeDecoderSource_ || !source || width <= 0 || height <= 0 ||
-        (width & 1) || (height & 1) || !luma || !chroma)
+    if (!nativeDecoderSource_ || !source || width <= 0 || height <= 0 || (width & 1) || (height & 1) || !luma ||
+        !chroma)
     {
         error_ = "NGU decoder source request is invalid";
         return false;
     }
     D3D11_TEXTURE2D_DESC sourceDesc = {};
     source->GetDesc(&sourceDesc);
-    if ((sourceDesc.Format != DXGI_FORMAT_P010 && sourceDesc.Format != DXGI_FORMAT_P016) ||
-        sourceDesc.MipLevels != 1 || sourceDesc.SampleDesc.Count != 1 ||
-        arraySlice >= sourceDesc.ArraySize ||
-        static_cast<UINT>(width) > sourceDesc.Width ||
-        static_cast<UINT>(height) > sourceDesc.Height)
+    const bool nv12 = sourceDesc.Format == DXGI_FORMAT_NV12;
+    if ((!nv12 && sourceDesc.Format != DXGI_FORMAT_P010 && sourceDesc.Format != DXGI_FORMAT_P016) ||
+        sourceDesc.MipLevels != 1 || sourceDesc.SampleDesc.Count != 1 || arraySlice >= sourceDesc.ArraySize ||
+        static_cast<UINT>(width) > sourceDesc.Width || static_cast<UINT>(height) > sourceDesc.Height)
     {
         error_ = "NGU decoder source format or geometry is unsupported";
         return false;
     }
     if (!ViewMatchesTexture(luma, DXGI_FORMAT_R16_UNORM, width, height) ||
-        !ViewMatchesTexture(
-            chroma, DXGI_FORMAT_R16G16B16A16_UNORM, width / 2, height / 2))
+        !ViewMatchesTexture(chroma, DXGI_FORMAT_R16G16B16A16_UNORM, width / 2, height / 2))
     {
         error_ = "NGU decoder source output format or geometry is unsupported";
         return false;
     }
 
     D3D11_SHADER_RESOURCE_VIEW_DESC1 lumaViewDesc = {};
-    lumaViewDesc.Format = DXGI_FORMAT_R16_UNORM;
+    lumaViewDesc.Format = nv12 ? DXGI_FORMAT_R8_UNORM : DXGI_FORMAT_R16_UNORM;
     lumaViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
     lumaViewDesc.Texture2DArray.MipLevels = 1;
     lumaViewDesc.Texture2DArray.FirstArraySlice = arraySlice;
     lumaViewDesc.Texture2DArray.ArraySize = 1;
     lumaViewDesc.Texture2DArray.PlaneSlice = 0;
     ComPtr<ID3D11ShaderResourceView1> lumaView;
-    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(
-            source, &lumaViewDesc, &lumaView)))
+    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(source, &lumaViewDesc, &lumaView)))
     {
         error_ = "NGU decoder luma plane view could not be created";
         return false;
     }
 
     D3D11_SHADER_RESOURCE_VIEW_DESC1 chromaViewDesc = {};
-    chromaViewDesc.Format = DXGI_FORMAT_R16G16_UNORM;
+    chromaViewDesc.Format = nv12 ? DXGI_FORMAT_R8G8_UNORM : DXGI_FORMAT_R16G16_UNORM;
     chromaViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
     chromaViewDesc.Texture2DArray.MipLevels = 1;
     chromaViewDesc.Texture2DArray.FirstArraySlice = arraySlice;
     chromaViewDesc.Texture2DArray.ArraySize = 1;
     chromaViewDesc.Texture2DArray.PlaneSlice = 1;
     ComPtr<ID3D11ShaderResourceView1> chromaView;
-    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(
-            source, &chromaViewDesc, &chromaView)))
+    if (FAILED(nativeDecoderSource_->device3->CreateShaderResourceView1(source, &chromaViewDesc, &chromaView)))
     {
         error_ = "NGU decoder chroma plane view could not be created";
         return false;
@@ -1421,10 +1592,8 @@ bool NguScaler::PrepareNativeChromaSplit(pl_gpu gpu)
         error_ = "NGU chroma split requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_split.hlsl", 16 * 1024);
-    const auto pixelCso =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_split.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_split.hlsl", 16 * 1024);
+    const auto pixelCso = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_split.cso", 0);
     if (shaderText.empty() || pixelCso.empty())
     {
         error_ = "NGU chroma split assets are unavailable";
@@ -1446,19 +1615,17 @@ bool NguScaler::PrepareNativeChromaSplit(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma split vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma split vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaSplit>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(
-            pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU chroma split shader objects could not be created";
         return false;
@@ -1493,11 +1660,8 @@ bool NguScaler::PrepareNativeChromaSplit(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaSplit(ID3D11ShaderResourceView* packedUv,
-                                     int width,
-                                     int height,
-                                     ID3D11RenderTargetView* cb,
-                                     ID3D11RenderTargetView* cr)
+bool NguScaler::RunNativeChromaSplit(
+    ID3D11ShaderResourceView* packedUv, int width, int height, ID3D11RenderTargetView* cb, ID3D11RenderTargetView* cr)
 {
     if (!nativeChromaSplit_ || !packedUv || width <= 0 || height <= 0 || !cb || !cr ||
         !ViewMatchesTexture(cb, DXGI_FORMAT_R16_UNORM, width, height) ||
@@ -1540,27 +1704,15 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
         error_ = "NGU chroma scale requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_scale.hlsl", 16 * 1024);
-    const auto scaleXCso =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x.cso", 0);
-    const auto scaleXClass3Cso =
-        LoadBundledBytes(
-            L"shaders\\Ngu\\ngu_chroma_scale_x_class3.cso", 0);
-    const auto scaleYCso =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y.cso", 0);
-    const auto scaleYClass3Cso =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_scale_y.cso", 0);
-    const auto scaleXConstants1080 =
-        LoadBundledBytes(
-            L"shaders\\Ngu\\ngu_chroma_scale_x_constants_1080.bin", 48);
-    const auto scaleYConstants1080 =
-        LoadBundledBytes(
-            L"shaders\\Ngu\\ngu_chroma_scale_y_constants_1080.bin", 48);
-    if (shaderText.empty() || scaleXCso.empty() ||
-        scaleXClass3Cso.empty() || scaleYCso.empty() ||
-        scaleYClass3Cso.empty() ||
-        scaleXConstants1080.empty() || scaleYConstants1080.empty())
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_scale.hlsl", 16 * 1024);
+    const auto scaleXCso = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x.cso", 0);
+    const auto scaleXClass3Cso = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x_class3.cso", 0);
+    const auto scaleYCso = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y.cso", 0);
+    const auto scaleYClass3Cso = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_scale_y.cso", 0);
+    const auto scaleXConstants1080 = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_x_constants_1080.bin", 48);
+    const auto scaleYConstants1080 = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_scale_y_constants_1080.bin", 48);
+    if (shaderText.empty() || scaleXCso.empty() || scaleXClass3Cso.empty() || scaleYCso.empty() ||
+        scaleYClass3Cso.empty() || scaleXConstants1080.empty() || scaleYConstants1080.empty())
     {
         error_ = "NGU chroma scale assets are unavailable";
         return false;
@@ -1581,64 +1733,100 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma scale vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma scale vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaScale>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(scaleXCso.data(),
-                                         static_cast<SIZE_T>(scaleXCso.size()),
-                                         nullptr,
-                                         &state->scaleX)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(
-            scaleXClass3Cso.data(),
-            static_cast<SIZE_T>(scaleXClass3Cso.size()),
-            nullptr,
-            &state->scaleXClass3)) ||
-        FAILED(device->CreatePixelShader(scaleYCso.data(),
-                                         static_cast<SIZE_T>(scaleYCso.size()),
-                                         nullptr,
-                                         &state->scaleY)) ||
+            scaleXCso.data(), static_cast<SIZE_T>(scaleXCso.size()), nullptr, &state->scaleX)) ||
         FAILED(device->CreatePixelShader(
-            scaleYClass3Cso.data(),
-            static_cast<SIZE_T>(scaleYClass3Cso.size()),
-            nullptr,
-            &state->scaleYClass3)))
+            scaleXClass3Cso.data(), static_cast<SIZE_T>(scaleXClass3Cso.size()), nullptr, &state->scaleXClass3)) ||
+        FAILED(device->CreatePixelShader(
+            scaleYCso.data(), static_cast<SIZE_T>(scaleYCso.size()), nullptr, &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(
+            scaleYClass3Cso.data(), static_cast<SIZE_T>(scaleYClass3Cso.size()), nullptr, &state->scaleYClass3)))
     {
         error_ = "NGU chroma scale shader objects could not be created";
         return false;
     }
 
-    const float scaleXConstants[12] = {
-        640.0f, 0.00078125f, 0.0015625f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        640.0f, 360.0f, 0.0f, 0.0f};
-    const float scaleYConstants[12] = {
-        720.0f, 0.0013888889f, 0.0027777778f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        1280.0f, 720.0f, 0.0f, 0.0f};
-    const float scaleXConstantsClass3[12] = {
-        1280.0f, 0.00078125f, 0.0013888889f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        1280.0f, 720.0f, 0.0f, 0.0f};
-    const float scaleYConstantsClass3[12] = {
-        1440.0f, 0.00069444446f, 0.0013888889f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        1280.0f, 1440.0f, 0.0f, 0.0f};
-    const float scaleXConstantsClass3_1080[12] = {
-        1920.0f, 0.0005208334f, 0.001041667f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        1920.0f, 1080.0f, 0.0f, 0.0f};
-    const float scaleYConstantsClass3_1080[12] = {
-        2160.0f, 0.000462963f, 0.0009259259f, 0.0f,
-        0.871875f, 0.240625f, -0.084375f, -0.028125f,
-        1920.0f, 2160.0f, 0.0f, 0.0f};
+    const float scaleXConstants[12] = {640.0f,
+                                       0.00078125f,
+                                       0.0015625f,
+                                       0.0f,
+                                       0.871875f,
+                                       0.240625f,
+                                       -0.084375f,
+                                       -0.028125f,
+                                       640.0f,
+                                       360.0f,
+                                       0.0f,
+                                       0.0f};
+    const float scaleYConstants[12] = {720.0f,
+                                       0.0013888889f,
+                                       0.0027777778f,
+                                       0.0f,
+                                       0.871875f,
+                                       0.240625f,
+                                       -0.084375f,
+                                       -0.028125f,
+                                       1280.0f,
+                                       720.0f,
+                                       0.0f,
+                                       0.0f};
+    const float scaleXConstantsClass3[12] = {1280.0f,
+                                             0.00078125f,
+                                             0.0013888889f,
+                                             0.0f,
+                                             0.871875f,
+                                             0.240625f,
+                                             -0.084375f,
+                                             -0.028125f,
+                                             1280.0f,
+                                             720.0f,
+                                             0.0f,
+                                             0.0f};
+    const float scaleYConstantsClass3[12] = {1440.0f,
+                                             0.00069444446f,
+                                             0.0013888889f,
+                                             0.0f,
+                                             0.871875f,
+                                             0.240625f,
+                                             -0.084375f,
+                                             -0.028125f,
+                                             1280.0f,
+                                             1440.0f,
+                                             0.0f,
+                                             0.0f};
+    const float scaleXConstantsClass3_1080[12] = {1920.0f,
+                                                  0.0005208334f,
+                                                  0.001041667f,
+                                                  0.0f,
+                                                  0.871875f,
+                                                  0.240625f,
+                                                  -0.084375f,
+                                                  -0.028125f,
+                                                  1920.0f,
+                                                  1080.0f,
+                                                  0.0f,
+                                                  0.0f};
+    const float scaleYConstantsClass3_1080[12] = {2160.0f,
+                                                  0.000462963f,
+                                                  0.0009259259f,
+                                                  0.0f,
+                                                  0.871875f,
+                                                  0.240625f,
+                                                  -0.084375f,
+                                                  -0.028125f,
+                                                  1920.0f,
+                                                  2160.0f,
+                                                  0.0f,
+                                                  0.0f};
     D3D11_BUFFER_DESC bufferDesc = {};
     bufferDesc.ByteWidth = sizeof(scaleXConstants);
     bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -1657,47 +1845,39 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
         return false;
     }
     initial.pSysMem = scaleXConstants1080.data();
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleXConstants1080)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleXConstants1080)))
     {
         error_ = "NGU 1080p chroma X scale constants could not be created";
         return false;
     }
     initial.pSysMem = scaleYConstants1080.data();
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleYConstants1080)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleYConstants1080)))
     {
         error_ = "NGU 1080p chroma Y scale constants could not be created";
         return false;
     }
     initial.pSysMem = scaleXConstantsClass3;
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleXConstantsClass3)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleXConstantsClass3)))
     {
         error_ = "NGU class-3 chroma X scale constants could not be created";
         return false;
     }
     initial.pSysMem = scaleYConstantsClass3;
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleYConstantsClass3)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleYConstantsClass3)))
     {
         error_ = "NGU class-3 chroma Y scale constants could not be created";
         return false;
     }
     initial.pSysMem = scaleXConstantsClass3_1080;
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleXConstantsClass3_1080)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleXConstantsClass3_1080)))
     {
-        error_ =
-            "NGU 1080p class-3 chroma X scale constants could not be created";
+        error_ = "NGU 1080p class-3 chroma X scale constants could not be created";
         return false;
     }
     initial.pSysMem = scaleYConstantsClass3_1080;
-    if (FAILED(device->CreateBuffer(
-            &bufferDesc, &initial, &state->scaleYConstantsClass3_1080)))
+    if (FAILED(device->CreateBuffer(&bufferDesc, &initial, &state->scaleYConstantsClass3_1080)))
     {
-        error_ =
-            "NGU 1080p class-3 chroma Y scale constants could not be created";
+        error_ = "NGU 1080p class-3 chroma Y scale constants could not be created";
         return false;
     }
 
@@ -1729,112 +1909,78 @@ bool NguScaler::PrepareNativeChromaScale(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input,
-                                      ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaScaleX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 360);
-    const bool is1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 540);
-    const bool isClass3 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 720) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
-    const bool isClass3_1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 1080) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
-    if (!nativeChromaScale_ || !input || !output ||
-        (!is720 && !is1080 && !isClass3 && !isClass3_1080))
+    const bool is720 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 360);
+    const bool is1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 540);
+    const bool isClass3 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 720) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
+    const bool isClass3_1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 1080) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
+    if (!nativeChromaScale_ || !input || !output || (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma X scale request has unsupported geometry";
         return false;
     }
-    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  nativeChromaScale_->vertex.Get(),
-                  ((isClass3 || isClass3_1080)
-                       ? nativeChromaScale_->scaleXClass3.Get()
-                       : nativeChromaScale_->scaleX.Get()),
-                  (isClass3_1080
-                       ? nativeChromaScale_
-                             ->scaleXConstantsClass3_1080.Get()
-                       : isClass3
-                             ? nativeChromaScale_
-                                   ->scaleXConstantsClass3.Get()
-                             : is1080
-                                   ? nativeChromaScale_
-                                         ->scaleXConstants1080.Get()
-                                   : nativeChromaScale_
-                                         ->scaleXConstants.Get()),
-                  nativeChromaScale_->rasterizer.Get(),
-                  &input,
-                  1,
-                  &output,
-                  1,
-                  (is1080 || isClass3_1080) ? 1920 : 1280,
-                  isClass3_1080 ? 1080
-                                : isClass3 ? 720
-                                           : is1080 ? 540 : 360,
-                  nativeChromaScale_->sampler.Get());
+    DrawD3D11Pass(
+        pl_d3d11_get(gpu_)->device,
+        nativeChromaScale_->vertex.Get(),
+        ((isClass3 || isClass3_1080) ? nativeChromaScale_->scaleXClass3.Get() : nativeChromaScale_->scaleX.Get()),
+        (isClass3_1080 ? nativeChromaScale_->scaleXConstantsClass3_1080.Get()
+         : isClass3    ? nativeChromaScale_->scaleXConstantsClass3.Get()
+         : is1080      ? nativeChromaScale_->scaleXConstants1080.Get()
+                       : nativeChromaScale_->scaleXConstants.Get()),
+        nativeChromaScale_->rasterizer.Get(),
+        &input,
+        1,
+        &output,
+        1,
+        (is1080 || isClass3_1080) ? 1920 : 1280,
+        isClass3_1080 ? 1080
+        : isClass3    ? 720
+        : is1080      ? 540
+                      : 360,
+        nativeChromaScale_->sampler.Get());
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeChromaScaleY(ID3D11ShaderResourceView* input,
-                                      ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaScaleY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 360) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
-    const bool is1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1920, 540) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
-    const bool isClass3 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 1440);
-    const bool isClass3_1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 2160);
-    if (!nativeChromaScale_ || !input || !output ||
-        (!is720 && !is1080 && !isClass3 && !isClass3_1080))
+    const bool is720 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 360) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
+    const bool is1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1920, 540) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
+    const bool isClass3 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 1440);
+    const bool isClass3_1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 2160);
+    if (!nativeChromaScale_ || !input || !output || (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma Y scale request has unsupported geometry";
         return false;
     }
-    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  nativeChromaScale_->vertex.Get(),
-                  ((isClass3 || isClass3_1080)
-                       ? nativeChromaScale_->scaleYClass3.Get()
-                       : nativeChromaScale_->scaleY.Get()),
-                  (isClass3_1080
-                       ? nativeChromaScale_
-                             ->scaleYConstantsClass3_1080.Get()
-                       : isClass3
-                             ? nativeChromaScale_
-                                   ->scaleYConstantsClass3.Get()
-                             : is1080
-                                   ? nativeChromaScale_
-                                         ->scaleYConstants1080.Get()
-                                   : nativeChromaScale_
-                                         ->scaleYConstants.Get()),
-                  nativeChromaScale_->rasterizer.Get(),
-                  &input,
-                  1,
-                  &output,
-                  1,
-                  (is1080 || isClass3_1080) ? 1920 : 1280,
-                  isClass3_1080 ? 2160
-                                : isClass3 ? 1440
-                                           : is1080 ? 1080 : 720,
-                  nativeChromaScale_->sampler.Get());
+    DrawD3D11Pass(
+        pl_d3d11_get(gpu_)->device,
+        nativeChromaScale_->vertex.Get(),
+        ((isClass3 || isClass3_1080) ? nativeChromaScale_->scaleYClass3.Get() : nativeChromaScale_->scaleY.Get()),
+        (isClass3_1080 ? nativeChromaScale_->scaleYConstantsClass3_1080.Get()
+         : isClass3    ? nativeChromaScale_->scaleYConstantsClass3.Get()
+         : is1080      ? nativeChromaScale_->scaleYConstants1080.Get()
+                       : nativeChromaScale_->scaleYConstants.Get()),
+        nativeChromaScale_->rasterizer.Get(),
+        &input,
+        1,
+        &output,
+        1,
+        (is1080 || isClass3_1080) ? 1920 : 1280,
+        isClass3_1080 ? 2160
+        : isClass3    ? 1440
+        : is1080      ? 1080
+                      : 720,
+        nativeChromaScale_->sampler.Get());
     error_ = "";
     return true;
 }
@@ -1857,45 +2003,32 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         return false;
     }
 
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_cubici2.hlsl", 64 * 1024);
-    const auto cubici2Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2.cso", 0);
-    const auto layerBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer.cso", 0);
-    const auto denseBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_cubici2.hlsl", 64 * 1024);
+    const auto cubici2Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2.cso", 0);
+    const auto layerBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer.cso", 0);
+    const auto denseBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense.cso", 0);
     const auto cubici2Constants =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2_constants.bin",
-                         42 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2_constants.bin", 42 * sizeof(float) * 4);
     const auto layerConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer_constants.bin",
-                         28 * 147 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer_constants.bin", 28 * 147 * sizeof(float) * 4);
     const auto denseConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense_constants.bin",
-                         67 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense_constants.bin", 67 * sizeof(float) * 4);
     const auto cubici2Constants1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2_constants_1080.bin",
-                          42 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_cubici2_constants_1080.bin", 42 * sizeof(float) * 4);
     const auto layerConstants1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer_constants_1080.bin",
-                          28 * 147 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_layer_constants_1080.bin", 28 * 147 * sizeof(float) * 4);
     const auto denseConstants1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense_constants_1080.bin",
-                          67 * sizeof(float) * 4);
-    if (shaderText.empty() || cubici2Bytecode.empty() || layerBytecode.empty() ||
-        denseBytecode.empty() || cubici2Constants.empty() ||
-        layerConstants.empty() || denseConstants.empty() ||
-        cubici2Constants1080.empty() || layerConstants1080.empty() ||
-        denseConstants1080.empty())
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_dense_constants_1080.bin", 67 * sizeof(float) * 4);
+    if (shaderText.empty() || cubici2Bytecode.empty() || layerBytecode.empty() || denseBytecode.empty() ||
+        cubici2Constants.empty() || layerConstants.empty() || denseConstants.empty() || cubici2Constants1080.empty() ||
+        layerConstants1080.empty() || denseConstants1080.empty())
     {
         error_ = "NGU chroma network assets are unavailable";
         return false;
     }
 
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_ChromaNetwork",
@@ -1909,38 +2042,28 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma network vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma network vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaNetwork>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(cubici2Bytecode.data(),
-                                         static_cast<SIZE_T>(cubici2Bytecode.size()),
-                                         nullptr,
-                                         &state->cubici2)) ||
-        FAILED(device->CreatePixelShader(layerBytecode.data(),
-                                         static_cast<SIZE_T>(layerBytecode.size()),
-                                         nullptr,
-                                         &state->layer)) ||
-        FAILED(device->CreatePixelShader(denseBytecode.data(),
-                                         static_cast<SIZE_T>(denseBytecode.size()),
-                                         nullptr,
-                                         &state->dense)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            cubici2Bytecode.data(), static_cast<SIZE_T>(cubici2Bytecode.size()), nullptr, &state->cubici2)) ||
+        FAILED(device->CreatePixelShader(
+            layerBytecode.data(), static_cast<SIZE_T>(layerBytecode.size()), nullptr, &state->layer)) ||
+        FAILED(device->CreatePixelShader(
+            denseBytecode.data(), static_cast<SIZE_T>(denseBytecode.size()), nullptr, &state->dense)))
     {
         error_ = "NGU chroma network shader objects could not be created";
         return false;
     }
 
-    auto createConstants = [&](const std::vector<uint8_t>& bytes,
-                               size_t offset,
-                               UINT size,
-                               ComPtr<ID3D11Buffer>& buffer)
+    auto createConstants =
+        [&](const std::vector<uint8_t>& bytes, size_t offset, UINT size, ComPtr<ID3D11Buffer>& buffer)
     {
         D3D11_BUFFER_DESC desc = {};
         desc.ByteWidth = size;
@@ -1950,10 +2073,7 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         initial.pSysMem = bytes.data() + offset;
         return SUCCEEDED(device->CreateBuffer(&desc, &initial, &buffer));
     };
-    if (!createConstants(cubici2Constants,
-                         0,
-                         UINT(cubici2Constants.size()),
-                         state->cubici2Constants))
+    if (!createConstants(cubici2Constants, 0, UINT(cubici2Constants.size()), state->cubici2Constants))
     {
         error_ = "NGU chroma Cubici2 constants could not be created";
         return false;
@@ -1961,27 +2081,19 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
     constexpr size_t layerConstantBytes = 147 * sizeof(float) * 4;
     for (size_t layer = 0; layer < state->layerConstants.size(); ++layer)
     {
-        if (!createConstants(layerConstants,
-                             layer * layerConstantBytes,
-                             UINT(layerConstantBytes),
-                             state->layerConstants[layer]))
+        if (!createConstants(
+                layerConstants, layer * layerConstantBytes, UINT(layerConstantBytes), state->layerConstants[layer]))
         {
             error_ = "NGU chroma layer constants could not be created";
             return false;
         }
     }
-    if (!createConstants(denseConstants,
-                         0,
-                         UINT(denseConstants.size()),
-                         state->denseConstants))
+    if (!createConstants(denseConstants, 0, UINT(denseConstants.size()), state->denseConstants))
     {
         error_ = "NGU chroma dense constants could not be created";
         return false;
     }
-    if (!createConstants(cubici2Constants1080,
-                         0,
-                         UINT(cubici2Constants1080.size()),
-                         state->cubici2Constants1080))
+    if (!createConstants(cubici2Constants1080, 0, UINT(cubici2Constants1080.size()), state->cubici2Constants1080))
     {
         error_ = "NGU 1080p chroma Cubici2 constants could not be created";
         return false;
@@ -1997,10 +2109,7 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
             return false;
         }
     }
-    if (!createConstants(denseConstants1080,
-                         0,
-                         UINT(denseConstants1080.size()),
-                         state->denseConstants1080))
+    if (!createConstants(denseConstants1080, 0, UINT(denseConstants1080.size()), state->denseConstants1080))
     {
         error_ = "NGU 1080p chroma dense constants could not be created";
         return false;
@@ -2017,8 +2126,7 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
                                      ComPtr<ID3D11Buffer>& buffer)
     {
         const size_t byteCount = size_t(vectorCount) * 4 * sizeof(float);
-        std::vector<uint8_t> adjusted(
-            bytes.begin() + offset, bytes.begin() + offset + byteCount);
+        std::vector<uint8_t> adjusted(bytes.begin() + offset, bytes.begin() + offset + byteCount);
         float* values = reinterpret_cast<float*>(adjusted.data());
         const int scaleOffset = vectorCount * 4 - (dense ? 8 : 4);
         values[scaleOffset] = 1.0f / float(scaleWidth);
@@ -2036,15 +2144,7 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         initial.pSysMem = adjusted.data();
         return SUCCEEDED(device->CreateBuffer(&desc, &initial, &buffer));
     };
-    if (!createClass3Constants(cubici2Constants,
-                               0,
-                               42,
-                               false,
-                               640,
-                               720,
-                               642,
-                               722,
-                               state->cubici2ConstantsClass3))
+    if (!createClass3Constants(cubici2Constants, 0, 42, false, 640, 720, 642, 722, state->cubici2ConstantsClass3))
     {
         error_ = "NGU class-3 chroma Cubici2 constants could not be created";
         return false;
@@ -2065,61 +2165,34 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
             return false;
         }
     }
-    if (!createClass3Constants(denseConstants,
-                               0,
-                               67,
-                               true,
-                               640,
-                               720,
-                               642,
-                               722,
-                               state->denseConstantsClass3))
+    if (!createClass3Constants(denseConstants, 0, 67, true, 640, 720, 642, 722, state->denseConstantsClass3))
     {
         error_ = "NGU class-3 chroma dense constants could not be created";
         return false;
     }
-    if (!createClass3Constants(cubici2Constants,
-                               0,
-                               42,
-                               false,
-                               960,
-                               1080,
-                               962,
-                               1082,
-                               state->cubici2ConstantsClass3_1080))
+    if (!createClass3Constants(
+            cubici2Constants, 0, 42, false, 960, 1080, 962, 1082, state->cubici2ConstantsClass3_1080))
     {
         error_ = "NGU 1080p class-3 chroma Cubici2 constants could not be created";
         return false;
     }
-    for (size_t layer = 0;
-         layer < state->layerConstantsClass3_1080.size();
-         ++layer)
+    for (size_t layer = 0; layer < state->layerConstantsClass3_1080.size(); ++layer)
     {
-        if (!createClass3Constants(
-                layerConstants,
-                layer * layerConstantBytes,
-                147,
-                false,
-                960,
-                1080,
-                962,
-                1082,
-                state->layerConstantsClass3_1080[layer]))
+        if (!createClass3Constants(layerConstants,
+                                   layer * layerConstantBytes,
+                                   147,
+                                   false,
+                                   960,
+                                   1080,
+                                   962,
+                                   1082,
+                                   state->layerConstantsClass3_1080[layer]))
         {
-            error_ =
-                "NGU 1080p class-3 chroma layer constants could not be created";
+            error_ = "NGU 1080p class-3 chroma layer constants could not be created";
             return false;
         }
     }
-    if (!createClass3Constants(denseConstants,
-                               0,
-                               67,
-                               true,
-                               960,
-                               1080,
-                               962,
-                               1082,
-                               state->denseConstantsClass3_1080))
+    if (!createClass3Constants(denseConstants, 0, 67, true, 960, 1080, 962, 1082, state->denseConstantsClass3_1080))
     {
         error_ = "NGU 1080p class-3 chroma dense constants could not be created";
         return false;
@@ -2130,8 +2203,7 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
-                                              &state->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
     {
         error_ = "NGU chroma network rasterizer could not be created";
         return false;
@@ -2142,23 +2214,15 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaCubici2(
-    ID3D11ShaderResourceView* input,
-    ID3D11RenderTargetView* const outputs[4])
+bool NguScaler::RunNativeChromaCubici2(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const outputs[4])
 {
-    const bool is720 =
-        input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360);
-    const bool is1080 =
-        input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540);
-    const bool isClass3 =
-        input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 720);
-    const bool isClass3_1080 =
-        input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 1080);
+    const bool is720 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360);
+    const bool is1080 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540);
+    const bool isClass3 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 720);
+    const bool isClass3_1080 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 1080);
     const UINT width = (is1080 || isClass3_1080) ? 960 : 640;
-    const UINT height =
-        isClass3_1080 ? 1080 : isClass3 ? 720 : is1080 ? 540 : 360;
-    if (!nativeChromaNetwork_ || !input || !outputs || !outputs[0] ||
-        !outputs[1] || !outputs[2] || !outputs[3] ||
+    const UINT height = isClass3_1080 ? 1080 : isClass3 ? 720 : is1080 ? 540 : 360;
+    if (!nativeChromaNetwork_ || !input || !outputs || !outputs[0] || !outputs[1] || !outputs[2] || !outputs[3] ||
         (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma Cubici2 request is invalid";
@@ -2166,10 +2230,7 @@ bool NguScaler::RunNativeChromaCubici2(
     }
     for (int index = 0; index < 4; ++index)
     {
-        if (!ViewMatchesTexture(outputs[index],
-                                DXGI_FORMAT_R16G16B16A16_FLOAT,
-                                width,
-                                height))
+        if (!ViewMatchesTexture(outputs[index], DXGI_FORMAT_R16G16B16A16_FLOAT, width, height))
         {
             error_ = "NGU chroma Cubici2 output is invalid";
             return false;
@@ -2178,13 +2239,10 @@ bool NguScaler::RunNativeChromaCubici2(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaNetwork_->vertex.Get(),
                   nativeChromaNetwork_->cubici2.Get(),
-                  (isClass3_1080
-                       ? nativeChromaNetwork_->cubici2ConstantsClass3_1080.Get()
-                       : isClass3
-                       ? nativeChromaNetwork_->cubici2ConstantsClass3.Get()
-                       : is1080
-                             ? nativeChromaNetwork_->cubici2Constants1080.Get()
-                             : nativeChromaNetwork_->cubici2Constants.Get()),
+                  (isClass3_1080 ? nativeChromaNetwork_->cubici2ConstantsClass3_1080.Get()
+                   : isClass3    ? nativeChromaNetwork_->cubici2ConstantsClass3.Get()
+                   : is1080      ? nativeChromaNetwork_->cubici2Constants1080.Get()
+                                 : nativeChromaNetwork_->cubici2Constants.Get()),
                   nativeChromaNetwork_->rasterizer.Get(),
                   &input,
                   1,
@@ -2196,41 +2254,20 @@ bool NguScaler::RunNativeChromaCubici2(
     return true;
 }
 
-bool NguScaler::RunNativeChromaLayer(
-    ID3D11ShaderResourceView* const inputs[4],
-    int layer,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaLayer(ID3D11ShaderResourceView* const inputs[4],
+                                     int layer,
+                                     ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        inputs && inputs[0] &&
-        ViewMatchesTexture(inputs[0],
-                           DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           640,
-                           360);
-    const bool is1080 =
-        inputs && inputs[0] &&
-        ViewMatchesTexture(inputs[0],
-                           DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           960,
-                           540);
+    const bool is720 = inputs && inputs[0] && ViewMatchesTexture(inputs[0], DXGI_FORMAT_R16G16B16A16_FLOAT, 640, 360);
+    const bool is1080 = inputs && inputs[0] && ViewMatchesTexture(inputs[0], DXGI_FORMAT_R16G16B16A16_FLOAT, 960, 540);
     const bool isClass3 =
-        inputs && inputs[0] &&
-        ViewMatchesTexture(inputs[0],
-                           DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           640,
-                           720);
+        inputs && inputs[0] && ViewMatchesTexture(inputs[0], DXGI_FORMAT_R16G16B16A16_FLOAT, 640, 720);
     const bool isClass3_1080 =
-        inputs && inputs[0] &&
-        ViewMatchesTexture(inputs[0],
-                           DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           960,
-                           1080);
+        inputs && inputs[0] && ViewMatchesTexture(inputs[0], DXGI_FORMAT_R16G16B16A16_FLOAT, 960, 1080);
     const UINT width = (is1080 || isClass3_1080) ? 960 : 640;
-    const UINT height =
-        isClass3_1080 ? 1080 : isClass3 ? 720 : is1080 ? 540 : 360;
-    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] ||
-        !inputs[2] || !inputs[3] || !output || layer < 0 ||
-        layer >= int(nativeChromaNetwork_->layerConstants.size()) ||
+    const UINT height = isClass3_1080 ? 1080 : isClass3 ? 720 : is1080 ? 540 : 360;
+    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] || !inputs[2] || !inputs[3] || !output ||
+        layer < 0 || layer >= int(nativeChromaNetwork_->layerConstants.size()) ||
         (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma layer request is invalid";
@@ -2238,19 +2275,13 @@ bool NguScaler::RunNativeChromaLayer(
     }
     for (int index = 0; index < 4; ++index)
     {
-        if (!ViewMatchesTexture(inputs[index],
-                                DXGI_FORMAT_R16G16B16A16_FLOAT,
-                                width,
-                                height))
+        if (!ViewMatchesTexture(inputs[index], DXGI_FORMAT_R16G16B16A16_FLOAT, width, height))
         {
             error_ = "NGU chroma layer input is invalid";
             return false;
         }
     }
-    if (!ViewMatchesTexture(output,
-                            DXGI_FORMAT_R16G16B16A16_FLOAT,
-                            width,
-                            height))
+    if (!ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, width, height))
     {
         error_ = "NGU chroma layer output is invalid";
         return false;
@@ -2258,15 +2289,10 @@ bool NguScaler::RunNativeChromaLayer(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaNetwork_->vertex.Get(),
                   nativeChromaNetwork_->layer.Get(),
-                  (isClass3_1080
-                       ? nativeChromaNetwork_
-                             ->layerConstantsClass3_1080[layer]
-                             .Get()
-                       : isClass3
-                       ? nativeChromaNetwork_->layerConstantsClass3[layer].Get()
-                       : is1080
-                             ? nativeChromaNetwork_->layerConstants1080[layer].Get()
-                             : nativeChromaNetwork_->layerConstants[layer].Get()),
+                  (isClass3_1080 ? nativeChromaNetwork_->layerConstantsClass3_1080[layer].Get()
+                   : isClass3    ? nativeChromaNetwork_->layerConstantsClass3[layer].Get()
+                   : is1080      ? nativeChromaNetwork_->layerConstants1080[layer].Get()
+                                 : nativeChromaNetwork_->layerConstants[layer].Get()),
                   nativeChromaNetwork_->rasterizer.Get(),
                   inputs,
                   4,
@@ -2278,52 +2304,25 @@ bool NguScaler::RunNativeChromaLayer(
     return true;
 }
 
-bool NguScaler::RunNativeChromaDense(
-    ID3D11ShaderResourceView* const inputs[4],
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaDense(ID3D11ShaderResourceView* const inputs[4], ID3D11RenderTargetView* output)
 {
-    const bool output720 =
-        output &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362);
-    const bool output1080 =
-        output &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542);
-    const bool outputClass3 =
-        output &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722);
-    const bool outputClass3_1080 =
-        output &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082);
-    const UINT inputWidth =
-        (output1080 || outputClass3_1080) ? 960 : 640;
-    const UINT inputHeight =
-        outputClass3_1080
-            ? 1080
-            : outputClass3 ? 720 : output1080 ? 540 : 360;
-    const UINT outputWidth =
-        (output1080 || outputClass3_1080) ? 962 : 642;
-    const UINT outputHeight =
-        outputClass3_1080
-            ? 1082
-            : outputClass3 ? 722 : output1080 ? 542 : 362;
-    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] ||
-        !inputs[2] || !inputs[3] || !output ||
-        (!output720 && !output1080 && !outputClass3 &&
-         !outputClass3_1080))
+    const bool output720 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362);
+    const bool output1080 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542);
+    const bool outputClass3 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722);
+    const bool outputClass3_1080 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082);
+    const UINT inputWidth = (output1080 || outputClass3_1080) ? 960 : 640;
+    const UINT inputHeight = outputClass3_1080 ? 1080 : outputClass3 ? 720 : output1080 ? 540 : 360;
+    const UINT outputWidth = (output1080 || outputClass3_1080) ? 962 : 642;
+    const UINT outputHeight = outputClass3_1080 ? 1082 : outputClass3 ? 722 : output1080 ? 542 : 362;
+    if (!nativeChromaNetwork_ || !inputs || !inputs[0] || !inputs[1] || !inputs[2] || !inputs[3] || !output ||
+        (!output720 && !output1080 && !outputClass3 && !outputClass3_1080))
     {
         error_ = "NGU chroma dense request is invalid";
         return false;
     }
     for (int index = 0; index < 4; ++index)
     {
-        if (!ViewMatchesTexture(inputs[index],
-                                DXGI_FORMAT_R16G16B16A16_FLOAT,
-                                inputWidth,
-                                inputHeight))
+        if (!ViewMatchesTexture(inputs[index], DXGI_FORMAT_R16G16B16A16_FLOAT, inputWidth, inputHeight))
         {
             error_ = "NGU chroma dense input is invalid";
             return false;
@@ -2332,13 +2331,10 @@ bool NguScaler::RunNativeChromaDense(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaNetwork_->vertex.Get(),
                   nativeChromaNetwork_->dense.Get(),
-                  (outputClass3_1080
-                       ? nativeChromaNetwork_->denseConstantsClass3_1080.Get()
-                       : outputClass3
-                       ? nativeChromaNetwork_->denseConstantsClass3.Get()
-                       : output1080
-                             ? nativeChromaNetwork_->denseConstants1080.Get()
-                             : nativeChromaNetwork_->denseConstants.Get()),
+                  (outputClass3_1080 ? nativeChromaNetwork_->denseConstantsClass3_1080.Get()
+                   : outputClass3    ? nativeChromaNetwork_->denseConstantsClass3.Get()
+                   : output1080      ? nativeChromaNetwork_->denseConstants1080.Get()
+                                     : nativeChromaNetwork_->denseConstants.Get()),
                   nativeChromaNetwork_->rasterizer.Get(),
                   inputs,
                   4,
@@ -2351,19 +2347,14 @@ bool NguScaler::RunNativeChromaDense(
 }
 
 bool NguScaler::PrepareNativeChromaVeryHigh(
-    pl_gpu gpu,
-    int width,
-    int height,
-    std::unique_ptr<NativeChromaVeryHighResources>& state,
-    const char* geometry)
+    pl_gpu gpu, int width, int height, std::unique_ptr<NativeChromaVeryHighResources>& state, const char* geometry)
 {
     if (!gpu || width <= 0 || height <= 0)
     {
         error_ = "NGU VeryHigh chroma requires a valid GPU and geometry";
         return false;
     }
-    if (state && gpu == gpu_ && state->width == UINT(width) &&
-        state->height == UINT(height))
+    if (state && gpu == gpu_ && state->width == UINT(width) && state->height == UINT(height))
         return true;
     if (gpu_ && gpu_ != gpu)
         Reset();
@@ -2393,33 +2384,26 @@ bool NguScaler::PrepareNativeChromaVeryHigh(
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &view)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     for (size_t index = 0; index < next->initialTextures.size(); ++index)
     {
-        if (!create(next->initialTextures[index],
-                    next->initialViews[index],
-                    next->initialShaderViews[index]))
+        if (!create(next->initialTextures[index], next->initialViews[index], next->initialShaderViews[index]))
         {
-            error_ = std::string("NGU ") + geometry +
-                     " VeryHigh chroma initializer surfaces failed";
+            error_ = std::string("NGU ") + geometry + " VeryHigh chroma initializer surfaces failed";
             return false;
         }
     }
     for (size_t set = 0; set < next->groupTextures.size(); ++set)
     {
-        for (size_t feature = 0; feature < next->groupTextures[set].size();
-             ++feature)
+        for (size_t feature = 0; feature < next->groupTextures[set].size(); ++feature)
         {
             if (!create(next->groupTextures[set][feature],
                         next->groupViews[set][feature],
                         next->groupShaderViews[set][feature]))
             {
-                error_ = std::string("NGU ") + geometry +
-                         " VeryHigh chroma layer surfaces failed";
+                error_ = std::string("NGU ") + geometry + " VeryHigh chroma layer surfaces failed";
                 return false;
             }
         }
@@ -2431,21 +2415,15 @@ bool NguScaler::PrepareNativeChromaVeryHigh(
     return true;
 }
 
-bool NguScaler::RunNativeChromaVeryHigh(
-    ID3D11ShaderResourceView* cb,
-    ID3D11RenderTargetView* denseOutput,
-    int width,
-    int height,
-    NativeChromaVeryHighResources& state)
+bool NguScaler::RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
+                                        ID3D11RenderTargetView* denseOutput,
+                                        int width,
+                                        int height,
+                                        NativeChromaVeryHighResources& state)
 {
-    if (state.width != UINT(width) || state.height != UINT(height) || !cb ||
-        !denseOutput ||
-        !ViewMatchesTexture(
-            cb, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height)) ||
-        !ViewMatchesTexture(denseOutput,
-                            DXGI_FORMAT_R16G16B16A16_FLOAT,
-                            UINT(width + 2),
-                            UINT(height + 2)))
+    if (state.width != UINT(width) || state.height != UINT(height) || !cb || !denseOutput ||
+        !ViewMatchesTexture(cb, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height)) ||
+        !ViewMatchesTexture(denseOutput, DXGI_FORMAT_R16G16B16A16_FLOAT, UINT(width + 2), UINT(height + 2)))
     {
         error_ = "NGU VeryHigh chroma request is invalid";
         return false;
@@ -2465,8 +2443,7 @@ bool NguScaler::RunNativeChromaVeryHigh(
     {
         const size_t set = size_t((layer / 4) % 2);
         const size_t feature = size_t(layer % 4);
-        if (!RunNativeChromaLayer(
-                current.data(), layer, state.groupViews[set][feature].Get()))
+        if (!RunNativeChromaLayer(current.data(), layer, state.groupViews[set][feature].Get()))
             return false;
         if (feature == 3)
         {
@@ -2482,40 +2459,32 @@ bool NguScaler::RunNativeChromaVeryHigh(
 
 bool NguScaler::PrepareNativeChromaVeryHigh720(pl_gpu gpu)
 {
-    return PrepareNativeChromaVeryHigh(
-        gpu, 640, 360, nativeChromaVeryHigh720_, "720p");
+    return PrepareNativeChromaVeryHigh(gpu, 640, 360, nativeChromaVeryHigh720_, "720p");
 }
 
-bool NguScaler::RunNativeChromaVeryHigh720(
-    ID3D11ShaderResourceView* cb,
-    ID3D11RenderTargetView* denseOutput)
+bool NguScaler::RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput)
 {
     if (!nativeChromaVeryHigh720_)
     {
         error_ = "NGU 720p VeryHigh chroma scheduler is not prepared";
         return false;
     }
-    return RunNativeChromaVeryHigh(
-        cb, denseOutput, 640, 360, *nativeChromaVeryHigh720_);
+    return RunNativeChromaVeryHigh(cb, denseOutput, 640, 360, *nativeChromaVeryHigh720_);
 }
 
 bool NguScaler::PrepareNativeChromaVeryHigh1080(pl_gpu gpu)
 {
-    return PrepareNativeChromaVeryHigh(
-        gpu, 960, 540, nativeChromaVeryHigh1080_, "1080p");
+    return PrepareNativeChromaVeryHigh(gpu, 960, 540, nativeChromaVeryHigh1080_, "1080p");
 }
 
-bool NguScaler::RunNativeChromaVeryHigh1080(
-    ID3D11ShaderResourceView* cb,
-    ID3D11RenderTargetView* denseOutput)
+bool NguScaler::RunNativeChromaVeryHigh1080(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput)
 {
     if (!nativeChromaVeryHigh1080_)
     {
         error_ = "NGU 1080p VeryHigh chroma scheduler is not prepared";
         return false;
     }
-    return RunNativeChromaVeryHigh(
-        cb, denseOutput, 960, 540, *nativeChromaVeryHigh1080_);
+    return RunNativeChromaVeryHigh(cb, denseOutput, 960, 540, *nativeChromaVeryHigh1080_);
 }
 
 bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
@@ -2535,20 +2504,14 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
         error_ = "NGU chroma combines require the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_combine.hlsl", 32 * 1024);
-    const auto combine1Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine1.cso", 0);
-    const auto combine2Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine2.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_combine.hlsl", 32 * 1024);
+    const auto combine1Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine1.cso", 0);
+    const auto combine2Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine2.cso", 0);
     const auto constantBytes =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants.bin",
-                         2 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants.bin", 2 * sizeof(float) * 4);
     const auto constantBytes1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants_1080.bin",
-                         2 * sizeof(float) * 4);
-    if (shaderText.empty() || combine1Bytecode.empty() ||
-        combine2Bytecode.empty() || constantBytes.empty() ||
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_combine_constants_1080.bin", 2 * sizeof(float) * 4);
+    if (shaderText.empty() || combine1Bytecode.empty() || combine2Bytecode.empty() || constantBytes.empty() ||
         constantBytes1080.empty())
     {
         error_ = "NGU chroma combine assets are unavailable";
@@ -2556,8 +2519,7 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
     }
 
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_ChromaCombine",
@@ -2571,27 +2533,19 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma combine vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma combine vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaCombines>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(
-            combine1Bytecode.data(),
-            static_cast<SIZE_T>(combine1Bytecode.size()),
-            nullptr,
-            &state->combine1)) ||
+            combine1Bytecode.data(), static_cast<SIZE_T>(combine1Bytecode.size()), nullptr, &state->combine1)) ||
         FAILED(device->CreatePixelShader(
-            combine2Bytecode.data(),
-            static_cast<SIZE_T>(combine2Bytecode.size()),
-            nullptr,
-            &state->combine2)))
+            combine2Bytecode.data(), static_cast<SIZE_T>(combine2Bytecode.size()), nullptr, &state->combine2)))
     {
         error_ = "NGU chroma combine shader objects could not be created";
         return false;
@@ -2603,15 +2557,13 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
     constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     D3D11_SUBRESOURCE_DATA constantData = {};
     constantData.pSysMem = constantBytes.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->constants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants)))
     {
         error_ = "NGU chroma combine constants could not be created";
         return false;
     }
     constantData.pSysMem = constantBytes1080.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->constants1080)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants1080)))
     {
         error_ = "NGU 1080p chroma combine constants could not be created";
         return false;
@@ -2621,8 +2573,7 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
-                                              &state->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
     {
         error_ = "NGU chroma combine rasterizer could not be created";
         return false;
@@ -2633,35 +2584,26 @@ bool NguScaler::PrepareNativeChromaCombines(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaCombine1(
-    ID3D11ShaderResourceView* addInput,
-    ID3D11ShaderResourceView* nnInput,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaCombine1(ID3D11ShaderResourceView* addInput,
+                                        ID3D11ShaderResourceView* nnInput,
+                                        ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        addInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
-    const bool is1080 =
-        addInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
-    const bool isClass3 =
-        addInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 1440);
-    const bool isClass3_1080 =
-        addInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 2160);
+    const bool is720 = addInput && nnInput && output &&
+                       ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+                       ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 720);
+    const bool is1080 = addInput && nnInput && output &&
+                        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+                        ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 1080);
+    const bool isClass3 = addInput && nnInput && output &&
+                          ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
+                          ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1280, 1440);
+    const bool isClass3_1080 = addInput && nnInput && output &&
+                               ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
+                               ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16_UNORM, 1920, 2160);
     if (!nativeChromaCombines_ || !addInput || !nnInput || !output ||
         (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
@@ -2672,9 +2614,8 @@ bool NguScaler::RunNativeChromaCombine1(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaCombines_->vertex.Get(),
                   nativeChromaCombines_->combine1.Get(),
-                  ((is1080 || isClass3_1080)
-                       ? nativeChromaCombines_->constants1080.Get()
-                          : nativeChromaCombines_->constants.Get()),
+                  ((is1080 || isClass3_1080) ? nativeChromaCombines_->constants1080.Get()
+                                             : nativeChromaCombines_->constants.Get()),
                   nativeChromaCombines_->rasterizer.Get(),
                   inputs,
                   2,
@@ -2682,48 +2623,40 @@ bool NguScaler::RunNativeChromaCombine1(
                   1,
                   (is1080 || isClass3_1080) ? 1920 : 1280,
                   isClass3_1080 ? 2160
-                                : isClass3 ? 1440
-                                           : is1080 ? 1080 : 720);
+                  : isClass3    ? 1440
+                  : is1080      ? 1080
+                                : 720);
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeChromaCombine2(
-    ID3D11ShaderResourceView* addInput,
-    ID3D11ShaderResourceView* cbInput,
-    ID3D11ShaderResourceView* nnInput,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaCombine2(ID3D11ShaderResourceView* addInput,
+                                        ID3D11ShaderResourceView* cbInput,
+                                        ID3D11ShaderResourceView* nnInput,
+                                        ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        addInput && cbInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
-        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 720);
-    const bool is1080 =
-        addInput && cbInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
-        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1920, 1080);
-    const bool isClass3 =
-        addInput && cbInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
-        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 1440);
-    const bool isClass3_1080 =
-        addInput && cbInput && nnInput && output &&
-        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
-        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
-        ViewMatchesTexture(
-            nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082) &&
-        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1920, 2160);
-    if (!nativeChromaCombines_ || !addInput || !cbInput || !nnInput ||
-        !output || (!is720 && !is1080 && !isClass3 && !isClass3_1080))
+    const bool is720 = addInput && cbInput && nnInput && output &&
+                       ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+                       ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 720) &&
+                       ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 720);
+    const bool is1080 = addInput && cbInput && nnInput && output &&
+                        ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+                        ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1920, 1080) &&
+                        ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1920, 1080);
+    const bool isClass3 = addInput && cbInput && nnInput && output &&
+                          ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
+                          ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1280, 1440) &&
+                          ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 722) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1280, 1440);
+    const bool isClass3_1080 = addInput && cbInput && nnInput && output &&
+                               ViewMatchesTexture(addInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
+                               ViewMatchesTexture(cbInput, DXGI_FORMAT_R16_UNORM, 1920, 2160) &&
+                               ViewMatchesTexture(nnInput, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 1082) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16G16_UNORM, 1920, 2160);
+    if (!nativeChromaCombines_ || !addInput || !cbInput || !nnInput || !output ||
+        (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma combine 2 request is invalid";
         return false;
@@ -2732,9 +2665,8 @@ bool NguScaler::RunNativeChromaCombine2(
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaCombines_->vertex.Get(),
                   nativeChromaCombines_->combine2.Get(),
-                  ((is1080 || isClass3_1080)
-                       ? nativeChromaCombines_->constants1080.Get()
-                          : nativeChromaCombines_->constants.Get()),
+                  ((is1080 || isClass3_1080) ? nativeChromaCombines_->constants1080.Get()
+                                             : nativeChromaCombines_->constants.Get()),
                   nativeChromaCombines_->rasterizer.Get(),
                   inputs,
                   3,
@@ -2742,8 +2674,9 @@ bool NguScaler::RunNativeChromaCombine2(
                   1,
                   (is1080 || isClass3_1080) ? 1920 : 1280,
                   isClass3_1080 ? 2160
-                                : isClass3 ? 1440
-                                           : is1080 ? 1080 : 720);
+                  : isClass3    ? 1440
+                  : is1080      ? 1080
+                                : 720);
     error_ = "";
     return true;
 }
@@ -2765,26 +2698,19 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
         error_ = "NGU chroma Realign requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_realign.hlsl", 96 * 1024);
-    const auto pixelBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign.cso", 0);
-    const auto constantBytes =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants.bin",
-                         sizeof(float) * 4);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_realign.hlsl", 96 * 1024);
+    const auto pixelBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign.cso", 0);
+    const auto constantBytes = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants.bin", sizeof(float) * 4);
     const auto constantBytes1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants_1080.bin",
-                         sizeof(float) * 4);
-    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty() ||
-        constantBytes1080.empty())
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_realign_constants_1080.bin", sizeof(float) * 4);
+    if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty() || constantBytes1080.empty())
     {
         error_ = "NGU chroma Realign assets are unavailable";
         return false;
     }
 
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_ChromaRealign",
@@ -2798,22 +2724,17 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma Realign vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma Realign vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaRealign>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(
-            pixelBytecode.data(),
-            static_cast<SIZE_T>(pixelBytecode.size()),
-            nullptr,
-            &state->pixel)))
+            pixelBytecode.data(), static_cast<SIZE_T>(pixelBytecode.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU chroma Realign shader objects could not be created";
         return false;
@@ -2825,15 +2746,13 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
     constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     D3D11_SUBRESOURCE_DATA constantData = {};
     constantData.pSysMem = constantBytes.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->constants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants)))
     {
         error_ = "NGU chroma Realign constants could not be created";
         return false;
     }
     constantData.pSysMem = constantBytes1080.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->constants1080)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants1080)))
     {
         error_ = "NGU 1080p chroma Realign constants could not be created";
         return false;
@@ -2844,8 +2763,7 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    if (FAILED(device->CreateSamplerState(&samplerDesc,
-                                          &state->pointSampler)))
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
     {
         error_ = "NGU chroma Realign sampler could not be created";
         return false;
@@ -2856,8 +2774,7 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
-                                              &state->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
     {
         error_ = "NGU chroma Realign rasterizer could not be created";
         return false;
@@ -2868,52 +2785,37 @@ bool NguScaler::PrepareNativeChromaRealign(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaRealign(
-    ID3D11ShaderResourceView* input,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaRealign(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
-    const bool is1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1920, 1080) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080);
-    const bool isClass3 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 1440) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 1440);
-    const bool isClass3_1080 =
-        input && output &&
-        ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1920, 2160) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 2160);
-    if (!nativeChromaRealign_ || !input || !output ||
-        (!is720 && !is1080 && !isClass3 && !isClass3_1080))
+    const bool is720 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool is1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1920, 1080) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080);
+    const bool isClass3 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 1440) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 1440);
+    const bool isClass3_1080 = input && output && ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1920, 2160) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 2160);
+    if (!nativeChromaRealign_ || !input || !output || (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma Realign request is invalid";
         return false;
     }
-    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  nativeChromaRealign_->vertex.Get(),
-                  nativeChromaRealign_->pixel.Get(),
-                  ((is1080 || isClass3_1080)
-                       ? nativeChromaRealign_->constants1080.Get()
-                          : nativeChromaRealign_->constants.Get()),
-                  nativeChromaRealign_->rasterizer.Get(),
-                  &input,
-                  1,
-                  &output,
-                  1,
-                  (is1080 || isClass3_1080) ? 1920 : 1280,
-                  isClass3_1080 ? 2160
-                                : isClass3 ? 1440
-                                           : is1080 ? 1080 : 720,
-                  nativeChromaRealign_->pointSampler.Get());
+    DrawD3D11Pass(
+        pl_d3d11_get(gpu_)->device,
+        nativeChromaRealign_->vertex.Get(),
+        nativeChromaRealign_->pixel.Get(),
+        ((is1080 || isClass3_1080) ? nativeChromaRealign_->constants1080.Get() : nativeChromaRealign_->constants.Get()),
+        nativeChromaRealign_->rasterizer.Get(),
+        &input,
+        1,
+        &output,
+        1,
+        (is1080 || isClass3_1080) ? 1920 : 1280,
+        isClass3_1080 ? 2160
+        : isClass3    ? 1440
+        : is1080      ? 1080
+                      : 720,
+        nativeChromaRealign_->pointSampler.Get());
     error_ = "";
     return true;
 }
@@ -2935,22 +2837,17 @@ bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
         error_ = "NGU chroma YCbCr requires the D3D11 backend";
         return false;
     }
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_chroma_ycbcr.hlsl", 16 * 1024);
-    const auto pixelBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_ycbcr.cso", 0);
-    const auto class3PixelBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_ycbcr_class3.cso", 0);
-    if (shaderText.empty() || pixelBytecode.empty() ||
-        class3PixelBytecode.empty())
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_chroma_ycbcr.hlsl", 16 * 1024);
+    const auto pixelBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_ycbcr.cso", 0);
+    const auto class3PixelBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_chroma_ycbcr_class3.cso", 0);
+    if (shaderText.empty() || pixelBytecode.empty() || class3PixelBytecode.empty())
     {
         error_ = "NGU chroma YCbCr assets are unavailable";
         return false;
     }
 
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_ChromaYCbCr",
@@ -2964,27 +2861,19 @@ bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU chroma YCbCr vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma YCbCr vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaYCbCr>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(
-            pixelBytecode.data(),
-            static_cast<SIZE_T>(pixelBytecode.size()),
-            nullptr,
-            &state->pixel)) ||
+            pixelBytecode.data(), static_cast<SIZE_T>(pixelBytecode.size()), nullptr, &state->pixel)) ||
         FAILED(device->CreatePixelShader(
-            class3PixelBytecode.data(),
-            static_cast<SIZE_T>(class3PixelBytecode.size()),
-            nullptr,
-            &state->class3Pixel)))
+            class3PixelBytecode.data(), static_cast<SIZE_T>(class3PixelBytecode.size()), nullptr, &state->class3Pixel)))
     {
         error_ = "NGU chroma YCbCr shader objects could not be created";
         return false;
@@ -2995,15 +2884,13 @@ bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    if (FAILED(device->CreateSamplerState(&samplerDesc,
-                                          &state->pointSampler)))
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
     {
         error_ = "NGU chroma YCbCr sampler could not be created";
         return false;
     }
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    if (FAILED(device->CreateSamplerState(&samplerDesc,
-                                          &state->linearSampler)))
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->linearSampler)))
     {
         error_ = "NGU class-3 chroma YCbCr linear sampler could not be created";
         return false;
@@ -3013,8 +2900,7 @@ bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(&rasterizerDesc,
-                                              &state->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
     {
         error_ = "NGU chroma YCbCr rasterizer could not be created";
         return false;
@@ -3025,70 +2911,33 @@ bool NguScaler::PrepareNativeChromaYCbCr(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaYCbCr(
-    ID3D11ShaderResourceView* yInput,
-    ID3D11ShaderResourceView* cbcrInput,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaYCbCr(ID3D11ShaderResourceView* yInput,
+                                     ID3D11ShaderResourceView* cbcrInput,
+                                     ID3D11RenderTargetView* output)
 {
-    const bool is720 =
-        yInput && cbcrInput && output &&
-        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
-         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) &&
-        ViewMatchesTexture(output,
-                           DXGI_FORMAT_R16G16B16A16_UNORM,
-                           1280,
-                           720) &&
-        (ViewMatchesTexture(cbcrInput,
-                            DXGI_FORMAT_R16G16_UNORM,
-                            1280,
-                            720) ||
-         ViewMatchesTexture(cbcrInput,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            1280,
-                            720));
-    const bool is1080 =
-        yInput && cbcrInput && output &&
-        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) ||
-         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1920, 1080)) &&
-        ViewMatchesTexture(output,
-                           DXGI_FORMAT_R16G16B16A16_UNORM,
-                           1920,
-                           1080) &&
-        (ViewMatchesTexture(cbcrInput,
-                            DXGI_FORMAT_R16G16_UNORM,
-                            1920,
-                            1080) ||
-         ViewMatchesTexture(cbcrInput,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            1920,
-                            1080));
-    const bool isClass3 =
-        yInput && cbcrInput && output &&
-        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
-         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) &&
-        ViewMatchesTexture(
-            cbcrInput, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 1440) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
-    const bool isClass3_1080 =
-        yInput && cbcrInput && output &&
-        (ViewMatchesTexture(yInput,
-                            DXGI_FORMAT_R8_UNORM,
-                            1920,
-                            1080) ||
-         ViewMatchesTexture(yInput,
-                            DXGI_FORMAT_R16_UNORM,
-                            1920,
-                            1080)) &&
-        ViewMatchesTexture(
-            cbcrInput,
-            DXGI_FORMAT_R16G16B16A16_UNORM,
-            1920,
-            2160) &&
-        ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080);
-    if (!nativeChromaYCbCr_ || !yInput || !cbcrInput || !output ||
-        (!is720 && !is1080 && !isClass3 && !isClass3_1080))
+    const bool is720 = yInput && cbcrInput && output &&
+                       (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+                        ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) &&
+                       ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) &&
+                       (ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
+                        ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720));
+    const bool is1080 = yInput && cbcrInput && output &&
+                        (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) ||
+                         ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1920, 1080)) &&
+                        ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) &&
+                        (ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16_UNORM, 1920, 1080) ||
+                         ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080));
+    const bool isClass3 = yInput && cbcrInput && output &&
+                          (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) ||
+                           ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) &&
+                          ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 1440) &&
+                          ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool isClass3_1080 = yInput && cbcrInput && output &&
+                               (ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) ||
+                                ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1920, 1080)) &&
+                               ViewMatchesTexture(cbcrInput, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 2160) &&
+                               ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080);
+    if (!nativeChromaYCbCr_ || !yInput || !cbcrInput || !output || (!is720 && !is1080 && !isClass3 && !isClass3_1080))
     {
         error_ = "NGU chroma YCbCr request is invalid";
         return false;
@@ -3096,9 +2945,7 @@ bool NguScaler::RunNativeChromaYCbCr(
     ID3D11ShaderResourceView* inputs[2] = {yInput, cbcrInput};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeChromaYCbCr_->vertex.Get(),
-                  (isClass3 || isClass3_1080)
-                      ? nativeChromaYCbCr_->class3Pixel.Get()
-                      : nativeChromaYCbCr_->pixel.Get(),
+                  (isClass3 || isClass3_1080) ? nativeChromaYCbCr_->class3Pixel.Get() : nativeChromaYCbCr_->pixel.Get(),
                   nullptr,
                   nativeChromaYCbCr_->rasterizer.Get(),
                   inputs,
@@ -3112,40 +2959,28 @@ bool NguScaler::RunNativeChromaYCbCr(
                   nullptr,
                   nullptr,
                   nullptr,
-                  (isClass3 || isClass3_1080)
-                      ? nativeChromaYCbCr_->linearSampler.Get()
-                      : nullptr);
+                  (isClass3 || isClass3_1080) ? nativeChromaYCbCr_->linearSampler.Get() : nullptr);
     error_ = "";
     return true;
 }
 
 bool NguScaler::PrepareNativeChromaFull(
-    pl_gpu gpu,
-    int width,
-    int height,
-    std::unique_ptr<NativeChromaFullResources>& state,
-    const char* geometry)
+    pl_gpu gpu, int width, int height, std::unique_ptr<NativeChromaFullResources>& state, const char* geometry)
 {
     if (!gpu || width <= 0 || height <= 0)
     {
         error_ = "NGU full VeryHigh chroma requires a valid GPU and geometry";
         return false;
     }
-    if (state && gpu == gpu_ && state->width == UINT(width) &&
-        state->height == UINT(height))
+    if (state && gpu == gpu_ && state->width == UINT(width) && state->height == UINT(height))
         return true;
     if (gpu_ && gpu_ != gpu)
         Reset();
     const bool is1080 = width == 960 && height == 540;
-    if (!PrepareNativeChromaSplit(gpu) ||
-        !PrepareNativeChromaScale(gpu) ||
-        (is1080 ? !PrepareNativeChromaVeryHigh1080(gpu)
-                : !PrepareNativeChromaVeryHigh720(gpu)) ||
-        !PrepareNativeChromaCombines(gpu) ||
-        !PrepareNativeChromaRealign(gpu) ||
-        !PrepareNativeChromaYCbCr(gpu) ||
-        (is1080 ? !PrepareNativeSuperResStrength3_1080(gpu)
-                : !PrepareNativeSuperResStrength3(gpu)))
+    if (!PrepareNativeChromaSplit(gpu) || !PrepareNativeChromaScale(gpu) ||
+        (is1080 ? !PrepareNativeChromaVeryHigh1080(gpu) : !PrepareNativeChromaVeryHigh720(gpu)) ||
+        !PrepareNativeChromaCombines(gpu) || !PrepareNativeChromaRealign(gpu) || !PrepareNativeChromaYCbCr(gpu) ||
+        (is1080 ? !PrepareNativeSuperResStrength3_1080(gpu) : !PrepareNativeSuperResStrength3(gpu)))
         return false;
 
     ID3D11Device* device = pl_d3d11_get(gpu)->device;
@@ -3171,61 +3006,75 @@ bool NguScaler::PrepareNativeChromaFull(
         desc.Format = format;
         desc.SampleDesc.Count = 1;
         desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = D3D11_BIND_RENDER_TARGET |
-                         D3D11_BIND_SHADER_RESOURCE;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &renderTarget)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
-    if (!create(next->width, next->height, DXGI_FORMAT_R16_UNORM,
-                next->cbTexture, next->cbView, next->cbShaderView) ||
-        !create(next->width, next->height, DXGI_FORMAT_R16_UNORM,
-                next->crTexture, next->crView, next->crShaderView) ||
-        !create(outputWidth, next->height, DXGI_FORMAT_R16_UNORM,
+    if (!create(next->width, next->height, DXGI_FORMAT_R16_UNORM, next->cbTexture, next->cbView, next->cbShaderView) ||
+        !create(next->width, next->height, DXGI_FORMAT_R16_UNORM, next->crTexture, next->crView, next->crShaderView) ||
+        !create(outputWidth,
+                next->height,
+                DXGI_FORMAT_R16_UNORM,
                 next->cbScaleXTexture,
                 next->cbScaleXView,
                 next->cbScaleXShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16_UNORM,
                 next->cbScaleYTexture,
                 next->cbScaleYView,
                 next->cbScaleYShaderView) ||
-        !create(outputWidth, next->height, DXGI_FORMAT_R16_UNORM,
+        !create(outputWidth,
+                next->height,
+                DXGI_FORMAT_R16_UNORM,
                 next->crScaleXTexture,
                 next->crScaleXView,
                 next->crScaleXShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16_UNORM,
                 next->crScaleYTexture,
                 next->crScaleYView,
                 next->crScaleYShaderView) ||
-        !create(denseWidth, denseHeight, DXGI_FORMAT_R16G16B16A16_FLOAT,
+        !create(denseWidth,
+                denseHeight,
+                DXGI_FORMAT_R16G16B16A16_FLOAT,
                 next->denseCbTexture,
                 next->denseCbView,
                 next->denseCbShaderView) ||
-        !create(denseWidth, denseHeight, DXGI_FORMAT_R16G16B16A16_FLOAT,
+        !create(denseWidth,
+                denseHeight,
+                DXGI_FORMAT_R16G16B16A16_FLOAT,
                 next->denseCrTexture,
                 next->denseCrView,
                 next->denseCrShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16_UNORM,
                 next->combine1Texture,
                 next->combine1View,
                 next->combine1ShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16G16_UNORM,
                 next->combine2Texture,
                 next->combine2View,
                 next->combine2ShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16B16A16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
                 next->realignTexture,
                 next->realignView,
                 next->realignShaderView) ||
-        !create(outputWidth, outputHeight, DXGI_FORMAT_R16G16B16A16_UNORM,
+        !create(outputWidth,
+                outputHeight,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
                 next->ycbcrTexture,
                 next->ycbcrView,
                 next->ycbcrShaderView))
     {
-        error_ = std::string("NGU ") + geometry +
-                 " full VeryHigh chroma surfaces could not be created";
+        error_ = std::string("NGU ") + geometry + " full VeryHigh chroma surfaces could not be created";
         return false;
     }
     state = std::move(next);
@@ -3233,148 +3082,76 @@ bool NguScaler::PrepareNativeChromaFull(
     return true;
 }
 
-bool NguScaler::RunNativeChromaFull(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11ShaderResourceView* diffOriginal,
-    ID3D11ShaderResourceView* mainOriginal,
-    ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output,
-    int width,
-    int height,
-    bool is1080,
-    bool p010,
-    NativeChromaFullResources& state)
+bool NguScaler::RunNativeChromaFull(ID3D11ShaderResourceView* packedUv,
+                                    ID3D11ShaderResourceView* yInput,
+                                    ID3D11ShaderResourceView* diffOriginal,
+                                    ID3D11ShaderResourceView* mainOriginal,
+                                    ID3D11ShaderResourceView* baseOriginal,
+                                    ID3D11RenderTargetView* output,
+                                    int width,
+                                    int height,
+                                    bool is1080,
+                                    bool p010,
+                                    NativeChromaFullResources& state)
 {
     const UINT outputWidth = UINT(width * 2);
     const UINT outputHeight = UINT(height * 2);
     const bool packedUvIsRgba16 =
-        packedUv &&
-        ViewMatchesTexture(
-            packedUv,
-            DXGI_FORMAT_R16G16B16A16_UNORM,
-            UINT(width),
-            UINT(height));
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_R16G16B16A16_UNORM, UINT(width), UINT(height));
     const bool packedUvIsRg16 =
-        packedUv &&
-        ViewMatchesTexture(
-            packedUv,
-            DXGI_FORMAT_R16G16_UNORM,
-            UINT(width),
-            UINT(height));
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_R16G16_UNORM, UINT(width), UINT(height));
+    const bool packedUvIsRg8 =
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_R8G8_UNORM, UINT(width), UINT(height));
     const bool packedUvIsBgra8 =
-        packedUv &&
-        ViewMatchesTexture(packedUv,
-                           DXGI_FORMAT_B8G8R8A8_UNORM,
-                           UINT(width),
-                           UINT(height));
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_B8G8R8A8_UNORM, UINT(width), UINT(height));
     const bool diffOriginalIsRg16 =
-        diffOriginal &&
-        ViewMatchesTexture(diffOriginal,
-                           DXGI_FORMAT_R16G16_UNORM,
-                           UINT(width),
-                           UINT(height));
+        diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16_UNORM, UINT(width), UINT(height));
+    const bool diffOriginalIsRg8 =
+        diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R8G8_UNORM, UINT(width), UINT(height));
     const bool mainIsRgba16 =
-        mainOriginal &&
-        ViewMatchesTexture(
-            mainOriginal,
-            DXGI_FORMAT_R16G16B16A16_UNORM,
-            outputWidth,
-            outputHeight);
+        mainOriginal && ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, outputWidth, outputHeight);
     const bool mainIsR8 =
-        mainOriginal &&
-        ViewMatchesTexture(mainOriginal,
-                           DXGI_FORMAT_R8_UNORM,
-                           outputWidth,
-                           outputHeight);
+        mainOriginal && ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, outputWidth, outputHeight);
     const bool baseIsRgba16 =
-        baseOriginal &&
-        ViewMatchesTexture(
-            baseOriginal,
-            DXGI_FORMAT_R16G16B16A16_UNORM,
-            outputWidth,
-            outputHeight);
+        baseOriginal && ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, outputWidth, outputHeight);
     const bool baseIsR8 =
-        baseOriginal &&
-        ViewMatchesTexture(baseOriginal,
-                           DXGI_FORMAT_R8_UNORM,
-                           outputWidth,
-                           outputHeight);
-    if (state.width != UINT(width) || state.height != UINT(height) ||
-        !packedUv || !yInput || !diffOriginal || !mainOriginal ||
-        !baseOriginal || !output ||
-        (!packedUvIsRgba16 && !packedUvIsRg16 && !packedUvIsBgra8) ||
-        (!ViewMatchesTexture(yInput,
-                             DXGI_FORMAT_R8_UNORM,
-                             outputWidth,
-                             outputHeight) &&
-         !ViewMatchesTexture(yInput,
-                             DXGI_FORMAT_R16_UNORM,
-                             outputWidth,
-                             outputHeight)) ||
-        (!ViewMatchesTexture(diffOriginal,
-                             DXGI_FORMAT_B8G8R8A8_UNORM,
-                             UINT(width),
-                             UINT(height)) &&
-         !ViewMatchesTexture(diffOriginal,
-                             DXGI_FORMAT_R16G16B16A16_UNORM,
-                             UINT(width),
-                             UINT(height)) &&
-         !diffOriginalIsRg16) ||
-        (!mainIsRgba16 && !mainIsR8) ||
-        (!baseIsRgba16 && !baseIsR8) ||
-        !ViewMatchesTexture(output,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            outputWidth,
-                            outputHeight))
+        baseOriginal && ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, outputWidth, outputHeight);
+    if (state.width != UINT(width) || state.height != UINT(height) || !packedUv || !yInput || !diffOriginal ||
+        !mainOriginal || !baseOriginal || !output ||
+        (!packedUvIsRgba16 && !packedUvIsRg16 && !packedUvIsRg8 && !packedUvIsBgra8) ||
+        (!ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, outputWidth, outputHeight) &&
+         !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, outputWidth, outputHeight)) ||
+        (!ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, UINT(width), UINT(height)) &&
+         !ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, UINT(width), UINT(height)) &&
+         !diffOriginalIsRg16 && !diffOriginalIsRg8) ||
+        (!mainIsRgba16 && !mainIsR8) || (!baseIsRgba16 && !baseIsR8) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, outputWidth, outputHeight))
     {
         error_ = "NGU full VeryHigh chroma request is invalid";
         return false;
     }
 
-    if (!RunNativeChromaSplit(
-            packedUv, width, height, state.cbView.Get(), state.crView.Get()) ||
-        (is1080 ? !RunNativeChromaVeryHigh1080(
-                      state.cbShaderView.Get(), state.denseCbView.Get())
-                : !RunNativeChromaVeryHigh720(
-                      state.cbShaderView.Get(), state.denseCbView.Get())) ||
-        !RunNativeChromaScaleX(
-            state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
-        !RunNativeChromaScaleY(
-            state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()) ||
-        !RunNativeChromaCombine1(state.cbScaleYShaderView.Get(),
-                                 state.denseCbShaderView.Get(),
-                                 state.combine1View.Get()) ||
-        (is1080 ? !RunNativeChromaVeryHigh1080(
-                      state.crShaderView.Get(), state.denseCrView.Get())
-                : !RunNativeChromaVeryHigh720(
-                      state.crShaderView.Get(), state.denseCrView.Get())) ||
-        !RunNativeChromaScaleX(
-            state.crShaderView.Get(), state.crScaleXView.Get()) ||
-        !RunNativeChromaScaleY(
-            state.crScaleXShaderView.Get(), state.crScaleYView.Get()) ||
+    if (!RunNativeChromaSplit(packedUv, width, height, state.cbView.Get(), state.crView.Get()) ||
+        (is1080 ? !RunNativeChromaVeryHigh1080(state.cbShaderView.Get(), state.denseCbView.Get())
+                : !RunNativeChromaVeryHigh720(state.cbShaderView.Get(), state.denseCbView.Get())) ||
+        !RunNativeChromaScaleX(state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()) ||
+        !RunNativeChromaCombine1(
+            state.cbScaleYShaderView.Get(), state.denseCbShaderView.Get(), state.combine1View.Get()) ||
+        (is1080 ? !RunNativeChromaVeryHigh1080(state.crShaderView.Get(), state.denseCrView.Get())
+                : !RunNativeChromaVeryHigh720(state.crShaderView.Get(), state.denseCrView.Get())) ||
+        !RunNativeChromaScaleX(state.crShaderView.Get(), state.crScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.crScaleXShaderView.Get(), state.crScaleYView.Get()) ||
         !RunNativeChromaCombine2(state.crScaleYShaderView.Get(),
                                  state.combine1ShaderView.Get(),
                                  state.denseCrShaderView.Get(),
                                  state.combine2View.Get()) ||
-        !RunNativeChromaRealign(state.combine2ShaderView.Get(),
-                                state.realignView.Get()) ||
-        !RunNativeChromaYCbCr(yInput,
-                              state.realignShaderView.Get(),
-                              state.ycbcrView.Get()) ||
-        (is1080
-             ? !RunNativeSuperResStrength3_1080(state.ycbcrShaderView.Get(),
-                                                diffOriginal,
-                                                mainOriginal,
-                                                baseOriginal,
-                                                output,
-                                                p010)
-             : !RunNativeSuperResStrength3(state.ycbcrShaderView.Get(),
-                                           diffOriginal,
-                                           mainOriginal,
-                                           baseOriginal,
-                                           output,
-                                           p010)))
+        !RunNativeChromaRealign(state.combine2ShaderView.Get(), state.realignView.Get()) ||
+        !RunNativeChromaYCbCr(yInput, state.realignShaderView.Get(), state.ycbcrView.Get()) ||
+        (is1080 ? !RunNativeSuperResStrength3_1080(
+                      state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010)
+                : !RunNativeSuperResStrength3(
+                      state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010)))
         return false;
     error_ = "";
     return true;
@@ -3382,18 +3159,16 @@ bool NguScaler::RunNativeChromaFull(
 
 bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
 {
-    return PrepareNativeChromaFull(
-        gpu, 640, 360, nativeChromaVeryHigh720Full_, "720p");
+    return PrepareNativeChromaFull(gpu, 640, 360, nativeChromaVeryHigh720Full_, "720p");
 }
 
-bool NguScaler::RunNativeChromaVeryHigh720Full(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11ShaderResourceView* diffOriginal,
-    ID3D11ShaderResourceView* mainOriginal,
-    ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output,
-    bool p010)
+bool NguScaler::RunNativeChromaVeryHigh720Full(ID3D11ShaderResourceView* packedUv,
+                                               ID3D11ShaderResourceView* yInput,
+                                               ID3D11ShaderResourceView* diffOriginal,
+                                               ID3D11ShaderResourceView* mainOriginal,
+                                               ID3D11ShaderResourceView* baseOriginal,
+                                               ID3D11RenderTargetView* output,
+                                               bool p010)
 {
     if (!nativeChromaVeryHigh720Full_)
     {
@@ -3413,20 +3188,75 @@ bool NguScaler::RunNativeChromaVeryHigh720Full(
                                *nativeChromaVeryHigh720Full_);
 }
 
-bool NguScaler::PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu)
+bool NguScaler::CopyNativeChromaFullStage720(int stage, ID3D11RenderTargetView* output)
 {
-    return PrepareNativeChromaFull(
-        gpu, 960, 540, nativeChromaVeryHigh1080Full_, "1080p");
+    if (!nativeChromaVeryHigh720Full_ || !output)
+    {
+        error_ = "NGU 720p full chroma stage copy is unavailable";
+        return false;
+    }
+    auto& state = *nativeChromaVeryHigh720Full_;
+    ID3D11Texture2D* source = nullptr;
+    switch (stage)
+    {
+    case 0:
+        source = state.cbTexture.Get();
+        break;
+    case 1:
+        source = state.crTexture.Get();
+        break;
+    case 2:
+        source = state.denseCbTexture.Get();
+        break;
+    case 3:
+        source = state.denseCrTexture.Get();
+        break;
+    case 4:
+        source = state.cbScaleXTexture.Get();
+        break;
+    case 5:
+        source = state.cbScaleYTexture.Get();
+        break;
+    case 6:
+        source = state.combine1Texture.Get();
+        break;
+    case 7:
+        source = state.crScaleXTexture.Get();
+        break;
+    case 8:
+        source = state.crScaleYTexture.Get();
+        break;
+    case 9:
+        source = state.combine2Texture.Get();
+        break;
+    case 10:
+        source = state.realignTexture.Get();
+        break;
+    case 11:
+        source = state.ycbcrTexture.Get();
+        break;
+    }
+    if (!source || !CopyTextureToTarget(gpu_, source, output))
+    {
+        error_ = "NGU 720p full chroma stage copy failed";
+        return false;
+    }
+    error_ = "";
+    return true;
 }
 
-bool NguScaler::RunNativeChromaVeryHigh1080Full(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11ShaderResourceView* diffOriginal,
-    ID3D11ShaderResourceView* mainOriginal,
-    ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* output,
-    bool p010)
+bool NguScaler::PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu)
+{
+    return PrepareNativeChromaFull(gpu, 960, 540, nativeChromaVeryHigh1080Full_, "1080p");
+}
+
+bool NguScaler::RunNativeChromaVeryHigh1080Full(ID3D11ShaderResourceView* packedUv,
+                                                ID3D11ShaderResourceView* yInput,
+                                                ID3D11ShaderResourceView* diffOriginal,
+                                                ID3D11ShaderResourceView* mainOriginal,
+                                                ID3D11ShaderResourceView* baseOriginal,
+                                                ID3D11RenderTargetView* output,
+                                                bool p010)
 {
     if (!nativeChromaVeryHigh1080Full_)
     {
@@ -3446,39 +3276,27 @@ bool NguScaler::RunNativeChromaVeryHigh1080Full(
                                *nativeChromaVeryHigh1080Full_);
 }
 
-bool NguScaler::PrepareNativeChromaCoreClass3(
-    pl_gpu gpu,
-    int chromaWidth,
-    int chromaHeight,
-    std::unique_ptr<NativeChromaCoreClass3_720>& stateRef,
-    const char* geometry)
+bool NguScaler::PrepareNativeChromaCoreClass3(pl_gpu gpu,
+                                              int chromaWidth,
+                                              int chromaHeight,
+                                              std::unique_ptr<NativeChromaCoreClass3_720>& stateRef,
+                                              const char* geometry)
 {
     if (!gpu || chromaWidth <= 0 || chromaHeight <= 0)
     {
         error_ = "NGU class-3 chroma core requires a GPU";
         return false;
     }
-    if (stateRef && gpu == gpu_ &&
-        stateRef->chromaWidth == UINT(chromaWidth) &&
+    if (stateRef && gpu == gpu_ && stateRef->chromaWidth == UINT(chromaWidth) &&
         stateRef->chromaHeight == UINT(chromaHeight))
         return true;
     if (gpu_ && gpu_ != gpu)
         Reset();
     const bool is1080 = chromaWidth == 960 && chromaHeight == 1080;
-    auto& veryHighState =
-        is1080 ? nativeChromaVeryHighClass3_1080_
-               : nativeChromaVeryHighClass3_720_;
-    if (!PrepareNativeChromaSplit(gpu) ||
-        !PrepareNativeChromaScale(gpu) ||
-        !PrepareNativeChromaVeryHigh(
-            gpu,
-            chromaWidth,
-            chromaHeight,
-            veryHighState,
-            geometry) ||
-        !PrepareNativeChromaCombines(gpu) ||
-        !PrepareNativeChromaRealign(gpu) ||
-        !PrepareNativeChromaYCbCr(gpu) ||
+    auto& veryHighState = is1080 ? nativeChromaVeryHighClass3_1080_ : nativeChromaVeryHighClass3_720_;
+    if (!PrepareNativeChromaSplit(gpu) || !PrepareNativeChromaScale(gpu) ||
+        !PrepareNativeChromaVeryHigh(gpu, chromaWidth, chromaHeight, veryHighState, geometry) ||
+        !PrepareNativeChromaCombines(gpu) || !PrepareNativeChromaRealign(gpu) || !PrepareNativeChromaYCbCr(gpu) ||
         !PrepareNativeSuperResPrimitives(gpu))
         return false;
 
@@ -3486,22 +3304,14 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
     auto state = std::make_unique<NativeChromaCoreClass3_720>();
     state->chromaWidth = UINT(chromaWidth);
     state->chromaHeight = UINT(chromaHeight);
-    const std::string expandText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
-    const auto expandBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
-    const std::string scaleXText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_class3_scale_x.hlsl",
-                        16 * 1024);
-    const auto scaleXBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_scale_x.cso", 0);
-    const auto scaleXTable = LoadBundledBytes(
-        is1080
-            ? L"shaders\\Ngu\\superres_1080_class3_down_x_table.bin"
-               : L"shaders\\Ngu\\superres_down_x_table.bin",
-        size_t(4) * chromaWidth * 8);
-    if (expandText.empty() || expandBytecode.empty() ||
-        scaleXText.empty() || scaleXBytecode.empty() ||
+    const std::string expandText = LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
+    const auto expandBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
+    const std::string scaleXText = LoadBundledText(L"shaders\\Ngu\\ngu_class3_scale_x.hlsl", 16 * 1024);
+    const auto scaleXBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_scale_x.cso", 0);
+    const auto scaleXTable = LoadBundledBytes(is1080 ? L"shaders\\Ngu\\superres_1080_class3_down_x_table.bin"
+                                                     : L"shaders\\Ngu\\superres_down_x_table.bin",
+                                              size_t(4) * chromaWidth * 8);
+    if (expandText.empty() || expandBytecode.empty() || scaleXText.empty() || scaleXBytecode.empty() ||
         scaleXTable.empty())
     {
         error_ = "NGU class-3 expansion or scale-X assets are unavailable";
@@ -3509,8 +3319,7 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
     }
     ComPtr<ID3DBlob> expandVertexBlob, expandErrors;
     ComPtr<ID3DBlob> scaleXVertexBlob, scaleXErrors;
-    const UINT compileFlags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     if (FAILED(D3DCompile(expandText.data(),
                           expandText.size(),
                           "NGU_Class3_YExpand",
@@ -3523,15 +3332,9 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
                           &expandVertexBlob,
                           &expandErrors)) ||
         FAILED(device->CreateVertexShader(
-            expandVertexBlob->GetBufferPointer(),
-            expandVertexBlob->GetBufferSize(),
-            nullptr,
-            &state->expandVertex)) ||
+            expandVertexBlob->GetBufferPointer(), expandVertexBlob->GetBufferSize(), nullptr, &state->expandVertex)) ||
         FAILED(device->CreatePixelShader(
-            expandBytecode.data(),
-            static_cast<SIZE_T>(expandBytecode.size()),
-            nullptr,
-            &state->expandPixel)) ||
+            expandBytecode.data(), static_cast<SIZE_T>(expandBytecode.size()), nullptr, &state->expandPixel)) ||
         FAILED(D3DCompile(scaleXText.data(),
                           scaleXText.size(),
                           "NGU_Class3_ScaleX",
@@ -3544,37 +3347,22 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
                           &scaleXVertexBlob,
                           &scaleXErrors)) ||
         FAILED(device->CreateVertexShader(
-            scaleXVertexBlob->GetBufferPointer(),
-            scaleXVertexBlob->GetBufferSize(),
-            nullptr,
-            &state->scaleXVertex)) ||
+            scaleXVertexBlob->GetBufferPointer(), scaleXVertexBlob->GetBufferSize(), nullptr, &state->scaleXVertex)) ||
         FAILED(device->CreatePixelShader(
-            scaleXBytecode.data(),
-            static_cast<SIZE_T>(scaleXBytecode.size()),
-            nullptr,
-            &state->scaleXPixel)))
+            scaleXBytecode.data(), static_cast<SIZE_T>(scaleXBytecode.size()), nullptr, &state->scaleXPixel)))
     {
         error_ = "NGU class-3 expansion or scale-X shaders could not be created";
         return false;
     }
     const float scaleXConstants[8] = {
-        float(chromaWidth * 2),
-        float(chromaWidth),
-        0.125f,
-        0.25f,
-        float(chromaWidth),
-        float(chromaHeight),
-        0.0f,
-        0.0f};
+        float(chromaWidth * 2), float(chromaWidth), 0.125f, 0.25f, float(chromaWidth), float(chromaHeight), 0.0f, 0.0f};
     D3D11_BUFFER_DESC scaleXConstantDesc = {};
     scaleXConstantDesc.ByteWidth = sizeof(scaleXConstants);
     scaleXConstantDesc.Usage = D3D11_USAGE_IMMUTABLE;
     scaleXConstantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     D3D11_SUBRESOURCE_DATA scaleXConstantData = {};
     scaleXConstantData.pSysMem = scaleXConstants;
-    if (FAILED(device->CreateBuffer(&scaleXConstantDesc,
-                                    &scaleXConstantData,
-                                    &state->scaleXConstants)))
+    if (FAILED(device->CreateBuffer(&scaleXConstantDesc, &scaleXConstantData, &state->scaleXConstants)))
     {
         error_ = "NGU class-3 scale-X constants could not be created";
         return false;
@@ -3591,12 +3379,8 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
     D3D11_SUBRESOURCE_DATA scaleXTableData = {};
     scaleXTableData.pSysMem = scaleXTable.data();
     scaleXTableData.SysMemPitch = 4 * 8;
-    if (FAILED(device->CreateTexture2D(
-            &scaleXTableDesc,
-            &scaleXTableData,
-            &state->scaleXTable)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->scaleXTable.Get(), nullptr, &state->scaleXTableView)))
+    if (FAILED(device->CreateTexture2D(&scaleXTableDesc, &scaleXTableData, &state->scaleXTable)) ||
+        FAILED(device->CreateShaderResourceView(state->scaleXTable.Get(), nullptr, &state->scaleXTableView)))
     {
         error_ = "NGU class-3 scale-X table could not be created";
         return false;
@@ -3607,8 +3391,7 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
     scaleXSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     scaleXSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     scaleXSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    if (FAILED(device->CreateSamplerState(
-            &scaleXSamplerDesc, &state->pointSampler)))
+    if (FAILED(device->CreateSamplerState(&scaleXSamplerDesc, &state->pointSampler)))
     {
         error_ = "NGU class-3 scale-X sampler could not be created";
         return false;
@@ -3618,8 +3401,7 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
     scaleXRasterizerDesc.CullMode = D3D11_CULL_NONE;
     scaleXRasterizerDesc.ScissorEnable = FALSE;
     scaleXRasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(
-            &scaleXRasterizerDesc, &state->scaleXRasterizer)))
+    if (FAILED(device->CreateRasterizerState(&scaleXRasterizerDesc, &state->scaleXRasterizer)))
     {
         error_ = "NGU class-3 scale-X rasterizer could not be created";
         return false;
@@ -3639,14 +3421,10 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
         desc.Format = format;
         desc.SampleDesc.Count = 1;
         desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags =
-            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-        return SUCCEEDED(device->CreateTexture2D(
-                   &desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &view)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     if (!create(UINT(chromaWidth),
                 UINT(chromaHeight),
@@ -3779,47 +3557,28 @@ bool NguScaler::PrepareNativeChromaCoreClass3(
 
 bool NguScaler::PrepareNativeChromaCoreClass3_720(pl_gpu gpu)
 {
-    return PrepareNativeChromaCoreClass3(
-        gpu, 640, 720, nativeChromaCoreClass3_720_, "class-3 720p");
+    return PrepareNativeChromaCoreClass3(gpu, 640, 720, nativeChromaCoreClass3_720_, "class-3 720p");
 }
 
 bool NguScaler::PrepareNativeChromaCoreClass3_1080(pl_gpu gpu)
 {
-    return PrepareNativeChromaCoreClass3(
-        gpu, 960, 1080, nativeChromaCoreClass3_1080_, "class-3 1080p");
+    return PrepareNativeChromaCoreClass3(gpu, 960, 1080, nativeChromaCoreClass3_1080_, "class-3 1080p");
 }
 
-bool NguScaler::RunNativeChromaCoreClass3(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* ps4576Output,
-    int chromaWidth,
-    int chromaHeight,
-    NativeChromaCoreClass3_720& state)
+bool NguScaler::RunNativeChromaCoreClass3(ID3D11ShaderResourceView* packedUv,
+                                          ID3D11ShaderResourceView* yInput,
+                                          ID3D11RenderTargetView* ps4576Output,
+                                          int chromaWidth,
+                                          int chromaHeight,
+                                          NativeChromaCoreClass3_720& state)
 {
     const bool is1080 = chromaWidth == 960 && chromaHeight == 1080;
-    auto* veryHighState =
-        is1080 ? nativeChromaVeryHighClass3_1080_.get()
-               : nativeChromaVeryHighClass3_720_.get();
-    if (!veryHighState ||
-        !packedUv || !yInput || !ps4576Output ||
-        !ViewMatchesTexture(
-            packedUv,
-            DXGI_FORMAT_R16G16_UNORM,
-            chromaWidth,
-            chromaHeight) ||
-        (!ViewMatchesTexture(yInput,
-                             DXGI_FORMAT_R8_UNORM,
-                             chromaWidth * 2,
-                             chromaHeight) &&
-         !ViewMatchesTexture(yInput,
-                             DXGI_FORMAT_R16_UNORM,
-                             chromaWidth * 2,
-                             chromaHeight)) ||
-        !ViewMatchesTexture(ps4576Output,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            chromaWidth * 2,
-                            chromaHeight))
+    auto* veryHighState = is1080 ? nativeChromaVeryHighClass3_1080_.get() : nativeChromaVeryHighClass3_720_.get();
+    if (!veryHighState || !packedUv || !yInput || !ps4576Output ||
+        !ViewMatchesTexture(packedUv, DXGI_FORMAT_R16G16_UNORM, chromaWidth, chromaHeight) ||
+        (!ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, chromaWidth * 2, chromaHeight) &&
+         !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, chromaWidth * 2, chromaHeight)) ||
+        !ViewMatchesTexture(ps4576Output, DXGI_FORMAT_R16G16B16A16_UNORM, chromaWidth * 2, chromaHeight))
     {
         error_ = "NGU class-3 core request is invalid";
         return false;
@@ -3840,11 +3599,9 @@ bool NguScaler::RunNativeChromaCoreClass3(
                       UINT(chromaHeight),
                       state.pointSampler.Get());
     };
-    auto runScaleX = [&](ID3D11ShaderResourceView* input,
-                         ID3D11RenderTargetView* output)
+    auto runScaleX = [&](ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
     {
-        ID3D11ShaderResourceView* inputs[2] = {
-            input, state.scaleXTableView.Get()};
+        ID3D11ShaderResourceView* inputs[2] = {input, state.scaleXTableView.Get()};
         DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                       state.scaleXVertex.Get(),
                       state.scaleXPixel.Get(),
@@ -3867,17 +3624,12 @@ bool NguScaler::RunNativeChromaCoreClass3(
             original,
             work,
             difference,
-            (is1080 ? nativeSuperRes_->uvLutView1080.Get()
-                    : nativeSuperRes_->uvLutView.Get())};
+            (is1080 ? nativeSuperRes_->uvLutView1080.Get() : nativeSuperRes_->uvLutView.Get())};
         DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                       nativeSuperRes_->vertex.Get(),
-                      (is1080
-                           ? nativeSuperRes_->toRgbMain1080.Get()
-                           : nativeSuperRes_->toRgbMain.Get()),
-                      (is1080
-                           ? nativeSuperRes_->
-                                 toRgbMainConstantsClass3_1080.Get()
-                           : nativeSuperRes_->toRgbMainConstantsClass3.Get()),
+                      (is1080 ? nativeSuperRes_->toRgbMain1080.Get() : nativeSuperRes_->toRgbMain.Get()),
+                      (is1080 ? nativeSuperRes_->toRgbMainConstantsClass3_1080.Get()
+                              : nativeSuperRes_->toRgbMainConstantsClass3.Get()),
                       nativeSuperRes_->rasterizer.Get(),
                       inputs,
                       4,
@@ -3900,18 +3652,12 @@ bool NguScaler::RunNativeChromaCoreClass3(
             original,
             work,
             difference,
-            (is1080 ? nativeSuperRes_->uvLutView1080.Get()
-                    : nativeSuperRes_->uvLutView.Get())};
+            (is1080 ? nativeSuperRes_->uvLutView1080.Get() : nativeSuperRes_->uvLutView.Get())};
         DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                       nativeSuperRes_->vertex.Get(),
-                      (is1080
-                           ? nativeSuperRes_->toRgbBase1080.Get()
-                           : nativeSuperRes_->toRgbBase.Get()),
-                      (is1080
-                           ? nativeSuperRes_->
-                                 toRgbBaseConstantsClass3P010_1080.Get()
-                           : nativeSuperRes_->
-                                 toRgbBaseConstantsClass3P010.Get()),
+                      (is1080 ? nativeSuperRes_->toRgbBase1080.Get() : nativeSuperRes_->toRgbBase.Get()),
+                      (is1080 ? nativeSuperRes_->toRgbBaseConstantsClass3P010_1080.Get()
+                              : nativeSuperRes_->toRgbBaseConstantsClass3P010.Get()),
                       nativeSuperRes_->rasterizer.Get(),
                       inputs,
                       4,
@@ -3926,112 +3672,65 @@ bool NguScaler::RunNativeChromaCoreClass3(
                       nativeSuperRes_->pointSampler.Get());
     };
     runExpandY(yInput);
-    if (!RunNativeChromaSplit(packedUv,
-                              chromaWidth,
-                              chromaHeight,
-                              state.cbView.Get(),
-                              state.crView.Get()) ||
-        !RunNativeChromaVeryHigh(state.cbShaderView.Get(),
-                                 state.denseCbView.Get(),
-                                 chromaWidth,
-                                 chromaHeight,
-                                 *veryHighState) ||
-        !RunNativeChromaScaleX(state.cbShaderView.Get(),
-                               state.cbScaleXView.Get()) ||
-        !RunNativeChromaScaleY(state.cbScaleXShaderView.Get(),
-                               state.cbScaleYView.Get()) ||
-        !RunNativeChromaCombine1(state.cbScaleYShaderView.Get(),
-                                 state.denseCbShaderView.Get(),
-                                 state.combine1View.Get()) ||
-        !RunNativeChromaVeryHigh(state.crShaderView.Get(),
-                                 state.denseCrView.Get(),
-                                 chromaWidth,
-                                 chromaHeight,
-                                 *veryHighState) ||
-        !RunNativeChromaScaleX(state.crShaderView.Get(),
-                               state.crScaleXView.Get()) ||
-        !RunNativeChromaScaleY(state.crScaleXShaderView.Get(),
-                               state.crScaleYView.Get()) ||
+    if (!RunNativeChromaSplit(packedUv, chromaWidth, chromaHeight, state.cbView.Get(), state.crView.Get()) ||
+        !RunNativeChromaVeryHigh(
+            state.cbShaderView.Get(), state.denseCbView.Get(), chromaWidth, chromaHeight, *veryHighState) ||
+        !RunNativeChromaScaleX(state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()) ||
+        !RunNativeChromaCombine1(
+            state.cbScaleYShaderView.Get(), state.denseCbShaderView.Get(), state.combine1View.Get()) ||
+        !RunNativeChromaVeryHigh(
+            state.crShaderView.Get(), state.denseCrView.Get(), chromaWidth, chromaHeight, *veryHighState) ||
+        !RunNativeChromaScaleX(state.crShaderView.Get(), state.crScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.crScaleXShaderView.Get(), state.crScaleYView.Get()) ||
         !RunNativeChromaCombine2(state.crScaleYShaderView.Get(),
                                  state.combine1ShaderView.Get(),
                                  state.denseCrShaderView.Get(),
                                  state.combine2View.Get()) ||
-        !RunNativeChromaRealign(state.combine2ShaderView.Get(),
-                                state.realignView.Get()) ||
-        !RunNativeChromaYCbCr(yInput,
-                              state.realignShaderView.Get(),
-                              state.rgbView.Get()))
+        !RunNativeChromaRealign(state.combine2ShaderView.Get(), state.realignView.Get()) ||
+        !RunNativeChromaYCbCr(yInput, state.realignShaderView.Get(), state.rgbView.Get()))
         return false;
     runScaleX(state.rgbShaderView.Get(), state.firstDownXView.Get());
-    if (
-        !(is1080
-              ? RunNativeSuperResDiffClass3_1080(
-                    packedUv,
-                    state.firstDownXShaderView.Get(),
-                    state.firstDiffView.Get())
-              : RunNativeSuperResDiffClass3_720(
-                    packedUv,
-                    state.firstDownXShaderView.Get(),
-                    state.firstDiffView.Get())))
+    if (!(is1080
+              ? RunNativeSuperResDiffClass3_1080(packedUv, state.firstDownXShaderView.Get(), state.firstDiffView.Get())
+              : RunNativeSuperResDiffClass3_720(packedUv, state.firstDownXShaderView.Get(), state.firstDiffView.Get())))
         return false;
     runSuperResMain(state.yExpandedShaderView.Get(),
                     state.rgbShaderView.Get(),
                     state.firstDiffShaderView.Get(),
                     state.mainView.Get());
     runScaleX(state.mainShaderView.Get(), state.downXView.Get());
-    if (
-        !(is1080
-              ? RunNativeSuperResDiffClass3_1080(
-                    packedUv,
-                    state.downXShaderView.Get(),
-                    state.diffView.Get())
-              : RunNativeSuperResDiffClass3_720(
-                    packedUv,
-                    state.downXShaderView.Get(),
-                    state.diffView.Get())))
+    if (!(is1080 ? RunNativeSuperResDiffClass3_1080(packedUv, state.downXShaderView.Get(), state.diffView.Get())
+                 : RunNativeSuperResDiffClass3_720(packedUv, state.downXShaderView.Get(), state.diffView.Get())))
         return false;
-    runSuperResBase(state.yExpandedShaderView.Get(),
-                    state.mainShaderView.Get(),
-                    state.diffShaderView.Get(),
-                    ps4576Output);
+    runSuperResBase(
+        state.yExpandedShaderView.Get(), state.mainShaderView.Get(), state.diffShaderView.Get(), ps4576Output);
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeChromaCoreClass3_720(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* ps4576Output)
+bool NguScaler::RunNativeChromaCoreClass3_720(ID3D11ShaderResourceView* packedUv,
+                                              ID3D11ShaderResourceView* yInput,
+                                              ID3D11RenderTargetView* ps4576Output)
 {
     if (!nativeChromaCoreClass3_720_)
     {
         error_ = "NGU class-3 720p core is not prepared";
         return false;
     }
-    return RunNativeChromaCoreClass3(packedUv,
-                                     yInput,
-                                     ps4576Output,
-                                     640,
-                                     720,
-                                     *nativeChromaCoreClass3_720_);
+    return RunNativeChromaCoreClass3(packedUv, yInput, ps4576Output, 640, 720, *nativeChromaCoreClass3_720_);
 }
 
-bool NguScaler::RunNativeChromaCoreClass3_1080(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* ps4576Output)
+bool NguScaler::RunNativeChromaCoreClass3_1080(ID3D11ShaderResourceView* packedUv,
+                                               ID3D11ShaderResourceView* yInput,
+                                               ID3D11RenderTargetView* ps4576Output)
 {
     if (!nativeChromaCoreClass3_1080_)
     {
         error_ = "NGU class-3 1080p core is not prepared";
         return false;
     }
-    return RunNativeChromaCoreClass3(packedUv,
-                                     yInput,
-                                     ps4576Output,
-                                     960,
-                                     1080,
-                                     *nativeChromaCoreClass3_1080_);
+    return RunNativeChromaCoreClass3(packedUv, yInput, ps4576Output, 960, 1080, *nativeChromaCoreClass3_1080_);
 }
 
 bool NguScaler::PrepareNativeNguClass3_720(pl_gpu gpu)
@@ -4043,8 +3742,7 @@ bool NguScaler::PrepareNativeNguClass3_720(pl_gpu gpu)
     }
     if (nativeNguClass3_720_ && gpu == gpu_)
         return true;
-    if (!PrepareNativeChromaCoreClass3_720(gpu) ||
-        !PrepareNativeLuma4x720Full(gpu))
+    if (!PrepareNativeChromaCoreClass3_720(gpu) || !PrepareNativeLuma4x720Full(gpu))
         return false;
     auto state = std::make_unique<NativeNguFromPlanesResources>();
     state->width = 1280;
@@ -4059,28 +3757,18 @@ bool NguScaler::PrepareNativeNguClass3_720(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeNguClass3_720(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeNguClass3_720(ID3D11ShaderResourceView* packedUv,
+                                       ID3D11ShaderResourceView* yInput,
+                                       ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeNguClass3_720_ || !nativeChromaCoreClass3_720_ ||
-        !finalOutput ||
-        !ViewMatchesTexture(finalOutput,
-                            DXGI_FORMAT_B8G8R8A8_UNORM,
-                            3840,
-                            2160))
+    if (!nativeNguClass3_720_ || !nativeChromaCoreClass3_720_ || !finalOutput ||
+        !ViewMatchesRgb8(finalOutput, 3840, 2160))
     {
         error_ = "NGU combined class-3 request is invalid";
         return false;
     }
-    if (!RunNativeChromaCoreClass3_720(
-            packedUv,
-            yInput,
-            nativeChromaCoreClass3_720_->ps4576View.Get()) ||
-        !RunNativeLuma4x720FromPacked(
-            nativeChromaCoreClass3_720_->ps4576ShaderView.Get(),
-            finalOutput))
+    if (!RunNativeChromaCoreClass3_720(packedUv, yInput, nativeChromaCoreClass3_720_->ps4576View.Get()) ||
+        !RunNativeLuma4x720FromPacked(nativeChromaCoreClass3_720_->ps4576ShaderView.Get(), finalOutput))
         return false;
     error_ = "";
     return true;
@@ -4095,8 +3783,7 @@ bool NguScaler::PrepareNativeNguClass3_1080(pl_gpu gpu)
     }
     if (nativeNguClass3_1080_ && gpu == gpu_)
         return true;
-    if (!PrepareNativeChromaCoreClass3_1080(gpu) ||
-        !PrepareNativeLumaVeryHigh1080(gpu))
+    if (!PrepareNativeChromaCoreClass3_1080(gpu) || !PrepareNativeLumaVeryHigh1080(gpu))
         return false;
     auto state = std::make_unique<NativeNguFromPlanesResources>();
     state->width = 1920;
@@ -4111,41 +3798,26 @@ bool NguScaler::PrepareNativeNguClass3_1080(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeNguClass3_1080(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeNguClass3_1080(ID3D11ShaderResourceView* packedUv,
+                                        ID3D11ShaderResourceView* yInput,
+                                        ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeNguClass3_1080_ || !nativeChromaCoreClass3_1080_ ||
-        !finalOutput ||
-        !ViewMatchesTexture(finalOutput,
-                            DXGI_FORMAT_B8G8R8A8_UNORM,
-                            3840,
-                            2160))
+    if (!nativeNguClass3_1080_ || !nativeChromaCoreClass3_1080_ || !finalOutput ||
+        !ViewMatchesRgb8(finalOutput, 3840, 2160))
     {
         error_ = "NGU 1080p combined class-3 request is invalid";
         return false;
     }
-    if (!RunNativeChromaCoreClass3_1080(
-            packedUv,
-            yInput,
-            nativeChromaCoreClass3_1080_->ps4576View.Get()) ||
-        !RunNativeLumaVeryHigh1080(
-            nativeChromaCoreClass3_1080_->ps4576ShaderView.Get(),
-            1920,
-            1080,
-            finalOutput))
+    if (!RunNativeChromaCoreClass3_1080(packedUv, yInput, nativeChromaCoreClass3_1080_->ps4576View.Get()) ||
+        !RunNativeLumaVeryHigh1080(nativeChromaCoreClass3_1080_->ps4576ShaderView.Get(), 1920, 1080, finalOutput))
         return false;
     error_ = "";
     return true;
 }
 
-bool NguScaler::CopyNativeChromaCoreClass3Stage720(
-    int stage,
-    ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeChromaCoreClass3Stage720(int stage, ID3D11RenderTargetView* output)
 {
-    if (!nativeChromaCoreClass3_720_ || !output ||
-        stage < 0 || stage > 13)
+    if (!nativeChromaCoreClass3_720_ || !output || stage < 0 || stage > 13)
     {
         error_ = "NGU class-3 core stage copy request is invalid";
         return false;
@@ -4206,12 +3878,9 @@ bool NguScaler::CopyNativeChromaCoreClass3Stage720(
     return true;
 }
 
-bool NguScaler::CopyNativeChromaCoreClass3Stage1080(
-    int stage,
-    ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeChromaCoreClass3Stage1080(int stage, ID3D11RenderTargetView* output)
 {
-    if (!nativeChromaCoreClass3_1080_ || !output ||
-        stage < 0 || stage > 13)
+    if (!nativeChromaCoreClass3_1080_ || !output || stage < 0 || stage > 13)
     {
         error_ = "NGU 1080p class-3 core stage copy request is invalid";
         return false;
@@ -4272,46 +3941,39 @@ bool NguScaler::CopyNativeChromaCoreClass3Stage1080(
     return true;
 }
 
-bool NguScaler::PrepareNativeNguFromPlanes(
-    pl_gpu gpu,
-    int width,
-    int height,
-    std::unique_ptr<NativeNguFromPlanesResources>& state,
-    const char* geometry)
+bool NguScaler::PrepareNativeNguFromPlanes(pl_gpu gpu,
+                                           int width,
+                                           int height,
+                                           std::unique_ptr<NativeNguFromPlanesResources>& state,
+                                           const char* geometry,
+                                           bool includeFullLuma)
 {
     if (!gpu || width <= 0 || height <= 0)
     {
         error_ = "NGU full plane entry requires a valid GPU and geometry";
         return false;
     }
-    if (state && gpu == gpu_ && state->width == UINT(width) &&
-        state->height == UINT(height))
+    if (state && gpu == gpu_ && state->width == UINT(width) && state->height == UINT(height))
         return true;
     if (gpu_ && gpu_ != gpu)
         Reset();
     const bool is1080 = width == 1920 && height == 1080;
-    if ((is1080 ? !PrepareNativeChromaVeryHigh1080Full(gpu)
-                : !PrepareNativeChromaVeryHigh720Full(gpu)) ||
-        (is1080 ? !PrepareNativeLumaVeryHigh1080(gpu)
-                : !PrepareNativeLuma4x720Full(gpu)))
+    if ((is1080 ? !PrepareNativeChromaVeryHigh1080Full(gpu) : !PrepareNativeChromaVeryHigh720Full(gpu)) ||
+        (includeFullLuma && (is1080 ? !PrepareNativeLumaVeryHigh1080(gpu) : !PrepareNativeLuma4x720Full(gpu))))
         return false;
     ID3D11Device* device = pl_d3d11_get(gpu)->device;
     auto next = std::make_unique<NativeNguFromPlanesResources>();
     next->width = UINT(width);
     next->height = UINT(height);
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
-    const auto expandBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_l8_expand.hlsl", 16 * 1024);
+    const auto expandBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_l8_expand.cso", 0);
     if (shaderText.empty() || expandBytecode.empty())
     {
-        error_ = std::string("NGU ") + geometry +
-                 " L8 expansion assets are unavailable";
+        error_ = std::string("NGU ") + geometry + " L8 expansion assets are unavailable";
         return false;
     }
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_L8Expand",
@@ -4324,18 +3986,12 @@ bool NguScaler::PrepareNativeNguFromPlanes(
                                   &vertexBlob,
                                   &errors);
     if (FAILED(hr) ||
-        FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &next->vertex)) ||
+        FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &next->vertex)) ||
         FAILED(device->CreatePixelShader(
-            expandBytecode.data(),
-            static_cast<SIZE_T>(expandBytecode.size()),
-            nullptr,
-            &next->expandPixel)))
+            expandBytecode.data(), static_cast<SIZE_T>(expandBytecode.size()), nullptr, &next->expandPixel)))
     {
-        error_ = std::string("NGU ") + geometry +
-                 " L8 expansion shaders could not be created";
+        error_ = std::string("NGU ") + geometry + " L8 expansion shaders could not be created";
         return false;
     }
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
@@ -4343,11 +3999,9 @@ bool NguScaler::PrepareNativeNguFromPlanes(
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(
-            &rasterizerDesc, &next->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &next->rasterizer)))
     {
-        error_ = std::string("NGU ") + geometry +
-                 " L8 expansion rasterizer could not be created";
+        error_ = std::string("NGU ") + geometry + " L8 expansion rasterizer could not be created";
         return false;
     }
     D3D11_TEXTURE2D_DESC desc = {};
@@ -4358,27 +4012,19 @@ bool NguScaler::PrepareNativeNguFromPlanes(
     desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_RENDER_TARGET |
-                     D3D11_BIND_SHADER_RESOURCE;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     if (FAILED(device->CreateTexture2D(&desc, nullptr, &next->yTexture)) ||
-        FAILED(device->CreateRenderTargetView(
-            next->yTexture.Get(), nullptr, &next->yView)) ||
-        FAILED(device->CreateShaderResourceView(
-            next->yTexture.Get(), nullptr, &next->yShaderView)))
+        FAILED(device->CreateRenderTargetView(next->yTexture.Get(), nullptr, &next->yView)) ||
+        FAILED(device->CreateShaderResourceView(next->yTexture.Get(), nullptr, &next->yShaderView)))
     {
-        error_ = std::string("NGU ") + geometry +
-                 " Y surface could not be created";
+        error_ = std::string("NGU ") + geometry + " Y surface could not be created";
         return false;
     }
-    if (FAILED(device->CreateTexture2D(
-            &desc, nullptr, &next->chromaTexture)) ||
-        FAILED(device->CreateRenderTargetView(
-            next->chromaTexture.Get(), nullptr, &next->chromaView)) ||
-        FAILED(device->CreateShaderResourceView(
-            next->chromaTexture.Get(), nullptr, &next->chromaShaderView)))
+    if (FAILED(device->CreateTexture2D(&desc, nullptr, &next->chromaTexture)) ||
+        FAILED(device->CreateRenderTargetView(next->chromaTexture.Get(), nullptr, &next->chromaView)) ||
+        FAILED(device->CreateShaderResourceView(next->chromaTexture.Get(), nullptr, &next->chromaShaderView)))
     {
-        error_ = std::string("NGU ") + geometry +
-                 " chroma surface could not be created";
+        error_ = std::string("NGU ") + geometry + " chroma surface could not be created";
         return false;
     }
     state = std::move(next);
@@ -4386,24 +4032,19 @@ bool NguScaler::PrepareNativeNguFromPlanes(
     return true;
 }
 
-bool NguScaler::RunNativeNguFromPlanes(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput,
-    int width,
-    int height,
-    bool is1080,
-    bool p010,
-    NativeNguFromPlanesResources& state)
+bool NguScaler::RunNativeNguFromPlanes(ID3D11ShaderResourceView* packedUv,
+                                       ID3D11ShaderResourceView* yInput,
+                                       ID3D11RenderTargetView* finalOutput,
+                                       int width,
+                                       int height,
+                                       bool is1080,
+                                       bool p010,
+                                       NativeNguFromPlanesResources& state)
 {
-    if (state.width != UINT(width) || state.height != UINT(height) ||
-        !packedUv || !yInput || !finalOutput ||
-        (!ViewMatchesTexture(
-             yInput, DXGI_FORMAT_R8_UNORM, UINT(width), UINT(height)) &&
-         !ViewMatchesTexture(
-             yInput, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height))) ||
-        !ViewMatchesTexture(
-            finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
+    if (state.width != UINT(width) || state.height != UINT(height) || !packedUv || !yInput || !finalOutput ||
+        (!ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, UINT(width), UINT(height)) &&
+         !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height))) ||
+        !ViewMatchesRgb8(finalOutput, 3840, 2160))
     {
         error_ = "NGU full 720p plane request is invalid";
         return false;
@@ -4420,29 +4061,70 @@ bool NguScaler::RunNativeNguFromPlanes(
                   1,
                   UINT(width),
                   UINT(height));
-    if ((is1080
-             ? !RunNativeChromaVeryHigh1080Full(packedUv,
-                                                yInput,
-                                                packedUv,
-                                                state.yShaderView.Get(),
-                                                state.yShaderView.Get(),
-                                                state.chromaView.Get(),
-                                                p010)
-             : !RunNativeChromaVeryHigh720Full(packedUv,
-                                               yInput,
-                                               packedUv,
-                                               state.yShaderView.Get(),
-                                               state.yShaderView.Get(),
-                                               state.chromaView.Get(),
-                                               p010)) ||
-        (is1080 ? !RunNativeLumaVeryHigh1080(state.chromaShaderView.Get(),
-                                             UINT(width),
-                                             UINT(height),
-                                             finalOutput)
-                : !RunNativeLuma4x720Full(state.chromaShaderView.Get(),
-                                          UINT(width),
-                                          UINT(height),
-                                          finalOutput)))
+    if ((is1080 ? !RunNativeChromaVeryHigh1080Full(packedUv,
+                                                   yInput,
+                                                   packedUv,
+                                                   state.yShaderView.Get(),
+                                                   state.yShaderView.Get(),
+                                                   state.chromaView.Get(),
+                                                   p010)
+                : !RunNativeChromaVeryHigh720Full(packedUv,
+                                                  yInput,
+                                                  packedUv,
+                                                  state.yShaderView.Get(),
+                                                  state.yShaderView.Get(),
+                                                  state.chromaView.Get(),
+                                                  p010)) ||
+        (is1080 ? !RunNativeLumaVeryHigh1080(state.chromaShaderView.Get(), UINT(width), UINT(height), finalOutput)
+                : !RunNativeLuma4x720Full(state.chromaShaderView.Get(), UINT(width), UINT(height), finalOutput)))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeNguHdrChromaOnlyFromPlanes(ID3D11ShaderResourceView* packedUv,
+                                                    ID3D11ShaderResourceView* yInput,
+                                                    ID3D11RenderTargetView* output,
+                                                    int width,
+                                                    int height,
+                                                    NativeNguFromPlanesResources& state)
+{
+    const bool is1080 = width == 1920 && height == 1080;
+    const UINT chromaWidth = UINT(width / 2);
+    const UINT chromaHeight = UINT(height / 2);
+    const bool packedIsRgba16 =
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_R16G16B16A16_UNORM, chromaWidth, chromaHeight);
+    const bool packedIsRg16 =
+        packedUv && ViewMatchesTexture(packedUv, DXGI_FORMAT_R16G16_UNORM, chromaWidth, chromaHeight);
+    if (!hdr_ || state.width != UINT(width) || state.height != UINT(height) || !packedUv || !yInput || !output ||
+        (!packedIsRgba16 && !packedIsRg16) ||
+        !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, UINT(width), UINT(height)) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, UINT(width), UINT(height)))
+    {
+        error_ = "NGU HDR chroma-only request is invalid";
+        return false;
+    }
+
+    ID3D11RenderTargetView* yTarget = state.yView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.expandPixel.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &yInput,
+                  1,
+                  &yTarget,
+                  1,
+                  UINT(width),
+                  UINT(height));
+    if (is1080)
+    {
+        if (!RunNativeChromaVeryHigh1080Full(
+                packedUv, yInput, packedUv, state.yShaderView.Get(), state.yShaderView.Get(), output, true))
+            return false;
+    }
+    else if (!RunNativeChromaVeryHigh720Full(
+                 packedUv, yInput, packedUv, state.yShaderView.Get(), state.yShaderView.Get(), output, true))
         return false;
     error_ = "";
     return true;
@@ -4450,56 +4132,321 @@ bool NguScaler::RunNativeNguFromPlanes(
 
 bool NguScaler::PrepareNativeNgu720FromPlanes(pl_gpu gpu)
 {
-    return PrepareNativeNguFromPlanes(
-        gpu, 1280, 720, nativeNgu720FromPlanes_, "720p");
+    return PrepareNativeNguFromPlanes(gpu, 1280, 720, nativeNgu720FromPlanes_, "720p");
 }
 
-bool NguScaler::RunNativeNgu720FromPlanes(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput,
-    bool p010)
+bool NguScaler::RunNativeNgu720FromPlanes(ID3D11ShaderResourceView* packedUv,
+                                          ID3D11ShaderResourceView* yInput,
+                                          ID3D11RenderTargetView* finalOutput,
+                                          bool p010)
 {
     if (!nativeNgu720FromPlanes_)
     {
         error_ = "NGU 720p full plane scheduler is not prepared";
         return false;
     }
-    return RunNativeNguFromPlanes(packedUv,
-                                  yInput,
-                                  finalOutput,
-                                  1280,
-                                  720,
-                                  false,
-                                  p010,
-                                  *nativeNgu720FromPlanes_);
+    return RunNativeNguFromPlanes(packedUv, yInput, finalOutput, 1280, 720, false, p010, *nativeNgu720FromPlanes_);
+}
+
+bool NguScaler::PrepareNativeNgu720DoubleFromPlanes(pl_gpu gpu)
+{
+    if (!PrepareNativeNgu720FromPlanes(gpu) || !PrepareNativeLuma720Double(gpu) ||
+        !PrepareNativeLuma720DoubleHighBit(gpu))
+        return false;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma720Double;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeNgu720DoubleFromPlanes(ID3D11ShaderResourceView* packedUv,
+                                                ID3D11ShaderResourceView* yInput,
+                                                ID3D11RenderTargetView* finalOutput,
+                                                bool p010)
+{
+    const bool preFinalRgb16 =
+        finalOutput && ViewMatchesTexture(finalOutput, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440);
+    if (!nativeNgu720FromPlanes_ || !packedUv || !yInput || !finalOutput ||
+        (!ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1280, 720) &&
+         !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1280, 720)) ||
+        (!preFinalRgb16 && !ViewMatchesRgb8(finalOutput, 2560, 1440)) || (preFinalRgb16 && !p010))
+    {
+        error_ = "NGU 720 Double plane request is invalid";
+        return false;
+    }
+    auto& state = *nativeNgu720FromPlanes_;
+    ID3D11RenderTargetView* yTarget = state.yView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.expandPixel.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &yInput,
+                  1,
+                  &yTarget,
+                  1,
+                  1280,
+                  720);
+    if (!RunNativeChromaVeryHigh720Full(packedUv,
+                                        yInput,
+                                        packedUv,
+                                        state.yShaderView.Get(),
+                                        state.yShaderView.Get(),
+                                        state.chromaView.Get(),
+                                        p010) ||
+        (p010 ? !RunNativeLuma720DoubleHighBit(state.chromaShaderView.Get(), finalOutput)
+              : !RunNativeLuma720Double(state.chromaShaderView.Get(), 1280, 720, finalOutput)))
+        return false;
+    error_ = "";
+    return true;
 }
 
 bool NguScaler::PrepareNativeNgu1080FromPlanes(pl_gpu gpu)
 {
-    return PrepareNativeNguFromPlanes(
-        gpu, 1920, 1080, nativeNgu1080FromPlanes_, "1080p");
+    return PrepareNativeNguFromPlanes(gpu, 1920, 1080, nativeNgu1080FromPlanes_, "1080p");
 }
 
-bool NguScaler::RunNativeNgu1080FromPlanes(
-    ID3D11ShaderResourceView* packedUv,
-    ID3D11ShaderResourceView* yInput,
-    ID3D11RenderTargetView* finalOutput,
-    bool p010)
+bool NguScaler::RunNativeNgu1080FromPlanes(ID3D11ShaderResourceView* packedUv,
+                                           ID3D11ShaderResourceView* yInput,
+                                           ID3D11RenderTargetView* finalOutput,
+                                           bool p010)
 {
     if (!nativeNgu1080FromPlanes_)
     {
         error_ = "NGU 1080p full plane scheduler is not prepared";
         return false;
     }
-    return RunNativeNguFromPlanes(packedUv,
-                                  yInput,
-                                  finalOutput,
-                                  1920,
-                                  1080,
-                                  true,
-                                  p010,
-                                  *nativeNgu1080FromPlanes_);
+    return RunNativeNguFromPlanes(packedUv, yInput, finalOutput, 1920, 1080, true, p010, *nativeNgu1080FromPlanes_);
+}
+
+bool NguScaler::RunNativeNgu1080ChromaOnlyFromPlanes(ID3D11ShaderResourceView* packedUv,
+                                                     ID3D11ShaderResourceView* yInput,
+                                                     ID3D11RenderTargetView* finalOutput,
+                                                     bool p010)
+{
+    if (!nativeNgu1080FromPlanes_ || !packedUv || !yInput || !finalOutput ||
+        (!ViewMatchesTexture(yInput, DXGI_FORMAT_R8_UNORM, 1920, 1080) &&
+         !ViewMatchesTexture(yInput, DXGI_FORMAT_R16_UNORM, 1920, 1080)) ||
+        !ViewMatchesRgb8(finalOutput, 1920, 1080))
+    {
+        error_ = "NGU 1080 chroma-only request is invalid";
+        return false;
+    }
+    auto& state = *nativeNgu1080FromPlanes_;
+    ID3D11RenderTargetView* yTarget = state.yView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.expandPixel.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &yInput,
+                  1,
+                  &yTarget,
+                  1,
+                  1920,
+                  1080);
+    if (!RunNativeChromaVeryHigh1080Full(packedUv,
+                                         yInput,
+                                         packedUv,
+                                         state.yShaderView.Get(),
+                                         state.yShaderView.Get(),
+                                         state.chromaView.Get(),
+                                         p010) ||
+        !RunNativeLumaFinal1080(state.chromaShaderView.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
+NguTargetPlan NguScaler::PlanNativeVeryHigh(const NguSourceFrame& source, int targetWidth, int targetHeight) const
+{
+    NguTargetPlan plan;
+    plan.hdr = pl_color_space_is_hdr(&source.color);
+    if (plan.hdr)
+    {
+        // E-160 [observed]: both captured HDR NGU graphs stop at PS_4576
+        // with one output pixel per source pixel. Franky owns every scaling
+        // and HDR presentation operation after that boundary.
+        plan.outputWidth = source.width;
+        plan.outputHeight = source.height;
+        plan.outputHook = false;
+        return plan;
+    }
+    plan.noLuma = source.width == 1920 && source.height == 1080 && targetWidth == 1920 && targetHeight == 1080;
+    plan.double720 = source.width == 1280 && source.height == 720 &&
+                     ((targetWidth == 1920 && targetHeight == 1080) || (targetWidth == 2560 && targetHeight == 1440));
+    plan.outputWidth = plan.noLuma ? 1920 : plan.double720 ? 2560 : 3840;
+    plan.outputHeight = plan.noLuma ? 1080 : plan.double720 ? 1440 : 2160;
+    // E-170: the correlated P016 Double source reaches an exact 2560x1440
+    // RGBA16 PS_908 composition but selects the target presentation shader
+    // PS_1368. Hand the evidence-backed pre-presentation surface to Franky.
+    plan.preFinalRgb16 = plan.double720 && source.chromaLayout == NguChromaLayout::SemiPlanar420 &&
+                         source.lumaBits == 16 && source.chromaBits == 16;
+    const bool class3 =
+        source.chromaLayout == NguChromaLayout::SemiPlanar422 || source.chromaLayout == NguChromaLayout::Planar422;
+    plan.outputHook =
+        !plan.preFinalRgb16 && (class3 || (targetWidth == plan.outputWidth && targetHeight == plan.outputHeight));
+    return plan;
+}
+
+bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, const NguTargetPlan& plan)
+{
+    hdr_ = plan.hdr;
+    colorDomain_ = ColorDomainProfile::Sdr;
+    if (hdr_)
+    {
+        // E-171 [observed]: these are the only target-captured HDR
+        // source-domain profiles. All other transfer/primaries pairs fail
+        // closed rather than selecting SDR or a guessed profile.
+        if (source.color.transfer == PL_COLOR_TRC_PQ && source.color.primaries == PL_COLOR_PRIM_BT_2020)
+            colorDomain_ = ColorDomainProfile::PqBt2020;
+        else if (source.color.transfer == PL_COLOR_TRC_HLG && source.color.primaries == PL_COLOR_PRIM_BT_2020)
+            colorDomain_ = ColorDomainProfile::HlgBt2020;
+        else if (source.color.transfer == PL_COLOR_TRC_PQ && source.color.primaries == PL_COLOR_PRIM_BT_709)
+            colorDomain_ = ColorDomainProfile::PqBt709;
+        else
+        {
+            error_ = "ngu_sharp HDR color domain is not target-observed";
+            return false;
+        }
+    }
+    if (!gpu || source.width <= 0 || source.height <= 0 || source.lumaBits <= 0 || source.chromaBits <= 0 ||
+        !source.topDown)
+    {
+        error_ = "NGU canonical source request is invalid";
+        return false;
+    }
+    const bool hdrGeometry =
+        (source.width == 1280 && source.height == 720) || (source.width == 1920 && source.height == 1080);
+    const bool matrixMatchesColorDomain =
+        (colorDomain_ == ColorDomainProfile::PqBt2020 || colorDomain_ == ColorDomainProfile::HlgBt2020)
+            ? (source.repr.sys == PL_COLOR_SYSTEM_BT_2020_NC || source.repr.sys == PL_COLOR_SYSTEM_BT_2020_C)
+            : colorDomain_ == ColorDomainProfile::PqBt709 && source.repr.sys == PL_COLOR_SYSTEM_BT_709;
+    if (hdr_ && !(hdrGeometry && plan.outputWidth == source.width && plan.outputHeight == source.height &&
+                  source.chromaLayout == NguChromaLayout::SemiPlanar420 && source.lumaBits == 10 &&
+                  source.chromaBits == 10 && !source.fullRange && matrixMatchesColorDomain))
+    {
+        error_ = "ngu_sharp HDR requires an observed limited-range P010 720p or 1080p color domain";
+        return false;
+    }
+    switch (source.chromaLayout)
+    {
+    case NguChromaLayout::None:
+        if (source.width == 1280 && source.height == 720)
+            return PrepareNativeLuma4x720Full(gpu);
+        if (source.width == 1920 && source.height == 1080)
+            return PrepareNativeLumaVeryHigh1080(gpu);
+        break;
+    case NguChromaLayout::SemiPlanar420:
+        if (!PrepareNativeDecoderSource(gpu))
+            return false;
+        if (hdr_)
+        {
+            if (source.width == 1280 && source.height == 720)
+                return PrepareNativeNguFromPlanes(gpu, 1280, 720, nativeNgu720FromPlanes_, "HDR 720p", false);
+            if (source.width == 1920 && source.height == 1080)
+                return PrepareNativeNguFromPlanes(gpu, 1920, 1080, nativeNgu1080FromPlanes_, "HDR 1080p", false);
+        }
+        if (source.width == 1280 && source.height == 720)
+        {
+            return plan.double720 ? PrepareNativeNgu720DoubleFromPlanes(gpu) : PrepareNativeNgu720FromPlanes(gpu);
+        }
+        if (source.width == 1920 && source.height == 1080)
+            return PrepareNativeNgu1080FromPlanes(gpu);
+        break;
+    case NguChromaLayout::SemiPlanar422:
+        if (source.width == 1280 && source.height == 720)
+            return PrepareNativeNguClass3_720(gpu);
+        if (source.width == 1920 && source.height == 1080)
+            return PrepareNativeNguClass3_1080(gpu);
+        break;
+    case NguChromaLayout::Planar420:
+        error_ = "NGU canonical Planar420 input requires the common I420 interleave adapter";
+        return false;
+    case NguChromaLayout::Planar422:
+        error_ = "NGU canonical Planar422 input requires the common 4:2:2 interleave adapter";
+        return false;
+    }
+    error_ = "NGU canonical source geometry or chroma layout is unsupported";
+    return false;
+}
+
+bool NguScaler::RunNativeVeryHigh(const NguSourceFrame& source,
+                                  const NguTargetPlan& plan,
+                                  ID3D11RenderTargetView* finalOutput)
+{
+    DrawCountScope drawCount;
+    if (!finalOutput || plan.outputWidth <= 0 || plan.outputHeight <= 0 || source.width <= 0 || source.height <= 0 ||
+        !source.topDown || source.lumaBits <= 0 || source.chromaBits <= 0)
+    {
+        error_ = "NGU canonical run request is invalid";
+        return false;
+    }
+    const bool highBitDepth = source.lumaBits > 8 || source.chromaBits > 8;
+    switch (source.chromaLayout)
+    {
+    case NguChromaLayout::None:
+        if (!source.rgb || plan.noLuma || plan.double720)
+        {
+            error_ = "NGU canonical RGB input requires the observed luma-only geometry";
+            return false;
+        }
+        if (source.width == 1280 && source.height == 720)
+            return RunNativeLuma4x720Full(source.rgb, 1280, 720, finalOutput);
+        if (source.width == 1920 && source.height == 1080)
+            return RunNativeLumaVeryHigh1080(source.rgb, 1920, 1080, finalOutput);
+        break;
+    case NguChromaLayout::SemiPlanar420:
+        if (!source.luma || !source.chroma)
+        {
+            error_ = "NGU canonical 4:2:0 planes are unavailable";
+            return false;
+        }
+        if (plan.hdr)
+        {
+            if (source.width == 1280 && source.height == 720 && nativeNgu720FromPlanes_)
+            {
+                return RunNativeNguHdrChromaOnlyFromPlanes(
+                    source.chroma, source.luma, finalOutput, 1280, 720, *nativeNgu720FromPlanes_);
+            }
+            if (source.width == 1920 && source.height == 1080 && nativeNgu1080FromPlanes_)
+            {
+                return RunNativeNguHdrChromaOnlyFromPlanes(
+                    source.chroma, source.luma, finalOutput, 1920, 1080, *nativeNgu1080FromPlanes_);
+            }
+            error_ = "NGU HDR chroma-only resource is unavailable";
+            return false;
+        }
+        if (plan.noLuma)
+            return RunNativeNgu1080ChromaOnlyFromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
+        if (source.width == 1280 && source.height == 720)
+            return plan.double720
+                       ? RunNativeNgu720DoubleFromPlanes(source.chroma, source.luma, finalOutput, highBitDepth)
+                       : RunNativeNgu720FromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
+        if (source.width == 1920 && source.height == 1080)
+            return RunNativeNgu1080FromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
+        break;
+    case NguChromaLayout::SemiPlanar422:
+        if (!source.luma || !source.chroma)
+        {
+            error_ = "NGU canonical class-3 planes are unavailable";
+            return false;
+        }
+        if (source.width == 1280 && source.height == 720)
+            return RunNativeNguClass3_720(source.chroma, source.luma, finalOutput);
+        if (source.width == 1920 && source.height == 1080)
+            return RunNativeNguClass3_1080(source.chroma, source.luma, finalOutput);
+        break;
+    case NguChromaLayout::Planar420:
+    case NguChromaLayout::Planar422:
+        error_ = "NGU canonical planar chroma must be interleaved by the common adapter";
+        return false;
+    }
+    error_ = "NGU canonical source geometry or chroma layout is unsupported";
+    return false;
 }
 
 bool NguScaler::PrepareNativeLumaInitial(pl_gpu gpu)
@@ -4577,8 +4524,7 @@ bool NguScaler::PrepareNativeLumaInitial(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ =
-            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native vertex shader failed";
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native vertex shader failed";
         return false;
     }
     errors.Reset();
@@ -4601,14 +4547,10 @@ bool NguScaler::PrepareNativeLumaInitial(pl_gpu gpu)
 
     auto state = std::make_unique<NativeLumaInitial>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(pixelBlob->GetBufferPointer(),
-                                         pixelBlob->GetBufferSize(),
-                                         nullptr,
-                                         &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, &state->pixel)))
     {
         error_ = "NGU native shader objects could not be created";
         return false;
@@ -4792,20 +4734,16 @@ bool NguScaler::PrepareNativeLumaLayers(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU native layer vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native layer vertex shader failed";
         return false;
     }
     auto state = std::make_unique<NativeLumaLayers>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(pixelBytecode.data(),
-                                         static_cast<SIZE_T>(pixelBytecode.size()),
-                                         nullptr,
-                                         &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelBytecode.data(), static_cast<SIZE_T>(pixelBytecode.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU native layer shader objects could not be created";
         return false;
@@ -4848,9 +4786,7 @@ bool NguScaler::PrepareNativeLumaLayers(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLumaLayer(ID3D11ShaderResourceView* const inputs[3],
-                                   int layer,
-                                   ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLumaLayer(ID3D11ShaderResourceView* const inputs[3], int layer, ID3D11RenderTargetView* output)
 {
     if (!nativeLumaLayers_ || !inputs || !inputs[0] || !inputs[1] || !inputs[2] || !output || layer < 0 ||
         layer >= int(nativeLumaLayers_->constants.size()))
@@ -4957,8 +4893,7 @@ bool NguScaler::PrepareNativeLumaDense(pl_gpu gpu)
     }
     const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\luma_1080_dense.hlsl", 256 * 1024);
     const auto pixelBytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense.cso", 0);
-    const auto constantBytes =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense_constants.bin", 51 * sizeof(float) * 4);
+    const auto constantBytes = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense_constants.bin", 51 * sizeof(float) * 4);
     if (shaderText.empty() || pixelBytecode.empty() || constantBytes.empty())
     {
         error_ = "NGU native dense assets are unavailable";
@@ -4980,21 +4915,17 @@ bool NguScaler::PrepareNativeLumaDense(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU native dense vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native dense vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLumaDense>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(pixelBytecode.data(),
-                                         static_cast<SIZE_T>(pixelBytecode.size()),
-                                         nullptr,
-                                         &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            pixelBytecode.data(), static_cast<SIZE_T>(pixelBytecode.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU native dense shader objects could not be created";
         return false;
@@ -5034,8 +4965,7 @@ bool NguScaler::PrepareNativeLumaDense(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLumaDense(ID3D11ShaderResourceView* const inputs[3],
-                                   ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLumaDense(ID3D11ShaderResourceView* const inputs[3], ID3D11RenderTargetView* output)
 {
     if (!nativeLumaDense_ || !inputs || !inputs[0] || !inputs[1] || !inputs[2] || !output)
     {
@@ -5147,10 +5077,9 @@ bool NguScaler::PrepareNativeLumaScaleAdd(pl_gpu gpu)
         LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_x_constants.bin", 2 * sizeof(float) * 4);
     const auto scaleYConstants =
         LoadBundledBytes(L"shaders\\Ngu\\luma_1080_scale_y_constants.bin", 2 * sizeof(float) * 4);
-    const auto addConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add_constants.bin", 2 * sizeof(float) * 4);
-    if (scaleText.empty() || scaleXCso.empty() || scaleYCso.empty() || addCso.empty() ||
-        scaleXConstants.empty() || scaleYConstants.empty() || addConstants.empty())
+    const auto addConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add_constants.bin", 2 * sizeof(float) * 4);
+    if (scaleText.empty() || scaleXCso.empty() || scaleYCso.empty() || addCso.empty() || scaleXConstants.empty() ||
+        scaleYConstants.empty() || addConstants.empty())
     {
         error_ = "NGU native scale/add assets are unavailable";
         return false;
@@ -5171,29 +5100,20 @@ bool NguScaler::PrepareNativeLumaScaleAdd(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU native scale vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native scale vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLumaScaleAdd>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(scaleXCso.data(),
-                                         static_cast<SIZE_T>(scaleXCso.size()),
-                                         nullptr,
-                                         &state->scaleX)) ||
-        FAILED(device->CreatePixelShader(scaleYCso.data(),
-                                         static_cast<SIZE_T>(scaleYCso.size()),
-                                         nullptr,
-                                         &state->scaleY)) ||
-        FAILED(device->CreatePixelShader(addCso.data(),
-                                         static_cast<SIZE_T>(addCso.size()),
-                                         nullptr,
-                                         &state->add)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            scaleXCso.data(), static_cast<SIZE_T>(scaleXCso.size()), nullptr, &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(
+            scaleYCso.data(), static_cast<SIZE_T>(scaleYCso.size()), nullptr, &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(addCso.data(), static_cast<SIZE_T>(addCso.size()), nullptr, &state->add)))
     {
         error_ = "NGU native scale/add shader objects could not be created";
         return false;
@@ -5332,17 +5252,13 @@ bool NguScaler::PrepareNativeLumaFinish(pl_gpu gpu)
     const auto upXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x.cso", 0);
     const auto upYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y.cso", 0);
     const auto mergeCso = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge.cso", 0);
-    const auto upXConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x_constants.bin", 2 * sizeof(float) * 4);
-    const auto upYConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y_constants.bin", 2 * sizeof(float) * 4);
-    const auto mergeConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge_constants.bin", 2 * sizeof(float) * 4);
+    const auto upXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x_constants.bin", 2 * sizeof(float) * 4);
+    const auto upYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y_constants.bin", 2 * sizeof(float) * 4);
+    const auto mergeConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge_constants.bin", 2 * sizeof(float) * 4);
     const auto upXTable = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_x_table.bin", 4 * 3840 * 8);
     const auto upYTable = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_up_y_table.bin", 4 * 2160 * 8);
-    if (shaderText.empty() || upXCso.empty() || upYCso.empty() || mergeCso.empty() ||
-        upXConstants.empty() || upYConstants.empty() || mergeConstants.empty() || upXTable.empty() ||
-        upYTable.empty())
+    if (shaderText.empty() || upXCso.empty() || upYCso.empty() || mergeCso.empty() || upXConstants.empty() ||
+        upYConstants.empty() || mergeConstants.empty() || upXTable.empty() || upYTable.empty())
     {
         error_ = "NGU native finish assets are unavailable";
         return false;
@@ -5362,21 +5278,19 @@ bool NguScaler::PrepareNativeLumaFinish(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU native finish vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native finish vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLumaFinish>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(upXCso.data(), static_cast<SIZE_T>(upXCso.size()), nullptr, &state->upX)) ||
         FAILED(device->CreatePixelShader(upYCso.data(), static_cast<SIZE_T>(upYCso.size()), nullptr, &state->upY)) ||
-        FAILED(device->CreatePixelShader(
-            mergeCso.data(), static_cast<SIZE_T>(mergeCso.size()), nullptr, &state->merge)))
+        FAILED(
+            device->CreatePixelShader(mergeCso.data(), static_cast<SIZE_T>(mergeCso.size()), nullptr, &state->merge)))
     {
         error_ = "NGU native finish shader objects could not be created";
         return false;
@@ -5392,8 +5306,7 @@ bool NguScaler::PrepareNativeLumaFinish(pl_gpu gpu)
         data.pSysMem = bytes.data();
         return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
     };
-    if (!createConstants(upXConstants, state->upXConstants) ||
-        !createConstants(upYConstants, state->upYConstants) ||
+    if (!createConstants(upXConstants, state->upXConstants) || !createConstants(upYConstants, state->upYConstants) ||
         !createConstants(mergeConstants, state->mergeConstants))
     {
         error_ = "NGU native finish constants could not be created";
@@ -5554,10 +5467,8 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
     }
     const std::string vertexText = LoadBundledText(L"shaders\\Ngu\\luma_2160_up_x.hlsl", 256 * 1024);
     const auto finalCso = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_final.cso", 0);
-    const auto finalConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_final_constants.bin", 4 * sizeof(float) * 4);
-    const auto finalWeights =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_final_weights.bin", 32 * 32 * sizeof(float));
+    const auto finalConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_final_constants.bin", 4 * sizeof(float) * 4);
+    const auto finalWeights = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_final_weights.bin", 32 * 32 * sizeof(float));
     if (vertexText.empty() || finalCso.empty() || finalConstants.empty() || finalWeights.empty())
     {
         error_ = "NGU native final assets are unavailable";
@@ -5579,19 +5490,17 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU native final vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU native final vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLumaFinal>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(
-            finalCso.data(), static_cast<SIZE_T>(finalCso.size()), nullptr, &state->pixel)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(finalCso.data(), static_cast<SIZE_T>(finalCso.size()), nullptr, &state->pixel)))
     {
         error_ = "NGU native final shader objects could not be created";
         return false;
@@ -5609,6 +5518,18 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
         return false;
     }
     std::memcpy(state->constantsData.data(), finalConstants.data(), sizeof(state->constantsData));
+    constantData.pSysMem = state->constantsData1080.data();
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants1080)))
+    {
+        error_ = "NGU native 1080 final constants could not be created";
+        return false;
+    }
+    constantData.pSysMem = state->constantsData720.data();
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->constants720)))
+    {
+        error_ = "NGU native 720 final constants could not be created";
+        return false;
+    }
 
     D3D11_TEXTURE2D_DESC weightDesc = {};
     weightDesc.Width = 32;
@@ -5623,8 +5544,7 @@ bool NguScaler::PrepareNativeLumaFinal(pl_gpu gpu)
     weightData.pSysMem = finalWeights.data();
     weightData.SysMemPitch = 32 * sizeof(float);
     if (FAILED(device->CreateTexture2D(&weightDesc, &weightData, &state->weightTexture)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->weightTexture.Get(), nullptr, &state->weightView)))
+        FAILED(device->CreateShaderResourceView(state->weightTexture.Get(), nullptr, &state->weightView)))
     {
         error_ = "NGU native final weight texture could not be created";
         return false;
@@ -5697,15 +5617,182 @@ bool NguScaler::PrepareOwnedDither()
     D3D11_SUBRESOURCE_DATA ditherData = {};
     ditherData.pSysMem = ditherWords.data();
     ditherData.SysMemPitch = 3840 * sizeof(uint32_t);
-    if (FAILED(device->CreateTexture2D(
-            &ditherDesc, &ditherData, &nativeLumaFinal_->ditherTexture)) ||
-        FAILED(device->CreateShaderResourceView(nativeLumaFinal_->ditherTexture.Get(),
-                                               nullptr,
-                                               &nativeLumaFinal_->ditherView)))
+    if (FAILED(device->CreateTexture2D(&ditherDesc, &ditherData, &nativeLumaFinal_->ditherTexture)) ||
+        FAILED(device->CreateShaderResourceView(
+            nativeLumaFinal_->ditherTexture.Get(), nullptr, &nativeLumaFinal_->ditherView)))
     {
         error_ = "NGU native final dither texture could not be created";
         return false;
     }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareOwnedDither1080()
+{
+    if (!nativeLumaFinal_ || !gpu_)
+    {
+        error_ = "NGU native 1080 final dither state is unavailable";
+        return false;
+    }
+    if (nativeLumaFinal_->ditherView1080)
+        return true;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    std::vector<uint32_t> ditherWords(size_t(1920) * 1080);
+    dither1080_.SeedColorFromClock();
+    dither1080_.FillColor(ditherWords);
+    D3D11_TEXTURE2D_DESC ditherDesc = {};
+    ditherDesc.Width = 1920;
+    ditherDesc.Height = 1080;
+    ditherDesc.MipLevels = 1;
+    ditherDesc.ArraySize = 1;
+    ditherDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ditherDesc.SampleDesc.Count = 1;
+    ditherDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    ditherDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA ditherData = {};
+    ditherData.pSysMem = ditherWords.data();
+    ditherData.SysMemPitch = 1920 * sizeof(uint32_t);
+    if (FAILED(device->CreateTexture2D(&ditherDesc, &ditherData, &nativeLumaFinal_->ditherTexture1080)) ||
+        FAILED(device->CreateShaderResourceView(
+            nativeLumaFinal_->ditherTexture1080.Get(), nullptr, &nativeLumaFinal_->ditherView1080)))
+    {
+        error_ = "NGU native 1080 final dither texture could not be created";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareOwnedDither720()
+{
+    if (!nativeLumaFinal_ || !gpu_)
+    {
+        error_ = "NGU native 720 final dither state is unavailable";
+        return false;
+    }
+    if (nativeLumaFinal_->ditherView720)
+        return true;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    std::vector<uint32_t> ditherWords(size_t(2560) * 1440);
+    dither720_.SeedColorFromClock();
+    dither720_.FillColor(ditherWords);
+    D3D11_TEXTURE2D_DESC ditherDesc = {};
+    ditherDesc.Width = 2560;
+    ditherDesc.Height = 1440;
+    ditherDesc.MipLevels = 1;
+    ditherDesc.ArraySize = 1;
+    ditherDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    ditherDesc.SampleDesc.Count = 1;
+    ditherDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    ditherDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    D3D11_SUBRESOURCE_DATA ditherData = {};
+    ditherData.pSysMem = ditherWords.data();
+    ditherData.SysMemPitch = 2560 * sizeof(uint32_t);
+    if (FAILED(device->CreateTexture2D(&ditherDesc, &ditherData, &nativeLumaFinal_->ditherTexture720)) ||
+        FAILED(device->CreateShaderResourceView(
+            nativeLumaFinal_->ditherTexture720.Get(), nullptr, &nativeLumaFinal_->ditherView720)))
+    {
+        error_ = "NGU native 720 final dither texture could not be created";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeHookOutput(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU hook output requires a GPU";
+        return false;
+    }
+    if (nativeHookOutput_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU hook output requires the D3D11 backend";
+        return false;
+    }
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\ngu_hook_output.hlsl", 64 * 1024);
+    const auto pixelCso = LoadBundledBytes(L"shaders\\Ngu\\ngu_hook_output.cso", 0);
+    if (shaderText.empty() || pixelCso.empty())
+    {
+        error_ = "NGU hook output assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(shaderText.data(),
+                            shaderText.size(),
+                            "NGU_HookOutput",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU hook output vertex shader failed";
+        return false;
+    }
+
+    auto state = std::make_unique<NativeHookOutput>();
+    ID3D11Device* device = d3d->device;
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(pixelCso.data(), static_cast<SIZE_T>(pixelCso.size()), nullptr, &state->pixel)))
+    {
+        error_ = "NGU hook output shader objects could not be created";
+        return false;
+    }
+
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU hook output rasterizer state could not be created";
+        return false;
+    }
+
+    nativeHookOutput_ = std::move(state);
+    gpu_ = gpu;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeHookOutput(ID3D11ShaderResourceView* input,
+                                    ID3D11RenderTargetView* output,
+                                    int width,
+                                    int height)
+{
+    if (!nativeHookOutput_ || !input || !output || width <= 0 || height <= 0)
+    {
+        error_ = "NGU hook output request is invalid";
+        return false;
+    }
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeHookOutput_->vertex.Get(),
+                  nativeHookOutput_->pixel.Get(),
+                  nullptr,
+                  nativeHookOutput_->rasterizer.Get(),
+                  &input,
+                  1,
+                  &output,
+                  1,
+                  UINT(width),
+                  UINT(height));
     error_ = "";
     return true;
 }
@@ -5738,6 +5825,82 @@ bool NguScaler::RunNativeLumaFinal(ID3D11ShaderResourceView* input,
     return true;
 }
 
+bool NguScaler::RunNativeLumaFinal1080(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaFinal_ || !input || !output ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
+        !ViewMatchesRgb8(output, 1920, 1080) || !PrepareOwnedDither1080())
+    {
+        error_ = "NGU native 1080 final request is invalid";
+        return false;
+    }
+    const NguDither::Phase phase = dither1080_.NextPhase();
+    nativeLumaFinal_->constantsData1080[9] = phase.y;
+    nativeLumaFinal_->constantsData1080[10] = phase.z;
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->UpdateSubresource(
+        nativeLumaFinal_->constants1080.Get(), 0, nullptr, nativeLumaFinal_->constantsData1080.data(), 0, 0);
+    context->Release();
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, nativeLumaFinal_->ditherView1080.Get(), nativeLumaFinal_->weightView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeLumaFinal_->vertex.Get(),
+                  nativeLumaFinal_->pixel.Get(),
+                  nativeLumaFinal_->constants1080.Get(),
+                  nativeLumaFinal_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  targets,
+                  1,
+                  1920,
+                  1080,
+                  nativeLumaFinal_->clampSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaFinal720(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaFinal_ || !input || !output ||
+        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440) ||
+        !ViewMatchesRgb8(output, 2560, 1440) || !PrepareOwnedDither720())
+    {
+        error_ = "NGU native 720 final request is invalid";
+        return false;
+    }
+    const NguDither::Phase phase = dither720_.NextPhase();
+    nativeLumaFinal_->constantsData720[9] = phase.y;
+    nativeLumaFinal_->constantsData720[10] = phase.z;
+    ID3D11DeviceContext* context = nullptr;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->UpdateSubresource(
+        nativeLumaFinal_->constants720.Get(), 0, nullptr, nativeLumaFinal_->constantsData720.data(), 0, 0);
+    context->Release();
+    ID3D11ShaderResourceView* inputs[3] = {
+        input, nativeLumaFinal_->ditherView720.Get(), nativeLumaFinal_->weightView.Get()};
+    ID3D11RenderTargetView* targets[1] = {output};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeLumaFinal_->vertex.Get(),
+                  nativeLumaFinal_->pixel.Get(),
+                  nativeLumaFinal_->constants720.Get(),
+                  nativeLumaFinal_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  targets,
+                  1,
+                  2560,
+                  1440,
+                  nativeLumaFinal_->clampSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get(),
+                  nativeLumaFinal_->wrapSampler.Get());
+    error_ = "";
+    return true;
+}
+
 void NguScaler::ResetDitherPhase()
 {
     dither_.Reset();
@@ -5757,12 +5920,8 @@ bool NguScaler::RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
     nativeLumaFinal_->constantsData[10] = phase.z;
     ID3D11DeviceContext* context = nullptr;
     pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
-    context->UpdateSubresource(nativeLumaFinal_->constants.Get(),
-                               0,
-                               nullptr,
-                               nativeLumaFinal_->constantsData.data(),
-                               0,
-                               0);
+    context->UpdateSubresource(
+        nativeLumaFinal_->constants.Get(), 0, nullptr, nativeLumaFinal_->constantsData.data(), 0, 0);
     context->Release();
     ID3D11ShaderResourceView* inputs[3] = {input, dither, nativeLumaFinal_->weightView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
@@ -5783,8 +5942,7 @@ bool NguScaler::RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input,
-                                              ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLumaFinalOwnedDither(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
     if (!nativeLumaFinal_ || !input || !output || !PrepareOwnedDither())
     {
@@ -5811,12 +5969,8 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
         error_ = "NGU VeryHigh luma requires the D3D11 backend";
         return false;
     }
-    if (!PrepareNativeLumaSplit(gpu) ||
-        !PrepareNativeLumaInitial(gpu) ||
-        !PrepareNativeLumaLayers(gpu) ||
-        !PrepareNativeLumaDense(gpu) ||
-        !PrepareNativeLumaScaleAdd(gpu) ||
-        !PrepareNativeLumaFinish(gpu) ||
+    if (!PrepareNativeLumaSplit(gpu) || !PrepareNativeLumaInitial(gpu) || !PrepareNativeLumaLayers(gpu) ||
+        !PrepareNativeLumaDense(gpu) || !PrepareNativeLumaScaleAdd(gpu) || !PrepareNativeLumaFinish(gpu) ||
         !PrepareNativeLumaFinal(gpu))
     {
         return false;
@@ -5898,42 +6052,13 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080(pl_gpu gpu)
                 state->denseTexture,
                 state->denseView,
                 state->denseShaderView) ||
-        !create(3840,
-                1080,
-                DXGI_FORMAT_R16_UNORM,
-                state->scaleXTexture,
-                state->scaleXView,
-                state->scaleXShaderView) ||
-        !create(3840,
-                2160,
-                DXGI_FORMAT_R16_UNORM,
-                state->scaleYTexture,
-                state->scaleYView,
-                state->scaleYShaderView) ||
-        !create(3840,
-                2160,
-                DXGI_FORMAT_R16_UNORM,
-                state->addTexture,
-                state->addView,
-                state->addShaderView) ||
-        !create(3840,
-                1080,
-                DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->upXTexture,
-                state->upXView,
-                state->upXShaderView) ||
-        !create(3840,
-                2160,
-                DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->upYTexture,
-                state->upYView,
-                state->upYShaderView) ||
-        !create(3840,
-                2160,
-                DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->mergeTexture,
-                state->mergeView,
-                state->mergeShaderView))
+        !create(3840, 1080, DXGI_FORMAT_R16_UNORM, state->scaleXTexture, state->scaleXView, state->scaleXShaderView) ||
+        !create(3840, 2160, DXGI_FORMAT_R16_UNORM, state->scaleYTexture, state->scaleYView, state->scaleYShaderView) ||
+        !create(3840, 2160, DXGI_FORMAT_R16_UNORM, state->addTexture, state->addView, state->addShaderView) ||
+        !create(3840, 1080, DXGI_FORMAT_R16G16B16A16_UNORM, state->upXTexture, state->upXView, state->upXShaderView) ||
+        !create(3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM, state->upYTexture, state->upYView, state->upYShaderView) ||
+        !create(
+            3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM, state->mergeTexture, state->mergeView, state->mergeShaderView))
     {
         error_ = "NGU VeryHigh luma reconstruction textures could not be created";
         return false;
@@ -5951,8 +6076,7 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
                                           ID3D11RenderTargetView* finalOutput,
                                           bool advanceDither)
 {
-    if (!nativeLumaVeryHigh1080_ || !sourceRgb || !finalOutput ||
-        sourceWidth != 1920 || sourceHeight != 1080)
+    if (!nativeLumaVeryHigh1080_ || !sourceRgb || !finalOutput || sourceWidth != 1920 || sourceHeight != 1080)
     {
         error_ = "NGU VeryHigh luma request is outside the verified 1080p path";
         return false;
@@ -5970,10 +6094,8 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
     std::array<ID3D11RenderTargetView*, 3> initialViews = {};
     for (size_t i = 0; i < initialViews.size(); ++i)
         initialViews[i] = nativeLumaVeryHigh1080_->initialViews[i].Get();
-    if (!RunNativeLumaInitial(nativeLumaVeryHigh1080_->splitLumaShaderView.Get(),
-                              sourceWidth,
-                              sourceHeight,
-                              initialViews.data()))
+    if (!RunNativeLumaInitial(
+            nativeLumaVeryHigh1080_->splitLumaShaderView.Get(), sourceWidth, sourceHeight, initialViews.data()))
         return false;
 
     std::array<ID3D11ShaderResourceView*, 3> current = {};
@@ -5983,9 +6105,7 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
     {
         const size_t set = size_t((layer / 3) % 2);
         const size_t feature = size_t(layer % 3);
-        if (!RunNativeLumaLayer(current.data(),
-                                layer,
-                                nativeLumaVeryHigh1080_->layerViews[set][feature].Get()))
+        if (!RunNativeLumaLayer(current.data(), layer, nativeLumaVeryHigh1080_->layerViews[set][feature].Get()))
         {
             return false;
         }
@@ -5995,16 +6115,14 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
     }
     if (!RunNativeLumaDense(current.data(), nativeLumaVeryHigh1080_->denseView.Get()) ||
         !RunNativeLumaScaleX(nativeLumaVeryHigh1080_->splitLumaShaderView.Get(),
-                              nativeLumaVeryHigh1080_->scaleXView.Get()) ||
+                             nativeLumaVeryHigh1080_->scaleXView.Get()) ||
         !RunNativeLumaScaleY(nativeLumaVeryHigh1080_->scaleXShaderView.Get(),
                              nativeLumaVeryHigh1080_->scaleYView.Get()) ||
         !RunNativeLumaAdd(nativeLumaVeryHigh1080_->scaleYShaderView.Get(),
                           nativeLumaVeryHigh1080_->denseShaderView.Get(),
                           nativeLumaVeryHigh1080_->addView.Get()) ||
-        !RunNativeLumaUpX(nativeLumaVeryHigh1080_->splitCbCrShaderView.Get(),
-                          nativeLumaVeryHigh1080_->upXView.Get()) ||
-        !RunNativeLumaUpY(nativeLumaVeryHigh1080_->upXShaderView.Get(),
-                          nativeLumaVeryHigh1080_->upYView.Get()) ||
+        !RunNativeLumaUpX(nativeLumaVeryHigh1080_->splitCbCrShaderView.Get(), nativeLumaVeryHigh1080_->upXView.Get()) ||
+        !RunNativeLumaUpY(nativeLumaVeryHigh1080_->upXShaderView.Get(), nativeLumaVeryHigh1080_->upYView.Get()) ||
         !RunNativeLumaMerge(nativeLumaVeryHigh1080_->addShaderView.Get(),
                             nativeLumaVeryHigh1080_->upYShaderView.Get(),
                             nativeLumaVeryHigh1080_->mergeView.Get()))
@@ -6015,16 +6133,1132 @@ bool NguScaler::RunNativeLumaVeryHigh1080(ID3D11ShaderResourceView* sourceRgb,
         return false;
     if (advanceDither)
     {
-        if (!RunNativeLumaFinalOwnedDither(
-                nativeLumaVeryHigh1080_->mergeShaderView.Get(), finalOutput))
+        if (!RunNativeLumaFinalOwnedDither(nativeLumaVeryHigh1080_->mergeShaderView.Get(), finalOutput))
             return false;
     }
-    else if (!RunNativeLumaFinal(nativeLumaVeryHigh1080_->mergeShaderView.Get(),
-                                 nativeLumaFinal_->ditherView.Get(),
-                                 finalOutput))
+    else if (!RunNativeLumaFinal(
+                 nativeLumaVeryHigh1080_->mergeShaderView.Get(), nativeLumaFinal_->ditherView.Get(), finalOutput))
     {
         return false;
     }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeLuma720Double(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU 720 Double luma requires a GPU";
+        return false;
+    }
+    if (nativeLuma720Double_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    if (!PrepareNativeLumaSplit(gpu) || !PrepareNativeLumaFinal(gpu))
+        return false;
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device)
+    {
+        error_ = "NGU 720 Double luma requires the D3D11 backend";
+        return false;
+    }
+    const std::string vertexText = LoadBundledText(L"shaders\\Ngu\\luma_1080_split.hlsl", 64 * 1024);
+    const std::string initialText = LoadBundledText(L"shaders\\Ngu\\luma_1080_cubici1.hlsl", 256 * 1024);
+    const auto splitCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_split.cso", 0);
+    const auto layerCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_layer.cso", 0);
+    const auto denseCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense.cso", 0);
+    const auto scaleXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_720_scale_x.cso", 0);
+    const auto scaleYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_720_scale_y.cso", 0);
+    const auto cbcrScaleXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_x.cso", 0);
+    const auto cbcrScaleYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_y.cso", 0);
+    const auto addCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add.cso", 0);
+    const auto mergeCso = LoadBundledBytes(L"shaders\\Ngu\\luma_720_merge.cso", 0);
+    const auto initialConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cubici1_constants.bin", 32 * 16);
+    const auto layerConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_layer_constants.bin", 15 * 111 * 16);
+    const auto denseConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_dense_constants.bin", 51 * 16);
+    const auto scaleXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_scale_x_constants.bin", 2 * 16);
+    const auto scaleYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_scale_y_constants.bin", 2 * 16);
+    const auto cbcrXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_x_constants.bin", 2 * 16);
+    const auto cbcrYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_y_constants.bin", 2 * 16);
+    const auto cbcrXTable = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_x_table.bin", 81920);
+    const auto cbcrYTable = LoadBundledBytes(L"shaders\\Ngu\\luma_720_cbcr_y_table.bin", 46080);
+    const auto addConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_add_constants.bin", 2 * 16);
+    const auto mergeConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_720_merge_constants.bin", 2 * 16);
+    if (vertexText.empty() || initialText.empty() || splitCso.empty() || layerCso.empty() || denseCso.empty() ||
+        scaleXCso.empty() || scaleYCso.empty() || cbcrScaleXCso.empty() || cbcrScaleYCso.empty() || addCso.empty() ||
+        mergeCso.empty() || initialConstants.empty() || layerConstants.empty() || denseConstants.empty() ||
+        scaleXConstants.empty() || scaleYConstants.empty() || cbcrXConstants.empty() || cbcrYConstants.empty() ||
+        cbcrXTable.empty() || cbcrYTable.empty() || addConstants.empty() || mergeConstants.empty())
+    {
+        error_ = "NGU 720 Double luma assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, initialBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    HRESULT hr = D3DCompile(vertexText.data(),
+                            vertexText.size(),
+                            "NGU_Luma720_Vertex",
+                            nullptr,
+                            nullptr,
+                            "VSMain",
+                            "vs_5_0",
+                            flags,
+                            0,
+                            &vertexBlob,
+                            &errors);
+    if (FAILED(hr))
+    {
+        error_ = "NGU 720 Double vertex shader failed";
+        return false;
+    }
+    errors.Reset();
+    hr = D3DCompile(initialText.data(),
+                    initialText.size(),
+                    "NGU_Luma720_Cubici1",
+                    nullptr,
+                    nullptr,
+                    "PSMain",
+                    "ps_5_0",
+                    flags,
+                    0,
+                    &initialBlob,
+                    &errors);
+    if (FAILED(hr))
+    {
+        error_ = "NGU 720 Double initial shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeLuma720Double>();
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(splitCso.data(), splitCso.size(), nullptr, &state->split)) ||
+        FAILED(device->CreatePixelShader(
+            initialBlob->GetBufferPointer(), initialBlob->GetBufferSize(), nullptr, &state->initial)) ||
+        FAILED(device->CreatePixelShader(layerCso.data(), layerCso.size(), nullptr, &state->layer)) ||
+        FAILED(device->CreatePixelShader(denseCso.data(), denseCso.size(), nullptr, &state->dense)) ||
+        FAILED(device->CreatePixelShader(scaleXCso.data(), scaleXCso.size(), nullptr, &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(scaleYCso.data(), scaleYCso.size(), nullptr, &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(cbcrScaleXCso.data(), cbcrScaleXCso.size(), nullptr, &state->cbcrScaleX)) ||
+        FAILED(device->CreatePixelShader(cbcrScaleYCso.data(), cbcrScaleYCso.size(), nullptr, &state->cbcrScaleY)) ||
+        FAILED(device->CreatePixelShader(addCso.data(), addCso.size(), nullptr, &state->add)) ||
+        FAILED(device->CreatePixelShader(mergeCso.data(), mergeCso.size(), nullptr, &state->merge)))
+    {
+        error_ = "NGU 720 Double shader objects could not be created";
+        return false;
+    }
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(initialConstants, state->initialConstants) ||
+        !createConstants(denseConstants, state->denseConstants) ||
+        !createConstants(scaleXConstants, state->scaleXConstants) ||
+        !createConstants(scaleYConstants, state->scaleYConstants) ||
+        !createConstants(cbcrXConstants, state->chromaXConstants) ||
+        !createConstants(cbcrYConstants, state->chromaYConstants) ||
+        !createConstants(addConstants, state->addConstants) || !createConstants(mergeConstants, state->mergeConstants))
+    {
+        error_ = "NGU 720 Double constants could not be created";
+        return false;
+    }
+    for (size_t layer = 0; layer < state->layerConstants.size(); ++layer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = 111 * 16;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = layerConstants.data() + layer * desc.ByteWidth;
+        if (FAILED(device->CreateBuffer(&desc, &data, &state->layerConstants[layer])))
+        {
+            error_ = "NGU 720 Double layer constants could not be created";
+            return false;
+        }
+    }
+
+    auto createTexture = [&](UINT width,
+                             UINT height,
+                             DXGI_FORMAT format,
+                             ComPtr<ID3D11Texture2D>& texture,
+                             ComPtr<ID3D11RenderTargetView>& view,
+                             ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
+    };
+    if (!createTexture(1280,
+                       720,
+                       DXGI_FORMAT_R16_UNORM,
+                       state->splitLumaTexture,
+                       state->splitLumaView,
+                       state->splitLumaShaderView) ||
+        !createTexture(1280,
+                       720,
+                       DXGI_FORMAT_R16G16_UNORM,
+                       state->splitCbCrTexture,
+                       state->splitCbCrView,
+                       state->splitCbCrShaderView))
+    {
+        error_ = "NGU 720 Double split surfaces could not be created";
+        return false;
+    }
+    for (size_t index = 0; index < 3; ++index)
+    {
+        if (!createTexture(1280,
+                           720,
+                           DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           state->initialTextures[index],
+                           state->initialViews[index],
+                           state->initialShaderViews[index]))
+        {
+            error_ = "NGU 720 Double initial surfaces could not be created";
+            return false;
+        }
+    }
+    for (size_t set = 0; set < 2; ++set)
+        for (size_t feature = 0; feature < 3; ++feature)
+            if (!createTexture(1280,
+                               720,
+                               DXGI_FORMAT_R16G16B16A16_FLOAT,
+                               state->layerTextures[set][feature],
+                               state->layerViews[set][feature],
+                               state->layerShaderViews[set][feature]))
+            {
+                error_ = "NGU 720 Double layer surfaces could not be created";
+                return false;
+            }
+    if (!createTexture(
+            1282, 722, DXGI_FORMAT_R16G16B16A16_FLOAT, state->denseTexture, state->denseView, state->denseShaderView) ||
+        !createTexture(
+            2560, 720, DXGI_FORMAT_R16_UNORM, state->scaleXTexture, state->scaleXView, state->scaleXShaderView) ||
+        !createTexture(
+            2560, 1440, DXGI_FORMAT_R16_UNORM, state->scaleYTexture, state->scaleYView, state->scaleYShaderView) ||
+        !createTexture(2560,
+                       720,
+                       DXGI_FORMAT_R16G16B16A16_UNORM,
+                       state->chromaXTexture,
+                       state->chromaXView,
+                       state->chromaXShaderView) ||
+        !createTexture(2560,
+                       1440,
+                       DXGI_FORMAT_R16G16B16A16_UNORM,
+                       state->chromaYTexture,
+                       state->chromaYView,
+                       state->chromaYShaderView) ||
+        !createTexture(2560, 1440, DXGI_FORMAT_R16_UNORM, state->addTexture, state->addView, state->addShaderView) ||
+        !createTexture(
+            2560, 1440, DXGI_FORMAT_R16G16B16A16_UNORM, state->mergeTexture, state->mergeView, state->mergeShaderView))
+    {
+        error_ = "NGU 720 Double output surfaces could not be created";
+        return false;
+    }
+
+    auto createTable = [&](const std::vector<uint8_t>& bytes,
+                           int height,
+                           ComPtr<ID3D11Texture2D>& texture,
+                           ComPtr<ID3D11ShaderResourceView>& view)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = 4;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        data.SysMemPitch = 4 * sizeof(float) * 2;
+        return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &view));
+    };
+    if (!createTable(cbcrXTable, 2560, state->cbcrXTable, state->cbcrXTableView) ||
+        !createTable(cbcrYTable, 1440, state->cbcrYTable, state->cbcrYTableView))
+    {
+        error_ = "NGU 720 Double CbCr scale tables could not be created";
+        return false;
+    }
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU 720 Double sampler could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU 720 Double rasterizer could not be created";
+        return false;
+    }
+
+    nativeLuma720Double_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma720Double;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::PrepareNativeLuma720DoubleHighBit(pl_gpu gpu)
+{
+    if (!gpu)
+    {
+        error_ = "NGU P010 720p Double requires a GPU";
+        return false;
+    }
+    if (nativeLuma720DoubleHighBit_ && gpu == gpu_)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    if (!PrepareNativeChromaNetwork(gpu) || !PrepareNativeLuma720Double(gpu) || !PrepareNativeLumaFinal(gpu))
+        return false;
+
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device || !nativeChromaNetwork_ || !nativeLuma720Double_)
+    {
+        error_ = "NGU P010 720p Double requires the D3D11 backend";
+        return false;
+    }
+
+    const std::string vertexText = LoadBundledText(L"shaders\\Ngu\\luma_720_highbit_split.hlsl", 64 * 1024);
+    const auto splitBytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_split.cso", 0);
+    const auto layer6140Bytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_6140.cso", 0);
+    const auto layer4280Bytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_4280.cso", 0);
+    const auto dense1528Bytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_1528.cso", 0);
+    const auto toRgbBytecode = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_to_rgb.cso", 0);
+    const auto constants6140 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_6140_constants.bin", 220 * 16);
+    const auto constants4280_0 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_4280_0_constants.bin", 148 * 16);
+    const auto constants4280_1 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_4280_1_constants.bin", 148 * 16);
+    const auto constants4280_2 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_4280_2_constants.bin", 148 * 16);
+    const auto constants1528 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_1528_constants.bin", 35 * 16);
+    const auto constantsToRgb = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_to_rgb_constants.bin", 2 * 16);
+    const auto constantsAdd = LoadBundledBytes(L"shaders\\Ngu\\ngu_highbit_720_add_0_constants.bin", 2 * 16);
+    const auto constants1672 = LoadBundledBytes(L"shaders\\Ngu\\ngu_highbit_720_1672_constants.bin", 42 * 16);
+    const auto constantsInitial0 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_1412_0_constants.bin", 32 * 16);
+    const auto constantsInitial1 = LoadBundledBytes(L"shaders\\Ngu\\luma_720_highbit_1412_1_constants.bin", 32 * 16);
+    const auto constantsLumaDense = LoadBundledBytes(L"shaders\\Ngu\\ngu_highbit_720_dense_constants.bin", 67 * 16);
+    if (vertexText.empty() || splitBytecode.empty() || layer6140Bytecode.empty() || layer4280Bytecode.empty() ||
+        dense1528Bytecode.empty() || toRgbBytecode.empty() || constants6140.empty() || constants4280_0.empty() ||
+        constants4280_1.empty() || constants4280_2.empty() || constants1528.empty() || constantsToRgb.empty() ||
+        constantsAdd.empty() || constants1672.empty() || constantsInitial0.empty() || constantsInitial1.empty() ||
+        constantsLumaDense.empty())
+    {
+        error_ = "NGU P010 720p Double assets are unavailable";
+        return false;
+    }
+
+    ComPtr<ID3DBlob> vertexBlob, errors;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    if (FAILED(D3DCompile(vertexText.data(),
+                          vertexText.size(),
+                          "NGU_HighBit720_Vertex",
+                          nullptr,
+                          nullptr,
+                          "VSMain",
+                          "vs_5_0",
+                          flags,
+                          0,
+                          &vertexBlob,
+                          &errors)))
+    {
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU P010 720p Double vertex shader failed";
+        return false;
+    }
+
+    ID3D11Device* device = d3d->device;
+    auto state = std::make_unique<NativeLuma720DoubleHighBit>();
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            splitBytecode.data(), static_cast<SIZE_T>(splitBytecode.size()), nullptr, &state->split)) ||
+        FAILED(device->CreatePixelShader(
+            layer6140Bytecode.data(), static_cast<SIZE_T>(layer6140Bytecode.size()), nullptr, &state->layer6140)) ||
+        FAILED(device->CreatePixelShader(
+            layer4280Bytecode.data(), static_cast<SIZE_T>(layer4280Bytecode.size()), nullptr, &state->layer4280)) ||
+        FAILED(device->CreatePixelShader(
+            dense1528Bytecode.data(), static_cast<SIZE_T>(dense1528Bytecode.size()), nullptr, &state->dense1528)) ||
+        FAILED(device->CreatePixelShader(
+            toRgbBytecode.data(), static_cast<SIZE_T>(toRgbBytecode.size()), nullptr, &state->toRgb)))
+    {
+        error_ = "NGU P010 720p Double shader objects could not be created";
+        return false;
+    }
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(constants6140, state->constants6140) ||
+        !createConstants(constants4280_0, state->constants4280[0]) ||
+        !createConstants(constants4280_1, state->constants4280[1]) ||
+        !createConstants(constants4280_2, state->constants4280[2]) ||
+        !createConstants(constants1528, state->constants1528) ||
+        !createConstants(constantsToRgb, state->constantsToRgb) ||
+        !createConstants(constantsAdd, state->constantsAdd) || !createConstants(constants1672, state->constants1672) ||
+        !createConstants(constantsInitial0, state->initialConstants[0]) ||
+        !createConstants(constantsInitial1, state->initialConstants[1]) ||
+        !createConstants(constantsLumaDense, state->constantsLumaDense))
+    {
+        error_ = "NGU P010 720p Double constants could not be created";
+        return false;
+    }
+    for (int layer = 0; layer < 28; ++layer)
+    {
+        wchar_t filename[96] = {};
+        swprintf_s(filename, L"shaders\\Ngu\\ngu_highbit_720_layer_%02d_constants.bin", layer);
+        const auto bytes = LoadBundledBytes(filename, 147 * 16);
+        if (bytes.empty() || !createConstants(bytes, state->constantsLumaLayer[size_t(layer)]))
+        {
+            error_ = "NGU P010 720p Double layer constants could not be created";
+            return false;
+        }
+    }
+
+    auto createSurface = [&](UINT width, UINT height, DXGI_FORMAT format, NativeLuma720DoubleHighBit::Surface& surface)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &surface.texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(surface.texture.Get(), nullptr, &surface.view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(surface.texture.Get(), nullptr, &surface.shaderView));
+    };
+    for (size_t index = 0; index < 3; ++index)
+    {
+        if (!createSurface(1280, 720, DXGI_FORMAT_R16_UNORM, state->splitSource[index]) ||
+            !createSurface(2560, 720, DXGI_FORMAT_R16_UNORM, state->upX[index]) ||
+            !createSurface(2560, 1440, DXGI_FORMAT_R16_UNORM, state->upY[index]))
+        {
+            error_ = "NGU P010 720p Double plane surfaces could not be created";
+            return false;
+        }
+    }
+    for (size_t index = 0; index < 2; ++index)
+    {
+        if (!createSurface(2560, 1440, DXGI_FORMAT_R16_UNORM, state->chromaResult[index]))
+        {
+            error_ = "NGU P010 720p Double chroma result surfaces could not be created";
+            return false;
+        }
+    }
+    for (size_t index = 0; index < 4; ++index)
+    {
+        if (!createSurface(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT, state->lumaInitial[index]))
+        {
+            error_ = "NGU P010 720p Double luma initial surfaces could not be created";
+            return false;
+        }
+        for (size_t set = 0; set < 2; ++set)
+        {
+            if (!createSurface(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT, state->lumaGroups[set][index]))
+            {
+                error_ = "NGU P010 720p Double luma group surfaces could not be created";
+                return false;
+            }
+        }
+    }
+    for (size_t index = 0; index < 3; ++index)
+    {
+        if (!createSurface(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT, state->chromaInitial[index]))
+        {
+            error_ = "NGU P010 720p Double chroma initial surfaces could not be created";
+            return false;
+        }
+    }
+    for (size_t index = 0; index < 2; ++index)
+    {
+        if (!createSurface(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT, state->chromaA[index]) ||
+            !createSurface(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT, state->chromaB[index]))
+        {
+            error_ = "NGU P010 720p Double chroma work surfaces could not be created";
+            return false;
+        }
+    }
+    if (!createSurface(1282, 722, DXGI_FORMAT_R16G16B16A16_FLOAT, state->lumaDense) ||
+        !createSurface(1282, 722, DXGI_FORMAT_R16G16B16A16_FLOAT, state->chromaDense[0]) ||
+        !createSurface(1282, 722, DXGI_FORMAT_R16G16B16A16_FLOAT, state->chromaDense[1]) ||
+        !createSurface(2560, 1440, DXGI_FORMAT_R16G16B16A16_UNORM, state->rgb))
+    {
+        error_ = "NGU P010 720p Double dense or RGB surfaces could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
+    {
+        error_ = "NGU P010 720p Double sampler could not be created";
+        return false;
+    }
+    D3D11_RASTERIZER_DESC rasterizerDesc = {};
+    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.ScissorEnable = FALSE;
+    rasterizerDesc.DepthClipEnable = TRUE;
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
+    {
+        error_ = "NGU P010 720p Double rasterizer could not be created";
+        return false;
+    }
+
+    nativeLuma720DoubleHighBit_ = std::move(state);
+    gpu_ = gpu;
+    cached_.quality = NguQuality::VeryHigh;
+    cached_.stage = NguScalerStage::VeryHighLuma720Double;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma720DoubleHighBit(ID3D11ShaderResourceView* sourceRgb, ID3D11RenderTargetView* finalOutput)
+{
+    const bool preFinalRgb16 =
+        finalOutput && ViewMatchesTexture(finalOutput, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440);
+    if (!nativeLuma720DoubleHighBit_ || !nativeLuma720Double_ || !nativeChromaNetwork_ || !sourceRgb || !finalOutput ||
+        !ViewMatchesTexture(sourceRgb, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        (!preFinalRgb16 && !ViewMatchesRgb8(finalOutput, 2560, 1440)))
+    {
+        error_ = "NGU P010 720p Double request is outside the captured path";
+        return false;
+    }
+    auto& state = *nativeLuma720DoubleHighBit_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+
+    ID3D11RenderTargetView* splitTargets[3] = {
+        state.splitSource[0].view.Get(), state.splitSource[1].view.Get(), state.splitSource[2].view.Get()};
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.split.Get(),
+                  nullptr,
+                  state.rasterizer.Get(),
+                  &sourceRgb,
+                  1,
+                  splitTargets,
+                  3,
+                  1280,
+                  720,
+                  state.pointSampler.Get());
+
+    auto upscale = [&](size_t channel)
+    {
+        ID3D11ShaderResourceView* input = state.splitSource[channel].shaderView.Get();
+        ID3D11RenderTargetView* target = state.upX[channel].view.Get();
+        DrawD3D11Pass(device,
+                      nativeLuma720Double_->vertex.Get(),
+                      nativeLuma720Double_->scaleX.Get(),
+                      nativeLuma720Double_->scaleXConstants.Get(),
+                      nativeLuma720Double_->rasterizer.Get(),
+                      &input,
+                      1,
+                      &target,
+                      1,
+                      2560,
+                      720,
+                      nativeLuma720Double_->pointSampler.Get());
+        input = state.upX[channel].shaderView.Get();
+        target = state.upY[channel].view.Get();
+        DrawD3D11Pass(device,
+                      nativeLuma720Double_->vertex.Get(),
+                      nativeLuma720Double_->scaleY.Get(),
+                      nativeLuma720Double_->scaleYConstants.Get(),
+                      nativeLuma720Double_->rasterizer.Get(),
+                      &input,
+                      1,
+                      &target,
+                      1,
+                      2560,
+                      1440,
+                      nativeLuma720Double_->pointSampler.Get());
+    };
+    upscale(0);
+    upscale(1);
+    upscale(2);
+
+    ID3D11RenderTargetView* lumaInitialTargets[4] = {state.lumaInitial[0].view.Get(),
+                                                     state.lumaInitial[1].view.Get(),
+                                                     state.lumaInitial[2].view.Get(),
+                                                     state.lumaInitial[3].view.Get()};
+    ID3D11ShaderResourceView* splitY = state.splitSource[0].shaderView.Get();
+    DrawD3D11Pass(device,
+                  nativeChromaNetwork_->vertex.Get(),
+                  nativeChromaNetwork_->cubici2.Get(),
+                  state.constants1672.Get(),
+                  nativeChromaNetwork_->rasterizer.Get(),
+                  &splitY,
+                  1,
+                  lumaInitialTargets,
+                  4,
+                  1280,
+                  720);
+
+    std::array<ID3D11ShaderResourceView*, 4> current = {state.lumaInitial[0].shaderView.Get(),
+                                                        state.lumaInitial[1].shaderView.Get(),
+                                                        state.lumaInitial[2].shaderView.Get(),
+                                                        state.lumaInitial[3].shaderView.Get()};
+    for (int layer = 0; layer < 28; ++layer)
+    {
+        const size_t set = size_t((layer / 4) % 2);
+        const size_t feature = size_t(layer % 4);
+        ID3D11RenderTargetView* target = state.lumaGroups[set][feature].view.Get();
+        DrawD3D11Pass(device,
+                      nativeChromaNetwork_->vertex.Get(),
+                      nativeChromaNetwork_->layer.Get(),
+                      state.constantsLumaLayer[size_t(layer)].Get(),
+                      nativeChromaNetwork_->rasterizer.Get(),
+                      current.data(),
+                      4,
+                      &target,
+                      1,
+                      1280,
+                      720);
+        if (feature == 3)
+        {
+            for (size_t index = 0; index < current.size(); ++index)
+                current[index] = state.lumaGroups[set][index].shaderView.Get();
+        }
+    }
+    ID3D11RenderTargetView* lumaDenseTarget = state.lumaDense.view.Get();
+    DrawD3D11Pass(device,
+                  nativeChromaNetwork_->vertex.Get(),
+                  nativeChromaNetwork_->dense.Get(),
+                  state.constantsLumaDense.Get(),
+                  nativeChromaNetwork_->rasterizer.Get(),
+                  current.data(),
+                  4,
+                  &lumaDenseTarget,
+                  1,
+                  1282,
+                  722);
+
+    for (size_t outputChannel = 0; outputChannel < 2; ++outputChannel)
+    {
+        const size_t inputChannel = outputChannel + 1;
+        ID3D11RenderTargetView* initialTargets[3] = {
+            state.chromaInitial[0].view.Get(), state.chromaInitial[1].view.Get(), state.chromaInitial[2].view.Get()};
+        ID3D11ShaderResourceView* channelInput = state.splitSource[inputChannel].shaderView.Get();
+        DrawD3D11Pass(device,
+                      nativeLuma720Double_->vertex.Get(),
+                      nativeLuma720Double_->initial.Get(),
+                      state.initialConstants[outputChannel].Get(),
+                      nativeLuma720Double_->rasterizer.Get(),
+                      &channelInput,
+                      1,
+                      initialTargets,
+                      3,
+                      1280,
+                      720);
+
+        ID3D11ShaderResourceView* layerInputs[3] = {state.chromaInitial[0].shaderView.Get(),
+                                                    state.chromaInitial[1].shaderView.Get(),
+                                                    state.chromaInitial[2].shaderView.Get()};
+        ID3D11RenderTargetView* workTargets[2] = {state.chromaA[0].view.Get(), state.chromaA[1].view.Get()};
+        DrawD3D11Pass(device,
+                      state.vertex.Get(),
+                      state.layer6140.Get(),
+                      state.constants6140.Get(),
+                      state.rasterizer.Get(),
+                      layerInputs,
+                      3,
+                      workTargets,
+                      2,
+                      1280,
+                      720);
+
+        ID3D11ShaderResourceView* pair[2] = {state.chromaA[0].shaderView.Get(), state.chromaA[1].shaderView.Get()};
+        for (int pass = 0; pass < 3; ++pass)
+        {
+            auto& targetState = (pass == 1) ? state.chromaA : state.chromaB;
+            ID3D11RenderTargetView* targets[2] = {targetState[0].view.Get(), targetState[1].view.Get()};
+            DrawD3D11Pass(device,
+                          state.vertex.Get(),
+                          state.layer4280.Get(),
+                          state.constants4280[size_t(pass)].Get(),
+                          state.rasterizer.Get(),
+                          pair,
+                          2,
+                          targets,
+                          2,
+                          1280,
+                          720);
+            pair[0] = targetState[0].shaderView.Get();
+            pair[1] = targetState[1].shaderView.Get();
+        }
+
+        const size_t chromaIndex = outputChannel;
+        ID3D11RenderTargetView* denseChromaTarget = state.chromaDense[chromaIndex].view.Get();
+        DrawD3D11Pass(device,
+                      state.vertex.Get(),
+                      state.dense1528.Get(),
+                      state.constants1528.Get(),
+                      state.rasterizer.Get(),
+                      pair,
+                      2,
+                      &denseChromaTarget,
+                      1,
+                      1282,
+                      722,
+                      state.pointSampler.Get());
+
+        ID3D11ShaderResourceView* addInputs[2] = {state.upY[inputChannel].shaderView.Get(),
+                                                  state.chromaDense[chromaIndex].shaderView.Get()};
+        ID3D11RenderTargetView* addTarget = state.chromaResult[outputChannel].view.Get();
+        DrawD3D11Pass(device,
+                      nativeLuma720Double_->vertex.Get(),
+                      nativeLuma720Double_->add.Get(),
+                      state.constantsAdd.Get(),
+                      nativeLuma720Double_->rasterizer.Get(),
+                      addInputs,
+                      2,
+                      &addTarget,
+                      1,
+                      2560,
+                      1440,
+                      nativeLuma720Double_->pointSampler.Get());
+    }
+
+    ID3D11ShaderResourceView* toRgbInputs[4] = {state.upY[0].shaderView.Get(),
+                                                state.chromaResult[0].shaderView.Get(),
+                                                state.chromaResult[1].shaderView.Get(),
+                                                state.lumaDense.shaderView.Get()};
+    ID3D11RenderTargetView* rgbTarget = state.rgb.view.Get();
+    DrawD3D11Pass(device,
+                  state.vertex.Get(),
+                  state.toRgb.Get(),
+                  state.constantsToRgb.Get(),
+                  state.rasterizer.Get(),
+                  toRgbInputs,
+                  4,
+                  &rgbTarget,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    if (preFinalRgb16 ? !CopyTextureToTarget(gpu_, state.rgb.texture.Get(), finalOutput)
+                      : !RunNativeLumaFinal720(state.rgb.shaderView.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma720Double(ID3D11ShaderResourceView* sourceRgb,
+                                       int sourceWidth,
+                                       int sourceHeight,
+                                       ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeLuma720Double_ || !sourceRgb || !finalOutput || sourceWidth != 1280 || sourceHeight != 720 ||
+        !ViewMatchesRgb8(finalOutput, 2560, 1440))
+    {
+        error_ = "NGU 720 Double request is outside the verified path";
+        return false;
+    }
+    auto& state = *nativeLuma720Double_;
+    if (!RunNativeLuma720DoubleIntermediate(sourceRgb, sourceWidth, sourceHeight, state.mergeView.Get()))
+        return false;
+    if (!RunNativeLumaFinal720(state.mergeShaderView.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma720DoubleIntermediate(ID3D11ShaderResourceView* sourceRgb,
+                                                   int sourceWidth,
+                                                   int sourceHeight,
+                                                   ID3D11RenderTargetView* mergeOutput)
+{
+    if (!nativeLuma720Double_ || !sourceRgb || !mergeOutput || sourceWidth != 1280 || sourceHeight != 720 ||
+        !ViewMatchesTexture(mergeOutput, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440))
+    {
+        error_ = "NGU 720 Double intermediate request is outside the captured path";
+        return false;
+    }
+    auto& state = *nativeLuma720Double_;
+    if (!RunNativeLumaSplit(sourceRgb, sourceWidth, sourceHeight, state.splitLumaView.Get(), state.splitCbCrView.Get()))
+        return false;
+
+    ID3D11ShaderResourceView* initialInput = state.splitLumaShaderView.Get();
+    ID3D11RenderTargetView* initialTargets[3] = {
+        state.initialViews[0].Get(), state.initialViews[1].Get(), state.initialViews[2].Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.initial.Get(),
+                  state.initialConstants.Get(),
+                  state.rasterizer.Get(),
+                  &initialInput,
+                  1,
+                  initialTargets,
+                  3,
+                  1280,
+                  720);
+
+    std::array<ID3D11ShaderResourceView*, 3> current = {
+        state.initialShaderViews[0].Get(), state.initialShaderViews[1].Get(), state.initialShaderViews[2].Get()};
+    for (int layer = 0; layer < 15; ++layer)
+    {
+        const size_t set = size_t((layer / 3) % 2);
+        const size_t feature = size_t(layer % 3);
+        ID3D11RenderTargetView* layerTarget = state.layerViews[set][feature].Get();
+        DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                      state.vertex.Get(),
+                      state.layer.Get(),
+                      state.layerConstants[layer].Get(),
+                      state.rasterizer.Get(),
+                      current.data(),
+                      3,
+                      &layerTarget,
+                      1,
+                      1280,
+                      720);
+        if (feature == 2)
+            for (size_t index = 0; index < 3; ++index)
+                current[index] = state.layerShaderViews[set][index].Get();
+    }
+    ID3D11RenderTargetView* denseTarget = state.denseView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.dense.Get(),
+                  state.denseConstants.Get(),
+                  state.rasterizer.Get(),
+                  current.data(),
+                  3,
+                  &denseTarget,
+                  1,
+                  1282,
+                  722);
+    ID3D11ShaderResourceView* scaleInput = state.splitLumaShaderView.Get();
+    ID3D11RenderTargetView* scaleTarget = state.scaleXView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.scaleX.Get(),
+                  state.scaleXConstants.Get(),
+                  state.rasterizer.Get(),
+                  &scaleInput,
+                  1,
+                  &scaleTarget,
+                  1,
+                  2560,
+                  720,
+                  state.pointSampler.Get());
+    scaleInput = state.scaleXShaderView.Get();
+    scaleTarget = state.scaleYView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.scaleY.Get(),
+                  state.scaleYConstants.Get(),
+                  state.rasterizer.Get(),
+                  &scaleInput,
+                  1,
+                  &scaleTarget,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    ID3D11ShaderResourceView* chromaXInputs[2] = {state.splitCbCrShaderView.Get(), state.cbcrXTableView.Get()};
+    scaleTarget = state.chromaXView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.cbcrScaleX.Get(),
+                  state.chromaXConstants.Get(),
+                  state.rasterizer.Get(),
+                  chromaXInputs,
+                  2,
+                  &scaleTarget,
+                  1,
+                  2560,
+                  720,
+                  state.pointSampler.Get());
+    ID3D11ShaderResourceView* chromaYInputs[2] = {state.chromaXShaderView.Get(), state.cbcrYTableView.Get()};
+    scaleTarget = state.chromaYView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.cbcrScaleY.Get(),
+                  state.chromaYConstants.Get(),
+                  state.rasterizer.Get(),
+                  chromaYInputs,
+                  2,
+                  &scaleTarget,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    ID3D11ShaderResourceView* addInputs[2] = {state.scaleYShaderView.Get(), state.denseShaderView.Get()};
+    ID3D11RenderTargetView* addTarget = state.addView.Get();
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.add.Get(),
+                  state.addConstants.Get(),
+                  state.rasterizer.Get(),
+                  addInputs,
+                  2,
+                  &addTarget,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    ID3D11ShaderResourceView* mergeInputs[2] = {state.addShaderView.Get(), state.chromaYShaderView.Get()};
+    ID3D11RenderTargetView* mergeTarget = mergeOutput;
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.merge.Get(),
+                  state.mergeConstants.Get(),
+                  state.rasterizer.Get(),
+                  mergeInputs,
+                  2,
+                  &mergeTarget,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLuma720Merge(ID3D11ShaderResourceView* luma,
+                                      ID3D11ShaderResourceView* cbcr,
+                                      ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma720Double_ || !luma || !cbcr || !output ||
+        !ViewMatchesTexture(luma, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440) ||
+        !ViewMatchesTexture(cbcr, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440))
+    {
+        error_ = "NGU 720 Double merge request is outside the captured path";
+        return false;
+    }
+    auto& state = *nativeLuma720Double_;
+    ID3D11ShaderResourceView* inputs[2] = {luma, cbcr};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  state.vertex.Get(),
+                  state.merge.Get(),
+                  state.mergeConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
+                  &output,
+                  1,
+                  2560,
+                  1440,
+                  state.pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma720DoubleSurface(Ngu720DoubleSurface surface, ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma720Double_ || !output)
+    {
+        error_ = "NGU 720 Double surface copy is unavailable";
+        return false;
+    }
+    auto& state = *nativeLuma720Double_;
+    ID3D11Texture2D* source = nullptr;
+    switch (surface)
+    {
+    case Ngu720DoubleSurface::SplitLuma:
+        source = state.splitLumaTexture.Get();
+        break;
+    case Ngu720DoubleSurface::SplitCbCr:
+        source = state.splitCbCrTexture.Get();
+        break;
+    case Ngu720DoubleSurface::ScaleX:
+        source = state.scaleXTexture.Get();
+        break;
+    case Ngu720DoubleSurface::ScaleY:
+        source = state.scaleYTexture.Get();
+        break;
+    case Ngu720DoubleSurface::Initial0:
+        source = state.initialTextures[0].Get();
+        break;
+    case Ngu720DoubleSurface::Initial1:
+        source = state.initialTextures[1].Get();
+        break;
+    case Ngu720DoubleSurface::Initial2:
+        source = state.initialTextures[2].Get();
+        break;
+    case Ngu720DoubleSurface::FinalLayer0:
+        source = state.layerTextures[0][0].Get();
+        break;
+    case Ngu720DoubleSurface::FinalLayer1:
+        source = state.layerTextures[0][1].Get();
+        break;
+    case Ngu720DoubleSurface::FinalLayer2:
+        source = state.layerTextures[0][2].Get();
+        break;
+    case Ngu720DoubleSurface::Dense:
+        source = state.denseTexture.Get();
+        break;
+    case Ngu720DoubleSurface::Add:
+        source = state.addTexture.Get();
+        break;
+    case Ngu720DoubleSurface::ChromaX:
+        source = state.chromaXTexture.Get();
+        break;
+    case Ngu720DoubleSurface::ChromaY:
+        source = state.chromaYTexture.Get();
+        break;
+    case Ngu720DoubleSurface::Merge:
+        source = state.mergeTexture.Get();
+        break;
+    }
+    if (!source)
+    {
+        error_ = "NGU 720 Double surface does not exist";
+        return false;
+    }
+    ID3D11Resource* destination = nullptr;
+    output->GetResource(&destination);
+    if (!destination)
+    {
+        error_ = "NGU 720 Double destination resource is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11DeviceContext> context;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(context.GetAddressOf());
+    context->CopyResource(destination, source);
+    destination->Release();
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma720DoubleHighBitRgb(ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma720DoubleHighBit_ || !output || !nativeLuma720DoubleHighBit_->rgb.texture ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 2560, 1440))
+    {
+        error_ = "NGU P010 720p Double RGB surface copy is unavailable";
+        return false;
+    }
+    ID3D11Resource* destination = nullptr;
+    output->GetResource(&destination);
+    if (!destination)
+    {
+        error_ = "NGU P010 720p Double RGB destination is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11DeviceContext> context;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(context.GetAddressOf());
+    context->CopyResource(destination, nativeLuma720DoubleHighBit_->rgb.texture.Get());
+    destination->Release();
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::CopyNativeLuma720DoubleHighBitSurface(NguHighBit720Surface surface, ID3D11RenderTargetView* output)
+{
+    if (!nativeLuma720DoubleHighBit_ || !output)
+    {
+        error_ = "NGU P010 720p Double surface copy is unavailable";
+        return false;
+    }
+    auto& state = *nativeLuma720DoubleHighBit_;
+    ID3D11Texture2D* source = nullptr;
+    switch (surface)
+    {
+    case NguHighBit720Surface::SplitY:
+        source = state.splitSource[0].texture.Get();
+        break;
+    case NguHighBit720Surface::SplitCb:
+        source = state.splitSource[1].texture.Get();
+        break;
+    case NguHighBit720Surface::SplitCr:
+        source = state.splitSource[2].texture.Get();
+        break;
+    case NguHighBit720Surface::UpscaledY:
+        source = state.upY[0].texture.Get();
+        break;
+    case NguHighBit720Surface::UpscaledCb:
+        source = state.upY[1].texture.Get();
+        break;
+    case NguHighBit720Surface::UpscaledCr:
+        source = state.upY[2].texture.Get();
+        break;
+    case NguHighBit720Surface::LumaResidual:
+        source = state.lumaDense.texture.Get();
+        break;
+    case NguHighBit720Surface::ChromaResidualCb:
+        source = state.chromaDense[0].texture.Get();
+        break;
+    case NguHighBit720Surface::ChromaResidualCr:
+        source = state.chromaDense[1].texture.Get();
+        break;
+    case NguHighBit720Surface::ChromaCb:
+        source = state.chromaResult[0].texture.Get();
+        break;
+    case NguHighBit720Surface::ChromaCr:
+        source = state.chromaResult[1].texture.Get();
+        break;
+    case NguHighBit720Surface::Rgb:
+        source = state.rgb.texture.Get();
+        break;
+    }
+    if (!source)
+    {
+        error_ = "NGU P010 720p Double surface does not exist";
+        return false;
+    }
+    ID3D11Resource* destination = nullptr;
+    output->GetResource(&destination);
+    if (!destination)
+    {
+        error_ = "NGU P010 720p Double surface destination is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11DeviceContext> context;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(context.GetAddressOf());
+    context->CopyResource(destination, source);
+    destination->Release();
     error_ = "";
     return true;
 }
@@ -6120,31 +7354,36 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     const auto diffCso = LoadBundledBytes(L"shaders\\Ngu\\superres_diff.cso", 0);
     const auto toRgbMainCso = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main.cso", 0);
     const auto toRgbBaseCso = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base.cso", 0);
-    const auto downXConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_constants.bin", 2 * sizeof(float) * 4);
-    const auto downYConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_constants.bin", 2 * sizeof(float) * 4);
+    const auto downXConstants = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_constants.bin", 2 * sizeof(float) * 4);
+    const auto downYConstants = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_constants.bin", 2 * sizeof(float) * 4);
     const auto toRgbMainConstants =
         LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants.bin", 2 * sizeof(float) * 4);
     const auto toRgbBaseConstants =
         LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants.bin", 6 * sizeof(float) * 4);
     const auto toRgbBaseConstantsP010 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_p010.bin",
-                         6 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_p010.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsHdr =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants_hdr.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsHdr =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_hdr.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsHlg =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants_hlg.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsHlg =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_hlg.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsBt709Pq =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_constants_bt709pq.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsBt709Pq =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_constants_bt709pq.bin", 6 * sizeof(float) * 4);
     const auto downXTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_table.bin", 4 * 640 * 8);
     const auto downYTable = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_table.bin", 4 * 360 * 8);
     const auto uvLut = LoadBundledBytes(L"shaders\\Ngu\\superres_uv_lut.bin", 2048 * 8);
-    const auto downXUvLut =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_uv_lut.bin", (640 + 720) * 8);
-    const auto downYUvLut =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_uv_lut.bin", (640 + 360) * 8);
+    const auto downXUvLut = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_uv_lut.bin", (640 + 720) * 8);
+    const auto downYUvLut = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_uv_lut.bin", (640 + 360) * 8);
     const auto downXCso1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_down_x_1080.cso", 0);
     const auto downYCso1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_down_y_1080.cso", 0);
     const auto diffCso1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_diff_1080.cso", 0);
-    const auto toRgbMainCso1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_1080.cso", 0);
-    const auto toRgbBaseCso1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_1080.cso", 0);
+    const auto toRgbMainCso1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_main_1080.cso", 0);
+    const auto toRgbBaseCso1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_asm_base_1080.cso", 0);
     const auto downXConstants1080 =
         LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_constants.bin", 2 * sizeof(float) * 4);
     const auto downYConstants1080 =
@@ -6154,32 +7393,37 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     const auto toRgbBaseConstants1080 =
         LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants.bin", 6 * sizeof(float) * 4);
     const auto toRgbBaseConstantsP0101080 =
-        LoadBundledBytes(
-            L"shaders\\Ngu\\superres_1080_asm_base_constants_p010.bin",
-            6 * sizeof(float) * 4);
-    const auto downXTable1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_table.bin", 4 * 960 * 8);
-    const auto downYTable1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_y_table.bin", 4 * 540 * 8);
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants_p010.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsHdr1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_main_constants_hdr.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsHdr1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants_hdr.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsHlg1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_main_constants_hlg.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsHlg1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants_hlg.bin", 6 * sizeof(float) * 4);
+    const auto toRgbMainConstantsBt709Pq1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_main_constants_bt709pq.bin", 2 * sizeof(float) * 4);
+    const auto toRgbBaseConstantsBt709Pq1080 =
+        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_asm_base_constants_bt709pq.bin", 6 * sizeof(float) * 4);
+    const auto downXTable1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_table.bin", 4 * 960 * 8);
+    const auto downYTable1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_y_table.bin", 4 * 540 * 8);
     const auto uvLut1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_1080_uv_lut.bin", 4096 * 8);
-    const auto downXUvLut1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_uv_lut.bin", (960 + 1080) * 8);
-    const auto downYUvLut1080 =
-        LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_y_uv_lut.bin", (960 + 540) * 8);
-    if (vertexText.empty() || downXCso.empty() || downYCso.empty() || diffCso.empty() ||
-        toRgbMainCso.empty() || toRgbBaseCso.empty() ||
-        downXConstants.empty() ||
-        downYConstants.empty() || toRgbMainConstants.empty() || toRgbBaseConstants.empty() ||
-        toRgbBaseConstantsP010.empty() ||
-        downXTable.empty() || downYTable.empty() || uvLut.empty() ||
-        downXUvLut.empty() || downYUvLut.empty() || downXCso1080.empty() ||
-        downYCso1080.empty() || diffCso1080.empty() || toRgbMainCso1080.empty() ||
-        toRgbBaseCso1080.empty() || downXConstants1080.empty() ||
-        downYConstants1080.empty() || toRgbMainConstants1080.empty() ||
-        toRgbBaseConstants1080.empty() || downXTable1080.empty() ||
-        toRgbBaseConstantsP0101080.empty() ||
-        downYTable1080.empty() || uvLut1080.empty() || downXUvLut1080.empty() ||
-        downYUvLut1080.empty())
+    const auto downXUvLut1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_x_uv_lut.bin", (960 + 1080) * 8);
+    const auto downYUvLut1080 = LoadBundledBytes(L"shaders\\Ngu\\superres_1080_down_y_uv_lut.bin", (960 + 540) * 8);
+    if (vertexText.empty() || downXCso.empty() || downYCso.empty() || diffCso.empty() || toRgbMainCso.empty() ||
+        toRgbBaseCso.empty() || downXConstants.empty() || downYConstants.empty() || toRgbMainConstants.empty() ||
+        toRgbBaseConstants.empty() || toRgbBaseConstantsP010.empty() || toRgbMainConstantsHdr.empty() ||
+        toRgbBaseConstantsHdr.empty() || toRgbMainConstantsHlg.empty() || toRgbBaseConstantsHlg.empty() ||
+        toRgbMainConstantsBt709Pq.empty() || toRgbBaseConstantsBt709Pq.empty() || downXTable.empty() ||
+        downYTable.empty() || uvLut.empty() || downXUvLut.empty() || downYUvLut.empty() || downXCso1080.empty() ||
+        downYCso1080.empty() || diffCso1080.empty() || toRgbMainCso1080.empty() || toRgbBaseCso1080.empty() ||
+        downXConstants1080.empty() || downYConstants1080.empty() || toRgbMainConstants1080.empty() ||
+        toRgbBaseConstants1080.empty() || downXTable1080.empty() || toRgbBaseConstantsP0101080.empty() ||
+        toRgbMainConstantsHdr1080.empty() || toRgbBaseConstantsHdr1080.empty() || toRgbMainConstantsHlg1080.empty() ||
+        toRgbBaseConstantsHlg1080.empty() || toRgbMainConstantsBt709Pq1080.empty() ||
+        toRgbBaseConstantsBt709Pq1080.empty() || downYTable1080.empty() || uvLut1080.empty() ||
+        downXUvLut1080.empty() || downYUvLut1080.empty())
     {
         error_ = "NGU SuperChromaRes primitive assets are unavailable";
         return false;
@@ -6200,51 +7444,34 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU SuperChromaRes vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU SuperChromaRes vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeSuperResPrimitives>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(downXCso.data(), static_cast<SIZE_T>(downXCso.size()), nullptr, &state->downX)) ||
+        FAILED(
+            device->CreatePixelShader(downYCso.data(), static_cast<SIZE_T>(downYCso.size()), nullptr, &state->downY)) ||
+        FAILED(device->CreatePixelShader(diffCso.data(), static_cast<SIZE_T>(diffCso.size()), nullptr, &state->diff)) ||
         FAILED(device->CreatePixelShader(
-            downXCso.data(), static_cast<SIZE_T>(downXCso.size()), nullptr, &state->downX)) ||
+            toRgbMainCso.data(), static_cast<SIZE_T>(toRgbMainCso.size()), nullptr, &state->toRgbMain)) ||
         FAILED(device->CreatePixelShader(
-            downYCso.data(), static_cast<SIZE_T>(downYCso.size()), nullptr, &state->downY)) ||
+            toRgbBaseCso.data(), static_cast<SIZE_T>(toRgbBaseCso.size()), nullptr, &state->toRgbBase)) ||
         FAILED(device->CreatePixelShader(
-            diffCso.data(), static_cast<SIZE_T>(diffCso.size()), nullptr, &state->diff)) ||
-        FAILED(device->CreatePixelShader(toRgbMainCso.data(),
-                                         static_cast<SIZE_T>(toRgbMainCso.size()),
-                                         nullptr,
-                                         &state->toRgbMain)) ||
-        FAILED(device->CreatePixelShader(toRgbBaseCso.data(),
-                                         static_cast<SIZE_T>(toRgbBaseCso.size()),
-                                         nullptr,
-                                         &state->toRgbBase)) ||
-        FAILED(device->CreatePixelShader(downXCso1080.data(),
-                                         static_cast<SIZE_T>(downXCso1080.size()),
-                                         nullptr,
-                                         &state->downX1080)) ||
-        FAILED(device->CreatePixelShader(downYCso1080.data(),
-                                         static_cast<SIZE_T>(downYCso1080.size()),
-                                         nullptr,
-                                         &state->downY1080)) ||
-        FAILED(device->CreatePixelShader(diffCso1080.data(),
-                                         static_cast<SIZE_T>(diffCso1080.size()),
-                                         nullptr,
-                                         &state->diff1080)) ||
-        FAILED(device->CreatePixelShader(toRgbMainCso1080.data(),
-                                         static_cast<SIZE_T>(toRgbMainCso1080.size()),
-                                         nullptr,
-                                         &state->toRgbMain1080)) ||
-        FAILED(device->CreatePixelShader(toRgbBaseCso1080.data(),
-                                         static_cast<SIZE_T>(toRgbBaseCso1080.size()),
-                                         nullptr,
-                                         &state->toRgbBase1080)))
+            downXCso1080.data(), static_cast<SIZE_T>(downXCso1080.size()), nullptr, &state->downX1080)) ||
+        FAILED(device->CreatePixelShader(
+            downYCso1080.data(), static_cast<SIZE_T>(downYCso1080.size()), nullptr, &state->downY1080)) ||
+        FAILED(device->CreatePixelShader(
+            diffCso1080.data(), static_cast<SIZE_T>(diffCso1080.size()), nullptr, &state->diff1080)) ||
+        FAILED(device->CreatePixelShader(
+            toRgbMainCso1080.data(), static_cast<SIZE_T>(toRgbMainCso1080.size()), nullptr, &state->toRgbMain1080)) ||
+        FAILED(device->CreatePixelShader(
+            toRgbBaseCso1080.data(), static_cast<SIZE_T>(toRgbBaseCso1080.size()), nullptr, &state->toRgbBase1080)))
     {
         error_ = "NGU SuperChromaRes shader objects could not be created";
         return false;
@@ -6264,14 +7491,24 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
         !createConstants(downYConstants, state->downYConstants) ||
         !createConstants(toRgbMainConstants, state->toRgbMainConstants) ||
         !createConstants(toRgbBaseConstants, state->toRgbBaseConstants) ||
-        !createConstants(toRgbBaseConstantsP010,
-                         state->toRgbBaseConstantsP010) ||
+        !createConstants(toRgbBaseConstantsP010, state->toRgbBaseConstantsP010) ||
+        !createConstants(toRgbMainConstantsHdr, state->toRgbMainConstantsHdr) ||
+        !createConstants(toRgbBaseConstantsHdr, state->toRgbBaseConstantsHdr) ||
+        !createConstants(toRgbMainConstantsHlg, state->toRgbMainConstantsHlg) ||
+        !createConstants(toRgbBaseConstantsHlg, state->toRgbBaseConstantsHlg) ||
+        !createConstants(toRgbMainConstantsBt709Pq, state->toRgbMainConstantsBt709Pq) ||
+        !createConstants(toRgbBaseConstantsBt709Pq, state->toRgbBaseConstantsBt709Pq) ||
         !createConstants(downXConstants1080, state->downXConstants1080) ||
         !createConstants(downYConstants1080, state->downYConstants1080) ||
         !createConstants(toRgbMainConstants1080, state->toRgbMainConstants1080) ||
         !createConstants(toRgbBaseConstants1080, state->toRgbBaseConstants1080) ||
-        !createConstants(toRgbBaseConstantsP0101080,
-                         state->toRgbBaseConstantsP0101080))
+        !createConstants(toRgbBaseConstantsP0101080, state->toRgbBaseConstantsP0101080) ||
+        !createConstants(toRgbMainConstantsHdr1080, state->toRgbMainConstantsHdr1080) ||
+        !createConstants(toRgbBaseConstantsHdr1080, state->toRgbBaseConstantsHdr1080) ||
+        !createConstants(toRgbMainConstantsHlg1080, state->toRgbMainConstantsHlg1080) ||
+        !createConstants(toRgbBaseConstantsHlg1080, state->toRgbBaseConstantsHlg1080) ||
+        !createConstants(toRgbMainConstantsBt709Pq1080, state->toRgbMainConstantsBt709Pq1080) ||
+        !createConstants(toRgbBaseConstantsBt709Pq1080, state->toRgbBaseConstantsBt709Pq1080))
     {
         error_ = "NGU SuperChromaRes constants could not be created";
         return false;
@@ -6280,47 +7517,36 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     float* class3Main = reinterpret_cast<float*>(class3MainConstants.data());
     class3Main[1] = 720.0f;
     class3Main[3] = 1.0f / 720.0f;
-    if (!createConstants(class3MainConstants,
-                         state->toRgbMainConstantsClass3))
+    if (!createConstants(class3MainConstants, state->toRgbMainConstantsClass3))
     {
         error_ = "NGU class-3 SuperChromaRes main constants could not be created";
         return false;
     }
     std::vector<uint8_t> class3BaseConstants = toRgbBaseConstantsP010;
-    float* class3Base =
-        reinterpret_cast<float*>(class3BaseConstants.data());
+    float* class3Base = reinterpret_cast<float*>(class3BaseConstants.data());
     class3Base[1] = 720.0f;
     class3Base[3] = 1.0f / 720.0f;
-    if (!createConstants(class3BaseConstants,
-                         state->toRgbBaseConstantsClass3P010))
+    if (!createConstants(class3BaseConstants, state->toRgbBaseConstantsClass3P010))
     {
         error_ = "NGU class-3 SuperChromaRes base constants could not be created";
         return false;
     }
-    std::vector<uint8_t> class3MainConstants1080 =
-        toRgbMainConstants1080;
-    float* class3Main1080 =
-        reinterpret_cast<float*>(class3MainConstants1080.data());
+    std::vector<uint8_t> class3MainConstants1080 = toRgbMainConstants1080;
+    float* class3Main1080 = reinterpret_cast<float*>(class3MainConstants1080.data());
     class3Main1080[1] = 1080.0f;
     class3Main1080[3] = 1.0f / 1080.0f;
-    if (!createConstants(class3MainConstants1080,
-                         state->toRgbMainConstantsClass3_1080))
+    if (!createConstants(class3MainConstants1080, state->toRgbMainConstantsClass3_1080))
     {
-        error_ =
-            "NGU 1080p class-3 SuperChromaRes main constants could not be created";
+        error_ = "NGU 1080p class-3 SuperChromaRes main constants could not be created";
         return false;
     }
-    std::vector<uint8_t> class3BaseConstants1080 =
-        toRgbBaseConstantsP0101080;
-    float* class3Base1080 =
-        reinterpret_cast<float*>(class3BaseConstants1080.data());
+    std::vector<uint8_t> class3BaseConstants1080 = toRgbBaseConstantsP0101080;
+    float* class3Base1080 = reinterpret_cast<float*>(class3BaseConstants1080.data());
     class3Base1080[1] = 1080.0f;
     class3Base1080[3] = 1.0f / 1080.0f;
-    if (!createConstants(class3BaseConstants1080,
-                         state->toRgbBaseConstantsClass3P010_1080))
+    if (!createConstants(class3BaseConstants1080, state->toRgbBaseConstantsClass3P010_1080))
     {
-        error_ =
-            "NGU 1080p class-3 SuperChromaRes base constants could not be created";
+        error_ = "NGU 1080p class-3 SuperChromaRes base constants could not be created";
         return false;
     }
 
@@ -6346,10 +7572,8 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     };
     if (!createTable(downXTable, 640, state->downXTable, state->downXTableView) ||
         !createTable(downYTable, 360, state->downYTable, state->downYTableView) ||
-        !createTable(downXTable1080, 960,
-                     state->downXTable1080, state->downXTableView1080) ||
-        !createTable(downYTable1080, 540,
-                     state->downYTable1080, state->downYTableView1080))
+        !createTable(downXTable1080, 960, state->downXTable1080, state->downXTableView1080) ||
+        !createTable(downYTable1080, 540, state->downYTable1080, state->downYTableView1080))
     {
         error_ = "NGU SuperChromaRes tables could not be created";
         return false;
@@ -6395,10 +7619,8 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     if (!createUvLut(downXUvLut, 640 + 720, state->downXUvLut, state->downXUvLutView) ||
         !createUvLut(downYUvLut, 640 + 360, state->downYUvLut, state->downYUvLutView) ||
         !createUvLut(uvLut1080, 4096, state->uvLut1080, state->uvLutView1080) ||
-        !createUvLut(downXUvLut1080, 960 + 1080,
-                     state->downXUvLut1080, state->downXUvLutView1080) ||
-        !createUvLut(downYUvLut1080, 960 + 540,
-                     state->downYUvLut1080, state->downYUvLutView1080))
+        !createUvLut(downXUvLut1080, 960 + 1080, state->downXUvLut1080, state->downXUvLutView1080) ||
+        !createUvLut(downYUvLut1080, 960 + 540, state->downYUvLut1080, state->downYUvLutView1080))
     {
         error_ = "NGU SuperChromaRes downsample UV LUTs could not be created";
         return false;
@@ -6444,8 +7666,7 @@ bool NguScaler::PrepareNativeSuperResPrimitives(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
-                                       ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDownX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !input || !output)
     {
@@ -6470,8 +7691,7 @@ bool NguScaler::RunNativeSuperResDownX(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDownY(ID3D11ShaderResourceView* input,
-                                       ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDownY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !input || !output)
     {
@@ -6505,8 +7725,7 @@ bool NguScaler::RunNativeSuperResDiff(ID3D11ShaderResourceView* original,
         error_ = "NGU SuperChromaRes difference request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[3] = {
-        original, downsample, nativeSuperRes_->downYUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {original, downsample, nativeSuperRes_->downYUvLutView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->diff.Get(),
@@ -6523,18 +7742,16 @@ bool NguScaler::RunNativeSuperResDiff(ID3D11ShaderResourceView* original,
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDiffClass3_720(
-    ID3D11ShaderResourceView* original,
-    ID3D11ShaderResourceView* downsample,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDiffClass3_720(ID3D11ShaderResourceView* original,
+                                                ID3D11ShaderResourceView* downsample,
+                                                ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !original || !downsample || !output)
     {
         error_ = "NGU class-3 SuperChromaRes difference request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[3] = {
-        original, downsample, nativeSuperRes_->downXUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {original, downsample, nativeSuperRes_->downXUvLutView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->diff.Get(),
@@ -6551,21 +7768,16 @@ bool NguScaler::RunNativeSuperResDiffClass3_720(
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDiffClass3_1080(
-    ID3D11ShaderResourceView* original,
-    ID3D11ShaderResourceView* downsample,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDiffClass3_1080(ID3D11ShaderResourceView* original,
+                                                 ID3D11ShaderResourceView* downsample,
+                                                 ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !original || !downsample || !output)
     {
-        error_ =
-            "NGU 1080p class-3 SuperChromaRes difference request is invalid";
+        error_ = "NGU 1080p class-3 SuperChromaRes difference request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[3] = {
-        original,
-        downsample,
-        nativeSuperRes_->downXUvLutView1080.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {original, downsample, nativeSuperRes_->downXUvLutView1080.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->diff1080.Get(),
@@ -6592,12 +7804,18 @@ bool NguScaler::RunNativeSuperResToRgbMain(ID3D11ShaderResourceView* original,
         error_ = "NGU SuperChromaRes main ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11Buffer* constants = nativeSuperRes_->toRgbMainConstants.Get();
+    if (colorDomain_ == ColorDomainProfile::PqBt2020)
+        constants = nativeSuperRes_->toRgbMainConstantsHdr.Get();
+    else if (colorDomain_ == ColorDomainProfile::HlgBt2020)
+        constants = nativeSuperRes_->toRgbMainConstantsHlg.Get();
+    else if (colorDomain_ == ColorDomainProfile::PqBt709)
+        constants = nativeSuperRes_->toRgbMainConstantsBt709Pq.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbMain.Get(),
-                  nativeSuperRes_->toRgbMainConstants.Get(),
+                  constants,
                   nativeSuperRes_->rasterizer.Get(),
                   inputs,
                   4,
@@ -6625,11 +7843,15 @@ bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
         error_ = "NGU SuperChromaRes base ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView.Get()};
     ID3D11Buffer* constants =
-        p010 ? nativeSuperRes_->toRgbBaseConstantsP010.Get()
-             : nativeSuperRes_->toRgbBaseConstants.Get();
+        p010 ? nativeSuperRes_->toRgbBaseConstantsP010.Get() : nativeSuperRes_->toRgbBaseConstants.Get();
+    if (colorDomain_ == ColorDomainProfile::PqBt2020)
+        constants = nativeSuperRes_->toRgbBaseConstantsHdr.Get();
+    else if (colorDomain_ == ColorDomainProfile::HlgBt2020)
+        constants = nativeSuperRes_->toRgbBaseConstantsHlg.Get();
+    else if (colorDomain_ == ColorDomainProfile::PqBt709)
+        constants = nativeSuperRes_->toRgbBaseConstantsBt709Pq.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbBase.Get(),
@@ -6650,19 +7872,17 @@ bool NguScaler::RunNativeSuperResToRgbBase(ID3D11ShaderResourceView* original,
     return true;
 }
 
-bool NguScaler::RunNativeSuperResToRgbMainClass3(
-    ID3D11ShaderResourceView* original,
-    ID3D11ShaderResourceView* work,
-    ID3D11ShaderResourceView* difference,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResToRgbMainClass3(ID3D11ShaderResourceView* original,
+                                                 ID3D11ShaderResourceView* work,
+                                                 ID3D11ShaderResourceView* difference,
+                                                 ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !original || !work || !difference || !output)
     {
         error_ = "NGU class-3 main ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbMain.Get(),
@@ -6683,19 +7903,17 @@ bool NguScaler::RunNativeSuperResToRgbMainClass3(
     return true;
 }
 
-bool NguScaler::RunNativeSuperResToRgbBaseClass3(
-    ID3D11ShaderResourceView* original,
-    ID3D11ShaderResourceView* work,
-    ID3D11ShaderResourceView* difference,
-    ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResToRgbBaseClass3(ID3D11ShaderResourceView* original,
+                                                 ID3D11ShaderResourceView* work,
+                                                 ID3D11ShaderResourceView* difference,
+                                                 ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !original || !work || !difference || !output)
     {
         error_ = "NGU class-3 base ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbBase.Get(),
@@ -6750,16 +7968,19 @@ bool NguScaler::PrepareNativeSuperResStrength3(pl_gpu gpu)
                SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
                SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
-    if (!create(640, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->downXTexture, state->downXView, state->downXShaderView) ||
-        !create(640, 360, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->downYTexture, state->downYView, state->downYShaderView) ||
-        !create(640, 360, DXGI_FORMAT_R16G16_FLOAT,
-                state->diffTexture, state->diffView, state->diffShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->mainTexture, state->mainView, state->mainShaderView) ||
-        !create(1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->outputTexture, state->outputView, state->outputShaderView))
+    if (!create(
+            640, 720, DXGI_FORMAT_R16G16B16A16_UNORM, state->downXTexture, state->downXView, state->downXShaderView) ||
+        !create(
+            640, 360, DXGI_FORMAT_R16G16B16A16_UNORM, state->downYTexture, state->downYView, state->downYShaderView) ||
+        !create(640, 360, DXGI_FORMAT_R16G16_FLOAT, state->diffTexture, state->diffView, state->diffShaderView) ||
+        !create(
+            1280, 720, DXGI_FORMAT_R16G16B16A16_UNORM, state->mainTexture, state->mainView, state->mainShaderView) ||
+        !create(1280,
+                720,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->outputTexture,
+                state->outputView,
+                state->outputShaderView))
     {
         error_ = "NGU SuperChromaRes strength-3 scheduler surfaces could not be created";
         return false;
@@ -6778,41 +7999,24 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
                                            bool p010)
 {
     const bool mainIsRgba16 =
-        mainOriginal &&
-        ViewMatchesTexture(
-            mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
-    const bool mainIsR8 =
-        mainOriginal &&
-        ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+        mainOriginal && ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool mainIsR8 = mainOriginal && ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
     const bool baseIsRgba16 =
-        baseOriginal &&
-        ViewMatchesTexture(
-            baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
-    const bool baseIsR8 =
-        baseOriginal &&
-        ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
-    const bool diffIsBgra8 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
+        baseOriginal && ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720);
+    const bool baseIsR8 = baseOriginal && ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R8_UNORM, 1280, 720);
+    const bool diffIsBgra8 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 640, 360);
     const bool diffIsRgba16 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 640, 360);
-    const bool diffIsRg16 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_R16G16_UNORM, 640, 360);
-    if (!nativeSuperRes_ || !nativeSuperResStrength3_ || !source || !diffOriginal ||
-        !mainOriginal || !baseOriginal || !output)
+        diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 640, 360);
+    const bool diffIsRg16 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16_UNORM, 640, 360);
+    const bool diffIsRg8 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R8G8_UNORM, 640, 360);
+    if (!nativeSuperRes_ || !nativeSuperResStrength3_ || !source || !diffOriginal || !mainOriginal || !baseOriginal ||
+        !output)
     {
         error_ = "NGU SuperChromaRes strength-3 scheduler request is invalid";
         return false;
     }
-    if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
-        (!mainIsRgba16 && !mainIsR8) ||
-        (!baseIsRgba16 && !baseIsR8) ||
-        (!diffIsBgra8 && !diffIsRgba16 && !diffIsRg16) ||
+    if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) || (!mainIsRgba16 && !mainIsR8) ||
+        (!baseIsRgba16 && !baseIsR8) || (!diffIsBgra8 && !diffIsRgba16 && !diffIsRg16 && !diffIsRg8) ||
         !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
     {
         error_ = "NGU SuperChromaRes strength-3 scheduler input format or geometry is unsupported";
@@ -6823,24 +8027,17 @@ bool NguScaler::RunNativeSuperResStrength3(ID3D11ShaderResourceView* source,
     if (!RunNativeSuperResDownX(source, state.downXView.Get()) ||
         !RunNativeSuperResDownY(state.downXShaderView.Get(), state.downYView.Get()) ||
         !RunNativeSuperResDiff(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
-        !RunNativeSuperResToRgbMain(
-            mainOriginal, source, state.diffShaderView.Get(), state.mainView.Get()) ||
+        !RunNativeSuperResToRgbMain(mainOriginal, source, state.diffShaderView.Get(), state.mainView.Get()) ||
         !RunNativeSuperResDownX(state.mainShaderView.Get(), state.downXView.Get()) ||
         !RunNativeSuperResDownY(state.downXShaderView.Get(), state.downYView.Get()) ||
         !RunNativeSuperResDiff(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
-        !RunNativeSuperResToRgbBase(
-            baseOriginal,
-            state.mainShaderView.Get(),
-            state.diffShaderView.Get(),
-            output,
-            p010))
+        !RunNativeSuperResToRgbBase(baseOriginal, state.mainShaderView.Get(), state.diffShaderView.Get(), output, p010))
         return false;
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDownX1080(ID3D11ShaderResourceView* input,
-                                           ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDownX1080(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !input || !output)
     {
@@ -6865,8 +8062,7 @@ bool NguScaler::RunNativeSuperResDownX1080(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeSuperResDownY1080(ID3D11ShaderResourceView* input,
-                                           ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeSuperResDownY1080(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
     if (!nativeSuperRes_ || !input || !output)
     {
@@ -6900,8 +8096,7 @@ bool NguScaler::RunNativeSuperResDiff1080(ID3D11ShaderResourceView* original,
         error_ = "NGU 1080p SuperChromaRes difference request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[3] = {
-        original, downsample, nativeSuperRes_->downYUvLutView1080.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {original, downsample, nativeSuperRes_->downYUvLutView1080.Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->diff1080.Get(),
@@ -6928,12 +8123,18 @@ bool NguScaler::RunNativeSuperResToRgbMain1080(ID3D11ShaderResourceView* origina
         error_ = "NGU 1080p SuperChromaRes main ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView1080.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView1080.Get()};
+    ID3D11Buffer* constants = nativeSuperRes_->toRgbMainConstants1080.Get();
+    if (colorDomain_ == ColorDomainProfile::PqBt2020)
+        constants = nativeSuperRes_->toRgbMainConstantsHdr1080.Get();
+    else if (colorDomain_ == ColorDomainProfile::HlgBt2020)
+        constants = nativeSuperRes_->toRgbMainConstantsHlg1080.Get();
+    else if (colorDomain_ == ColorDomainProfile::PqBt709)
+        constants = nativeSuperRes_->toRgbMainConstantsBt709Pq1080.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbMain1080.Get(),
-                  nativeSuperRes_->toRgbMainConstants1080.Get(),
+                  constants,
                   nativeSuperRes_->rasterizer.Get(),
                   inputs,
                   4,
@@ -6961,11 +8162,15 @@ bool NguScaler::RunNativeSuperResToRgbBase1080(ID3D11ShaderResourceView* origina
         error_ = "NGU 1080p SuperChromaRes base ToRGB request is invalid";
         return false;
     }
-    ID3D11ShaderResourceView* inputs[4] = {
-        original, work, difference, nativeSuperRes_->uvLutView1080.Get()};
+    ID3D11ShaderResourceView* inputs[4] = {original, work, difference, nativeSuperRes_->uvLutView1080.Get()};
     ID3D11Buffer* constants =
-        p010 ? nativeSuperRes_->toRgbBaseConstantsP0101080.Get()
-             : nativeSuperRes_->toRgbBaseConstants1080.Get();
+        p010 ? nativeSuperRes_->toRgbBaseConstantsP0101080.Get() : nativeSuperRes_->toRgbBaseConstants1080.Get();
+    if (colorDomain_ == ColorDomainProfile::PqBt2020)
+        constants = nativeSuperRes_->toRgbBaseConstantsHdr1080.Get();
+    else if (colorDomain_ == ColorDomainProfile::HlgBt2020)
+        constants = nativeSuperRes_->toRgbBaseConstantsHlg1080.Get();
+    else if (colorDomain_ == ColorDomainProfile::PqBt709)
+        constants = nativeSuperRes_->toRgbBaseConstantsBt709Pq1080.Get();
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeSuperRes_->vertex.Get(),
                   nativeSuperRes_->toRgbBase1080.Get(),
@@ -7020,16 +8225,19 @@ bool NguScaler::PrepareNativeSuperResStrength3_1080(pl_gpu gpu)
                SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
                SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
-    if (!create(960, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->downXTexture, state->downXView, state->downXShaderView) ||
-        !create(960, 540, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->downYTexture, state->downYView, state->downYShaderView) ||
-        !create(960, 540, DXGI_FORMAT_R16G16_FLOAT,
-                state->diffTexture, state->diffView, state->diffShaderView) ||
-        !create(1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->mainTexture, state->mainView, state->mainShaderView) ||
-        !create(1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM,
-                state->outputTexture, state->outputView, state->outputShaderView))
+    if (!create(
+            960, 1080, DXGI_FORMAT_R16G16B16A16_UNORM, state->downXTexture, state->downXView, state->downXShaderView) ||
+        !create(
+            960, 540, DXGI_FORMAT_R16G16B16A16_UNORM, state->downYTexture, state->downYView, state->downYShaderView) ||
+        !create(960, 540, DXGI_FORMAT_R16G16_FLOAT, state->diffTexture, state->diffView, state->diffShaderView) ||
+        !create(
+            1920, 1080, DXGI_FORMAT_R16G16B16A16_UNORM, state->mainTexture, state->mainView, state->mainShaderView) ||
+        !create(1920,
+                1080,
+                DXGI_FORMAT_R16G16B16A16_UNORM,
+                state->outputTexture,
+                state->outputView,
+                state->outputShaderView))
     {
         error_ = "NGU 1080p SuperChromaRes strength-3 scheduler surfaces could not be created";
         return false;
@@ -7047,20 +8255,13 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
                                                 ID3D11RenderTargetView* output,
                                                 bool p010)
 {
-    const bool diffIsBgra8 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 960, 540);
+    const bool diffIsBgra8 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_B8G8R8A8_UNORM, 960, 540);
     const bool diffIsRgba16 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 960, 540);
-    const bool diffIsRg16 =
-        diffOriginal &&
-        ViewMatchesTexture(
-            diffOriginal, DXGI_FORMAT_R16G16_UNORM, 960, 540);
-    if (!nativeSuperRes_ || !nativeSuperResStrength3_1080_ || !source || !diffOriginal ||
-        !mainOriginal || !baseOriginal || !output)
+        diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 960, 540);
+    const bool diffIsRg16 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R16G16_UNORM, 960, 540);
+    const bool diffIsRg8 = diffOriginal && ViewMatchesTexture(diffOriginal, DXGI_FORMAT_R8G8_UNORM, 960, 540);
+    if (!nativeSuperRes_ || !nativeSuperResStrength3_1080_ || !source || !diffOriginal || !mainOriginal ||
+        !baseOriginal || !output)
     {
         error_ = "NGU 1080p SuperChromaRes strength-3 scheduler request is invalid";
         return false;
@@ -7068,7 +8269,7 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
     if (!ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
         !ViewMatchesTexture(mainOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
         !ViewMatchesTexture(baseOriginal, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080) ||
-        (!diffIsBgra8 && !diffIsRgba16 && !diffIsRg16) ||
+        (!diffIsBgra8 && !diffIsRgba16 && !diffIsRg16 && !diffIsRg8) ||
         !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 1920, 1080))
     {
         error_ = "NGU 1080p SuperChromaRes strength-3 scheduler input format or geometry is unsupported";
@@ -7078,20 +8279,13 @@ bool NguScaler::RunNativeSuperResStrength3_1080(ID3D11ShaderResourceView* source
     auto& state = *nativeSuperResStrength3_1080_;
     if (!RunNativeSuperResDownX1080(source, state.downXView.Get()) ||
         !RunNativeSuperResDownY1080(state.downXShaderView.Get(), state.downYView.Get()) ||
-        !RunNativeSuperResDiff1080(
-            diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
-        !RunNativeSuperResToRgbMain1080(
-            mainOriginal, source, state.diffShaderView.Get(), state.mainView.Get()) ||
+        !RunNativeSuperResDiff1080(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
+        !RunNativeSuperResToRgbMain1080(mainOriginal, source, state.diffShaderView.Get(), state.mainView.Get()) ||
         !RunNativeSuperResDownX1080(state.mainShaderView.Get(), state.downXView.Get()) ||
         !RunNativeSuperResDownY1080(state.downXShaderView.Get(), state.downYView.Get()) ||
-        !RunNativeSuperResDiff1080(
-            diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
+        !RunNativeSuperResDiff1080(diffOriginal, state.downYShaderView.Get(), state.diffView.Get()) ||
         !RunNativeSuperResToRgbBase1080(
-            baseOriginal,
-            state.mainShaderView.Get(),
-            state.diffShaderView.Get(),
-            output,
-            p010))
+            baseOriginal, state.mainShaderView.Get(), state.diffShaderView.Get(), output, p010))
         return false;
     error_ = "";
     return true;
@@ -7115,32 +8309,21 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
         return false;
     }
 
-    const std::string scaleXText =
-        LoadBundledText(L"shaders\\Ngu\\luma_4x720_scale_x.hlsl", 64 * 1024);
-    const std::string initialText =
-        LoadBundledText(L"shaders\\Ngu\\luma_1080_cubici1.hlsl", 256 * 1024);
-    const auto scaleXCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x.cso", 0);
-    const auto scaleYCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y.cso", 0);
+    const std::string scaleXText = LoadBundledText(L"shaders\\Ngu\\luma_4x720_scale_x.hlsl", 64 * 1024);
+    const std::string initialText = LoadBundledText(L"shaders\\Ngu\\luma_1080_cubici1.hlsl", 256 * 1024);
+    const auto scaleXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x.cso", 0);
+    const auto scaleYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y.cso", 0);
     const auto layerCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_layer.cso", 0);
-    const auto scaleXConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x_constants.bin", 32);
-    const auto scaleYConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y_constants.bin", 32);
-    const auto initialConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_initial_constants.bin", 512);
+    const auto scaleXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_x_constants.bin", 32);
+    const auto scaleYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_y_constants.bin", 32);
+    const auto initialConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_initial_constants.bin", 512);
     const auto layerConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_low_layer_constants.bin",
-                         15 * 111 * sizeof(float) * 4);
-    const auto scaleXTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_x.bin", 163840);
-    const auto scaleYTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_y.bin", 92160);
-    if (scaleXText.empty() || initialText.empty() || scaleXCso.empty() ||
-        scaleYCso.empty() || layerCso.empty() || scaleXConstants.empty() ||
-        scaleYConstants.empty() || initialConstants.empty() ||
-        layerConstants.empty() || scaleXTable.empty() || scaleYTable.empty())
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_low_layer_constants.bin", 15 * 111 * sizeof(float) * 4);
+    const auto scaleXTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_x.bin", 163840);
+    const auto scaleYTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_scale_table_y.bin", 92160);
+    if (scaleXText.empty() || initialText.empty() || scaleXCso.empty() || scaleYCso.empty() || layerCso.empty() ||
+        scaleXConstants.empty() || scaleYConstants.empty() || initialConstants.empty() || layerConstants.empty() ||
+        scaleXTable.empty() || scaleYTable.empty())
     {
         error_ = "NGU 720p 4x luma core assets are unavailable";
         return false;
@@ -7161,8 +8344,7 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
                             &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU 720p 4x vertex shader failed";
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU 720p 4x vertex shader failed";
         return false;
     }
     errors.Reset();
@@ -7179,33 +8361,23 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
                     &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU 720p 4x initializer shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU 720p 4x initializer shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLuma4x720Low>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(scaleXCso.data(),
-                                         static_cast<SIZE_T>(scaleXCso.size()),
-                                         nullptr,
-                                         &state->scaleX)) ||
-        FAILED(device->CreatePixelShader(scaleYCso.data(),
-                                         static_cast<SIZE_T>(scaleYCso.size()),
-                                         nullptr,
-                                         &state->scaleY)) ||
-        FAILED(device->CreatePixelShader(initialBlob->GetBufferPointer(),
-                                         initialBlob->GetBufferSize(),
-                                         nullptr,
-                                         &state->initial)) ||
-        FAILED(device->CreatePixelShader(layerCso.data(),
-                                         static_cast<SIZE_T>(layerCso.size()),
-                                         nullptr,
-                                         &state->layer)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(device->CreatePixelShader(
+            scaleXCso.data(), static_cast<SIZE_T>(scaleXCso.size()), nullptr, &state->scaleX)) ||
+        FAILED(device->CreatePixelShader(
+            scaleYCso.data(), static_cast<SIZE_T>(scaleYCso.size()), nullptr, &state->scaleY)) ||
+        FAILED(device->CreatePixelShader(
+            initialBlob->GetBufferPointer(), initialBlob->GetBufferSize(), nullptr, &state->initial)) ||
+        FAILED(
+            device->CreatePixelShader(layerCso.data(), static_cast<SIZE_T>(layerCso.size()), nullptr, &state->layer)))
     {
         error_ = "NGU 720p 4x luma shader objects could not be created";
         return false;
@@ -7261,8 +8433,7 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
         data.pSysMem = bytes.data();
         data.SysMemPitch = 4 * 8;
         return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     if (!createTable(scaleXTable, 5120, state->scaleXTable, state->scaleXTableView) ||
         !createTable(scaleYTable, 2880, state->scaleYTable, state->scaleYTableView))
@@ -7288,34 +8459,42 @@ bool NguScaler::PrepareNativeLuma4x720Low(pl_gpu gpu)
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &renderTarget)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
-    if (!createTexture(1280, 720, DXGI_FORMAT_R16_UNORM,
-                       state->splitLumaTexture, state->splitLumaView,
+    if (!createTexture(1280,
+                       720,
+                       DXGI_FORMAT_R16_UNORM,
+                       state->splitLumaTexture,
+                       state->splitLumaView,
                        state->splitLumaShaderView) ||
-        !createTexture(1280, 720, DXGI_FORMAT_R16G16_UNORM,
-                       state->splitCbCrTexture, state->splitCbCrView,
+        !createTexture(1280,
+                       720,
+                       DXGI_FORMAT_R16G16_UNORM,
+                       state->splitCbCrTexture,
+                       state->splitCbCrView,
                        state->splitCbCrShaderView) ||
-        !createTexture(5120, 720, DXGI_FORMAT_R16_UNORM,
-                       state->scaleXTexture, state->scaleXView,
-                       state->scaleXShaderView) ||
-        !createTexture(5120, 2880, DXGI_FORMAT_R16_UNORM,
-                       state->scaleYTexture, state->scaleYView,
-                       state->scaleYShaderView))
+        !createTexture(
+            5120, 720, DXGI_FORMAT_R16_UNORM, state->scaleXTexture, state->scaleXView, state->scaleXShaderView) ||
+        !createTexture(
+            5120, 2880, DXGI_FORMAT_R16_UNORM, state->scaleYTexture, state->scaleYView, state->scaleYShaderView))
     {
         error_ = "NGU 720p 4x luma fixed surfaces could not be created";
         return false;
     }
     for (size_t i = 0; i < state->featureATextures.size(); ++i)
     {
-        if (!createTexture(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           state->featureATextures[i], state->featureAViews[i],
+        if (!createTexture(1280,
+                           720,
+                           DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           state->featureATextures[i],
+                           state->featureAViews[i],
                            state->featureAShaderViews[i]) ||
-            !createTexture(1280, 720, DXGI_FORMAT_R16G16B16A16_FLOAT,
-                           state->featureBTextures[i], state->featureBViews[i],
+            !createTexture(1280,
+                           720,
+                           DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           state->featureBTextures[i],
+                           state->featureBViews[i],
                            state->featureBShaderViews[i]))
         {
             error_ = "NGU 720p 4x luma feature surfaces could not be created";
@@ -7350,14 +8529,12 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                                       int sourceHeight,
                                       bool sourcePacked)
 {
-    if (!nativeLuma4x720Low_ || !nativeLumaSplit_ || !sourceRgb ||
-        sourceWidth != 1280 || sourceHeight != 720)
+    if (!nativeLuma4x720Low_ || !nativeLumaSplit_ || !sourceRgb || sourceWidth != 1280 || sourceHeight != 720)
     {
         error_ = "NGU 720p 4x luma core request is outside the verified path";
         return false;
     }
-    if (!ViewMatchesTexture(
-            sourceRgb, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
+    if (!ViewMatchesTexture(sourceRgb, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720))
     {
         error_ = "NGU 720p 4x luma source format or geometry is unsupported";
         return false;
@@ -7366,15 +8543,10 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
     auto& state = *nativeLuma4x720Low_;
     ID3D11Device* device = pl_d3d11_get(gpu_)->device;
     if (!sourcePacked &&
-        !RunNativeLumaSplit(sourceRgb,
-                            sourceWidth,
-                            sourceHeight,
-                            state.splitLumaView.Get(),
-                            state.splitCbCrView.Get()))
+        !RunNativeLumaSplit(sourceRgb, sourceWidth, sourceHeight, state.splitLumaView.Get(), state.splitCbCrView.Get()))
         return false;
 
-    ID3D11ShaderResourceView* scaleXInputs[2] = {
-        state.splitLumaShaderView.Get(), state.scaleXTableView.Get()};
+    ID3D11ShaderResourceView* scaleXInputs[2] = {state.splitLumaShaderView.Get(), state.scaleXTableView.Get()};
     ID3D11RenderTargetView* scaleXOutput = state.scaleXView.Get();
     DrawD3D11Pass(device,
                   state.vertex.Get(),
@@ -7388,8 +8560,7 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
                   5120,
                   720,
                   nativeLumaSplit_->pointSampler.Get());
-    ID3D11ShaderResourceView* scaleYInputs[2] = {
-        state.scaleXShaderView.Get(), state.scaleYTableView.Get()};
+    ID3D11ShaderResourceView* scaleYInputs[2] = {state.scaleXShaderView.Get(), state.scaleYTableView.Get()};
     ID3D11RenderTargetView* scaleYOutput = state.scaleYView.Get();
     DrawD3D11Pass(device,
                   state.vertex.Get(),
@@ -7406,9 +8577,7 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
 
     ID3D11ShaderResourceView* initialInput = state.splitLumaShaderView.Get();
     ID3D11RenderTargetView* initialOutputs[3] = {
-        state.featureAViews[0].Get(),
-        state.featureAViews[1].Get(),
-        state.featureAViews[2].Get()};
+        state.featureAViews[0].Get(), state.featureAViews[1].Get(), state.featureAViews[2].Get()};
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.initial.Get(),
@@ -7425,14 +8594,11 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
     for (size_t stage = 0; stage < 5; ++stage)
     {
         ID3D11ShaderResourceView* inputs[3] = {
-            state.featureAShaderViews[0].Get(),
-            state.featureAShaderViews[1].Get(),
-            state.featureAShaderViews[2].Get()};
+            state.featureAShaderViews[0].Get(), state.featureAShaderViews[1].Get(), state.featureAShaderViews[2].Get()};
         for (size_t feature = 0; feature < 3; ++feature)
         {
             const size_t layer = stage * 3 + feature;
-            ID3D11RenderTargetView* layerOutput =
-                state.featureBViews[feature].Get();
+            ID3D11RenderTargetView* layerOutput = state.featureBViews[feature].Get();
             DrawD3D11Pass(device,
                           state.vertex.Get(),
                           state.layer.Get(),
@@ -7456,8 +8622,7 @@ bool NguScaler::RunNativeLuma4x720Low(ID3D11ShaderResourceView* sourceRgb,
 
 bool NguScaler::CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Low_ ||
-        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitLumaTexture.Get(), output))
+    if (!nativeLuma4x720Low_ || !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitLumaTexture.Get(), output))
     {
         error_ = "NGU 720p 4x split output is unavailable";
         return false;
@@ -7468,8 +8633,7 @@ bool NguScaler::CopyNativeLuma4x720SplitY(ID3D11RenderTargetView* output)
 
 bool NguScaler::CopyNativeLuma4x720SplitCbCr(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Low_ ||
-        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitCbCrTexture.Get(), output))
+    if (!nativeLuma4x720Low_ || !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->splitCbCrTexture.Get(), output))
     {
         error_ = "NGU 720p 4x split CbCr output is unavailable";
         return false;
@@ -7480,8 +8644,7 @@ bool NguScaler::CopyNativeLuma4x720SplitCbCr(ID3D11RenderTargetView* output)
 
 bool NguScaler::CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Low_ ||
-        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleXTexture.Get(), output))
+    if (!nativeLuma4x720Low_ || !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleXTexture.Get(), output))
     {
         error_ = "NGU 720p 4x X-scale output is unavailable";
         return false;
@@ -7492,8 +8655,7 @@ bool NguScaler::CopyNativeLuma4x720ScaleX(ID3D11RenderTargetView* output)
 
 bool NguScaler::CopyNativeLuma4x720ScaleY(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Low_ ||
-        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleYTexture.Get(), output))
+    if (!nativeLuma4x720Low_ || !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->scaleYTexture.Get(), output))
     {
         error_ = "NGU 720p 4x Y-scale output is unavailable";
         return false;
@@ -7529,8 +8691,7 @@ bool NguScaler::CopyNativeLuma4x720Initial(ID3D11RenderTargetView* output)
 
 bool NguScaler::CopyNativeLuma4x720LowLayer(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Low_ ||
-        !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->featureATextures[2].Get(), output))
+    if (!nativeLuma4x720Low_ || !CopyTextureToTarget(gpu_, nativeLuma4x720Low_->featureATextures[2].Get(), output))
     {
         error_ = "NGU 720p 4x low-layer output is unavailable";
         return false;
@@ -7557,21 +8718,15 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
         return false;
     }
 
-    const auto upsampleCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_upsample.cso", 0);
-    const auto convertCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_convert.cso", 0);
+    const auto upsampleCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_upsample.cso", 0);
+    const auto convertCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_convert.cso", 0);
     const auto upsampleConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_upsample_constants.bin",
-                         3 * 196 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_upsample_constants.bin", 3 * 196 * sizeof(float) * 4);
     const auto convertConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_convert_constants.bin",
-                         3 * 2 * sizeof(float) * 4);
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_convert_constants.bin", 3 * 2 * sizeof(float) * 4);
     const auto highLayerConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_high_layer_constants.bin",
-                         6 * 111 * sizeof(float) * 4);
-    if (upsampleCso.empty() || convertCso.empty() ||
-        upsampleConstants.empty() || convertConstants.empty() ||
+        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_high_layer_constants.bin", 6 * 111 * sizeof(float) * 4);
+    if (upsampleCso.empty() || convertCso.empty() || upsampleConstants.empty() || convertConstants.empty() ||
         highLayerConstants.empty())
     {
         error_ = "NGU 720p 4x high-core assets are unavailable";
@@ -7580,22 +8735,16 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
 
     auto state = std::make_unique<NativeLuma4x720High>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreatePixelShader(upsampleCso.data(),
-                                         static_cast<SIZE_T>(upsampleCso.size()),
-                                         nullptr,
-                                         &state->upsample)) ||
-        FAILED(device->CreatePixelShader(convertCso.data(),
-                                         static_cast<SIZE_T>(convertCso.size()),
-                                         nullptr,
-                                         &state->convert)))
+    if (FAILED(device->CreatePixelShader(
+            upsampleCso.data(), static_cast<SIZE_T>(upsampleCso.size()), nullptr, &state->upsample)) ||
+        FAILED(device->CreatePixelShader(
+            convertCso.data(), static_cast<SIZE_T>(convertCso.size()), nullptr, &state->convert)))
     {
         error_ = "NGU 720p 4x high-core shaders could not be created";
         return false;
     }
 
-    auto createConstants = [&](const uint8_t* bytes,
-                               UINT size,
-                               ComPtr<ID3D11Buffer>& buffer)
+    auto createConstants = [&](const uint8_t* bytes, UINT size, ComPtr<ID3D11Buffer>& buffer)
     {
         D3D11_BUFFER_DESC desc = {};
         desc.ByteWidth = size;
@@ -7607,12 +8756,9 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
     };
     for (size_t feature = 0; feature < 3; ++feature)
     {
-        if (!createConstants(upsampleConstants.data() + feature * 196 * 16,
-                             196 * 16,
-                             state->upsampleConstants[feature]) ||
-            !createConstants(convertConstants.data() + feature * 2 * 16,
-                             2 * 16,
-                             state->convertConstants[feature]))
+        if (!createConstants(
+                upsampleConstants.data() + feature * 196 * 16, 196 * 16, state->upsampleConstants[feature]) ||
+            !createConstants(convertConstants.data() + feature * 2 * 16, 2 * 16, state->convertConstants[feature]))
         {
             error_ = "NGU 720p 4x upsampler/convert constants could not be created";
             return false;
@@ -7620,9 +8766,7 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
     }
     for (size_t layer = 0; layer < 6; ++layer)
     {
-        if (!createConstants(highLayerConstants.data() + layer * 111 * 16,
-                             111 * 16,
-                             state->highLayerConstants[layer]))
+        if (!createConstants(highLayerConstants.data() + layer * 111 * 16, 111 * 16, state->highLayerConstants[layer]))
         {
             error_ = "NGU 720p 4x high-layer constants could not be created";
             return false;
@@ -7645,10 +8789,8 @@ bool NguScaler::PrepareNativeLuma4x720High(pl_gpu gpu)
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &renderTarget)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     for (size_t feature = 0; feature < 3; ++feature)
     {
@@ -7694,8 +8836,7 @@ bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
                                        bool sourcePacked)
 {
     if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ ||
-        !RunNativeLuma4x720Low(
-            sourceRgb, sourceWidth, sourceHeight, sourcePacked))
+        !RunNativeLuma4x720Low(sourceRgb, sourceWidth, sourceHeight, sourcePacked))
     {
         if (nativeLuma4x720High_ && error_.empty())
             error_ = "NGU 720p 4x high-core request is unavailable";
@@ -7708,14 +8849,11 @@ bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
     for (size_t feature = 0; feature < 3; ++feature)
     {
         ID3D11ShaderResourceView* inputs[3] = {
-            low.featureAShaderViews[0].Get(),
-            low.featureAShaderViews[1].Get(),
-            low.featureAShaderViews[2].Get()};
-        ID3D11RenderTargetView* outputs[4] = {
-            high.upFeatureViews[feature][0].Get(),
-            high.upFeatureViews[feature][1].Get(),
-            high.upFeatureViews[feature][2].Get(),
-            high.upFeatureViews[feature][3].Get()};
+            low.featureAShaderViews[0].Get(), low.featureAShaderViews[1].Get(), low.featureAShaderViews[2].Get()};
+        ID3D11RenderTargetView* outputs[4] = {high.upFeatureViews[feature][0].Get(),
+                                              high.upFeatureViews[feature][1].Get(),
+                                              high.upFeatureViews[feature][2].Get(),
+                                              high.upFeatureViews[feature][3].Get()};
         DrawD3D11Pass(device,
                       low.vertex.Get(),
                       high.upsample.Get(),
@@ -7731,11 +8869,10 @@ bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
     }
     for (size_t feature = 0; feature < 3; ++feature)
     {
-        ID3D11ShaderResourceView* inputs[4] = {
-            high.upFeatureShaderViews[feature][0].Get(),
-            high.upFeatureShaderViews[feature][1].Get(),
-            high.upFeatureShaderViews[feature][2].Get(),
-            high.upFeatureShaderViews[feature][3].Get()};
+        ID3D11ShaderResourceView* inputs[4] = {high.upFeatureShaderViews[feature][0].Get(),
+                                               high.upFeatureShaderViews[feature][1].Get(),
+                                               high.upFeatureShaderViews[feature][2].Get(),
+                                               high.upFeatureShaderViews[feature][3].Get()};
         ID3D11RenderTargetView* convertOutput = high.convertViews[feature].Get();
         DrawD3D11Pass(device,
                       low.vertex.Get(),
@@ -7754,8 +8891,7 @@ bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
     {
         auto& inputViews = stage == 0 ? high.convertShaderViews : high.highScratchShaderViews;
         auto& outputViews = stage == 0 ? high.highScratchViews : high.convertViews;
-        ID3D11ShaderResourceView* inputs[3] = {
-            inputViews[0].Get(), inputViews[1].Get(), inputViews[2].Get()};
+        ID3D11ShaderResourceView* inputs[3] = {inputViews[0].Get(), inputViews[1].Get(), inputViews[2].Get()};
         for (size_t feature = 0; feature < 3; ++feature)
         {
             const size_t layer = stage * 3 + feature;
@@ -7778,19 +8914,16 @@ bool NguScaler::RunNativeLuma4x720High(ID3D11ShaderResourceView* sourceRgb,
     return true;
 }
 
-bool NguScaler::CopyNativeLuma4x720Upsample(int feature,
-                                            int part,
-                                            ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeLuma4x720Upsample(int feature, int part, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ || !output ||
-        feature < 0 || feature >= 3 || part < 0 || part >= 4)
+    if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ || !output || feature < 0 || feature >= 3 || part < 0 ||
+        part >= 4)
     {
         error_ = "NGU 720p 4x upsampler output request is invalid";
         return false;
     }
     auto& high = *nativeLuma4x720High_;
-    if (!CopyTextureToTarget(
-            gpu_, high.upFeatureTextures[feature][part].Get(), output))
+    if (!CopyTextureToTarget(gpu_, high.upFeatureTextures[feature][part].Get(), output))
     {
         error_ = "NGU 720p 4x upsampler output copy failed";
         return false;
@@ -7799,22 +8932,19 @@ bool NguScaler::CopyNativeLuma4x720Upsample(int feature,
     return true;
 }
 
-bool NguScaler::CopyNativeLuma4x720Convert(int feature,
-                                           ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeLuma4x720Convert(int feature, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ || !output ||
-        feature < 0 || feature >= 3)
+    if (!nativeLuma4x720High_ || !nativeLuma4x720Low_ || !output || feature < 0 || feature >= 3)
     {
         error_ = "NGU 720p 4x converter output request is invalid";
         return false;
     }
     auto& low = *nativeLuma4x720Low_;
     auto& high = *nativeLuma4x720High_;
-    ID3D11ShaderResourceView* inputs[4] = {
-        high.upFeatureShaderViews[feature][0].Get(),
-        high.upFeatureShaderViews[feature][1].Get(),
-        high.upFeatureShaderViews[feature][2].Get(),
-        high.upFeatureShaderViews[feature][3].Get()};
+    ID3D11ShaderResourceView* inputs[4] = {high.upFeatureShaderViews[feature][0].Get(),
+                                           high.upFeatureShaderViews[feature][1].Get(),
+                                           high.upFeatureShaderViews[feature][2].Get(),
+                                           high.upFeatureShaderViews[feature][3].Get()};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   low.vertex.Get(),
                   high.convert.Get(),
@@ -7831,12 +8961,10 @@ bool NguScaler::CopyNativeLuma4x720Convert(int feature,
     return true;
 }
 
-bool NguScaler::CopyNativeLuma4x720HighLayer(int feature,
-                                             ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeLuma4x720HighLayer(int feature, ID3D11RenderTargetView* output)
 {
     if (!nativeLuma4x720High_ || !output || feature < 0 || feature >= 3 ||
-        !CopyTextureToTarget(
-            gpu_, nativeLuma4x720High_->convertTextures[feature].Get(), output))
+        !CopyTextureToTarget(gpu_, nativeLuma4x720High_->convertTextures[feature].Get(), output))
     {
         error_ = "NGU 720p 4x high-layer output is unavailable";
         return false;
@@ -7865,12 +8993,9 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
 
     const auto denseCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_dense.cso", 0);
     const auto addCso = LoadBundledBytes(L"shaders\\Ngu\\luma_1080_add.cso", 0);
-    const auto denseConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_dense_constants.bin", 816);
-    const auto addConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_add_constants.bin", 32);
-    if (denseCso.empty() || addCso.empty() ||
-        denseConstants.empty() || addConstants.empty())
+    const auto denseConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_dense_constants.bin", 816);
+    const auto addConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_add_constants.bin", 32);
+    if (denseCso.empty() || addCso.empty() || denseConstants.empty() || addConstants.empty())
     {
         error_ = "NGU 720p 4x dense/add assets are unavailable";
         return false;
@@ -7878,14 +9003,9 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
 
     auto state = std::make_unique<NativeLuma4x720DenseAdd>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreatePixelShader(denseCso.data(),
-                                         static_cast<SIZE_T>(denseCso.size()),
-                                         nullptr,
-                                         &state->dense)) ||
-        FAILED(device->CreatePixelShader(addCso.data(),
-                                         static_cast<SIZE_T>(addCso.size()),
-                                         nullptr,
-                                         &state->add)))
+    if (FAILED(
+            device->CreatePixelShader(denseCso.data(), static_cast<SIZE_T>(denseCso.size()), nullptr, &state->dense)) ||
+        FAILED(device->CreatePixelShader(addCso.data(), static_cast<SIZE_T>(addCso.size()), nullptr, &state->add)))
     {
         error_ = "NGU 720p 4x dense/add shaders could not be created";
         return false;
@@ -7901,8 +9021,7 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
         data.pSysMem = bytes.data();
         return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
     };
-    if (!createConstants(denseConstants, state->denseConstants) ||
-        !createConstants(addConstants, state->addConstants))
+    if (!createConstants(denseConstants, state->denseConstants) || !createConstants(addConstants, state->addConstants))
     {
         error_ = "NGU 720p 4x dense/add constants could not be created";
         return false;
@@ -7925,10 +9044,8 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &renderTarget)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     if (!createTexture(2562,
                        1442,
@@ -7936,12 +9053,7 @@ bool NguScaler::PrepareNativeLuma4x720DenseAdd(pl_gpu gpu)
                        state->denseTexture,
                        state->denseView,
                        state->denseShaderView) ||
-        !createTexture(5120,
-                       2880,
-                       DXGI_FORMAT_R16_UNORM,
-                       state->addTexture,
-                       state->addView,
-                       state->addShaderView))
+        !createTexture(5120, 2880, DXGI_FORMAT_R16_UNORM, state->addTexture, state->addView, state->addShaderView))
     {
         error_ = "NGU 720p 4x dense/add surfaces could not be created";
         return false;
@@ -7962,10 +9074,8 @@ bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
                                            int sourceHeight,
                                            bool sourcePacked)
 {
-    if (!nativeLuma4x720DenseAdd_ || !nativeLuma4x720High_ ||
-        !nativeLuma4x720Low_ ||
-        !RunNativeLuma4x720High(
-            sourceRgb, sourceWidth, sourceHeight, sourcePacked))
+    if (!nativeLuma4x720DenseAdd_ || !nativeLuma4x720High_ || !nativeLuma4x720Low_ ||
+        !RunNativeLuma4x720High(sourceRgb, sourceWidth, sourceHeight, sourcePacked))
         return false;
 
     auto& low = *nativeLuma4x720Low_;
@@ -7973,9 +9083,7 @@ bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
     auto& state = *nativeLuma4x720DenseAdd_;
     ID3D11Device* device = pl_d3d11_get(gpu_)->device;
     ID3D11ShaderResourceView* denseInputs[3] = {
-        high.convertShaderViews[0].Get(),
-        high.convertShaderViews[1].Get(),
-        high.convertShaderViews[2].Get()};
+        high.convertShaderViews[0].Get(), high.convertShaderViews[1].Get(), high.convertShaderViews[2].Get()};
     ID3D11RenderTargetView* denseOutput = state.denseView.Get();
     DrawD3D11Pass(device,
                   low.vertex.Get(),
@@ -7990,8 +9098,7 @@ bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
                   1442,
                   nativeLumaSplit_->pointSampler.Get());
 
-    ID3D11ShaderResourceView* addInputs[2] = {
-        low.scaleYShaderView.Get(), state.denseShaderView.Get()};
+    ID3D11ShaderResourceView* addInputs[2] = {low.scaleYShaderView.Get(), state.denseShaderView.Get()};
     ID3D11RenderTargetView* addOutput = state.addView.Get();
     DrawD3D11Pass(device,
                   low.vertex.Get(),
@@ -8011,9 +9118,7 @@ bool NguScaler::RunNativeLuma4x720DenseAdd(ID3D11ShaderResourceView* sourceRgb,
 
 bool NguScaler::CopyNativeLuma4x720Dense(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720DenseAdd_ ||
-        !CopyTextureToTarget(
-            gpu_, nativeLuma4x720DenseAdd_->denseTexture.Get(), output))
+    if (!nativeLuma4x720DenseAdd_ || !CopyTextureToTarget(gpu_, nativeLuma4x720DenseAdd_->denseTexture.Get(), output))
     {
         error_ = "NGU 720p 4x dense output is unavailable";
         return false;
@@ -8024,9 +9129,7 @@ bool NguScaler::CopyNativeLuma4x720Dense(ID3D11RenderTargetView* output)
 
 bool NguScaler::CopyNativeLuma4x720Add(ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720DenseAdd_ ||
-        !CopyTextureToTarget(
-            gpu_, nativeLuma4x720DenseAdd_->addTexture.Get(), output))
+    if (!nativeLuma4x720DenseAdd_ || !CopyTextureToTarget(gpu_, nativeLuma4x720DenseAdd_->addTexture.Get(), output))
     {
         error_ = "NGU 720p 4x add output is unavailable";
         return false;
@@ -8053,63 +9156,36 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         return false;
     }
 
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl", 32 * 1024);
-    const auto ycbcrCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.cso", 0);
-    const auto downXCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x.cso", 0);
-    const auto downXConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_constants.bin", 32);
-    const auto downXTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_table.bin", 184320);
-    const auto downXUvLut =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_uv_lut.bin", 61440);
-    const auto downYCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y.cso", 0);
-    const auto downYConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_constants.bin", 32);
-    const auto downYTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_table.bin", 103680);
-    const auto downYUvLut =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_uv_lut.bin", 61440);
-    const auto ssimRtCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt.cso", 0);
-    const auto ssimRtConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt_constants.bin", 32);
-    const auto ssimFinalCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final.cso", 0);
-    const auto ssimFinalConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final_constants.bin", 32);
-    const auto sharpenArCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar.cso", 0);
-    const auto sharpenArConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar_constants.bin", 4096);
-    const auto chromaXCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x.cso", 0);
-    const auto chromaYCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y.cso", 0);
-    const auto mergeCso =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge.cso", 0);
-    const auto chromaXConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_constants.bin", 32);
-    const auto chromaYConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_constants.bin", 32);
-    const auto mergeConstants =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_merge_constants.bin", 32);
-    const auto chromaXTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_table.bin", 122880);
-    const auto chromaYTable =
-        LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_table.bin", 69120);
-    if (shaderText.empty() || ycbcrCso.empty() || downXCso.empty() ||
-        downXConstants.empty() || downXTable.empty() || downXUvLut.empty() ||
-        downYCso.empty() || downYConstants.empty() || downYTable.empty() ||
-        downYUvLut.empty() || ssimRtCso.empty() || ssimRtConstants.empty() ||
-        ssimFinalCso.empty() || ssimFinalConstants.empty() ||
-        sharpenArCso.empty() || sharpenArConstants.empty() ||
-        chromaXCso.empty() || chromaYCso.empty() || mergeCso.empty() ||
-        chromaXConstants.empty() || chromaYConstants.empty() ||
-        mergeConstants.empty() || chromaXTable.empty() || chromaYTable.empty())
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl", 32 * 1024);
+    const auto ycbcrCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.cso", 0);
+    const auto downXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x.cso", 0);
+    const auto downXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_constants.bin", 32);
+    const auto downXTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_table.bin", 184320);
+    const auto downXUvLut = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_x_uv_lut.bin", 61440);
+    const auto downYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y.cso", 0);
+    const auto downYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_constants.bin", 32);
+    const auto downYTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_table.bin", 103680);
+    const auto downYUvLut = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_down_y_uv_lut.bin", 61440);
+    const auto ssimRtCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt.cso", 0);
+    const auto ssimRtConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_rt_constants.bin", 32);
+    const auto ssimFinalCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final.cso", 0);
+    const auto ssimFinalConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_ssim_final_constants.bin", 32);
+    const auto sharpenArCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar.cso", 0);
+    const auto sharpenArConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_sharpen_ar_constants.bin", 4096);
+    const auto chromaXCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x.cso", 0);
+    const auto chromaYCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y.cso", 0);
+    const auto mergeCso = LoadBundledBytes(L"shaders\\Ngu\\luma_2160_merge.cso", 0);
+    const auto chromaXConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_constants.bin", 32);
+    const auto chromaYConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_constants.bin", 32);
+    const auto mergeConstants = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_merge_constants.bin", 32);
+    const auto chromaXTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_x_table.bin", 122880);
+    const auto chromaYTable = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_tail_chroma_y_table.bin", 69120);
+    if (shaderText.empty() || ycbcrCso.empty() || downXCso.empty() || downXConstants.empty() || downXTable.empty() ||
+        downXUvLut.empty() || downYCso.empty() || downYConstants.empty() || downYTable.empty() || downYUvLut.empty() ||
+        ssimRtCso.empty() || ssimRtConstants.empty() || ssimFinalCso.empty() || ssimFinalConstants.empty() ||
+        sharpenArCso.empty() || sharpenArConstants.empty() || chromaXCso.empty() || chromaYCso.empty() ||
+        mergeCso.empty() || chromaXConstants.empty() || chromaYConstants.empty() || mergeConstants.empty() ||
+        chromaXTable.empty() || chromaYTable.empty())
     {
         error_ = "NGU 720p 4x tail assets are unavailable";
         return false;
@@ -8130,53 +9206,33 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
-                          "NGU 720p 4x tail vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU 720p 4x tail vertex shader failed";
         return false;
     }
 
     auto state = std::make_unique<NativeLuma4x720Tail>();
     ID3D11Device* device = d3d->device;
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
-        FAILED(device->CreatePixelShader(ycbcrCso.data(),
-                                         static_cast<SIZE_T>(ycbcrCso.size()),
-                                         nullptr,
-                                         &state->ycbcr)) ||
-        FAILED(device->CreatePixelShader(downXCso.data(),
-                                         static_cast<SIZE_T>(downXCso.size()),
-                                         nullptr,
-                                         &state->downX)) ||
-        FAILED(device->CreatePixelShader(downYCso.data(),
-                                         static_cast<SIZE_T>(downYCso.size()),
-                                         nullptr,
-                                         &state->downY)) ||
-        FAILED(device->CreatePixelShader(ssimRtCso.data(),
-                                         static_cast<SIZE_T>(ssimRtCso.size()),
-                                         nullptr,
-                                         &state->ssimRt)) ||
-        FAILED(device->CreatePixelShader(ssimFinalCso.data(),
-                                         static_cast<SIZE_T>(ssimFinalCso.size()),
-                                         nullptr,
-                                         &state->ssimFinal)) ||
-        FAILED(device->CreatePixelShader(sharpenArCso.data(),
-                                         static_cast<SIZE_T>(sharpenArCso.size()),
-                                         nullptr,
-                                         &state->sharpenAr)) ||
-        FAILED(device->CreatePixelShader(chromaXCso.data(),
-                                         static_cast<SIZE_T>(chromaXCso.size()),
-                                         nullptr,
-                                         &state->chromaX)) ||
-        FAILED(device->CreatePixelShader(chromaYCso.data(),
-                                         static_cast<SIZE_T>(chromaYCso.size()),
-                                         nullptr,
-                                         &state->chromaY)) ||
-        FAILED(device->CreatePixelShader(mergeCso.data(),
-                                         static_cast<SIZE_T>(mergeCso.size()),
-                                         nullptr,
-                                         &state->merge)))
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
+        FAILED(
+            device->CreatePixelShader(ycbcrCso.data(), static_cast<SIZE_T>(ycbcrCso.size()), nullptr, &state->ycbcr)) ||
+        FAILED(
+            device->CreatePixelShader(downXCso.data(), static_cast<SIZE_T>(downXCso.size()), nullptr, &state->downX)) ||
+        FAILED(
+            device->CreatePixelShader(downYCso.data(), static_cast<SIZE_T>(downYCso.size()), nullptr, &state->downY)) ||
+        FAILED(device->CreatePixelShader(
+            ssimRtCso.data(), static_cast<SIZE_T>(ssimRtCso.size()), nullptr, &state->ssimRt)) ||
+        FAILED(device->CreatePixelShader(
+            ssimFinalCso.data(), static_cast<SIZE_T>(ssimFinalCso.size()), nullptr, &state->ssimFinal)) ||
+        FAILED(device->CreatePixelShader(
+            sharpenArCso.data(), static_cast<SIZE_T>(sharpenArCso.size()), nullptr, &state->sharpenAr)) ||
+        FAILED(device->CreatePixelShader(
+            chromaXCso.data(), static_cast<SIZE_T>(chromaXCso.size()), nullptr, &state->chromaX)) ||
+        FAILED(device->CreatePixelShader(
+            chromaYCso.data(), static_cast<SIZE_T>(chromaYCso.size()), nullptr, &state->chromaY)) ||
+        FAILED(
+            device->CreatePixelShader(mergeCso.data(), static_cast<SIZE_T>(mergeCso.size()), nullptr, &state->merge)))
     {
         error_ = "NGU 720p 4x tail shader objects could not be created";
         return false;
@@ -8188,64 +9244,56 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     constantDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     D3D11_SUBRESOURCE_DATA constantData = {};
     constantData.pSysMem = downXConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->downXConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->downXConstants)))
     {
         error_ = "NGU 720p 4x tail down-X constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(downYConstants.size());
     constantData.pSysMem = downYConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->downYConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->downYConstants)))
     {
         error_ = "NGU 720p 4x tail down-Y constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(ssimRtConstants.size());
     constantData.pSysMem = ssimRtConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->ssimRtConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->ssimRtConstants)))
     {
         error_ = "NGU 720p 4x tail SSIM RT constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(ssimFinalConstants.size());
     constantData.pSysMem = ssimFinalConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->ssimFinalConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->ssimFinalConstants)))
     {
         error_ = "NGU 720p 4x tail SSIM final constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(sharpenArConstants.size());
     constantData.pSysMem = sharpenArConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->sharpenArConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->sharpenArConstants)))
     {
         error_ = "NGU 720p 4x tail SharpenAR constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(chromaXConstants.size());
     constantData.pSysMem = chromaXConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->chromaXConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->chromaXConstants)))
     {
         error_ = "NGU 720p 4x tail chroma-X constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(chromaYConstants.size());
     constantData.pSysMem = chromaYConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->chromaYConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->chromaYConstants)))
     {
         error_ = "NGU 720p 4x tail chroma-Y constants could not be created";
         return false;
     }
     constantDesc.ByteWidth = static_cast<UINT>(mergeConstants.size());
     constantData.pSysMem = mergeConstants.data();
-    if (FAILED(device->CreateBuffer(
-            &constantDesc, &constantData, &state->mergeConstants)))
+    if (FAILED(device->CreateBuffer(&constantDesc, &constantData, &state->mergeConstants)))
     {
         error_ = "NGU 720p 4x tail merge constants could not be created";
         return false;
@@ -8263,20 +9311,16 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     D3D11_SUBRESOURCE_DATA tableData = {};
     tableData.pSysMem = downXTable.data();
     tableData.SysMemPitch = 6 * 8;
-    if (FAILED(device->CreateTexture2D(
-            &tableDesc, &tableData, &state->downXTable)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->downXTable.Get(), nullptr, &state->downXTableView)))
+    if (FAILED(device->CreateTexture2D(&tableDesc, &tableData, &state->downXTable)) ||
+        FAILED(device->CreateShaderResourceView(state->downXTable.Get(), nullptr, &state->downXTableView)))
     {
         error_ = "NGU 720p 4x tail down-X table could not be created";
         return false;
     }
     tableDesc.Height = 2160;
     tableData.pSysMem = downYTable.data();
-    if (FAILED(device->CreateTexture2D(
-            &tableDesc, &tableData, &state->downYTable)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->downYTable.Get(), nullptr, &state->downYTableView)))
+    if (FAILED(device->CreateTexture2D(&tableDesc, &tableData, &state->downYTable)) ||
+        FAILED(device->CreateShaderResourceView(state->downYTable.Get(), nullptr, &state->downYTableView)))
     {
         error_ = "NGU 720p 4x tail down-Y table could not be created";
         return false;
@@ -8285,20 +9329,16 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     tableDesc.Height = 3840;
     tableData.pSysMem = chromaXTable.data();
     tableData.SysMemPitch = 4 * 8;
-    if (FAILED(device->CreateTexture2D(
-            &tableDesc, &tableData, &state->chromaXTable)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->chromaXTable.Get(), nullptr, &state->chromaXTableView)))
+    if (FAILED(device->CreateTexture2D(&tableDesc, &tableData, &state->chromaXTable)) ||
+        FAILED(device->CreateShaderResourceView(state->chromaXTable.Get(), nullptr, &state->chromaXTableView)))
     {
         error_ = "NGU 720p 4x tail chroma-X table could not be created";
         return false;
     }
     tableDesc.Height = 2160;
     tableData.pSysMem = chromaYTable.data();
-    if (FAILED(device->CreateTexture2D(
-            &tableDesc, &tableData, &state->chromaYTable)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->chromaYTable.Get(), nullptr, &state->chromaYTableView)))
+    if (FAILED(device->CreateTexture2D(&tableDesc, &tableData, &state->chromaYTable)) ||
+        FAILED(device->CreateShaderResourceView(state->chromaYTable.Get(), nullptr, &state->chromaYTableView)))
     {
         error_ = "NGU 720p 4x tail chroma-Y table could not be created";
         return false;
@@ -8316,19 +9356,15 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     D3D11_SUBRESOURCE_DATA uvData = {};
     uvData.pSysMem = downXUvLut.data();
     uvData.SysMemPitch = 3840 * 8;
-    if (FAILED(device->CreateTexture2D(
-            &uvDesc, &uvData, &state->downXUvLut)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->downXUvLut.Get(), nullptr, &state->downXUvLutView)))
+    if (FAILED(device->CreateTexture2D(&uvDesc, &uvData, &state->downXUvLut)) ||
+        FAILED(device->CreateShaderResourceView(state->downXUvLut.Get(), nullptr, &state->downXUvLutView)))
     {
         error_ = "NGU 720p 4x tail down-X UV LUT could not be created";
         return false;
     }
     uvData.pSysMem = downYUvLut.data();
-    if (FAILED(device->CreateTexture2D(
-            &uvDesc, &uvData, &state->downYUvLut)) ||
-        FAILED(device->CreateShaderResourceView(
-            state->downYUvLut.Get(), nullptr, &state->downYUvLutView)))
+    if (FAILED(device->CreateTexture2D(&uvDesc, &uvData, &state->downYUvLut)) ||
+        FAILED(device->CreateShaderResourceView(state->downYUvLut.Get(), nullptr, &state->downYUvLutView)))
     {
         error_ = "NGU 720p 4x tail down-Y UV LUT could not be created";
         return false;
@@ -8351,10 +9387,8 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &renderTarget)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
     if (!createIntermediate(5120,
                             2880,
@@ -8404,12 +9438,8 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
                             state->chromaYTexture,
                             state->chromaYView,
                             state->chromaYShaderView) ||
-        !createIntermediate(3840,
-                            2160,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            state->mergeTexture,
-                            state->mergeView,
-                            state->mergeShaderView))
+        !createIntermediate(
+            3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM, state->mergeTexture, state->mergeView, state->mergeShaderView))
     {
         error_ = "NGU 720p 4x tail intermediate surfaces could not be created";
         return false;
@@ -8448,14 +9478,10 @@ bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input,
-                                            ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16_UNORM, 5120, 2880) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 5120, 2880) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880))
     {
         error_ = "NGU 720p 4x tail YCbCr requires exact 5120x2880 surfaces";
         return false;
@@ -8479,22 +9505,17 @@ bool NguScaler::RunNativeLuma4x720TailYcbcr(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailDownX(ID3D11ShaderResourceView* input,
-                                            ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailDownX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880))
     {
         error_ = "NGU 720p 4x tail down-X requires exact 5120/3840 surfaces";
         return false;
     }
 
     auto& state = *nativeLuma4x720Tail_;
-    ID3D11ShaderResourceView* inputs[3] = {
-        input, state.downXTableView.Get(), state.downXUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {input, state.downXTableView.Get(), state.downXUvLutView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -8515,22 +9536,17 @@ bool NguScaler::RunNativeLuma4x720TailDownX(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailDownY(ID3D11ShaderResourceView* input,
-                                            ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailDownY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail down-Y requires exact 3840x2880/2160 surfaces";
         return false;
     }
 
     auto& state = *nativeLuma4x720Tail_;
-    ID3D11ShaderResourceView* inputs[3] = {
-        input, state.downYTableView.Get(), state.downYUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {input, state.downYTableView.Get(), state.downYUvLutView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -8551,22 +9567,17 @@ bool NguScaler::RunNativeLuma4x720TailDownY(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailSsimRt(ID3D11ShaderResourceView* input,
-                                             ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailSsimRt(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail SSIM RT requires exact 4K surfaces";
         return false;
     }
 
     auto& state = *nativeLuma4x720Tail_;
-    ID3D11ShaderResourceView* inputs[2] = {
-        input, state.downYUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[2] = {input, state.downYUvLutView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -8588,21 +9599,16 @@ bool NguScaler::RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
                                                 ID3D11ShaderResourceView* source,
                                                 ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            rt, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160) ||
-        !ViewMatchesTexture(
-            source, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(rt, DXGI_FORMAT_R16G16B16A16_FLOAT, 3840, 2160) ||
+        !ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail SSIM final requires exact 4K surfaces";
         return false;
     }
 
     auto& state = *nativeLuma4x720Tail_;
-    ID3D11ShaderResourceView* inputs[3] = {
-        rt, source, state.downYUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[3] = {rt, source, state.downYUvLutView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -8620,22 +9626,17 @@ bool NguScaler::RunNativeLuma4x720TailSsimFinal(ID3D11ShaderResourceView* rt,
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
-                                                ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail SharpenAR requires exact 4K surfaces";
         return false;
     }
 
     auto& state = *nativeLuma4x720Tail_;
-    ID3D11ShaderResourceView* inputs[2] = {
-        input, state.downYUvLutView.Get()};
+    ID3D11ShaderResourceView* inputs[2] = {input, state.downYUvLutView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   state.vertex.Get(),
@@ -8653,13 +9654,10 @@ bool NguScaler::RunNativeLuma4x720TailSharpenAr(ID3D11ShaderResourceView* input,
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailChromaX(ID3D11ShaderResourceView* input,
-                                              ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailChromaX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720))
     {
         error_ = "NGU 720p 4x tail chroma-X requires exact 1280x720/3840x720 surfaces";
         return false;
@@ -8668,22 +9666,25 @@ bool NguScaler::RunNativeLuma4x720TailChromaX(ID3D11ShaderResourceView* input,
     ID3D11ShaderResourceView* inputs[2] = {input, state.chromaXTableView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  state.vertex.Get(), state.chromaX.Get(),
-                  state.chromaXConstants.Get(), state.rasterizer.Get(),
-                  inputs, 2, targets, 1, 3840, 720,
+                  state.vertex.Get(),
+                  state.chromaX.Get(),
+                  state.chromaXConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
+                  targets,
+                  1,
+                  3840,
+                  720,
                   state.pointSampler.Get());
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720TailChromaY(ID3D11ShaderResourceView* input,
-                                              ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeLuma4x720TailChromaY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(input, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 720) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail chroma-Y requires exact 3840x720/2160 surfaces";
         return false;
@@ -8692,9 +9693,16 @@ bool NguScaler::RunNativeLuma4x720TailChromaY(ID3D11ShaderResourceView* input,
     ID3D11ShaderResourceView* inputs[2] = {input, state.chromaYTableView.Get()};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  state.vertex.Get(), state.chromaY.Get(),
-                  state.chromaYConstants.Get(), state.rasterizer.Get(),
-                  inputs, 2, targets, 1, 3840, 2160,
+                  state.vertex.Get(),
+                  state.chromaY.Get(),
+                  state.chromaYConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
+                  targets,
+                  1,
+                  3840,
+                  2160,
                   state.pointSampler.Get());
     error_ = "";
     return true;
@@ -8704,13 +9712,9 @@ bool NguScaler::RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
                                             ID3D11ShaderResourceView* chroma,
                                             ID3D11RenderTargetView* output)
 {
-    if (!nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(
-            luma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
-        !ViewMatchesTexture(
-            chroma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
-        !ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Tail_ || !ViewMatchesTexture(luma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(chroma, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160) ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU 720p 4x tail merge requires exact 4K surfaces";
         return false;
@@ -8719,9 +9723,16 @@ bool NguScaler::RunNativeLuma4x720TailMerge(ID3D11ShaderResourceView* luma,
     ID3D11ShaderResourceView* inputs[2] = {luma, chroma};
     ID3D11RenderTargetView* targets[1] = {output};
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
-                  state.vertex.Get(), state.merge.Get(),
-                  state.mergeConstants.Get(), state.rasterizer.Get(),
-                  inputs, 2, targets, 1, 3840, 2160,
+                  state.vertex.Get(),
+                  state.merge.Get(),
+                  state.mergeConstants.Get(),
+                  state.rasterizer.Get(),
+                  inputs,
+                  2,
+                  targets,
+                  1,
+                  3840,
+                  2160,
                   state.pointSampler.Get());
     error_ = "";
     return true;
@@ -8734,8 +9745,7 @@ bool NguScaler::PrepareNativeLuma4x720Full(pl_gpu gpu)
         error_ = "NGU 720p 4x full path requires a GPU";
         return false;
     }
-    if (nativeLuma4x720Tail_ && nativeLuma4x720DenseAdd_ &&
-        nativeLumaFinal_ && gpu == gpu_)
+    if (nativeLuma4x720Tail_ && nativeLuma4x720DenseAdd_ && nativeLumaFinal_ && gpu == gpu_)
     {
         cached_.quality = NguQuality::VeryHigh;
         cached_.stage = NguScalerStage::VeryHighLuma4x720Full;
@@ -8744,9 +9754,7 @@ bool NguScaler::PrepareNativeLuma4x720Full(pl_gpu gpu)
         hasCached_ = true;
         return true;
     }
-    if (!PrepareNativeLuma4x720DenseAdd(gpu) ||
-        !PrepareNativeLuma4x720Tail(gpu) ||
-        !PrepareNativeLumaFinal(gpu))
+    if (!PrepareNativeLuma4x720DenseAdd(gpu) || !PrepareNativeLuma4x720Tail(gpu) || !PrepareNativeLumaFinal(gpu))
         return false;
     cached_.quality = NguQuality::VeryHigh;
     cached_.stage = NguScalerStage::VeryHighLuma4x720Full;
@@ -8762,12 +9770,9 @@ bool NguScaler::RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
                                        int sourceHeight,
                                        ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ ||
-        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
-        !nativeLumaFinal_ || !sourceRgb || !finalOutput ||
-        sourceWidth != 1280 || sourceHeight != 720 ||
-        !ViewMatchesTexture(
-            finalOutput, DXGI_FORMAT_B8G8R8A8_UNORM, 3840, 2160))
+    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ || !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
+        !nativeLumaFinal_ || !sourceRgb || !finalOutput || sourceWidth != 1280 || sourceHeight != 720 ||
+        !ViewMatchesRgb8(finalOutput, 3840, 2160))
     {
         error_ = "NGU 720p 4x full request is outside the verified path";
         return false;
@@ -8777,86 +9782,50 @@ bool NguScaler::RunNativeLuma4x720Full(ID3D11ShaderResourceView* sourceRgb,
     auto& denseAdd = *nativeLuma4x720DenseAdd_;
     auto& tail = *nativeLuma4x720Tail_;
     if (!RunNativeLuma4x720DenseAdd(sourceRgb, sourceWidth, sourceHeight) ||
-        !RunNativeLuma4x720TailYcbcr(
-            denseAdd.addShaderView.Get(), tail.ycbcrView.Get()) ||
-        !RunNativeLuma4x720TailDownX(
-            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
-        !RunNativeLuma4x720TailDownY(
-            tail.downXShaderView.Get(), tail.downYView.Get()) ||
-        !RunNativeLuma4x720TailSsimRt(
-            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+        !RunNativeLuma4x720TailYcbcr(denseAdd.addShaderView.Get(), tail.ycbcrView.Get()) ||
+        !RunNativeLuma4x720TailDownX(tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
         !RunNativeLuma4x720TailSsimFinal(
-            tail.ssimRtShaderView.Get(),
-            tail.downYShaderView.Get(),
-            tail.ssimFinalView.Get()) ||
-        !RunNativeLuma4x720TailSharpenAr(
-            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
-        !RunNativeLuma4x720TailChromaX(
-            low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
-        !RunNativeLuma4x720TailChromaY(
-            tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
+            tail.ssimRtShaderView.Get(), tail.downYShaderView.Get(), tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !RunNativeLuma4x720TailChromaX(low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
+        !RunNativeLuma4x720TailChromaY(tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
         !RunNativeLuma4x720TailMerge(
-            tail.sharpenArShaderView.Get(),
-            tail.chromaYShaderView.Get(),
-            tail.mergeView.Get()) ||
+            tail.sharpenArShaderView.Get(), tail.chromaYShaderView.Get(), tail.mergeView.Get()) ||
         !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(), finalOutput))
         return false;
     error_ = "";
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720FromPacked(
-    ID3D11ShaderResourceView* sourcePacked,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeLuma4x720FromPacked(ID3D11ShaderResourceView* sourcePacked,
+                                             ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ ||
-        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
+    if (!nativeLuma4x720Low_ || !nativeLuma4x720High_ || !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ ||
         !nativeLumaFinal_ || !sourcePacked || !finalOutput ||
-        !ViewMatchesTexture(sourcePacked,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            1280,
-                            720) ||
-        !ViewMatchesTexture(finalOutput,
-                            DXGI_FORMAT_B8G8R8A8_UNORM,
-                            3840,
-                            2160))
+        !ViewMatchesTexture(sourcePacked, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesRgb8(finalOutput, 3840, 2160))
     {
         error_ = "NGU 720p packed luma request is outside the verified path";
         return false;
     }
     auto& low = *nativeLuma4x720Low_;
     auto& tail = *nativeLuma4x720Tail_;
-    if (!RunNativeLumaSplit(sourcePacked,
-                            1280,
-                            720,
-                            low.splitLumaView.Get(),
-                            low.splitCbCrView.Get()) ||
+    if (!RunNativeLumaSplit(sourcePacked, 1280, 720, low.splitLumaView.Get(), low.splitCbCrView.Get()) ||
         !RunNativeLuma4x720DenseAdd(sourcePacked, 1280, 720, true) ||
-        !RunNativeLuma4x720TailYcbcr(
-            nativeLuma4x720DenseAdd_->addShaderView.Get(),
-            tail.ycbcrView.Get()) ||
-        !RunNativeLuma4x720TailDownX(
-            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
-        !RunNativeLuma4x720TailDownY(
-            tail.downXShaderView.Get(), tail.downYView.Get()) ||
-        !RunNativeLuma4x720TailSsimRt(
-            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+        !RunNativeLuma4x720TailYcbcr(nativeLuma4x720DenseAdd_->addShaderView.Get(), tail.ycbcrView.Get()) ||
+        !RunNativeLuma4x720TailDownX(tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
         !RunNativeLuma4x720TailSsimFinal(
-            tail.ssimRtShaderView.Get(),
-            tail.downYShaderView.Get(),
-            tail.ssimFinalView.Get()) ||
-        !RunNativeLuma4x720TailSharpenAr(
-            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
-        !RunNativeLuma4x720TailChromaX(
-            low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
-        !RunNativeLuma4x720TailChromaY(
-            tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
+            tail.ssimRtShaderView.Get(), tail.downYShaderView.Get(), tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !RunNativeLuma4x720TailChromaX(low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
+        !RunNativeLuma4x720TailChromaY(tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
         !RunNativeLuma4x720TailMerge(
-            tail.sharpenArShaderView.Get(),
-            tail.chromaYShaderView.Get(),
-            tail.mergeView.Get()) ||
-        !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(),
-                                       finalOutput))
+            tail.sharpenArShaderView.Get(), tail.chromaYShaderView.Get(), tail.mergeView.Get()) ||
+        !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(), finalOutput))
         return false;
     error_ = "";
     return true;
@@ -8877,34 +9846,26 @@ bool NguScaler::PrepareNativeLuma4x720SuperResFull(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLuma4x720SuperResFull(
-    ID3D11ShaderResourceView* source,
-    ID3D11ShaderResourceView* diffOriginal,
-    ID3D11ShaderResourceView* mainOriginal,
-    ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeLuma4x720SuperResFull(ID3D11ShaderResourceView* source,
+                                               ID3D11ShaderResourceView* diffOriginal,
+                                               ID3D11ShaderResourceView* mainOriginal,
+                                               ID3D11ShaderResourceView* baseOriginal,
+                                               ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeSuperResStrength3_ || !source || !diffOriginal ||
-        !mainOriginal || !baseOriginal || !finalOutput)
+    if (!nativeSuperResStrength3_ || !source || !diffOriginal || !mainOriginal || !baseOriginal || !finalOutput)
     {
         error_ = "NGU 720p SuperRes full request is invalid";
         return false;
     }
     auto& superRes = *nativeSuperResStrength3_;
-    if (!RunNativeSuperResStrength3(source,
-                                    diffOriginal,
-                                    mainOriginal,
-                                    baseOriginal,
-                                    superRes.outputView.Get()))
+    if (!RunNativeSuperResStrength3(source, diffOriginal, mainOriginal, baseOriginal, superRes.outputView.Get()))
         return false;
-    return RunNativeLuma4x720Full(
-        superRes.outputShaderView.Get(), 1280, 720, finalOutput);
+    return RunNativeLuma4x720Full(superRes.outputShaderView.Get(), 1280, 720, finalOutput);
 }
 
 bool NguScaler::PrepareNativeLumaVeryHigh1080SuperResFull(pl_gpu gpu)
 {
-    if (!PrepareNativeSuperResStrength3_1080(gpu) ||
-        !PrepareNativeLumaVeryHigh1080(gpu))
+    if (!PrepareNativeSuperResStrength3_1080(gpu) || !PrepareNativeLumaVeryHigh1080(gpu))
         return false;
     cached_.quality = NguQuality::VeryHigh;
     cached_.stage = NguScalerStage::VeryHighLuma1080SuperResFull;
@@ -8915,28 +9876,21 @@ bool NguScaler::PrepareNativeLumaVeryHigh1080SuperResFull(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeLumaVeryHigh1080SuperResFull(
-    ID3D11ShaderResourceView* source,
-    ID3D11ShaderResourceView* diffOriginal,
-    ID3D11ShaderResourceView* mainOriginal,
-    ID3D11ShaderResourceView* baseOriginal,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeLumaVeryHigh1080SuperResFull(ID3D11ShaderResourceView* source,
+                                                      ID3D11ShaderResourceView* diffOriginal,
+                                                      ID3D11ShaderResourceView* mainOriginal,
+                                                      ID3D11ShaderResourceView* baseOriginal,
+                                                      ID3D11RenderTargetView* finalOutput)
 {
-    if (!nativeSuperResStrength3_1080_ || !source || !diffOriginal ||
-        !mainOriginal || !baseOriginal || !finalOutput)
+    if (!nativeSuperResStrength3_1080_ || !source || !diffOriginal || !mainOriginal || !baseOriginal || !finalOutput)
     {
         error_ = "NGU 1080p SuperRes full request is invalid";
         return false;
     }
     auto& superRes = *nativeSuperResStrength3_1080_;
-    if (!RunNativeSuperResStrength3_1080(source,
-                                         diffOriginal,
-                                         mainOriginal,
-                                         baseOriginal,
-                                         superRes.outputView.Get()))
+    if (!RunNativeSuperResStrength3_1080(source, diffOriginal, mainOriginal, baseOriginal, superRes.outputView.Get()))
         return false;
-    return RunNativeLumaVeryHigh1080(
-        superRes.outputShaderView.Get(), 1920, 1080, finalOutput);
+    return RunNativeLumaVeryHigh1080(superRes.outputShaderView.Get(), 1920, 1080, finalOutput);
 }
 
 bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
@@ -8966,19 +9920,12 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
         return false;
     }
 
-    const std::string shaderText =
-        LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl",
-                        32 * 1024);
-    const auto superXbr0Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr0.cso", 0);
-    const auto superXbr1Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr1.cso", 0);
-    const auto superXbr2Bytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr2.cso", 0);
-    const auto ycbcrBytecode =
-        LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_tail_ycbcr.cso", 0);
-    if (shaderText.empty() || superXbr0Bytecode.empty() ||
-        superXbr1Bytecode.empty() || superXbr2Bytecode.empty() ||
+    const std::string shaderText = LoadBundledText(L"shaders\\Ngu\\luma_4x720_tail_ycbcr.hlsl", 32 * 1024);
+    const auto superXbr0Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr0.cso", 0);
+    const auto superXbr1Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr1.cso", 0);
+    const auto superXbr2Bytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_superxbr2.cso", 0);
+    const auto ycbcrBytecode = LoadBundledBytes(L"shaders\\Ngu\\ngu_class3_tail_ycbcr.cso", 0);
+    if (shaderText.empty() || superXbr0Bytecode.empty() || superXbr1Bytecode.empty() || superXbr2Bytecode.empty() ||
         ycbcrBytecode.empty())
     {
         error_ = "NGU class-3 SuperXbr shader assets are unavailable";
@@ -8986,8 +9933,7 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
     }
 
     ComPtr<ID3DBlob> vertexBlob, errors;
-    const UINT flags =
-        D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    const UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
     const HRESULT hr = D3DCompile(shaderText.data(),
                                   shaderText.size(),
                                   "NGU_Class3_Vertex",
@@ -9001,38 +9947,22 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ?
-                     static_cast<const char*>(errors->GetBufferPointer()) :
-                     "NGU class-3 vertex shader failed";
+        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU class-3 vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeClass3ChromaTail720>();
-    if (FAILED(device->CreateVertexShader(vertexBlob->GetBufferPointer(),
-                                          vertexBlob->GetBufferSize(),
-                                          nullptr,
-                                          &state->vertex)) ||
+    if (FAILED(device->CreateVertexShader(
+            vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &state->vertex)) ||
         FAILED(device->CreatePixelShader(
-            superXbr0Bytecode.data(),
-            static_cast<SIZE_T>(superXbr0Bytecode.size()),
-            nullptr,
-            &state->superXbr0)) ||
+            superXbr0Bytecode.data(), static_cast<SIZE_T>(superXbr0Bytecode.size()), nullptr, &state->superXbr0)) ||
         FAILED(device->CreatePixelShader(
-            superXbr1Bytecode.data(),
-            static_cast<SIZE_T>(superXbr1Bytecode.size()),
-            nullptr,
-            &state->superXbr1)) ||
+            superXbr1Bytecode.data(), static_cast<SIZE_T>(superXbr1Bytecode.size()), nullptr, &state->superXbr1)) ||
         FAILED(device->CreatePixelShader(
-            superXbr2Bytecode.data(),
-            static_cast<SIZE_T>(superXbr2Bytecode.size()),
-            nullptr,
-            &state->superXbr2)) ||
+            superXbr2Bytecode.data(), static_cast<SIZE_T>(superXbr2Bytecode.size()), nullptr, &state->superXbr2)) ||
         FAILED(device->CreatePixelShader(
-            ycbcrBytecode.data(),
-            static_cast<SIZE_T>(ycbcrBytecode.size()),
-            nullptr,
-            &state->ycbcr)))
+            ycbcrBytecode.data(), static_cast<SIZE_T>(ycbcrBytecode.size()), nullptr, &state->ycbcr)))
     {
         error_ = "NGU class-3 SuperXbr shader objects could not be created";
         return false;
@@ -9050,18 +9980,14 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
     for (size_t pass = 0; pass < state->constants.size(); ++pass)
     {
         std::array<float, 16> values = {};
-        FillClass3PostConstants(values,
-                                dimensions[pass][0],
-                                dimensions[pass][1],
-                                swapAxes[pass]);
+        FillClass3PostConstants(values, dimensions[pass][0], dimensions[pass][1], swapAxes[pass]);
         D3D11_BUFFER_DESC desc = {};
         desc.ByteWidth = sizeof(values);
         desc.Usage = D3D11_USAGE_IMMUTABLE;
         desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         D3D11_SUBRESOURCE_DATA initial = {};
         initial.pSysMem = values.data();
-        if (FAILED(device->CreateBuffer(
-                &desc, &initial, &state->constants[pass])))
+        if (FAILED(device->CreateBuffer(&desc, &initial, &state->constants[pass])))
         {
             error_ = "NGU class-3 post constants could not be created";
             return false;
@@ -9074,8 +10000,7 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    if (FAILED(device->CreateSamplerState(
-            &samplerDesc, &state->pointSampler)))
+    if (FAILED(device->CreateSamplerState(&samplerDesc, &state->pointSampler)))
     {
         error_ = "NGU class-3 point sampler could not be created";
         return false;
@@ -9085,8 +10010,7 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.ScissorEnable = FALSE;
     rasterizerDesc.DepthClipEnable = TRUE;
-    if (FAILED(device->CreateRasterizerState(
-            &rasterizerDesc, &state->rasterizer)))
+    if (FAILED(device->CreateRasterizerState(&rasterizerDesc, &state->rasterizer)))
     {
         error_ = "NGU class-3 rasterizer could not be created";
         return false;
@@ -9106,45 +10030,20 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
         desc.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
         desc.SampleDesc.Count = 1;
         desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags =
-            D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-        return SUCCEEDED(device->CreateTexture2D(
-                   &desc, nullptr, &texture)) &&
-               SUCCEEDED(device->CreateRenderTargetView(
-                   texture.Get(), nullptr, &view)) &&
-               SUCCEEDED(device->CreateShaderResourceView(
-                   texture.Get(), nullptr, &shaderView));
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &view)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
     };
-    if (!createSurface(1280,
-                       720,
-                       state->post6392Texture,
-                       state->post6392View,
-                       state->post6392ShaderView) ||
-        !createSurface(2560,
-                       1440,
-                       state->post5140Texture,
-                       state->post5140View,
-                       state->post5140ShaderView) ||
-        !createSurface(2560,
-                       1440,
-                       state->post4804Texture,
-                       state->post4804View,
-                       state->post4804ShaderView) ||
-        !createSurface(2560,
-                       1440,
-                       state->post6392SecondTexture,
-                       state->post6392SecondView,
-                       state->post6392SecondShaderView) ||
-        !createSurface(5120,
-                       2880,
-                       state->post5140SecondTexture,
-                       state->post5140SecondView,
-                       state->post5140SecondShaderView) ||
-        !createSurface(5120,
-                       2880,
-                       state->post4804SecondTexture,
-                       state->post4804SecondView,
-                       state->post4804SecondShaderView))
+    if (!createSurface(1280, 720, state->post6392Texture, state->post6392View, state->post6392ShaderView) ||
+        !createSurface(2560, 1440, state->post5140Texture, state->post5140View, state->post5140ShaderView) ||
+        !createSurface(2560, 1440, state->post4804Texture, state->post4804View, state->post4804ShaderView) ||
+        !createSurface(
+            2560, 1440, state->post6392SecondTexture, state->post6392SecondView, state->post6392SecondShaderView) ||
+        !createSurface(
+            5120, 2880, state->post5140SecondTexture, state->post5140SecondView, state->post5140SecondShaderView) ||
+        !createSurface(
+            5120, 2880, state->post4804SecondTexture, state->post4804SecondView, state->post4804SecondShaderView))
     {
         error_ = "NGU class-3 post surfaces could not be created";
         return false;
@@ -9161,19 +10060,12 @@ bool NguScaler::PrepareNativeClass3ChromaTail720(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeClass3ChromaTail720(
-    ID3D11ShaderResourceView* sourcePs4576,
-    ID3D11RenderTargetView* finalOutput)
+bool NguScaler::RunNativeClass3ChromaTail720(ID3D11ShaderResourceView* sourcePs4576,
+                                             ID3D11RenderTargetView* finalOutput)
 {
     if (!nativeClass3ChromaTail720_ || !nativeLuma4x720Tail_ ||
-        !ViewMatchesTexture(sourcePs4576,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            1280,
-                            720) ||
-        !ViewMatchesTexture(finalOutput,
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            3840,
-                            2160))
+        !ViewMatchesTexture(sourcePs4576, DXGI_FORMAT_R16G16B16A16_UNORM, 1280, 720) ||
+        !ViewMatchesTexture(finalOutput, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
     {
         error_ = "NGU class-3 chroma tail requires 1280x720 input and 4K output";
         return false;
@@ -9197,8 +10089,7 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   state.pointSampler.Get());
 
     ID3D11RenderTargetView* post5140 = state.post5140View.Get();
-    ID3D11ShaderResourceView* post5140Inputs[2] = {
-        state.post6392ShaderView.Get(), sourcePs4576};
+    ID3D11ShaderResourceView* post5140Inputs[2] = {state.post6392ShaderView.Get(), sourcePs4576};
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.superXbr1.Get(),
@@ -9216,8 +10107,7 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   state.pointSampler.Get());
 
     ID3D11RenderTargetView* post4804 = state.post4804View.Get();
-    ID3D11ShaderResourceView* post4804Input =
-        state.post5140ShaderView.Get();
+    ID3D11ShaderResourceView* post4804Input = state.post5140ShaderView.Get();
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.superXbr2.Get(),
@@ -9231,10 +10121,8 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   1440,
                   state.pointSampler.Get());
 
-    ID3D11RenderTargetView* post6392Second =
-        state.post6392SecondView.Get();
-    ID3D11ShaderResourceView* post6392SecondInput =
-        state.post4804ShaderView.Get();
+    ID3D11RenderTargetView* post6392Second = state.post6392SecondView.Get();
+    ID3D11ShaderResourceView* post6392SecondInput = state.post4804ShaderView.Get();
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.superXbr0.Get(),
@@ -9248,11 +10136,9 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   1440,
                   state.pointSampler.Get());
 
-    ID3D11RenderTargetView* post5140Second =
-        state.post5140SecondView.Get();
-    ID3D11ShaderResourceView* post5140SecondInputs[2] = {
-        state.post6392SecondShaderView.Get(),
-        state.post4804ShaderView.Get()};
+    ID3D11RenderTargetView* post5140Second = state.post5140SecondView.Get();
+    ID3D11ShaderResourceView* post5140SecondInputs[2] = {state.post6392SecondShaderView.Get(),
+                                                         state.post4804ShaderView.Get()};
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.superXbr1.Get(),
@@ -9269,10 +10155,8 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   nullptr,
                   state.pointSampler.Get());
 
-    ID3D11RenderTargetView* post4804Second =
-        state.post4804SecondView.Get();
-    ID3D11ShaderResourceView* post4804SecondInput =
-        state.post5140SecondShaderView.Get();
+    ID3D11RenderTargetView* post4804Second = state.post4804SecondView.Get();
+    ID3D11ShaderResourceView* post4804SecondInput = state.post5140SecondShaderView.Get();
     DrawD3D11Pass(device,
                   state.vertex.Get(),
                   state.superXbr2.Get(),
@@ -9286,10 +10170,7 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   2880,
                   state.pointSampler.Get());
 
-    if (!ViewMatchesTexture(state.post4804SecondShaderView.Get(),
-                            DXGI_FORMAT_R16G16B16A16_UNORM,
-                            5120,
-                            2880))
+    if (!ViewMatchesTexture(state.post4804SecondShaderView.Get(), DXGI_FORMAT_R16G16B16A16_UNORM, 5120, 2880))
     {
         error_ = "NGU class-3 SuperXbr2 surface is invalid";
         return false;
@@ -9300,8 +10181,7 @@ bool NguScaler::RunNativeClass3ChromaTail720(
     // existing P010/P016 path consumes R16_UNORM, so keep that contract
     // untouched and bind the class-3 surface directly here.
     ID3D11RenderTargetView* ycbcrTarget = tail.ycbcrView.Get();
-    ID3D11ShaderResourceView* ycbcrInput =
-        state.post4804SecondShaderView.Get();
+    ID3D11ShaderResourceView* ycbcrInput = state.post4804SecondShaderView.Get();
     DrawD3D11Pass(device,
                   tail.vertex.Get(),
                   state.ycbcr.Get(),
@@ -9314,32 +10194,21 @@ bool NguScaler::RunNativeClass3ChromaTail720(
                   5120,
                   2880,
                   tail.pointSampler.Get());
-    if (
-        !RunNativeLuma4x720TailDownX(
-            tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
-        !RunNativeLuma4x720TailDownY(
-            tail.downXShaderView.Get(), tail.downYView.Get()) ||
-        !RunNativeLuma4x720TailSsimRt(
-            tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
+    if (!RunNativeLuma4x720TailDownX(tail.ycbcrShaderView.Get(), tail.downXView.Get()) ||
+        !RunNativeLuma4x720TailDownY(tail.downXShaderView.Get(), tail.downYView.Get()) ||
+        !RunNativeLuma4x720TailSsimRt(tail.downYShaderView.Get(), tail.ssimRtView.Get()) ||
         !RunNativeLuma4x720TailSsimFinal(
-            tail.ssimRtShaderView.Get(),
-            tail.downYShaderView.Get(),
-            tail.ssimFinalView.Get()) ||
-        !RunNativeLuma4x720TailSharpenAr(
-            tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
-        !CopyTextureToTarget(
-            gpu_, tail.sharpenArTexture.Get(), finalOutput))
+            tail.ssimRtShaderView.Get(), tail.downYShaderView.Get(), tail.ssimFinalView.Get()) ||
+        !RunNativeLuma4x720TailSharpenAr(tail.ssimFinalShaderView.Get(), tail.sharpenArView.Get()) ||
+        !CopyTextureToTarget(gpu_, tail.sharpenArTexture.Get(), finalOutput))
         return false;
     error_ = "";
     return true;
 }
 
-bool NguScaler::CopyNativeClass3PostStage720(
-    int stage,
-    ID3D11RenderTargetView* output)
+bool NguScaler::CopyNativeClass3PostStage720(int stage, ID3D11RenderTargetView* output)
 {
-    if (!nativeClass3ChromaTail720_ || !nativeLuma4x720Tail_ || !output ||
-        stage < 0 || stage > 11)
+    if (!nativeClass3ChromaTail720_ || !nativeLuma4x720Tail_ || !output || stage < 0 || stage > 11)
     {
         error_ = "NGU class-3 post-stage copy request is invalid";
         return false;
@@ -9419,7 +10288,10 @@ void NguScaler::Reset()
     nativeLumaScaleAdd_.reset();
     nativeLumaFinish_.reset();
     nativeLumaFinal_.reset();
+    nativeHookOutput_.reset();
     nativeLumaVeryHigh1080_.reset();
+    nativeLuma720Double_.reset();
+    nativeLuma720DoubleHighBit_.reset();
     nativeSuperRes_.reset();
     nativeSuperResStrength3_.reset();
     nativeSuperResStrength3_1080_.reset();
@@ -9433,6 +10305,8 @@ void NguScaler::Reset()
     nativeNguClass3_720_.reset();
     nativeNguClass3_1080_.reset();
     gpu_ = nullptr;
+    hdr_ = false;
+    colorDomain_ = ColorDomainProfile::Sdr;
     hasCached_ = false;
     cached_ = {};
     error_ = "";

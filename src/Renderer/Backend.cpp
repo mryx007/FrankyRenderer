@@ -25,6 +25,7 @@
 #include "Renderer/ShaderHooks.h"
 #include "Renderer/RtxScaling.h"
 #include "Renderer/NguScaler.h"
+#include "Renderer/NguSourceFormat.h"
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
@@ -101,19 +102,30 @@ struct PlaceboBackend::State
     ComPtr<ID3D11Texture2D> nguSource;
     ComPtr<ID3D11Texture2D> nguOutput;
     ComPtr<ID3D11RenderTargetView> nguOutputView;
+    ComPtr<ID3D11ShaderResourceView> nguOutputShaderView;
+    ComPtr<ID3D11Texture2D> nguHookOutput;
+    ComPtr<ID3D11RenderTargetView> nguHookOutputView;
     ComPtr<ID3D11ShaderResourceView> nguSourceView;
     ComPtr<ID3D11Texture2D> nguCpuPlaneYTexture;
     ComPtr<ID3D11Texture2D> nguCpuPlaneUvTexture;
     ComPtr<ID3D11ShaderResourceView> nguCpuPlaneYView;
     ComPtr<ID3D11ShaderResourceView> nguCpuPlaneUvView;
     bool nguCpuPlanes = false;
+    std::vector<uint8_t> nguCpuUvPacked;
     ComPtr<ID3D11Texture2D> nguPlaneYTexture;
     ComPtr<ID3D11Texture2D> nguPlaneUvTexture;
     ComPtr<ID3D11RenderTargetView> nguPlaneYView;
     ComPtr<ID3D11RenderTargetView> nguPlaneUvView;
     ComPtr<ID3D11ShaderResourceView> nguPlaneYShaderView;
     ComPtr<ID3D11ShaderResourceView> nguPlaneUvShaderView;
-    pl_tex nguOutputPlane = nullptr;
+    pl_tex nguHookOutputPlane = nullptr;
+    pl_hook nguHook = {};
+    bool nguHookActive = false;
+    bool nguHookAtOutput = false;
+    bool nguHdrSource = false;
+    NguTargetPlan nguPlan;
+    int nguOutputWidth = 3840;
+    int nguOutputHeight = 2160;
     pl_frame mixFrames[16] = {};
     // Gamma for the frame being presented. SDR gamma processing: the gamma
     // x100 the SDR picture should have on the display (0 = off). Output
@@ -335,6 +347,7 @@ struct PlaceboBackend::State
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     std::function<void(ID3D11Texture2D*)> presentProbe;
     std::function<void(const pl_color_space&)> presentColorProbe;
+    std::function<void(const pl_hook_params&, const pl_hook_res&)> nguHookProbe;
 
     void ProbePresent()
     {
@@ -449,18 +462,12 @@ struct PlaceboBackend::State
         valid = false;
     }
 
-    HRESULT UploadNguCpuPlanes(const VideoFrame& frame,
-                               const uint8_t* data,
-                               int stride)
+    HRESULT UploadNguCpuPlanes(const VideoFrame& frame, const uint8_t* data, int stride)
     {
-        const bool class3 =
-            frame.format == PixelFormat::P210 ||
-            frame.format == PixelFormat::P216;
+        NguSourceFormatLayout layout;
         if (!d3d || !d3d->device || !context || !data ||
-            (!class3 &&
-             frame.format != PixelFormat::P010 &&
-             frame.format != PixelFormat::P016) ||
-            frame.width <= 0 || frame.height <= 0 || stride <= 0)
+            !DescribeNguSourceFormat(frame.format, frame.width, frame.height, layout) ||
+            layout.cpuLumaFormat == DXGI_FORMAT_UNKNOWN || layout.cpuChromaFormat == DXGI_FORMAT_UNKNOWN || stride <= 0)
             return E_INVALIDARG;
 
         D3D11_TEXTURE2D_DESC yDesc = {};
@@ -468,25 +475,24 @@ struct PlaceboBackend::State
         yDesc.Height = frame.height;
         yDesc.MipLevels = 1;
         yDesc.ArraySize = 1;
-        yDesc.Format = DXGI_FORMAT_R16_UNORM;
+        yDesc.Format = layout.cpuLumaFormat;
         yDesc.SampleDesc.Count = 1;
         yDesc.Usage = D3D11_USAGE_DEFAULT;
         yDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         D3D11_TEXTURE2D_DESC uvDesc = yDesc;
-        uvDesc.Width = frame.width / 2;
-        uvDesc.Height = class3 ? frame.height : frame.height / 2;
-        uvDesc.Format = DXGI_FORMAT_R16G16_UNORM;
+        uvDesc.Width = UINT(layout.chromaWidth);
+        uvDesc.Height = UINT(layout.chromaHeight);
+        uvDesc.Format = layout.cpuChromaFormat;
 
         bool recreate = !nguCpuPlaneYTexture || !nguCpuPlaneUvTexture;
         if (!recreate)
         {
             D3D11_TEXTURE2D_DESC current = {};
             nguCpuPlaneYTexture->GetDesc(&current);
-            recreate = current.Width != yDesc.Width ||
-                       current.Height != yDesc.Height;
+            recreate = current.Width != yDesc.Width || current.Height != yDesc.Height || current.Format != yDesc.Format;
             nguCpuPlaneUvTexture->GetDesc(&current);
-            recreate = recreate || current.Width != uvDesc.Width ||
-                       current.Height != uvDesc.Height;
+            recreate = recreate || current.Width != uvDesc.Width || current.Height != uvDesc.Height ||
+                       current.Format != uvDesc.Format;
         }
         if (recreate)
         {
@@ -494,18 +500,10 @@ struct PlaceboBackend::State
             nguCpuPlaneUvView.Reset();
             nguCpuPlaneYTexture.Reset();
             nguCpuPlaneUvTexture.Reset();
-            if (FAILED(d3d->device->CreateTexture2D(
-                    &yDesc, nullptr, &nguCpuPlaneYTexture)) ||
-                FAILED(d3d->device->CreateShaderResourceView(
-                    nguCpuPlaneYTexture.Get(),
-                    nullptr,
-                    &nguCpuPlaneYView)) ||
-                FAILED(d3d->device->CreateTexture2D(
-                    &uvDesc, nullptr, &nguCpuPlaneUvTexture)) ||
-                FAILED(d3d->device->CreateShaderResourceView(
-                    nguCpuPlaneUvTexture.Get(),
-                    nullptr,
-                    &nguCpuPlaneUvView)))
+            if (FAILED(d3d->device->CreateTexture2D(&yDesc, nullptr, &nguCpuPlaneYTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(nguCpuPlaneYTexture.Get(), nullptr, &nguCpuPlaneYView)) ||
+                FAILED(d3d->device->CreateTexture2D(&uvDesc, nullptr, &nguCpuPlaneUvTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(nguCpuPlaneUvTexture.Get(), nullptr, &nguCpuPlaneUvView)))
             {
                 nguCpuPlaneYView.Reset();
                 nguCpuPlaneUvView.Reset();
@@ -515,66 +513,150 @@ struct PlaceboBackend::State
             }
         }
 
-        context->UpdateSubresource(
-            nguCpuPlaneYTexture.Get(), 0, nullptr, data, stride, 0);
-        context->UpdateSubresource(
-            nguCpuPlaneUvTexture.Get(),
-            0,
-            nullptr,
-            data + size_t(stride) * frame.height,
-            stride,
-            0);
+        context->UpdateSubresource(nguCpuPlaneYTexture.Get(), 0, nullptr, data, stride, 0);
+        const uint8_t* uvData = nullptr;
+        UINT uvPitch = 0;
+        if (!PackNguCpuChroma(layout, data, stride, frame.height, nguCpuUvPacked, uvData, uvPitch))
+            return E_INVALIDARG;
+        context->UpdateSubresource(nguCpuPlaneUvTexture.Get(), 0, nullptr, uvData, uvPitch, 0);
         nguCpuPlanes = true;
-        TraceNgu("high-bit CPU planes uploaded");
+        TraceNgu(layout.planarChroma ? "canonical planar CPU chroma interleaved" : "canonical CPU planes uploaded");
         return S_OK;
     }
 
-    bool PrepareNgu(int sourceWidth, int sourceHeight)
+    bool DescribeNguSource(NguSourceFrame& source) const
+    {
+        source = {};
+        source.width = description.width;
+        source.height = description.height;
+        // The current sample is authoritative: side-data/PQ metadata can
+        // upgrade a media-type default mid-stream. E-160/E-162.
+        source.color = image.color;
+        pl_color_space_merge(&source.color, &description.color);
+        source.repr = image.repr;
+        source.fullRange = description.levels == PL_COLOR_LEVELS_FULL;
+        source.topDown = !description.bottomUp;
+        NguSourceFormatLayout layout;
+        if (!DescribeNguSourceFormat(description.format, source.width, source.height, layout))
+            return false;
+        source.lumaBits = layout.lumaBits;
+        source.chromaBits = layout.chromaBits;
+        source.chromaLayout = layout.chromaLayout;
+        source.chromaWidth = layout.chromaWidth;
+        source.chromaHeight = layout.chromaHeight;
+        return true;
+    }
+
+    bool PrepareNgu(int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
     {
         if (!d3d || !d3d->device)
         {
             error = "NGU requires a D3D11 device";
             return false;
         }
+        NguSourceFrame source = {};
+        if (!DescribeNguSource(source))
+        {
+            error = "NGU source format cannot be represented canonically";
+            return false;
+        }
+        nguPlan = ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight);
+        nguOutputWidth = nguPlan.outputWidth;
+        nguOutputHeight = nguPlan.outputHeight;
+        const DXGI_FORMAT outputFormat =
+            (nguHdrSource || nguPlan.preFinalRgb16) ? DXGI_FORMAT_R16G16B16A16_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+        bool recreateOutput = !nguOutput;
+        if (nguOutput)
+        {
+            D3D11_TEXTURE2D_DESC current = {};
+            nguOutput->GetDesc(&current);
+            recreateOutput = current.Width != UINT(nguOutputWidth) || current.Height != UINT(nguOutputHeight) ||
+                             current.Format != outputFormat;
+        }
+        if (recreateOutput)
+        {
+            nguOutputShaderView.Reset();
+            nguOutputView.Reset();
+            nguOutput.Reset();
+        }
         if (!nguOutput)
         {
             D3D11_TEXTURE2D_DESC desc = {};
-            desc.Width = 3840;
-            desc.Height = 2160;
+            desc.Width = UINT(nguOutputWidth);
+            desc.Height = UINT(nguOutputHeight);
             desc.MipLevels = 1;
             desc.ArraySize = 1;
-            desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            desc.Format = outputFormat;
             desc.SampleDesc.Count = 1;
             desc.Usage = D3D11_USAGE_DEFAULT;
             desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
             if (FAILED(d3d->device->CreateTexture2D(&desc, nullptr, &nguOutput)) ||
-                FAILED(d3d->device->CreateRenderTargetView(
-                    nguOutput.Get(), nullptr, &nguOutputView)))
+                FAILED(d3d->device->CreateRenderTargetView(nguOutput.Get(), nullptr, &nguOutputView)) ||
+                FAILED(d3d->device->CreateShaderResourceView(nguOutput.Get(), nullptr, &nguOutputShaderView)))
             {
                 error = "NGU output surface could not be created";
                 return false;
             }
         }
-        if (!nguOutputPlane)
+        bool recreateHookOutput = !nguHookOutput;
+        if (nguHookOutput)
         {
-            pl_d3d11_wrap_params wrap = {};
-            wrap.tex = nguOutput.Get();
-            wrap.fmt = DXGI_FORMAT_B8G8R8A8_UNORM;
-            wrap.w = 3840;
-            wrap.h = 2160;
-            nguOutputPlane = pl_d3d11_wrap(d3d->gpu, &wrap);
-            if (!nguOutputPlane)
+            D3D11_TEXTURE2D_DESC current = {};
+            nguHookOutput->GetDesc(&current);
+            recreateHookOutput = current.Width != UINT(nguOutputWidth) || current.Height != UINT(nguOutputHeight) ||
+                                 current.Format != outputFormat;
+        }
+        if (recreateHookOutput)
+        {
+            if (nguHookOutputPlane && d3d)
+                pl_tex_destroy(d3d->gpu, &nguHookOutputPlane);
+            nguHookOutputView.Reset();
+            nguHookOutput.Reset();
+        }
+        if (!nguHookOutput)
+        {
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = UINT(nguOutputWidth);
+            desc.Height = UINT(nguOutputHeight);
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = outputFormat;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_DEFAULT;
+            desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            if (FAILED(d3d->device->CreateTexture2D(&desc, nullptr, &nguHookOutput)) ||
+                FAILED(d3d->device->CreateRenderTargetView(nguHookOutput.Get(), nullptr, &nguHookOutputView)))
             {
-                error = "NGU output surface could not be wrapped";
+                error = "NGU hook output surface could not be created";
                 return false;
             }
         }
-        const bool decoderPlane =
-            description.format == PixelFormat::P010 ||
-            description.format == PixelFormat::P016;
-        const bool class3Plane =
-            description.format == PixelFormat::P210 ||
-            description.format == PixelFormat::P216;
+        if (!nguHookOutputPlane)
+        {
+            pl_d3d11_wrap_params wrap = {};
+            wrap.tex = nguHookOutput.Get();
+            wrap.fmt = outputFormat;
+            wrap.w = UINT(nguOutputWidth);
+            wrap.h = UINT(nguOutputHeight);
+            nguHookOutputPlane = pl_d3d11_wrap(d3d->gpu, &wrap);
+            if (!nguHookOutputPlane)
+            {
+                error = "NGU hook output surface could not be wrapped";
+                return false;
+            }
+        }
+        if (!ngu.PrepareNativeHookOutput(d3d->gpu))
+        {
+            error = ngu.LastError();
+            return false;
+        }
+        const bool decoderPlane = source.chromaLayout == NguChromaLayout::SemiPlanar420 && !nguCpuPlanes;
+        const bool class3Plane = source.chromaLayout == NguChromaLayout::SemiPlanar422;
+        if (class3Plane && !nguCpuPlanes)
+        {
+            error = "NGU class-3 source requires the common CPU plane adapter";
+            return false;
+        }
         if (decoderPlane)
         {
             D3D11_TEXTURE2D_DESC yDesc = {};
@@ -585,8 +667,7 @@ struct PlaceboBackend::State
             yDesc.Format = DXGI_FORMAT_R16_UNORM;
             yDesc.SampleDesc.Count = 1;
             yDesc.Usage = D3D11_USAGE_DEFAULT;
-            yDesc.BindFlags =
-                D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            yDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
             D3D11_TEXTURE2D_DESC uvDesc = yDesc;
             uvDesc.Width = sourceWidth / 2;
             uvDesc.Height = sourceHeight / 2;
@@ -596,8 +677,7 @@ struct PlaceboBackend::State
             {
                 D3D11_TEXTURE2D_DESC current = {};
                 nguPlaneYTexture->GetDesc(&current);
-                recreate = current.Width != yDesc.Width ||
-                           current.Height != yDesc.Height;
+                recreate = current.Width != yDesc.Width || current.Height != yDesc.Height;
             }
             if (recreate)
             {
@@ -607,46 +687,21 @@ struct PlaceboBackend::State
                 nguPlaneUvShaderView.Reset();
                 nguPlaneUvView.Reset();
                 nguPlaneUvTexture.Reset();
-                if (FAILED(d3d->device->CreateTexture2D(
-                        &yDesc, nullptr, &nguPlaneYTexture)) ||
-                    FAILED(d3d->device->CreateRenderTargetView(
-                        nguPlaneYTexture.Get(), nullptr, &nguPlaneYView)) ||
-                    FAILED(d3d->device->CreateShaderResourceView(
-                        nguPlaneYTexture.Get(),
-                        nullptr,
-                        &nguPlaneYShaderView)) ||
-                    FAILED(d3d->device->CreateTexture2D(
-                        &uvDesc, nullptr, &nguPlaneUvTexture)) ||
-                    FAILED(d3d->device->CreateRenderTargetView(
-                        nguPlaneUvTexture.Get(), nullptr, &nguPlaneUvView)) ||
-                    FAILED(d3d->device->CreateShaderResourceView(
-                        nguPlaneUvTexture.Get(),
-                        nullptr,
-                        &nguPlaneUvShaderView)))
+                if (FAILED(d3d->device->CreateTexture2D(&yDesc, nullptr, &nguPlaneYTexture)) ||
+                    FAILED(d3d->device->CreateRenderTargetView(nguPlaneYTexture.Get(), nullptr, &nguPlaneYView)) ||
+                    FAILED(
+                        d3d->device->CreateShaderResourceView(nguPlaneYTexture.Get(), nullptr, &nguPlaneYShaderView)) ||
+                    FAILED(d3d->device->CreateTexture2D(&uvDesc, nullptr, &nguPlaneUvTexture)) ||
+                    FAILED(d3d->device->CreateRenderTargetView(nguPlaneUvTexture.Get(), nullptr, &nguPlaneUvView)) ||
+                    FAILED(
+                        d3d->device->CreateShaderResourceView(nguPlaneUvTexture.Get(), nullptr, &nguPlaneUvShaderView)))
                 {
                     error = "NGU decoder plane surfaces could not be created";
                     return false;
                 }
             }
         }
-        const bool prepared = class3Plane
-            ? nguCpuPlanes &&
-                  ((sourceWidth == 1280 && sourceHeight == 720 &&
-                    ngu.PrepareNativeNguClass3_720(d3d->gpu)) ||
-                   (sourceWidth == 1920 && sourceHeight == 1080 &&
-                    ngu.PrepareNativeNguClass3_1080(d3d->gpu)))
-            : decoderPlane
-            ? ngu.PrepareNativeDecoderSource(d3d->gpu) &&
-                  (sourceWidth == 1280 && sourceHeight == 720
-                       ? ngu.PrepareNativeNgu720FromPlanes(d3d->gpu)
-                       : sourceWidth == 1920 && sourceHeight == 1080
-                           ? ngu.PrepareNativeNgu1080FromPlanes(d3d->gpu)
-                           : false)
-            : sourceWidth == 1280 && sourceHeight == 720
-                ? ngu.PrepareNativeLuma4x720Full(d3d->gpu)
-                : sourceWidth == 1920 && sourceHeight == 1080
-                    ? ngu.PrepareNativeLumaVeryHigh1080(d3d->gpu)
-                    : false;
+        const bool prepared = ngu.PrepareNativeVeryHigh(d3d->gpu, source, nguPlan);
         if (!prepared)
         {
             error = ngu.LastError();
@@ -655,207 +710,247 @@ struct PlaceboBackend::State
         return true;
     }
 
-    bool RunNgu(int targetWidth, int targetHeight)
+    bool PrepareNguHook(int targetWidth, int targetHeight)
     {
         if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
-        if (targetWidth != 3840 || targetHeight != 2160)
+        NguSourceFrame source = {};
+        if (!DescribeNguSource(source))
         {
-            error = "ngu_sharp currently requires a 3840x2160 output target";
+            error = "ngu_sharp source format is unsupported";
             return false;
         }
-        if ((description.width != 1280 || description.height != 720) &&
-            (description.width != 1920 || description.height != 1080))
+        const bool class3 = source.chromaLayout == NguChromaLayout::SemiPlanar422;
+        if (class3 && (targetWidth != 3840 || targetHeight != 2160))
         {
-            error = "ngu_sharp source geometry is unsupported: got " +
-                    std::to_string(description.width) + "x" +
-                    std::to_string(description.height);
+            // Keep the normal renderer visible instead of turning an
+            // unsupported class-3 window target into a black frame. The
+            // native path remains explicit in the trace/statistics boundary.
+            nguHookActive = false;
+            error.clear();
+            TraceNgu("class-3 window target unsupported; common renderer fallback");
+            return true;
+        }
+        nguHdrSource = pl_color_space_is_hdr(&image.color) || pl_color_space_is_hdr(&description.color);
+        char colorTrace[192] = {};
+        sprintf_s(colorTrace,
+                  "NGU color probe image=(trc=%d prim=%d max=%.1f cll=%.1f) "
+                  "description=(trc=%d prim=%d max=%.1f cll=%.1f) "
+                  "source=(trc=%d prim=%d max=%.1f cll=%.1f) hdr=%d",
+                  int(image.color.transfer),
+                  int(image.color.primaries),
+                  image.color.hdr.max_luma,
+                  image.color.hdr.max_cll,
+                  int(description.color.transfer),
+                  int(description.color.primaries),
+                  description.color.hdr.max_luma,
+                  description.color.hdr.max_cll,
+                  int(source.color.transfer),
+                  int(source.color.primaries),
+                  source.color.hdr.max_luma,
+                  source.color.hdr.max_cll,
+                  nguHdrSource ? 1 : 0);
+        TraceNgu(colorTrace);
+        if (mixing)
+        {
+            error = "ngu_sharp SDR V1 does not support mixed temporal frames";
             return false;
         }
-        const bool nativePlane =
-            description.format == PixelFormat::P010 ||
-            description.format == PixelFormat::P016;
-        const bool class3Plane =
-            description.format == PixelFormat::P210 ||
-            description.format == PixelFormat::P216;
-        const bool rgb48 = description.format == PixelFormat::RGB48;
-        if ((!rgb48 && !nativePlane && !class3Plane) ||
-            description.bottomUp ||
-            (rgb48 && image.num_planes != 1))
-        {
-            error =
-                "ngu_sharp requires top-down RGB48, P010, P016, P210 or P216: got " +
-                    std::to_string(description.width) + "x" + std::to_string(description.height) +
-                    " format " +
-                    std::to_string(static_cast<int>(description.format)) +
-                    (description.bottomUp ? " bottom-up" : " top-down") +
-                    " planes " + std::to_string(image.num_planes);
+        nguHookActive = false;
+        if (!PrepareNgu(description.width, description.height, targetWidth, targetHeight))
             return false;
-        }
-        if (!nguSource && !nguCpuPlanes)
+        sprintf_s(colorTrace,
+                  "NGU plan probe hdr=%d output=%dx%d",
+                  nguPlan.hdr ? 1 : 0,
+                  nguPlan.outputWidth,
+                  nguPlan.outputHeight);
+        TraceNgu(colorTrace);
+        // At the native 4K target, preserve the exact FinalStep surface and
+        // avoid an unnecessary common-renderer RGB round trip. Window targets
+        // retain the resizable RGB handoff so presentation scaling remains
+        // visible and composable. E-025/E-059/E-150.
+        // SDR FinalStep is already the target presentation boundary and can
+        // bypass the common RGB pass. HDR must stop before Franky's colour
+        // management so the common renderer owns tone mapping, transfer,
+        // primaries, peak metadata and output encoding.
+        nguHookAtOutput = !nguHdrSource && ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight).outputHook;
+        nguHook.stages = nguHookAtOutput ? PL_HOOK_OUTPUT : PL_HOOK_RGB;
+        nguHook.input = PL_HOOK_SIG_TEX;
+        nguHook.priv = this;
+        nguHook.hook = &State::RunNguHook;
+        nguHook.signature = 0x4e67536861727031ULL;
+        nguHookActive = true;
+        return true;
+    }
+
+    // Native NGU consumes the source planes prepared by Import/Upload from the
+    // shared pl_frame. The top-level image/description are never replaced;
+    // the only scaler handoff is the renderer hook below.
+    bool RunNgu()
+    {
+        if (!nguHookActive || settings.nativeScaler != NativeScalerKind::NguSharp)
+            return true;
+        NguSourceFrame source = {};
+        if (!DescribeNguSource(source) || !source.topDown)
         {
-            error = "ngu_sharp source texture is unavailable";
+            error = "ngu_sharp requires a top-down source representable by the canonical contract";
             return false;
         }
         D3D11_TEXTURE2D_DESC sourceDesc = {};
         if (nguSource)
             nguSource->GetDesc(&sourceDesc);
-        if (rgb48 && (!nguSource ||
-                      sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM))
+        if (source.chromaLayout == NguChromaLayout::None)
         {
-            error = "ngu_sharp source format is unsupported";
-            return false;
-        }
-        if (nativePlane && !nguCpuPlanes &&
-            !((description.format == PixelFormat::P010 &&
-               sourceDesc.Format == DXGI_FORMAT_P010) ||
-              (description.format == PixelFormat::P016 &&
-               sourceDesc.Format == DXGI_FORMAT_P016)))
-        {
-            error = "ngu_sharp decoder texture format is unsupported";
-            return false;
-        }
-        const bool supportedClass3Geometry =
-            (description.width == 1280 && description.height == 720) ||
-            (description.width == 1920 && description.height == 1080);
-        if (class3Plane &&
-            (!nguCpuPlanes || !supportedClass3Geometry))
-        {
-            error = "P210/P216 requires uploadable CPU planes at "
-                    "1280x720 or 1920x1080";
-            return false;
-        }
-        if (!PrepareNgu(description.width, description.height))
-            return false;
-        if (class3Plane)
-        {
-            TraceNgu("P210/P216: begin exact class-3 path");
-            const bool ran =
-                description.width == 1280
-                    ? ngu.RunNativeNguClass3_720(
-                          nguCpuPlaneUvView.Get(),
-                          nguCpuPlaneYView.Get(),
-                          nguOutputView.Get())
-                    : ngu.RunNativeNguClass3_1080(
-                          nguCpuPlaneUvView.Get(),
-                          nguCpuPlaneYView.Get(),
-                          nguOutputView.Get());
-            TraceNgu("P210/P216: exact class-3 path complete");
-            if (!ran)
+            if (!nguSource || image.num_planes != 1 || sourceDesc.Format != DXGI_FORMAT_R16G16B16A16_UNORM)
             {
-                error = ngu.LastError();
+                error = "ngu_sharp canonical RGB source is unavailable";
                 return false;
             }
-        }
-        else if (nativePlane)
-        {
-            bool ran = false;
-            if (nguCpuPlanes)
+            if (nguSourceView)
             {
-                TraceNgu("high-bit CPU planes: begin native NGU");
-                ran = description.width == 1280
-                          ? ngu.RunNativeNgu720FromPlanes(
-                                nguCpuPlaneUvView.Get(),
-                                nguCpuPlaneYView.Get(),
-                                nguOutputView.Get(),
-                                true)
-                          : ngu.RunNativeNgu1080FromPlanes(
-                                nguCpuPlaneUvView.Get(),
-                                nguCpuPlaneYView.Get(),
-                                nguOutputView.Get(),
-                                true);
-                TraceNgu("high-bit CPU planes: native NGU complete");
+                ComPtr<ID3D11Resource> resource;
+                nguSourceView->GetResource(&resource);
+                if (resource.Get() != nguSource.Get())
+                    nguSourceView.Reset();
             }
-            else
-            {
-                TraceNgu("P010/P016: begin decoder plane copy");
-                if (!nguPlaneYView || !nguPlaneUvView ||
-                    !nguPlaneYShaderView || !nguPlaneUvShaderView)
-                {
-                    error = "ngu_sharp decoder plane surfaces are unavailable";
-                    return false;
-                }
-                const bool copied = ngu.RunNativeDecoderSourceCopy(
-                    nguSource.Get(),
-                    0,
-                    description.width,
-                    description.height,
-                    nguPlaneYView.Get(),
-                    nguPlaneUvView.Get());
-                TraceNgu("P010/P016: decoder plane copy complete");
-                ran = copied &&
-                      (description.width == 1280
-                           ? ngu.RunNativeNgu720FromPlanes(
-                                 nguPlaneUvShaderView.Get(),
-                                 nguPlaneYShaderView.Get(),
-                                 nguOutputView.Get(),
-                                 true)
-                           : ngu.RunNativeNgu1080FromPlanes(
-                                 nguPlaneUvShaderView.Get(),
-                                 nguPlaneYShaderView.Get(),
-                                 nguOutputView.Get(),
-                                 true));
-                TraceNgu("P010/P016: native NGU plane entry complete");
-            }
-            if (!ran)
-            {
-                error = ngu.LastError();
-                return false;
-            }
-        }
-        else if (nguSourceView)
-        {
-            ComPtr<ID3D11Resource> sourceResource;
-            nguSourceView->GetResource(&sourceResource);
-            if (sourceResource.Get() != nguSource.Get())
-                nguSourceView.Reset();
-        }
-        if (!nativePlane && !class3Plane && !nguSourceView)
-        {
-            if (FAILED(d3d->device->CreateShaderResourceView(
-                    nguSource.Get(), nullptr, &nguSourceView)))
+            if (!nguSourceView &&
+                FAILED(d3d->device->CreateShaderResourceView(nguSource.Get(), nullptr, &nguSourceView)))
             {
                 error = "ngu_sharp source view could not be created";
                 return false;
             }
+            source.rgb = nguSourceView.Get();
         }
-        const bool ran = nativePlane || class3Plane ||
-            (description.width == 1280
-                ? ngu.RunNativeLuma4x720Full(
-                      nguSourceView.Get(), 1280, 720, nguOutputView.Get())
-                : ngu.RunNativeLumaVeryHigh1080(
-                      nguSourceView.Get(), 1920, 1080, nguOutputView.Get()));
-        if (!ran)
+        else if (source.chromaLayout == NguChromaLayout::SemiPlanar420)
+        {
+            if (nguCpuPlanes)
+            {
+                source.luma = nguCpuPlaneYView.Get();
+                source.chroma = nguCpuPlaneUvView.Get();
+            }
+            else
+            {
+                NguSourceFormatLayout layout;
+                if (!DescribeNguSourceFormat(description.format, description.width, description.height, layout) ||
+                    layout.decoderFormat == DXGI_FORMAT_UNKNOWN || !nguSource ||
+                    sourceDesc.Format != layout.decoderFormat)
+                {
+                    error = "ngu_sharp decoder texture does not match the canonical source";
+                    return false;
+                }
+                if (!nguPlaneYView || !nguPlaneUvView || !nguPlaneYShaderView || !nguPlaneUvShaderView)
+                {
+                    error = "ngu_sharp decoder plane surfaces are unavailable";
+                    return false;
+                }
+                const bool copied = ngu.RunNativeDecoderSourceCopy(nguSource.Get(),
+                                                                   0,
+                                                                   description.width,
+                                                                   description.height,
+                                                                   nguPlaneYView.Get(),
+                                                                   nguPlaneUvView.Get());
+                if (!copied)
+                {
+                    error = ngu.LastError();
+                    return false;
+                }
+                source.luma = nguPlaneYShaderView.Get();
+                source.chroma = nguPlaneUvShaderView.Get();
+            }
+        }
+        else
+        {
+            if (!nguCpuPlanes)
+            {
+                error = "ngu_sharp class-3 source requires the common CPU plane adapter";
+                return false;
+            }
+            if (nguPlan.noLuma)
+            {
+                error = "ngu_sharp 1080-target class-3 path is not evidence-backed";
+                return false;
+            }
+            source.luma = nguCpuPlaneYView.Get();
+            source.chroma = nguCpuPlaneUvView.Get();
+        }
+        TraceNgu("canonical NGU source: begin");
+        if (!ngu.RunNativeVeryHigh(source, nguPlan, nguOutputView.Get()))
         {
             error = ngu.LastError();
             return false;
         }
-        pl_frame nguFrame = image;
-        nguFrame.num_planes = 1;
-        nguFrame.planes[0] = {};
-        nguFrame.planes[0].texture = nguOutputPlane;
-        nguFrame.planes[0].components = 3;
-        for (int i = 0; i < 3; ++i)
-            nguFrame.planes[0].component_mapping[i] = i;
-        nguFrame.planes[0].component_mapping[3] = -1;
-        nguFrame.crop = {0, 0, 3840, 2160};
-        nguFrame.repr = pl_color_repr_rgb;
-        nguFrame.repr.bits = {8, 8, 0};
-        nguFrame.repr.alpha = PL_ALPHA_NONE;
-        // E-098/E-150: the target FinalStep output is already the captured
-        // display-referred SDR result. Re-applying the source BT.1886 transfer
-        // before presentation adds a second conversion. Preserve the source
-        // primaries and only neutralize the SDR transfer stage.
-        if (!pl_color_transfer_is_hdr(description.color.transfer))
-            nguFrame.color.transfer = PL_COLOR_TRC_SRGB;
-        image = nguFrame;
-        description.width = 3840;
-        description.height = 2160;
-        description.stride = 3840 * 4;
-        description.format = PixelFormat::BGRA32;
-        description.bottomUp = false;
+        TraceNgu("canonical NGU source: complete");
         error.clear();
         return true;
+    }
+
+    static pl_hook_res RunNguHook(void* priv, const struct pl_hook_params* params)
+    {
+        auto* self = static_cast<State*>(priv);
+        pl_hook_res result = {};
+        result.failed = true;
+        TraceNgu("NGU output hook entered");
+        const pl_hook_stage expectedStage = self && self->nguHookAtOutput ? PL_HOOK_OUTPUT : PL_HOOK_RGB;
+        if (!self || !params || params->stage != expectedStage || params->components < 3 || !self->nguHookActive ||
+            !self->nguHookOutputPlane || !self->RunNgu())
+        {
+            if (self && self->error.empty())
+                self->error = self->ngu.LastError();
+            if (self && !self->error.empty())
+                TraceNgu(self->error.c_str());
+            TraceNgu("NGU output hook rejected");
+            return result;
+        }
+        TraceNgu(self->nguHookAtOutput ? "native-output storage adapter" : "RGBA storage adapter");
+        if (!self->ngu.RunNativeHookOutput(self->nguOutputShaderView.Get(),
+                                           self->nguHookOutputView.Get(),
+                                           self->nguOutputWidth,
+                                           self->nguOutputHeight))
+        {
+            if (self->error.empty())
+                self->error = self->ngu.LastError();
+            TraceNgu("NGU output hook rejected");
+            return result;
+        }
+
+        result.failed = false;
+        result.output = PL_HOOK_SIG_TEX;
+        result.tex = self->nguHookOutputPlane;
+        result.rect = {0.0f, 0.0f, static_cast<float>(self->nguOutputWidth), static_cast<float>(self->nguOutputHeight)};
+        result.repr = pl_color_repr_rgb;
+        const bool wideColorDomain = self->nguHdrSource || self->nguPlan.preFinalRgb16;
+        result.repr.bits = wideColorDomain ? pl_bit_encoding{16, 16, 0} : pl_bit_encoding{8, 8, 0};
+        result.repr.alpha = PL_ALPHA_NONE;
+        // E-098/E-150: FinalStep already produced the display-referred SDR
+        // result. Keep its sRGB transfer for the common output path. For HDR,
+        // the native result is handed to Franky before colour management;
+        // preserve the source transfer, primaries and HDR metadata so the
+        // common renderer performs the only HDR processing.
+        if (wideColorDomain)
+        {
+            TraceNgu(self->nguHdrSource ? "HDR source: NGU core handed to common color management"
+                                        : "P016 Double: NGU pre-final RGB16 handed to common color management");
+            result.color = self->image.color;
+        }
+        else
+            result.color = pl_color_space_srgb;
+        result.components = 3;
+        char outputMessage[96] = {};
+        sprintf_s(outputMessage,
+                  "NGU output hook returned %dx%d %s texture",
+                  self->nguOutputWidth,
+                  self->nguOutputHeight,
+                  self->nguPlan.hdr             ? "source-resolution HDR"
+                  : self->nguPlan.preFinalRgb16 ? "pre-final Double RGB16"
+                  : self->nguPlan.noLuma        ? "chroma-only"
+                  : self->nguPlan.double720     ? "Double"
+                                                : "target");
+        TraceNgu(outputMessage);
+#ifdef PLACEBO_TEST_PRESENT_PIXELS
+        if (self->nguHookProbe)
+            self->nguHookProbe(*params, result);
+#endif
+        return result;
     }
 
     void ClearOverlay()
@@ -965,9 +1060,15 @@ struct PlaceboBackend::State
             userCached[i] = {};
         }
         userShaderMessage.clear();
+        nguHookActive = false;
+        nguHookAtOutput = false;
+        nguHdrSource = false;
+        nguPlan = {};
+        nguOutputWidth = 3840;
+        nguOutputHeight = 2160;
         ngu.Reset();
-        if (d3d && nguOutputPlane)
-            pl_tex_destroy(d3d->gpu, &nguOutputPlane);
+        if (d3d && nguHookOutputPlane)
+            pl_tex_destroy(d3d->gpu, &nguHookOutputPlane);
         nguSourceView.Reset();
         nguPlaneYShaderView.Reset();
         nguPlaneUvShaderView.Reset();
@@ -976,6 +1077,9 @@ struct PlaceboBackend::State
         nguPlaneYTexture.Reset();
         nguPlaneUvTexture.Reset();
         nguSource.Reset();
+        nguOutputShaderView.Reset();
+        nguHookOutputView.Reset();
+        nguHookOutput.Reset();
         nguOutputView.Reset();
         nguOutput.Reset();
         pl_d3d11_destroy(&d3d);
@@ -1555,9 +1659,12 @@ struct PlaceboBackend::State
         }
 
         heading(L"Processing");
+        const bool nativeNgu = settings.nativeScaler == NativeScalerKind::NguSharp && nguHookActive;
         const auto* chromaFilter =
             options->params.plane_upscaler ? options->params.plane_upscaler : options->params.upscaler;
-        row(L"Chroma") << L"upscale" << dot << wide(chromaFilter ? chromaFilter->name : "bilinear");
+        row(L"Chroma") << L"upscale" << dot
+                       << (nativeNgu ? L"NGU Sharp (native hook)"
+                                     : wide(chromaFilter ? chromaFilter->name : "bilinear"));
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
@@ -1566,9 +1673,11 @@ struct PlaceboBackend::State
                           : down ? L"downscale"
                                  : L"upscale")
                       << (same ? L""
-                               : dot + wide((down ? options->params.downscaler : options->params.upscaler)
-                                                ? (down ? options->params.downscaler : options->params.upscaler)->name
-                                                : "bilinear"));
+                          : nativeNgu
+                              ? dot + std::wstring(L"NGU Sharp (native hook)")
+                              : dot + wide((down ? options->params.downscaler : options->params.upscaler)
+                                               ? (down ? options->params.downscaler : options->params.upscaler)->name
+                                               : "bilinear"));
         {
             auto& value = row(L"Smooth motion");
             if (mixing && settings.smoothMotion)
@@ -1973,17 +2082,22 @@ struct PlaceboBackend::State
         {
             VideoFrame& value;
             VideoFrame original;
+
             ~RestoreDescription()
             {
                 value = original;
             }
         } descriptionRestore{description, description};
 
+        nguHookActive = false;
+        nguHookAtOutput = false;
+        nguHdrSource = false;
+        nguPlan = {};
         if (settings.nativeScaler == NativeScalerKind::NguSharp)
         {
             const int targetWidth = target.planes[0].texture->params.w;
             const int targetHeight = target.planes[0].texture->params.h;
-            if (!RunNgu(targetWidth, targetHeight))
+            if (!PrepareNguHook(targetWidth, targetHeight))
                 return false;
             processed.active = true;
         }
@@ -2097,7 +2211,7 @@ struct PlaceboBackend::State
                 sharpenState = 2;
         }
 
-        const pl_hook* hooks[ShaderCount + 5] = {};
+        const pl_hook* hooks[ShaderCount + 6] = {};
         int hookIds[ShaderCount] = {};
         int users = 0, count = 0;
         if (params.num_hooks)
@@ -2109,6 +2223,8 @@ struct PlaceboBackend::State
         // the display.
         if (outputGamma != 1 && !target.lut)
             hooks[count++] = outputGammaHook.Prepare(outputGamma, target.repr);
+        if (nguHookActive)
+            hooks[count++] = &nguHook;
         const pl_hook* analysisHooks[2] = {};
         int analysisCount = 0;
         if (settings.imageAnalysis)
@@ -2630,12 +2746,12 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         IsNativeScalerIdentifier(settings.upscaler.c_str()) ? "nearest" : settings.upscaler.c_str();
     const char* nativeChroma =
         IsNativeScalerIdentifier(settings.chromaUpscaler.c_str()) ? "nearest" : settings.chromaUpscaler.c_str();
-    bool valid = pl_options_set_str(validation, "upscaler", nativeUpscaler) &&
-                 pl_options_set_str(validation, "downscaler", settings.downscaler.c_str()) &&
-                 (settings.chromaUpscaler == "auto" ||
-                  pl_options_set_str(validation, "plane_upscaler", nativeChroma)) &&
-                 (settings.toneMapping == "auto" ||
-                  pl_options_set_str(validation, "tone_mapping", settings.toneMapping.c_str()));
+    bool valid =
+        pl_options_set_str(validation, "upscaler", nativeUpscaler) &&
+        pl_options_set_str(validation, "downscaler", settings.downscaler.c_str()) &&
+        (settings.chromaUpscaler == "auto" || pl_options_set_str(validation, "plane_upscaler", nativeChroma)) &&
+        (settings.toneMapping == "auto" ||
+         pl_options_set_str(validation, "tone_mapping", settings.toneMapping.c_str()));
     pl_options_free(&validation);
     if (!valid)
         return E_INVALIDARG;
@@ -2669,11 +2785,11 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
         s.ClearFrame();
     s.Describe(frame);
     s.nguCpuPlanes = false;
-    if (s.settings.nativeScaler == NativeScalerKind::NguSharp &&
-        (frame.format == PixelFormat::P010 ||
-         frame.format == PixelFormat::P016 ||
-         frame.format == PixelFormat::P210 ||
-         frame.format == PixelFormat::P216))
+    const bool nguSource = s.settings.nativeScaler == NativeScalerKind::NguSharp;
+    NguSourceFormatLayout nguFormat;
+    const bool nguFormatKnown = DescribeNguSourceFormat(frame.format, frame.width, frame.height, nguFormat);
+    if (nguSource && nguFormatKnown && nguFormat.cpuLumaFormat != DXGI_FORMAT_UNKNOWN &&
+        nguFormat.cpuChromaFormat != DXGI_FORMAT_UNKNOWN)
     {
         hr = s.UploadNguCpuPlanes(frame, data, stride);
         if (FAILED(hr))
@@ -2736,8 +2852,7 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
         stride = frame.width * 4 * c;
         layout.channels = 4;
     }
-    if (s.settings.nativeScaler == NativeScalerKind::NguSharp &&
-        frame.format == PixelFormat::RGB48)
+    if (nguSource && nguFormatKnown && nguFormat.chromaLayout == NguChromaLayout::None)
     {
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = frame.width;
@@ -3320,6 +3435,12 @@ void PlaceboBackend::SetPresentProbeForTest(std::function<void(ID3D11Texture2D*)
 void PlaceboBackend::SetPresentColorProbeForTest(std::function<void(const pl_color_space&)> probe)
 {
     state->presentColorProbe = std::move(probe);
+}
+
+void PlaceboBackend::SetNguHookProbeForTest(
+    std::function<void(const struct pl_hook_params&, const struct pl_hook_res&)> probe)
+{
+    state->nguHookProbe = std::move(probe);
 }
 #endif
 // Before the swapchain exists, GDI owns the loading background. Once DXGI

@@ -26,7 +26,7 @@ LIVE_APPLY = {'test_display_profiles', 'test_direct2d_page'}
 FILTER_FLAGS = (
     'flush-race', 'gpu', 'nv12', 'p016', 'srv', 'interlaced', 'bff', 'weave',
     'eos', 'yadif', 'force-bff', 'motion', 'sharpen', 'measure', 'startup',
-    'mpcbe-owner', 'rtx', 'rtx-hdr', 'focus',
+    'mpcbe-owner', 'rtx', 'rtx-hdr', 'focus', 'ngu', 'ngu-1080', 'ngu-hdr',
 )
 
 
@@ -47,17 +47,25 @@ def main():
         selected.add_argument('--' + flag, dest='test', action='store_const', const=name)
     parser.set_defaults(test='test_filter')
     parser.add_argument('--package', action='store_true')
+    parser.add_argument('--dll', help='Explicit renderer AX to load for test_filter')
+    parser.add_argument('--p010-input', help='Padded P010 fixture for the GPU NGU DirectShow smoke')
     for flag in FILTER_FLAGS:
         parser.add_argument('--' + flag, action='store_true')
     options = parser.parse_args()
     forwarded = ['--' + flag for flag in FILTER_FLAGS if getattr(options, flag.replace('-', '_'))]
-    if options.test != 'test_filter' and (forwarded or options.package):
+    if options.test != 'test_filter' and (forwarded or options.package or options.dll or options.p010_input):
         parser.error('Playback and --package options require the default test_filter target.')
+    if options.package and options.dll:
+        parser.error('Use either --package or --dll, not both.')
     executable = ROOT / 'build' / 'bin' / (options.test + '.exe')
     if not executable.is_file():
         parser.error(f'Build {options.test}.exe before running it.')
     if options.package:
         forwarded += ['--dll', str(ROOT.parent / 'dist' / 'FrankyRenderer.ax')]
+    elif options.dll:
+        forwarded += ['--dll', str(pathlib.Path(options.dll).resolve())]
+    if options.p010_input:
+        forwarded += ['--p010-input', str(pathlib.Path(options.p010_input).resolve())]
     ctypes.windll.kernel32.SetErrorMode(0x8003)
     key = r'Software\PlaceboRendererTest_' + uuid.uuid4().hex
     env = os.environ.copy()

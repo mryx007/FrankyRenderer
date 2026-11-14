@@ -110,8 +110,13 @@ def main(out=OUT, source=SOURCE):
     compiled_shaders = source / "shaders"
     if compiled_shaders.is_dir():
         shutil.copytree(compiled_shaders, out / "shaders", dirs_exist_ok=True)
+    # Remove generated-only assets retired during the RGB-hook transition.
+    (out / "shaders" / "Ngu" / "ngu_hook_output_rgba.cso").unlink(
+        missing_ok=True
+    )
     required_ngu_assets = (
         "Ngu/luma_1080_split.cso",
+        "Ngu/ngu_hook_output.cso",
         "Ngu/ngu_chroma_split.cso",
         "Ngu/ngu_class3_superxbr0.cso",
         "Ngu/ngu_class3_superxbr1.cso",
@@ -123,7 +128,39 @@ def main(out=OUT, source=SOURCE):
         "Ngu/ngu_class3_scale_y.cso",
         "Ngu/superres_1080_class3_down_x_table.bin",
         "Ngu/luma_4x720_upsample.cso",
+        "Ngu/luma_720_highbit_split.cso",
+        "Ngu/luma_720_highbit_6140.cso",
+        "Ngu/luma_720_highbit_4280.cso",
+        "Ngu/luma_720_highbit_1528.cso",
+        "Ngu/luma_720_highbit_to_rgb.cso",
+        "Ngu/luma_720_highbit_6140_constants.bin",
+        "Ngu/luma_720_highbit_1412_0_constants.bin",
+        "Ngu/luma_720_highbit_1412_1_constants.bin",
+        "Ngu/luma_720_highbit_4280_0_constants.bin",
+        "Ngu/luma_720_highbit_4280_1_constants.bin",
+        "Ngu/luma_720_highbit_4280_2_constants.bin",
+        "Ngu/luma_720_highbit_1528_constants.bin",
+        "Ngu/luma_720_highbit_to_rgb_constants.bin",
+        "Ngu/ngu_highbit_720_1672_constants.bin",
+        "Ngu/ngu_highbit_720_dense_constants.bin",
+        "Ngu/ngu_highbit_720_layer_27_constants.bin",
         "Ngu/superres_asm_main.cso",
+        "Ngu/superres_asm_main_constants_hdr.bin",
+        "Ngu/superres_asm_base_constants_hdr.bin",
+        "Ngu/superres_1080_asm_main_constants_hdr.bin",
+        "Ngu/superres_1080_asm_base_constants_hdr.bin",
+        "Ngu/superres_asm_main_constants_hlg.bin",
+        "Ngu/superres_asm_base_constants_hlg.bin",
+        "Ngu/superres_asm_main_constants_bt709pq.bin",
+        "Ngu/superres_asm_base_constants_bt709pq.bin",
+        "Ngu/superres_1080_asm_main_constants_hlg.bin",
+        "Ngu/superres_1080_asm_base_constants_hlg.bin",
+        "Ngu/superres_1080_asm_main_constants_bt709pq.bin",
+        "Ngu/superres_1080_asm_base_constants_bt709pq.bin",
+    )
+    required_ngu_assets += tuple(
+        f"Ngu/ngu_highbit_720_layer_{layer:02d}_constants.bin"
+        for layer in range(28)
     )
     missing_ngu_assets = [
         path for path in required_ngu_assets

@@ -217,5 +217,133 @@
     "evidence": "OpenMadVR E-090/E-099/E-138/E-156",
     "target_shader": "PS_748_4085ea73",
     "role": "class-3 Y scale with target L16 20-bit-fixed round-half-down output semantics"
+  },
+  "ngu_hook_output.hlsl": {
+    "sha256": "C2BF974B4CE3F0C013B9CDF541BC866644A2025583FB19BAD406AF23BD1180D7",
+    "evidence": "OpenMadVR E-025/E-059; libplacebo PL_HOOK_RGB texture contract",
+    "role": "identity RGB storage adapter for the native FinalStep texture; no arithmetic or color conversion"
+  },
+  "luma_720_cbcr_x.hlsl": {
+    "sha256": "7AD6DD96C827AEA5559097C1B823361BBCE35BFC89D9BE8FB698B3E4F098C549",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "target_shader": "PS_1284_386cc8d7",
+    "role": "720p Double CbCr X scale, target-runtime arithmetic with 4-tap scale table"
+  },
+  "luma_720_cbcr_y.hlsl": {
+    "sha256": "B0192341CD0CE22732EE236100C2EADAA9019364924D0BC6BC21C57C10A4D4E7",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "target_shader": "PS_1284_dc97a0d0",
+    "role": "720p Double CbCr Y scale, target-runtime arithmetic with 4-tap scale table"
+  },
+  "luma_720_cbcr_x_table.bin": {
+    "sha256": "694471A13CC543049B4105B9658F78F1F04F8A8B8A247154F12380B3D43A18DF",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "role": "runtime-updated 4x2560 CbCr X scale table from the 720p Double target graph"
+  },
+  "luma_720_cbcr_y_table.bin": {
+    "sha256": "32FF4DE8E0305F1D0460808E30713C0D33AE629BB65BA69F2D3D812B659A7062",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "role": "runtime-updated 4x1440 CbCr Y scale table from the 720p Double target graph"
+  },
+  "luma_720_merge.hlsl": {
+    "sha256": "A24680F7F2012322BB7E9010979B7FFFE7B366D8DF334141BCE9ECC97A00020C",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "target_shader": "PS_548_d6670d4b",
+    "role": "720p Double Y/CbCr merge with explicit target instruction order"
+  },
+  "luma_720_merge_constants.bin": {
+    "sha256": "66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925",
+    "evidence": "OpenMadVR E-110/E-111/E-159",
+    "role": "captured zero floatConsts1 plus reserved zero vector for PS_548"
+  },
+  "superres_1080_asm_main_constants_hdr.bin": {
+    "sha256": "8C02350BA41EE985B12493C2EBA50E1DC736BAC015B93D7E8CBE0819327C80DB",
+    "evidence": "HDR A/B capture PS_4412_c39b49cf",
+    "role": "BT.2020/PQ NGU color-domain main constants; not a tone-mapping policy"
+  },
+  "superres_1080_asm_base_constants_hdr.bin": {
+    "sha256": "00BCB2F39B015C649AA9CE4A24018C843499C92C4DEEBB6D6CDB7F2BAE34E625",
+    "evidence": "HDR A/B capture PS_4576_b7830945",
+    "role": "BT.2020/PQ NGU color-domain base constants; not a tone-mapping policy"
+  },
+  "superres_1080_asm_main_constants_hlg.bin": {
+    "sha256": "8C02350BA41EE985B12493C2EBA50E1DC736BAC015B93D7E8CBE0819327C80DB",
+    "evidence": "E-169 follow-up HLG 1080p target capture PS_4412_c39b49cf",
+    "role": "BT.2020/HLG 1080p NGU source-domain main constants"
+  },
+  "superres_1080_asm_base_constants_hlg.bin": {
+    "sha256": "00BCB2F39B015C649AA9CE4A24018C843499C92C4DEEBB6D6CDB7F2BAE34E625",
+    "evidence": "E-169 follow-up HLG 1080p target capture PS_4576_b7830945",
+    "role": "BT.2020/HLG 1080p NGU source-domain base constants"
+  },
+  "superres_1080_asm_main_constants_bt709pq.bin": {
+    "sha256": "8C02350BA41EE985B12493C2EBA50E1DC736BAC015B93D7E8CBE0819327C80DB",
+    "evidence": "E-169 follow-up BT.709/PQ 1080p target capture PS_4412_c39b49cf",
+    "role": "BT.709/PQ 1080p NGU source-domain main constants"
+  },
+  "superres_1080_asm_base_constants_bt709pq.bin": {
+    "sha256": "C7D2B9B69FADFCD731646717DC59CCBEF829DC4026C4759C9FC939D7A03641CF",
+    "evidence": "E-169 follow-up BT.709/PQ 1080p target capture PS_4576_b7830945",
+    "role": "BT.709/PQ 1080p NGU source-domain base constants"
+  },
+  "superres_asm_main_constants_hdr.bin": {
+    "sha256": "02AE6D9445F26E51C80965CC3AD50D72458175B0F920F55C9F1EFC510ABDAD41",
+    "evidence": "HDR 720p capture PS_4412_c39b49cf",
+    "role": "BT.2020/PQ 720p/1080p NGU color-domain main constants; not a tone-mapping policy"
+  },
+  "superres_asm_base_constants_hdr.bin": {
+    "sha256": "5D0EEB07175D5D0AD4A5080DF599BD9FD2F04821D68B17CB70EDCDED9A84A9BD",
+    "evidence": "HDR 720p capture PS_4576_b7830945",
+    "role": "BT.2020/PQ 720p/1080p NGU color-domain base constants; not a tone-mapping policy"
+  },
+  "superres_asm_main_constants_hlg.bin": {
+    "sha256": "0E6D762E71C3F45EF5C76D479F7A35006D7AA7BDC41CFFEDA2EF17ED4B43FAC0",
+    "evidence": "E-169 follow-up HLG 720p target capture PS_4412_c39b49cf",
+    "role": "BT.2020/HLG 720p NGU source-domain main constants"
+  },
+  "superres_asm_base_constants_hlg.bin": {
+    "sha256": "E7B53B165A36066B2A4AF9CB14E38F8CB65C6326C9FB536E7A4E1E4FAF3A50AB",
+    "evidence": "E-169 follow-up HLG 720p target capture PS_4576_b7830945",
+    "role": "BT.2020/HLG 720p NGU source-domain base constants"
+  },
+  "superres_asm_main_constants_bt709pq.bin": {
+    "sha256": "02AE6D9445F26E51C80965CC3AD50D72458175B0F920F55C9F1EFC510ABDAD41",
+    "evidence": "E-169 follow-up BT.709/PQ 720p Double target capture PS_4412_c39b49cf",
+    "role": "BT.709/PQ 720p NGU source-domain main constants"
+  },
+  "superres_asm_base_constants_bt709pq.bin": {
+    "sha256": "7D02F5977E6806EAEDD0CF8606B18ADCFBA5BF27BF15E7E118D51DC36E689C06",
+    "evidence": "E-169 follow-up BT.709/PQ 720p Double target capture PS_4576_b7830945",
+    "role": "BT.709/PQ 720p NGU source-domain base constants"
+  },
+  "luma_720_highbit_split.hlsl": {
+    "sha256": "7305E96FC1870958C48C491AD23A0FD22ED341C3F9A5B34FC40594539C5718EA",
+    "evidence": "OpenMadVR E-163/E-165",
+    "target_shader": "PS_484_c7b4dcca",
+    "role": "P010 720p Double RGB to Y/Cb/Cr split"
+  },
+  "luma_720_highbit_6140.hlsl": {
+    "sha256": "FC4CDE6E53207EB904988A25B5A173629C08C45AA8DA0CA803661044657D3F60",
+    "evidence": "OpenMadVR E-163/E-165",
+    "target_shader": "PS_6140_e8f1d399",
+    "role": "P010 720p Double 54-matrix two-output layer"
+  },
+  "luma_720_highbit_4280.hlsl": {
+    "sha256": "CD8EF05BEA88F3D30CD9F5F9F21C66B27C540722AA4654B3AED2016B34BCEBCC",
+    "evidence": "OpenMadVR E-163/E-165",
+    "target_shader": "PS_4280_d591580d",
+    "role": "P010 720p Double 36-matrix two-output layer"
+  },
+  "luma_720_highbit_1528.hlsl": {
+    "sha256": "3998FD0F1954A6E334B2E969C664CE447F4D21E0FD30E22321B1C337DDBCC4C0",
+    "evidence": "OpenMadVR E-163/E-165",
+    "target_shader": "PS_1528_f0e4bb92",
+    "role": "P010 720p Double dense reconstruction"
+  },
+  "luma_720_highbit_to_rgb.hlsl": {
+    "sha256": "B781CED0EA846A3A335A06D558283118F2AA82BF7E9403ECE89A43BC38FAC350",
+    "evidence": "OpenMadVR E-163/E-165",
+    "target_shader": "PS_908_2a1d27a9",
+    "role": "P010 720p Double Y/Cb/Cr residual composition"
   }
 }

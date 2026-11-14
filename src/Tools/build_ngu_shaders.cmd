@@ -9,11 +9,11 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_s
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_split.cso" "Shaders\Ngu\ngu_chroma_split.hlsl"
 if errorlevel 1 exit /b 1
-fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_X /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /DNGU_SCALE_X /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_x_class3.cso" "Shaders\Ngu\ngu_chroma_scale_x_class3.hlsl"
 if errorlevel 1 exit /b 1
-fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /DNGU_SCALE_Y /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_y.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /DNGU_SCALE_Y /Fo "build\bin\shaders\Ngu\ngu_chroma_scale_y.cso" "Shaders\Ngu\ngu_chroma_scale.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_class3_scale_y.cso" "Shaders\Ngu\ngu_class3_scale_y.hlsl"
 if errorlevel 1 exit /b 1
@@ -77,6 +77,26 @@ fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_add.cso" "Shaders\Ngu\luma_1080_add.hlsl"
 if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_scale_x.cso" "Shaders\Ngu\luma_720_scale_x.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_scale_y.cso" "Shaders\Ngu\luma_720_scale_y.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_cbcr_x.cso" "Shaders\Ngu\luma_720_cbcr_x.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_cbcr_y.cso" "Shaders\Ngu\luma_720_cbcr_y.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_merge.cso" "Shaders\Ngu\luma_720_merge.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_highbit_split.cso" "Shaders\Ngu\luma_720_highbit_split.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_highbit_6140.cso" "Shaders\Ngu\luma_720_highbit_6140.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_highbit_4280.cso" "Shaders\Ngu\luma_720_highbit_4280.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_highbit_1528.cso" "Shaders\Ngu\luma_720_highbit_1528.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_720_highbit_to_rgb.cso" "Shaders\Ngu\luma_720_highbit_to_rgb.hlsl"
+if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_2160_up_x.cso" "Shaders\Ngu\luma_2160_up_x.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_2160_up_y.cso" "Shaders\Ngu\luma_2160_up_y.hlsl"
@@ -84,6 +104,8 @@ if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_2160_merge.cso" "Shaders\Ngu\luma_2160_merge.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_2160_final.cso" "Shaders\Ngu\luma_2160_final.hlsl"
+if errorlevel 1 exit /b 1
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_hook_output.cso" "Shaders\Ngu\ngu_hook_output.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\superres_down_x.cso" "Shaders\Ngu\superres_down_x.hlsl"
 if errorlevel 1 exit /b 1
