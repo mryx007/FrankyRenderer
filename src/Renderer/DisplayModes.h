@@ -202,19 +202,20 @@ inline uint64_t ProcessCreation(HANDLE process)
     return (uint64_t(created.dwHighDateTime) << 32) | created.dwLowDateTime;
 }
 
-inline std::wstring PendingName(const wchar_t* device)
+inline std::wstring PendingName(const wchar_t* prefix, const wchar_t* device)
 {
     wchar_t name[160];
     swprintf_s(name,
                L"%ls%08lX.%016llX.%ls",
-               PendingPrefix,
+               prefix,
                GetCurrentProcessId(),
                static_cast<unsigned long long>(ProcessCreation(GetCurrentProcess())),
                device);
     return name;
 }
 
-inline void RecoverAbandoned()
+// Calls recover(device) for each entry with this prefix whose process is gone.
+template <class Recover> void ForEachAbandoned(const wchar_t* prefix, Recover recover)
 {
     HKEY key;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Root().c_str(), 0, KEY_READ | KEY_SET_VALUE, &key) !=
@@ -228,17 +229,13 @@ inline void RecoverAbandoned()
         const auto result = RegEnumValueW(key, i, name, &length, nullptr, nullptr, nullptr, nullptr);
         if (result == ERROR_NO_MORE_ITEMS)
             break;
-        if (result != ERROR_SUCCESS || wcsncmp(name, PendingPrefix, wcslen(PendingPrefix)))
+        if (result != ERROR_SUCCESS || wcsncmp(name, prefix, wcslen(prefix)))
             continue;
         unsigned long pid = 0;
         unsigned long long created = 0;
         wchar_t device[64] = {};
-        if (swscanf_s(name + wcslen(PendingPrefix),
-                      L"%8lX.%16llX.%63ls",
-                      &pid,
-                      &created,
-                      device,
-                      unsigned(std::size(device))) != 3)
+        if (swscanf_s(
+                name + wcslen(prefix), L"%8lX.%16llX.%63ls", &pid, &created, device, unsigned(std::size(device))) != 3)
             continue;
         HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
         bool alive = !process && GetLastError() == ERROR_ACCESS_DENIED;
@@ -250,14 +247,20 @@ inline void RecoverAbandoned()
         }
         if (!alive)
         {
-            // Reload the display's registry (desktop) mode.
-            ChangeDisplaySettingsExW(device, nullptr, nullptr, 0, nullptr);
+            recover(device);
             abandoned.emplace_back(name);
         }
     }
     for (const auto& name : abandoned)
         RegDeleteValueW(key, name.c_str());
     RegCloseKey(key);
+}
+
+inline void RecoverAbandoned()
+{
+    // Reload the display's registry (desktop) mode.
+    ForEachAbandoned(PendingPrefix,
+                     [](const wchar_t* device) { ChangeDisplaySettingsExW(device, nullptr, nullptr, 0, nullptr); });
 }
 
 // Switches one display temporarily (CDS_FULLSCREEN never touches the saved
@@ -281,7 +284,7 @@ class Switcher
                             &key,
                             nullptr) != ERROR_SUCCESS)
             return;
-        const auto name = PendingName(device.c_str());
+        const auto name = PendingName(PendingPrefix, device.c_str());
         if (pending)
             RegSetValueExW(key, name.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(L""), sizeof(wchar_t));
         else

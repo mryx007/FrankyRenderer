@@ -21,7 +21,7 @@ struct PlaceboSettings
     float saturation = 1, contrast = 1, brightness = 0, gamma = 1, sdrNits = 203;
     // Debanding numeric -1 means Default; explicit zero remains a manual value.
     BOOL deband = FALSE, hdrPassthrough = FALSE, autoHdr = FALSE;
-    BOOL clippingProtection = FALSE;
+    BOOL clippingProtection = FALSE; // no longer used; kept so saved settings and INI files still load
     wchar_t upscaler[64] = L"ewa_lanczos", downscaler[64] = L"mitchell";
     int deinterlacing = 1;
     int fieldOverride = 0; // 0=sample flags, 1=force TFF, 2=force BFF
@@ -49,6 +49,8 @@ struct PlaceboSettings
     float hue = 0, temperature = 0;
     BOOL colorAdjustment = TRUE;
     BOOL allowDelayedPeak = FALSE;
+    // Shader chain sorted by stage and purpose; off follows userShaders.order.
+    BOOL shaderAutoOrder = TRUE;
     // 1=HDR passthrough, 2=GPU tone mapping to SDR, 3=HDR output with highlights
     // rolled off to the display peak; legacy 0 is migrated
     int hdrMode = 2;
@@ -71,15 +73,22 @@ struct PlaceboSettings
     BOOL rtxSuperResolution = FALSE;
     BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on
     BOOL imageAnalysis = FALSE;
+    // Ctrl+J statistics and image analysis follow the picture, not the window.
+    BOOL statisticsInVideo = FALSE;
     // Display mode switching in fullscreen, e.g. L"2160p23, 2160p24, 2160p60".
     BOOL displayModeSwitch = FALSE;
     wchar_t displayModes[256] = {};
     float displayModeDelay = 2; // seconds paused after a switch
+    // Windows HDR switching for playback (Renderer/WindowsHdrSwitch.h); 0 leaves it alone.
+    int windowsHdrToggle = 0;
     // Where the quality values came from (Settings/QualityPresets.h): 0 none,
     // MeasuredFlag | upgrades = measured, PresetSource + i = preset i.
     // qualityStamp fingerprints all settings at that moment.
     int measuredQuality = 0;
     uint32_t qualityStamp = 0;
+    // A .cube file in the video's folder replaces the 3D LUT for that video
+    // (Settings/FolderLut.h); without one the LUT above applies.
+    BOOL lutFromFolder = FALSE;
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.

@@ -3,6 +3,11 @@
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <wrl/client.h>
+#include <utility>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdint>
 
 // The driver owns the model and quality setting. This is the D3D11 request
 // used by MPC Video Renderer and Chromium, not an NVIDIA SDK integration.
@@ -20,9 +25,22 @@ class RtxVideoProcessor
     DXGI_FORMAT inputFormat = DXGI_FORMAT_UNKNOWN;
     DXGI_COLOR_SPACE_TYPE sourceSpace = DXGI_COLOR_SPACE_CUSTOM;
     bool superResolution = false, trueHdr = false;
-    UINT frame = 0;
+    // A newly created processor: its first output is not trusted.
+    bool fresh = false;
+    UINT probeFrames = 0, hdrAttempts = 0, hdrWhite = 0;
+    const wchar_t* operation = L"processor setup";
 
   public:
+    std::wstring FailureDescription() const
+    {
+        if (!operation)
+            return {};
+        std::wstring detail = operation;
+        if (hdrAttempts)
+            detail += L", attempts=" + std::to_wstring(hdrAttempts) + L", white=" + std::to_wstring(hdrWhite);
+        return detail;
+    }
+
     ID3D11Texture2D* Input() const
     {
         return input.Get();
@@ -48,20 +66,56 @@ class RtxVideoProcessor
         inputFormat = DXGI_FORMAT_UNKNOWN;
         sourceSpace = DXGI_COLOR_SPACE_CUSTOM;
         superResolution = trueHdr = false;
-        frame = 0;
+        fresh = false;
+        probeFrames = 0;
+    }
+
+    // The format the driver reads. NV12 and P010 are decoder pictures handed
+    // over as they are, like MPC Video Renderer does. A picture that libplacebo prepares is
+    // written into a single-plane texture instead: writing the two planes of a
+    // P010 texture one after the other can leave the luma of an older picture
+    // for the driver on NVIDIA. RGB is not taken for BT.2020 or PQ, Y410 is.
+    enum class InputKind
+    {
+        Rgba8,
+        Nv12,
+        P010,
+        Rgb10,
+        Y410
+    };
+
+    // The single-plane format for a picture that libplacebo prepares.
+    static InputKind PreparedInput(int bits, bool pq, bool bt2020, bool hdr)
+    {
+        if (bits <= 8 && !hdr)
+            return InputKind::Rgba8;
+        return pq || bt2020 ? InputKind::Y410 : InputKind::Rgb10;
     }
 
     // upscale: RTX Video Super Resolution; hdr: RTX Video HDR (SDR in, HDR10
     // out). Either or both.
-    HRESULT Configure(
-        ID3D11Device* device, int w, int h, int ow, int oh, int bits, bool pq, bool bt2020, bool upscale, bool hdr)
+    HRESULT Configure(ID3D11Device* device,
+                      int w,
+                      int h,
+                      int ow,
+                      int oh,
+                      InputKind kind,
+                      bool pq,
+                      bool bt2020,
+                      bool upscale,
+                      bool hdr)
     {
-        const auto type = bits > 8 ? DXGI_FORMAT_P010 : DXGI_FORMAT_R8G8B8A8_UNORM;
-        const auto source =
-            bits > 8 ? (pq       ? DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020
-                        : bt2020 ? DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020
-                                 : DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709)
-                     : (bt2020 ? DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
+        const bool yuv = kind == InputKind::Nv12 || kind == InputKind::P010 || kind == InputKind::Y410;
+        const auto type = kind == InputKind::Nv12    ? DXGI_FORMAT_NV12
+                          : kind == InputKind::P010  ? DXGI_FORMAT_P010
+                          : kind == InputKind::Y410  ? DXGI_FORMAT_Y410
+                          : kind == InputKind::Rgb10 ? DXGI_FORMAT_R10G10B10A2_UNORM
+                                                     : DXGI_FORMAT_R8G8B8A8_UNORM;
+        const auto source = yuv      ? (pq       ? DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020
+                                        : bt2020 ? DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020
+                                                 : DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709)
+                            : bt2020 ? DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020
+                                     : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
         const auto target = pq || hdr ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
                             : bt2020  ? DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020
                                       : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
@@ -69,6 +123,8 @@ class RtxVideoProcessor
             inputFormat == type && sourceSpace == source && superResolution == upscale && trueHdr == hdr)
             return S_OK;
         Reset();
+        operation = L"processor setup";
+        hdrAttempts = hdrWhite = 0;
         if (w < 1 || h < 1 || ow < 1 || oh < 1 || w > 16384 || h > 16384 || ow > 16384 || oh > 16384)
             return E_INVALIDARG;
         Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
@@ -98,12 +154,14 @@ class RtxVideoProcessor
         content.OutputWidth = ow;
         content.OutputHeight = oh;
         content.Usage = D3D11_VIDEO_USAGE_PLAYBACK_NORMAL;
+        operation = L"format enumeration";
         hr = video->CreateVideoProcessorEnumerator(&content, &enumerator);
         Microsoft::WRL::ComPtr<ID3D11VideoProcessorEnumerator1> formats;
         if (SUCCEEDED(hr))
             hr = enumerator.As(&formats);
         BOOL supported = FALSE;
-        const auto outType = bits > 8 || hdr ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+        const bool eightBit = kind == InputKind::Rgba8 || kind == InputKind::Nv12;
+        const auto outType = !eightBit || hdr ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
         if (SUCCEEDED(hr))
             hr = formats->CheckVideoProcessorFormatConversion(type, source, outType, target, &supported);
         if (FAILED(hr))
@@ -112,6 +170,7 @@ class RtxVideoProcessor
         // list it as a plain format conversion.
         if (!supported && !hdr)
             return DXGI_ERROR_UNSUPPORTED;
+        operation = L"processor creation";
         hr = video->CreateVideoProcessor(enumerator.Get(), 0, &processor);
         if (FAILED(hr))
             return hr;
@@ -125,6 +184,7 @@ class RtxVideoProcessor
         context->VideoProcessorSetOutputTargetRect(processor.Get(), TRUE, &dst);
         if (upscale)
         {
+            operation = L"VSR extension";
             constexpr GUID extension = {0xd43ce1b3, 0x1f4b, 0x48ac, {0xba, 0xee, 0xc3, 0xc2, 0x53, 0x75, 0xe6, 0xf7}};
 
             struct
@@ -138,6 +198,7 @@ class RtxVideoProcessor
         }
         if (hdr)
         {
+            operation = L"HDR extension";
             // TrueHDR request: interface version 4, method 3, as MPC Video
             // Renderer and Chromium send it.
             constexpr GUID extension = {0xfdd62bb4, 0x620b, 0x4fd7, {0x9a, 0xb3, 0x1e, 0x59, 0xd0, 0xd5, 0x44, 0xb3}};
@@ -151,9 +212,11 @@ class RtxVideoProcessor
             if (FAILED(hr))
                 return hr;
         }
+        operation = L"input/output creation";
         D3D11_TEXTURE2D_DESC desc = {};
-        desc.Width = bits > 8 ? (w + 1) & ~1 : w;
-        desc.Height = bits > 8 ? (h + 1) & ~1 : h;
+        const bool planar = kind == InputKind::Nv12 || kind == InputKind::P010;
+        desc.Width = planar ? (w + 1) & ~1 : w;
+        desc.Height = planar ? (h + 1) & ~1 : h;
         desc.MipLevels = desc.ArraySize = 1;
         desc.Format = type;
         desc.SampleDesc.Count = 1;
@@ -188,32 +251,67 @@ class RtxVideoProcessor
         sourceSpace = source;
         superResolution = upscale;
         trueHdr = hdr;
+        fresh = true;
+        operation = nullptr;
         return S_OK;
     }
 
     // Without an active TrueHDR model the driver writes SDR codes straight
     // into PQ: SDR white turns into almost 10000 nits. Send one white picture
     // and keep RTX Video HDR only when it comes back at a plausible level.
+    // The model can take a moment to become active, so one bright result
+    // is not a refusal yet.
     HRESULT CheckHdr(ID3D11Device* device, ID3D11DeviceContext* immediate)
     {
-        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> luma, chroma;
+        operation = L"HDR test input";
+        D3D11_TEXTURE2D_DESC inputDesc;
+        input->GetDesc(&inputDesc);
         D3D11_RENDER_TARGET_VIEW_DESC view = {};
         view.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-        view.Format = DXGI_FORMAT_R16_UNORM;
-        HRESULT hr = device->CreateRenderTargetView(input.Get(), &view, &luma);
-        view.Format = DXGI_FORMAT_R16G16_UNORM;
-        if (SUCCEEDED(hr))
-            hr = device->CreateRenderTargetView(input.Get(), &view, &chroma);
-        if (FAILED(hr))
-            return hr;
-        // Limited range 10-bit white (940) and neutral chroma (512) in P010.
-        const float white[4] = {940 * 64 / 65535.f, 0, 0, 0},
-                    neutral[4] = {512 * 64 / 65535.f, 512 * 64 / 65535.f, 0, 0};
-        immediate->ClearRenderTargetView(luma.Get(), white);
-        immediate->ClearRenderTargetView(chroma.Get(), neutral);
-        hr = Evaluate();
-        if (FAILED(hr))
-            return hr;
+        HRESULT hr = S_OK;
+        if (inputDesc.Format == DXGI_FORMAT_P010 || inputDesc.Format == DXGI_FORMAT_NV12)
+        {
+            const bool tenBit = inputDesc.Format == DXGI_FORMAT_P010;
+            // Upload both planes together, just like CPU video pictures. The
+            // capability check must not reintroduce separate planar writes.
+            const size_t count = size_t(inputDesc.Width) * inputDesc.Height;
+            std::vector<uint16_t> words;
+            std::vector<uint8_t> bytes;
+            if (tenBit)
+            {
+                words.resize(count * 3 / 2, uint16_t(512 << 6));
+                std::fill(words.begin(), words.begin() + count, uint16_t(940 << 6));
+            }
+            else
+            {
+                bytes.resize(count * 3 / 2, 128);
+                std::fill(bytes.begin(), bytes.begin() + count, uint8_t(235));
+            }
+            auto stagingDesc = inputDesc;
+            stagingDesc.Usage = D3D11_USAGE_STAGING;
+            stagingDesc.BindFlags = stagingDesc.MiscFlags = 0;
+            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            const D3D11_SUBRESOURCE_DATA data = {tenBit ? static_cast<const void*>(words.data()) : bytes.data(),
+                                                 inputDesc.Width * (tenBit ? 2u : 1u),
+                                                 0};
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
+            hr = device->CreateTexture2D(&stagingDesc, &data, &staging);
+            if (FAILED(hr))
+                return hr;
+            immediate->CopyResource(input.Get(), staging.Get());
+        }
+        else
+        {
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> picture;
+            view.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+            hr = device->CreateRenderTargetView(input.Get(), &view, &picture);
+            if (FAILED(hr))
+                return hr;
+            // Y410: limited range white (940) and neutral chroma (512), stored as
+            // Cb, Y, Cr in the red, green and blue bits. RGB: full range white.
+            const float yuvWhite[4] = {512 / 1023.f, 940 / 1023.f, 512 / 1023.f, 1}, rgbWhite[4] = {1, 1, 1, 1};
+            immediate->ClearRenderTargetView(picture.Get(), inputDesc.Format == DXGI_FORMAT_Y410 ? yuvWhite : rgbWhite);
+        }
         D3D11_TEXTURE2D_DESC desc;
         output->GetDesc(&desc);
         const UINT x = desc.Width / 2, y = desc.Height / 2;
@@ -222,29 +320,93 @@ class RtxVideoProcessor
         desc.BindFlags = desc.MiscFlags = 0;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> readback;
+        operation = L"HDR test readback creation";
         hr = device->CreateTexture2D(&desc, nullptr, &readback);
         if (FAILED(hr))
             return hr;
         const D3D11_BOX box = {x, y, 0, x + 1, y + 1, 1};
-        immediate->CopySubresourceRegion(readback.Get(), 0, 0, 0, 0, output.Get(), 0, &box);
-        D3D11_MAPPED_SUBRESOURCE mapped = {};
-        hr = immediate->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-        if (FAILED(hr))
-            return hr;
-        const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
-        immediate->Unmap(readback.Get(), 0);
-        // PQ code 0.75 is about 1000 nits; TrueHDR places SDR white far below.
-        return green < 1023 * 3 / 4 ? S_OK : DXGI_ERROR_UNSUPPORTED;
+        for (int attempt = 0; attempt < 16; ++attempt)
+        {
+            if (attempt)
+                Sleep(8);
+            // Every attempt is a new driver frame. Reserve these numbers so
+            // the first real video picture does not rewind the driver's clock.
+            ++probeFrames;
+            hdrAttempts = attempt + 1;
+            operation = L"HDR test processing";
+            hr = Evaluate(0);
+            if (FAILED(hr))
+                return hr;
+            immediate->CopySubresourceRegion(readback.Get(), 0, 0, 0, 0, output.Get(), 0, &box);
+            D3D11_MAPPED_SUBRESOURCE mapped = {};
+            operation = L"HDR test readback";
+            hr = immediate->Map(readback.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+            if (FAILED(hr))
+                return hr;
+            const UINT green = (*static_cast<const UINT*>(mapped.pData) >> 10) & 1023;
+            hdrWhite = green;
+            immediate->Unmap(readback.Get(), 0);
+            // Unprocessed SDR white comes back at almost full PQ (code 1020, near
+            // 10000 nits). TrueHDR stays far below that; 921 is about 4000 nits.
+            if (green < 921)
+                return S_OK;
+        }
+        operation = L"HDR white validation";
+        return DXGI_ERROR_UNSUPPORTED;
     }
 
-    HRESULT Evaluate()
+    // index counts video frames, as MPC Video Renderer passes them: the same
+    // frame again keeps its number.
+    bool TakeFresh()
+    {
+        return std::exchange(fresh, false);
+    }
+
+    // An output view on a texture of the output's size and format, so the
+    // driver writes each frame straight into its own texture.
+    HRESULT OutputView(ID3D11Texture2D* texture, Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView>& view)
+    {
+        if (!video || !enumerator)
+            return E_UNEXPECTED;
+        D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC ov = {};
+        ov.ViewDimension = D3D11_VPOV_DIMENSION_TEXTURE2D;
+        return video->CreateVideoProcessorOutputView(texture, enumerator.Get(), &ov, &view);
+    }
+
+    // An input view on a decoder picture of the input's format, read by the
+    // driver directly.
+    HRESULT InputView(ID3D11Texture2D* texture, Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView>& view)
+    {
+        if (!video || !enumerator)
+            return E_UNEXPECTED;
+        D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC iv = {};
+        iv.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
+        return video->CreateVideoProcessorInputView(texture, enumerator.Get(), &iv, &view);
+    }
+
+    // source: the part of the input to process; destination: where it goes
+    // in the target. Both stay set for later calls without them. picture:
+    // a decoder picture instead of the own input texture.
+    HRESULT Evaluate(UINT index,
+                     ID3D11VideoProcessorOutputView* target = nullptr,
+                     const RECT* source = nullptr,
+                     const RECT* destination = nullptr,
+                     ID3D11VideoProcessorInputView* picture = nullptr)
     {
         if (!processor || !inputView || !outputView)
             return E_UNEXPECTED;
+        if (source)
+            context->VideoProcessorSetStreamSourceRect(processor.Get(), 0, TRUE, source);
+        if (destination)
+        {
+            context->VideoProcessorSetStreamDestRect(processor.Get(), 0, TRUE, destination);
+            context->VideoProcessorSetOutputTargetRect(processor.Get(), TRUE, destination);
+        }
         D3D11_VIDEO_PROCESSOR_STREAM stream = {};
         stream.Enable = TRUE;
-        stream.InputFrameOrField = frame;
-        stream.pInputSurface = inputView.Get();
-        return context->VideoProcessorBlt(processor.Get(), outputView.Get(), frame++, 1, &stream);
+        stream.InputFrameOrField = index + probeFrames;
+        stream.pInputSurface = picture ? picture : inputView.Get();
+        return context->VideoProcessorBlt(
+            processor.Get(), target ? target : outputView.Get(), index + probeFrames, 1, &stream);
     }
 };

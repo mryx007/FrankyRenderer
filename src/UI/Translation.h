@@ -231,6 +231,45 @@ inline Catalog& Active()
 }
 } // namespace MenuTranslation
 
+// BCP 47 name of the menu language ("zh-Hans", "pt-BR"), "en-us" for English.
+// Text is laid out with it so CJK characters fall back to one matching font
+// instead of a Japanese or Traditional Chinese font per character.
+inline std::wstring MenuLocale()
+{
+    auto tag = MenuTranslation::Active().language;
+    if (tag.empty())
+        return L"en-us";
+    std::wstring out;
+    size_t start = 0;
+    for (int part = 0; start <= tag.size(); ++part)
+    {
+        const auto end = std::min(tag.find(L'_', start), tag.size());
+        auto piece = tag.substr(start, end - start);
+        for (size_t i = 0; i < piece.size(); ++i)
+            piece[i] =
+                (part == 0 || (piece.size() == 4 && i > 0)) ? wchar_t(towlower(piece[i])) : wchar_t(towupper(piece[i]));
+        out += (part ? L"-" : L"") + piece;
+        start = end + 1;
+    }
+    return out;
+}
+
+// GDI font for menu controls drawn without DirectWrite (lists, edit fields):
+// GDI font linking would also mix fonts for CJK text.
+inline const wchar_t* MenuGdiFont()
+{
+    const auto locale = MenuLocale();
+    if (locale.rfind(L"zh-Hant", 0) == 0 || locale == L"zh-TW" || locale == L"zh-HK")
+        return L"Microsoft JhengHei UI";
+    if (locale.rfind(L"zh", 0) == 0)
+        return L"Microsoft YaHei UI";
+    if (locale.rfind(L"ja", 0) == 0)
+        return L"Yu Gothic UI";
+    if (locale.rfind(L"ko", 0) == 0)
+        return L"Malgun Gothic";
+    return L"Segoe UI";
+}
+
 // Translated menu text; English when no translation exists.
 inline std::wstring Tr(const std::wstring& english)
 {

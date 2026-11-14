@@ -5,6 +5,7 @@
 #include "Settings/ScalingSettings.h"
 #include "Settings/SettingsChoices.h"
 #include <algorithm>
+#include <iterator>
 
 // libplacebo options for the given renderer settings. Playback and the
 // quality measurement share this, so measured costs match playback.
@@ -20,8 +21,7 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
         if (!pl_options_set_str(options, "upscaler", upscaler) ||
             !pl_options_set_str(options, "downscaler", settings.downscaler.c_str()))
             return E_INVALIDARG;
-        if (settings.chromaUpscaler != "auto" &&
-            !pl_options_set_str(options, "plane_upscaler", chroma))
+        if (settings.chromaUpscaler != "auto" && !pl_options_set_str(options, "plane_upscaler", chroma))
             return E_INVALIDARG;
     }
     else if (!ApplyScaling(options, *settings.scaling))
@@ -87,12 +87,23 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
     // E-098: the native NGU FinalStep already performs the target's sole
     // 8-bit dither conversion. A second libplacebo dither changes that BGRA8
     // result and must not be applied on top of native NGU output.
-    const bool nativeNguFinal =
-        settings.nativeScaler == NativeScalerKind::NguSharp;
-    options->params.dither_params =
-        settings.ditherMethod == 3 || nativeNguFinal
-            ? nullptr
-            : &options->dither_params;
+    const bool nativeNguFinal = settings.nativeScaler == NativeScalerKind::NguSharp;
+    options->params.dither_params = settings.ditherMethod == 3 || nativeNguFinal ? nullptr : &options->dither_params;
+    // After Off come the error diffusion kernels. libplacebo uses the ordinary
+    // dither above where a kernel does not fit the GPU's compute memory.
+    static const pl_error_diffusion_kernel* const kernels[] = {&pl_error_diffusion_simple,
+                                                               &pl_error_diffusion_false_fs,
+                                                               &pl_error_diffusion_sierra_lite,
+                                                               &pl_error_diffusion_floyd_steinberg,
+                                                               &pl_error_diffusion_atkinson,
+                                                               &pl_error_diffusion_jarvis_judice_ninke,
+                                                               &pl_error_diffusion_stucki,
+                                                               &pl_error_diffusion_burkes,
+                                                               &pl_error_diffusion_sierra2,
+                                                               &pl_error_diffusion_sierra3};
+    static_assert(std::size(DitherChoices) == 4 + std::size(kernels));
+    options->params.error_diffusion =
+        !nativeNguFinal && settings.ditherMethod > 3 ? kernels[settings.ditherMethod - 4] : nullptr;
     if (!ApplyExtras(options, settings.extras))
         return E_INVALIDARG;
     return S_OK;

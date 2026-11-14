@@ -51,10 +51,12 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(iccIntent);
     INI_FIELD(iccPath);
     INI_FIELD(lutPath);
+    INI_FIELD(lutFromFolder);
     INI_FIELD(adaptiveSharpen);
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
     INI_FIELD(imageAnalysis);
+    INI_FIELD(statisticsInVideo);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
     INI_FIELD(outputLevels);
@@ -81,7 +83,9 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(temperature);
     INI_FIELD(colorAdjustment);
     INI_FIELD(allowDelayedPeak);
+    INI_FIELD(shaderAutoOrder);
     INI_FIELD(hdrMode);
+    INI_FIELD(windowsHdrToggle);
     INI_FIELD(maximumFramesInFlight);
     INI_FIELD(presentAhead);
     INI_FIELD(displayGammaCurve);
@@ -128,13 +132,16 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     }
     for (int i = 0; i < ShaderCount; ++i)
     {
+        field("ShaderOrder", "slot" + std::to_string(i), s.userShaders.order[i]);
+        // A deleted built-in shader keeps its section; only empty custom slots have none.
+        if (i >= ShaderBuiltinCount && !ShaderListed(i))
+            continue;
         auto& shader = s.userShaders.shaders[i];
-        const auto section = std::string("Shader.") + ShaderCatalog[i].file;
+        const auto section = std::string(i < ShaderBuiltinCount ? "Shader." : "CustomShader.") + ShaderCatalog[i].file;
         field(section, "enabled", shader.enabled);
         field(section, "overrides", shader.overrides);
         for (int j = 0; j < ShaderParameterLimit; ++j)
             field(section, "parameter" + std::to_string(j), shader.values[j]);
-        field("ShaderOrder", "slot" + std::to_string(i), s.userShaders.order[i]);
     }
 }
 
@@ -332,6 +339,9 @@ inline PlaceboSettings Parse(const std::string& text)
                   entries.erase(found);
               }
           });
+    // Custom shaders that are not installed here are skipped.
+    for (auto entry = entries.begin(); entry != entries.end();)
+        entry = entry->first.first.rfind("CustomShader.", 0) == 0 ? entries.erase(entry) : std::next(entry);
     if (!entries.empty())
         throw std::runtime_error("Unknown INI setting.");
     for (BOOL flag : {candidate.deband,
@@ -341,13 +351,16 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.ditherTemporal,
                       candidate.iccEnabled,
                       candidate.lutEnabled,
+                      candidate.lutFromFolder,
                       candidate.adaptiveSharpen,
                       candidate.smoothMotion,
                       candidate.peakDetect,
                       candidate.showClipping,
                       candidate.imageAnalysis,
+                      candidate.statisticsInVideo,
                       candidate.colorAdjustment,
-                      candidate.allowDelayedPeak})
+                      candidate.allowDelayedPeak,
+                      candidate.shaderAutoOrder})
         if (flag != FALSE && flag != TRUE)
             throw std::runtime_error("Boolean settings must be 0 or 1.");
     // Files from before the added shaders list fewer chain slots.

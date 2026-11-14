@@ -61,7 +61,7 @@ int main()
         // Active shaders and Smooth Motion are part of the measured work.
         {
             PlaceboSettings loaded;
-            for (int id = 0; id < ShaderCount; ++id)
+            for (int id = 0; id < ShaderBuiltinCount; ++id)
                 if (!strcmp(ShaderCatalog[id].file, "ArtCNN_C4F16.glsl"))
                     loaded.userShaders.shaders[id].enabled = 1;
             loaded.smoothMotion = TRUE;

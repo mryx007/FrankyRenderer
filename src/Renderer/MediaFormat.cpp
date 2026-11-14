@@ -152,6 +152,22 @@ static HRESULT MapPixelFormat(const AM_MEDIA_TYPE& type, const BITMAPINFOHEADER&
     return S_OK;
 }
 
+bool MakeTopDown(AM_MEDIA_TYPE& type)
+{
+    MediaFormat format;
+    if (FAILED(ParseFormat(type, format)) || !format.frame.bottomUp)
+        return false;
+    BITMAPINFOHEADER* bitmap = nullptr;
+    if (type.formattype == FORMAT_VideoInfo2 && type.cbFormat >= sizeof(VIDEOINFOHEADER2))
+        bitmap = &reinterpret_cast<VIDEOINFOHEADER2*>(type.pbFormat)->bmiHeader;
+    else if (type.formattype == FORMAT_VideoInfo && type.cbFormat >= sizeof(VIDEOINFOHEADER))
+        bitmap = &reinterpret_cast<VIDEOINFOHEADER*>(type.pbFormat)->bmiHeader;
+    if (!bitmap)
+        return false;
+    bitmap->biHeight = -std::abs(bitmap->biHeight);
+    return true;
+}
+
 HRESULT ParseFormat(const AM_MEDIA_TYPE& type, MediaFormat& out)
 {
     if (type.majortype != MEDIATYPE_Video || !type.pbFormat)

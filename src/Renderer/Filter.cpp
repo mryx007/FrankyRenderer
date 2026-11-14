@@ -7,6 +7,9 @@
 #include "Renderer/SideDataAllocator.h"
 #include "Renderer/MotionTiming.h"
 #include "Renderer/StatisticsKey.h"
+#include "Settings/QualityPresets.h"
+#include "UI/Translation.h"
+#include "UI/CustomShortcuts.h"
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/StatisticsRasterizer.h"
 #include "Renderer/VideoBackground.h"
@@ -25,6 +28,7 @@ namespace
 {
 constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
 constexpr UINT_PTR ModeTimer = 0x46524d44;
+constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
 }
 
 // Pauses the graph while the display resynchronises after a mode change and
@@ -160,6 +164,7 @@ STDMETHODIMP DecoderPin::GetAllocator(IMemAllocator** out)
             delete allocator;
             return hr;
         }
+        ownAllocator = allocator;
         Trace("Decoder allocator provides IMediaSideData samples");
     }
     *out = m_pAllocator;
@@ -216,12 +221,87 @@ STDMETHODIMP DecoderPin::ActivateD3D11Decoding(ID3D11Device* device, ID3D11Devic
     return hr;
 }
 
+void DecoderPin::RequestTopDown(IPin* upstream)
+{
+    CAutoLock guard(m_pLock);
+    wantTopDown = false;
+    CMediaType type = m_mt;
+    if (!upstream || !MakeTopDown(type))
+        return;
+    const HRESULT accepted = upstream->QueryAccept(&type);
+    Trace("Top-down RGB request accepted=%08lX", static_cast<unsigned long>(accepted));
+    if (accepted != S_OK)
+        return;
+    topDown = type;
+    wantTopDown = true;
+}
+
+STDMETHODIMP DecoderPin::ReceiveConnection(IPin* connector, const AM_MEDIA_TYPE* type)
+{
+    if (!connector || !type)
+        return E_POINTER;
+    CAutoLock guard(m_pLock);
+    if (!m_Connected || connector != m_Connected)
+        return CRendererInputPin::ReceiveConnection(connector, type);
+    CMediaType changed(*type);
+    MediaFormat candidate;
+    HRESULT hr = ParseFormat(changed, candidate);
+    if (SUCCEEDED(hr))
+        hr = CheckMediaType(&changed);
+    // A decoder's own allocator is its business; ours must fit the new picture.
+    if (hr == S_OK && !nativeDecoder && ownAllocator && m_pAllocator == static_cast<IMemAllocator*>(ownAllocator))
+    {
+        const size_t bytes = ImageBytes(candidate.frame.format, candidate.frame.stride, candidate.frame.height);
+        hr = bytes > size_t(LONG_MAX) ? VFW_E_TYPE_NOT_ACCEPTED : ownAllocator->Grow(static_cast<long>(bytes));
+    }
+    if (hr == S_OK)
+        hr = CBaseInputPin::SetMediaType(&changed);
+    if (hr == S_OK)
+    {
+        std::lock_guard lock(reconnectLock);
+        reconnected = changed;
+        hasReconnected = true;
+    }
+    Trace("Reconnect during connection %dx%d result=%08lX",
+          candidate.frame.width,
+          candidate.frame.height,
+          static_cast<unsigned long>(hr));
+    return hr == S_OK || FAILED(hr) ? hr : VFW_E_TYPE_NOT_ACCEPTED;
+}
+
+bool DecoderPin::TakeReconnected(CMediaType& type)
+{
+    std::lock_guard lock(reconnectLock);
+    if (!hasReconnected)
+        return false;
+    hasReconnected = false;
+    type = reconnected;
+    return true;
+}
+
+STDMETHODIMP DecoderPin::NotifyAllocator(IMemAllocator* allocator, BOOL readOnly)
+{
+    HRESULT hr = CRendererInputPin::NotifyAllocator(allocator, readOnly);
+    if (FAILED(hr))
+        return hr;
+    CAutoLock guard(m_pLock);
+    // Only our allocator can hand the type over with a buffer.
+    if (wantTopDown && ownAllocator && allocator == static_cast<IMemAllocator*>(ownAllocator))
+        ownAllocator->SetPendingType(topDown);
+    return hr;
+}
+
 HRESULT DecoderPin::BreakConnect()
 {
     Trace("Input disconnect begin; native=%d", nativeDecoder.load());
     HRESULT hr = CRendererInputPin::BreakConnect();
     if (SUCCEEDED(hr))
+    {
         nativeDecoder = false;
+        wantTopDown = false;
+        std::lock_guard lock(reconnectLock);
+        hasReconnected = false;
+    }
     Trace("Input disconnect completed result=%08lX", static_cast<unsigned long>(hr));
     return hr;
 }
@@ -476,6 +556,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
         VideoBackground::Resize(GetOwnerWindow());
     if (owner->windowState.load() == State_Running)
         Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
+    // MPC-BE applies this size to its subtitle buffer right after this call.
+    owner->AttachSubtitleDevice();
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
 }
 
@@ -576,6 +658,12 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         Trace("Display mode restored on window close");
         owner->modeSwitcher.Restore();
     }
+    if (msg == WM_DESTROY && owner->hdrSwitcher.Active())
+    {
+        Trace("Windows HDR restored on window close");
+        owner->hdrSwitcher.Restore();
+        owner->backend.SetDisplayHdrState(-1, false);
+    }
     if (msg == WM_CREATE)
     {
         MonitorChange::Attach(hwnd);
@@ -603,11 +691,23 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         owner->Repaint("monitor change");
         return 0;
     }
-    if (msg == WM_KEYDOWN && w == 'J' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) &&
-        !(GetKeyState(VK_SHIFT) & 0x8000))
+    if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
     {
-        if (!(l & (1LL << 30)))
-            owner->ToggleStatistics();
+        const int action = StatisticsKey::ActionFor(
+            msg, w, GetKeyState(VK_CONTROL) & 0x8000, GetKeyState(VK_MENU) & 0x8000, GetKeyState(VK_SHIFT) & 0x8000);
+        if (action >= 0)
+        {
+            if (!(l & (1LL << 30)))
+                owner->RunShortcut(action);
+            return 0;
+        }
+    }
+    if (msg == WM_TIMER && w == ShortcutMessageTimer)
+    {
+        KillTimer(hwnd, ShortcutMessageTimer);
+        // Clear the shortcut message from a paused picture.
+        if (owner->windowState.load() != State_Running)
+            owner->Repaint("shortcut message");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
@@ -618,9 +718,9 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
             owner->Repaint();
         return 0;
     }
-    if (msg == StatisticsKey::ToggleMessage)
+    if (msg == StatisticsKey::ActionMessage)
     {
-        owner->ToggleStatistics();
+        owner->RunShortcut(int(w));
         return 0;
     }
     if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
@@ -787,12 +887,42 @@ static PlaceboSettings InitialSettings()
 {
     SettingsJournal::Recover();
     DisplayModes::RecoverAbandoned();
+    WindowsHdr::RecoverAbandoned();
+    CustomShaders::Refresh();
     return LoadSettings();
+}
+
+// Every renderer of this process. A player may open the settings through a
+// separate renderer without a video; its changes go on to the playing one.
+namespace LiveRenderers
+{
+// Recursive: a forwarded call reaches the playing renderer, which checks again.
+std::recursive_mutex lock;
+std::vector<Renderer*> all;
+} // namespace LiveRenderers
+
+bool Renderer::Playing()
+{
+    return m_pGraph && m_pInputPin && m_pInputPin->IsConnected();
+}
+
+Renderer* Renderer::PlayingPeer()
+{
+    if (Playing())
+        return nullptr;
+    for (auto* other : LiveRenderers::all)
+        if (other != this && other->Playing())
+            return other;
+    return nullptr;
 }
 
 Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     : CBaseVideoRenderer(CLSID_RegisteredRenderer, NAME("FrankyRenderer"), outer, hr), settings(InitialSettings())
 {
+    {
+        std::lock_guard guard(LiveRenderers::lock);
+        LiveRenderers::all.push_back(this);
+    }
     UpdateMotionSettings();
     Trace("Renderer created; public DirectShow/libplacebo implementation");
     *hr = backend.SetSettings(BackendSettings(settings));
@@ -805,6 +935,9 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
     if (FAILED(*hr))
         return;
     PublishDisplayModes();
+    backend.SetDisplayHdrListener([this] { RequestModeCheck(); });
+    Diagnostics::SetLive([this]
+                         { return L"Filters in graph: " + GraphFilters() + L"\n" + backend.StatisticsSnapshot(); });
     window = std::make_unique<VideoWindow>(this, &m_InterfaceLock, GetOwner(), hr);
     if (FAILED(*hr))
         return;
@@ -823,6 +956,12 @@ Renderer::Renderer(IUnknown* outer, HRESULT* hr)
 
 Renderer::~Renderer()
 {
+    Diagnostics::SetLive(nullptr);
+    {
+        std::lock_guard guard(LiveRenderers::lock);
+        LiveRenderers::all.erase(std::remove(LiveRenderers::all.begin(), LiveRenderers::all.end(), this),
+                                 LiveRenderers::all.end());
+    }
     {
         std::lock_guard lock(modeLock);
         if (modePause)
@@ -1007,6 +1146,7 @@ HRESULT Renderer::CompleteConnect(IPin* pin)
     // Hosts may supply the video owner before or after connection. AutoShow
     // belongs to Pause/Run; the video child starts hidden inside the player.
     backend.SetSourceCodec(SourceCodecFromOutput(pin));
+    static_cast<DecoderPin*>(m_pInputPin)->RequestTopDown(pin);
     // Connection alone must not create a desktop window. If the player has
     // not supplied a parent yet, put_Owner creates the child when it arrives.
     if (!window->GetOwnerWindow())
@@ -1146,7 +1286,7 @@ try
         future = motionQueue.size() > 1 ? motionQueue[1].id : 0;
         later = motionQueue.size() > 2 ? motionQueue[2].id : 0;
         if (motionQueue.size() > 1)
-            frame.stop = MotionIntervalEnd(frame.start, frame.stop, motionQueue[1].start);
+            frame.stop = MotionIntervalEnd(frame.start, frame.stop, motionQueue[1].start, frame.nominalDuration);
         for (const auto& f : motionPast)
             temporal->push_back({f.id, f.start, f.stop, f.first});
         for (const auto& f : motionQueue)
@@ -1154,7 +1294,7 @@ try
         for (size_t i = 0; i + 1 < temporal->size(); i++)
         {
             auto& f = (*temporal)[i];
-            f.stop = MotionIntervalEnd(f.start, f.stop, (*temporal)[i + 1].start);
+            f.stop = MotionIntervalEnd(f.start, f.stop, (*temporal)[i + 1].start, frame.nominalDuration);
         }
     }
     HRESULT hr = DeliverMotion(frame, past, future, later, temporal);
@@ -1218,11 +1358,21 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     if (FAILED(profileResult))
         return profileResult;
     AM_MEDIA_TYPE* changed = nullptr;
+    // The type of a reconnect applies from this picture on, unless the sample
+    // brings its own.
+    CMediaType reconnected;
+    const bool hasReconnected = static_cast<DecoderPin*>(m_pInputPin)->TakeReconnected(reconnected);
     if (sample->GetMediaType(&changed) == S_OK && changed)
     {
         CMediaType type(*changed);
         DeleteMediaType(changed);
         HRESULT hr = SetMediaType(&type);
+        if (FAILED(hr))
+            return hr;
+    }
+    else if (hasReconnected)
+    {
+        HRESULT hr = SetMediaType(&reconnected);
         if (FAILED(hr))
             return hr;
     }
@@ -1319,6 +1469,26 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         }
         return CBaseVideoRenderer::Receive(sample);
     }
+    // Broadcast TV can switch between field and woven pictures, or its field
+    // order, from one picture to the next. Show the buffered pictures before
+    // starting over: discarding them on every switch never fills the queue,
+    // and the video stops (GitHub issue 24).
+    bool structureChanged = false;
+    {
+        CAutoLock render(&m_RendererLock);
+        const auto bufferedFirst = !motionQueue.empty() ? motionQueue.back().first : pending.first;
+        structureChanged = buffering && (bool(deinterlacingActive) != fields ||
+                                         (fields && (!motionQueue.empty() || pending.id) &&
+                                          bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)));
+    }
+    if (structureChanged)
+    {
+        HRESULT hr = DrainFields();
+        if (FAILED(hr))
+            return hr;
+        CAutoLock render(&m_RendererLock);
+        ResetFields(true, true);
+    }
     QueuedVideoFrame output, input, past;
     uint64_t future = 0;
     {
@@ -1327,9 +1497,16 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                               : followingQueued.id ? followingQueued.stop
                                                    : pending.stop;
         const auto bufferedFirst = !motionQueue.empty() ? motionQueue.back().first : pending.first;
+        const bool buffered = !motionQueue.empty() || followingQueued.id || pending.id;
+        const auto previousStart = !motionQueue.empty() ? motionQueue.back().start
+                                   : followingQueued.id ? followingQueued.start
+                                                        : pending.start;
+        // Smooth Motion keeps its queue across irregular timestamps; emptying
+        // it means rendering several frames at once, a visible stutter.
         const bool timelineReset =
             sample->IsDiscontinuity() == S_OK ||
-            ((!motionQueue.empty() || followingQueued.id || pending.id) && std::abs(start - expected) > 20000);
+            (buffered && (smooth ? !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration)
+                                 : std::abs(start - expected) > 20000));
         if (timelineReset || !buffering || bool(deinterlacingActive) != fields ||
             (fields && (!motionQueue.empty() || pending.id) && bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)))
             ResetFields(true, !timelineReset);
@@ -1940,6 +2117,146 @@ void Renderer::ToggleStatistics()
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
+void Renderer::RunShortcut(int index)
+{
+    using Shortcuts::Action;
+    if (index < 0)
+        return;
+    // Custom entries follow the fixed actions.
+    const bool custom = index >= Shortcuts::Count;
+    Shortcuts::Custom entry;
+    if (custom)
+    {
+        const auto list = Shortcuts::LoadCustom();
+        if (size_t(index - Shortcuts::Count) >= list.size())
+            return;
+        entry = list[size_t(index - Shortcuts::Count)];
+    }
+    const auto action = Action(index);
+    if (action == Action::Statistics)
+    {
+        ToggleStatistics();
+        return;
+    }
+    // Only the settings menu loads the language otherwise; it may not have been open yet.
+    LoadMenuLanguage();
+    std::wstring message;
+    if (action == Action::Shaders)
+    {
+        PlaceboSettings current;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            shadersBypassed = !shadersBypassed;
+            current = settings;
+        }
+        backend.SetSettings(BackendSettings(Effective(current)));
+        message = Tr(L"Shaders") + L": " + Tr(shadersBypassed ? L"Off" : L"On");
+    }
+    else if (action == Action::ResetStatistics)
+    {
+        backend.ResetStatistics();
+        message = Tr(L"Statistics") + L": " + Tr(L"Reset");
+    }
+    else if (action == Action::Profile)
+    {
+        // By folder -> Default -> each profile -> by folder, for this file only.
+        const auto profiles = ContentProfiles::Load();
+        std::vector<std::wstring> order{L"", ContentProfiles::DefaultName};
+        for (const auto& profile : profiles)
+            order.push_back(profile.name);
+        PlaceboSettings current;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            const auto at = std::find(order.begin(), order.end(), forcedProfile);
+            forcedProfile = order[at == order.end() ? 0 : (at - order.begin() + 1) % order.size()];
+            SelectContentProfile(settings.displayProfile);
+            current = settings;
+        }
+        backend.SetSettings(BackendSettings(Effective(current)));
+        const auto shown = contentProfile.name.empty() ? Tr(L"Default") : contentProfile.name;
+        message = Tr(L"Profile") + L": " + (forcedProfile.empty() ? Tr(L"Automatic") + L" (" + shown + L")" : shown);
+    }
+    else
+    {
+        // Change what the video shows: the active profile when one applies,
+        // otherwise the display's normal settings, as the menu would.
+        PlaceboSettings base, edit;
+        ContentProfiles::Profile profile;
+        {
+            CAutoLock guard(&m_InterfaceLock);
+            base = settings;
+            profile = contentProfile;
+        }
+        edit = ContentProfiles::Apply(base, profile);
+        if (custom)
+        {
+            // Any menu setting, through the same controls the menu shows.
+            auto pages = BuildD2DPages(edit);
+            const auto* control = CustomShortcuts::Apply(pages, entry);
+            if (!control)
+                return;
+            // Shader settings name their shader: "AMD CAS: On".
+            const auto value = Tr(CustomShortcuts::ValueText(*control, control->Value()));
+            message = entry.name == L"On/Off"    ? Tr(entry.card) + L": " + value
+                      : entry.page == L"Shaders" ? Tr(entry.card) + L" › " + Tr(control->name) + L": " + value
+                                                 : Tr(control->name) + L": " + value;
+        }
+        else if (action == Action::Quality)
+        {
+            const std::wstring key =
+                profile.name.empty() ? std::wstring(base.displayProfile) : L"profile-" + profile.name;
+            const int current = MatchQualityPreset(edit);
+            if (current < 0)
+                SaveCustomQuality(key, edit); // keep your own values for "Custom"
+            PlaceboSettings custom;
+            int next = current < 0 ? 0 : current + 1;
+            if (next == int(std::size(QualityPresets)) && LoadCustomQuality(key, custom))
+            {
+                CopyQualitySettings(custom, edit);
+                message = Tr(L"Quality") + L": " + Tr(L"Custom");
+            }
+            else
+            {
+                next %= int(std::size(QualityPresets));
+                ApplyQualityPreset(edit, next);
+                message = Tr(L"Quality") + L": " + Tr(QualityPresetNames[next]);
+            }
+        }
+        else if (action == Action::PictureReset)
+        {
+            Shortcuts::ResetPicture(edit);
+            message = Tr(L"Picture Controls") + L": " + Tr(L"Reset");
+        }
+        if (message.empty())
+            return;
+        if (!profile.name.empty())
+        {
+            profile.overrides = ContentProfiles::Differences(base, edit);
+            if (!ContentProfiles::Save(profile))
+                return;
+            {
+                CAutoLock guard(&m_InterfaceLock);
+                SelectContentProfile(settings.displayProfile);
+            }
+            backend.SetSettings(BackendSettings(Effective(base)));
+            UpdateMotionSettings();
+        }
+        else
+        {
+            wcscpy_s(edit.displayProfile, base.displayProfile);
+            if (FAILED(SetSettings(&edit)))
+                return;
+        }
+    }
+    backend.ShowMessage(message);
+    if (window && window->WindowExists())
+    {
+        SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
+        if (windowState.load() != State_Running)
+            Repaint("shortcut");
+    }
+}
+
 void Renderer::Repaint(const char* source)
 {
     // During playback the next scheduled frame follows within one display
@@ -2042,6 +2359,8 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
         windowState = State_Running;
+    if (TraceEnabled())
+        Trace("Filters in graph: %ls", GraphFilters().c_str());
     if (SUCCEEDED(hr) && window && window->WindowExists() && window->IsAutoShowEnabled())
         window->DoShowWindow(SW_SHOWNOACTIVATE);
     // Playback started while the display still resynchronises after a mode
@@ -2114,6 +2433,23 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
         ISubRender11Callback* callback = nullptr;
         ComPtr<ISubRender11Callback> retained;
         ComPtr<ID3D11Device> device;
+        std::mutex lock;
+
+        HRESULT Attach(ID3D11Device* next)
+        {
+            std::lock_guard guard(lock);
+            if (device.Get() == next)
+                return S_OK;
+            if (device)
+            {
+                callback->SetDevice11(nullptr);
+                device.Reset();
+            }
+            HRESULT hr = callback->SetDevice11(next);
+            if (SUCCEEDED(hr))
+                device = next;
+            return hr;
+        }
 
         ~Bridge()
         {
@@ -2133,6 +2469,7 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
         {
             std::lock_guard guard(overlayLock);
             hostSubtitles = {};
+            hostSubtitleDevice = {};
         }
         InstallSubtitleOverlay();
         return S_OK;
@@ -2155,20 +2492,11 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     PlaceboBackend::OverlayPainter painter =
         [this, bridge](ID3D11Device* device, ID3D11DeviceContext*, int width, int height, const RECT& video) -> HRESULT
     {
-        if (bridge->device.Get() != device)
-        {
-            if (bridge->device)
-            {
-                bridge->callback->SetDevice11(nullptr);
-                bridge->device.Reset();
-            }
-            HRESULT hr = bridge->callback->SetDevice11(device);
-            if (FAILED(hr))
-                return hr;
-            bridge->device = device;
-        }
+        HRESULT hr = bridge->Attach(device);
+        if (FAILED(hr))
+            return hr;
         const RECT viewport = {0, 0, width, height};
-        HRESULT hr = bridge->callback->Render11(
+        hr = bridge->callback->Render11(
             frameStart.load(), frameStop.load(), frameDuration.load(), video, video, viewport, 1., 0, 0);
         // MPC-BE uses E_FAIL for an empty subtitle queue. The overlay was
         // cleared before the callback; keep the video and its empty overlay.
@@ -2178,9 +2506,23 @@ STDMETHODIMP Renderer::SetCallback11(ISubRender11Callback* next)
     {
         std::lock_guard guard(overlayLock);
         hostSubtitles = std::move(painter);
+        hostSubtitleDevice = [bridge](ID3D11Device* device) { bridge->Attach(device); };
     }
     InstallSubtitleOverlay();
     return S_OK;
+}
+
+void Renderer::AttachSubtitleDevice()
+{
+    std::function<void(ID3D11Device*)> attach;
+    {
+        std::lock_guard guard(overlayLock);
+        attach = hostSubtitleDevice;
+    }
+    if (!attach)
+        return;
+    if (auto device = backend.EnsureDevice())
+        attach(device);
 }
 
 void Renderer::InstallSubtitleOverlay()
@@ -2379,6 +2721,12 @@ STDMETHODIMP Renderer::GetSettings(PlaceboSettings* out)
 {
     if (!out)
         return E_POINTER;
+    {
+        // A settings window opened without a video shows what plays.
+        std::lock_guard live(LiveRenderers::lock);
+        if (auto* peer = PlayingPeer())
+            return peer->GetSettings(out);
+    }
     const auto profileResult = UpdateDisplayProfile();
     if (FAILED(profileResult))
         return profileResult;
@@ -2388,6 +2736,22 @@ STDMETHODIMP Renderer::GetSettings(PlaceboSettings* out)
 }
 
 STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
+{
+    HRESULT hr = ApplySettings(next);
+    if (FAILED(hr))
+        return hr;
+    // PotPlayer opens its Preferences > Video renderer settings through a
+    // separate renderer: let the playing video show each change at once.
+    std::lock_guard live(LiveRenderers::lock);
+    if (auto* peer = PlayingPeer())
+    {
+        Trace("Settings forwarded to the playing renderer");
+        hr = peer->ApplySettings(next);
+    }
+    return hr;
+}
+
+HRESULT Renderer::ApplySettings(const PlaceboSettings* next)
 {
     if (!next)
         return E_POINTER;
@@ -2411,6 +2775,20 @@ STDMETHODIMP Renderer::SetSettings(const PlaceboSettings* next)
     Trace("Settings requested: HDR=%d AutoHDR=%d", next->hdrPassthrough, next->autoHdr);
     SelectContentProfile(next->displayProfile);
     hr = backend.SetSettings(BackendSettings(Effective(*next)));
+    if (FAILED(hr) && Effective(*next).lutFromFolder && !folderLut.path.empty())
+    {
+        // The LUT next to the video is not usable; the settings still are.
+        Trace("LUT from the video folder rejected: %ls", folderLut.path.c_str());
+        folderLutFailed = folderLut.path;
+        folderLut.path.clear();
+        hr = backend.SetSettings(BackendSettings(Effective(*next)));
+        if (SUCCEEDED(hr))
+        {
+            backend.ShowMessage(Tr(L"LUT in the video folder unreadable"));
+            if (window && window->WindowExists())
+                SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
+        }
+    }
     if (FAILED(hr))
         return hr;
     hr = SaveSettings(*next);
@@ -2437,6 +2815,8 @@ void Renderer::PublishDisplayModes()
     next.enabled = !!effective.displayModeSwitch;
     DisplayModes::Parse(effective.displayModes, next.modes);
     next.delay = effective.displayModeDelay;
+    next.windowsHdrToggle = effective.windowsHdrToggle;
+    next.hdrPassthrough = effective.hdrMode != 2;
     {
         std::lock_guard lock(modeLock);
         modeConfig = std::move(next);
@@ -2448,6 +2828,25 @@ void Renderer::RequestModeCheck(UINT delay)
 {
     if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), ModeCheckMessage, delay, 0);
+}
+
+std::wstring Renderer::GraphFilters()
+{
+    std::wstring names;
+    ComPtr<IEnumFilters> filters;
+    if (!m_pGraph || FAILED(m_pGraph->EnumFilters(&filters)))
+        return names;
+    ComPtr<IBaseFilter> filter;
+    while (filters->Next(1, filter.ReleaseAndGetAddressOf(), nullptr) == S_OK)
+    {
+        FILTER_INFO info = {};
+        if (FAILED(filter->QueryFilterInfo(&info)))
+            continue;
+        if (info.pGraph)
+            info.pGraph->Release();
+        names += (names.empty() ? L"" : L", ") + std::wstring(info.achName);
+    }
+    return names;
 }
 
 // Runs on the window thread without renderer locks: a mode change notifies
@@ -2474,6 +2873,7 @@ void Renderer::CheckDisplayMode()
     // After a resolution change the player may keep its fullscreen window at
     // the previous size; that window is still fullscreen.
     const bool fullscreen = covers || (visible && sameDisplay && EqualRect(&bounds, &modeWindow));
+    CheckWindowsHdr(config, monitor.szDevice, fullscreen);
     const auto state = windowState.load();
     const auto duration = contentDuration.load();
     double rate = duration > 0 ? 1e7 / double(duration) : 0;
@@ -2508,10 +2908,44 @@ void Renderer::CheckDisplayMode()
     modeWindow = bounds;
     refreshDirty = true;
     Trace("Display mode %ls on %ls for %.3f fps", DisplayModes::Name(mode).c_str(), monitor.szDevice, rate);
-    const auto milliseconds = static_cast<DWORD>(config.delay * 1000 + .5f);
+    HoldForDisplayChange(config.delay);
+}
+
+void Renderer::CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen)
+{
+    if (!config.windowsHdrToggle)
+    {
+        const bool restore = hdrSwitcher.Active();
+        hdrSwitcher.Restore();
+        backend.SetDisplayHdrState(-1, restore);
+        return;
+    }
+    const auto input = backend.DisplayHdr();
+    const auto result = hdrSwitcher.Update(device,
+                                           config.windowsHdrToggle,
+                                           input.known && windowState.load() != State_Stopped,
+                                           input.hdrSource && config.hdrPassthrough,
+                                           input.rtxHdr,
+                                           fullscreen);
+    if (!result.known)
+    {
+        backend.SetDisplayHdrState(-1, false);
+        return;
+    }
+    backend.SetDisplayHdrState(result.enabled, result.switched);
+    if (!result.switched)
+        return;
+    refreshDirty = true;
+    HoldForDisplayChange(config.delay);
+}
+
+// The display needs a moment to show a picture again after a change.
+void Renderer::HoldForDisplayChange(float delay)
+{
+    const auto milliseconds = static_cast<DWORD>(delay * 1000 + .5f);
     if (!milliseconds)
         return;
-    if (state == State_Running)
+    if (windowState.load() == State_Running)
         PausePlayback(milliseconds);
     else
         modeHoldUntil = GetTickCount64() + milliseconds;
@@ -2668,10 +3102,15 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
         ContentProfiles::PublishPlaying(contentPath, automatic ? automatic->name : L"");
         preview = ContentProfiles::Preview(contentPath);
     }
+    // A profile chosen with the shortcut, unless the menu previews one.
+    const bool forced = preview.empty() && !forcedProfile.empty();
+    if (forced)
+        preview = forcedProfile;
     const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
     auto next = match ? *match : ContentProfiles::Profile{};
-    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) + L" (menu preview)"
-                              : match          ? next.name
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) +
+                                                     (forced ? L" (shortcut)" : L" (menu preview)")
+                              : match                                    ? next.name
                               : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
                                                                          : L"Default");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
@@ -2689,7 +3128,21 @@ void Renderer::UpdateContentProfile(IPin* peer)
     auto path = SourcePath(m_pGraph, peer);
     if (path.empty())
         path = SourcePath(m_pGraph, nullptr);
+    // A profile chosen by shortcut belongs to the file it was chosen for.
+    const bool newFile = path != contentPath;
+    if (newFile)
+    {
+        forcedProfile.clear();
+        folderLutFailed.clear();
+    }
     contentPath = path;
+    // The folder is looked at again each time, so a LUT copied there applies
+    // on the next start. One the renderer could not read stays unused.
+    auto lut = FolderLut::Find(path);
+    if (!lut.path.empty() && lut.path == folderLutFailed)
+        lut.path.clear();
+    const bool lutChanged = lut.result != folderLut.result || lut.path != folderLut.path;
+    folderLut = std::move(lut);
     if (path.empty() && TraceEnabled() && m_pGraph)
     {
         ComPtr<IEnumFilters> filters;
@@ -2707,22 +3160,58 @@ void Renderer::UpdateContentProfile(IPin* peer)
                 filter.Reset();
             }
     }
-    if (!SelectContentProfile(settings.displayProfile))
+    const bool profileChanged = SelectContentProfile(settings.displayProfile);
+    if (!profileChanged && !lutChanged)
+    {
+        if (newFile)
+            AnnounceFolderLut(false);
         return;
-    if (FAILED(backend.SetSettings(BackendSettings(Effective(settings)))))
+    }
+    bool unreadable = false;
+    HRESULT applied = backend.SetSettings(BackendSettings(Effective(settings)));
+    if (FAILED(applied) && Effective(settings).lutFromFolder && !folderLut.path.empty())
+    {
+        // Not a usable .cube file: keep the configured LUT for this video.
+        Trace("LUT from the video folder rejected: %ls", folderLut.path.c_str());
+        folderLutFailed = folderLut.path;
+        folderLut.path.clear();
+        unreadable = true;
+        applied = backend.SetSettings(BackendSettings(Effective(settings)));
+    }
+    if (FAILED(applied))
     {
         Trace("Content profile %ls rejected by the renderer", contentProfile.name.c_str());
         contentProfile = {};
         backend.SetSettings(BackendSettings(settings));
     }
     else
-        Trace("Content profile %ls (%zu settings) for %ls",
+        Trace("Content profile %ls (%zu settings), LUT from folder: %ls",
               contentProfile.name.empty() ? L"none" : contentProfile.name.c_str(),
               contentProfile.overrides.size(),
-              path.c_str());
+              folderLut.path.empty() ? L"none" : folderLut.path.c_str());
+    if (newFile || unreadable)
+        AnnounceFolderLut(unreadable);
     UpdateMotionSettings();
     PublishDisplayModes();
     refreshDirty = true;
+}
+
+void Renderer::AnnounceFolderLut(bool unreadable)
+{
+    if (!Effective(settings).lutFromFolder || folderLut.result == FolderLut::Result::NoPath)
+        return;
+    std::wstring message;
+    if (unreadable)
+        message = Tr(L"LUT in the video folder unreadable");
+    else if (!folderLut.path.empty())
+        message = Tr(L"LUT") + L": " + std::filesystem::path(folderLut.path).filename().wstring();
+    else if (folderLut.result == FolderLut::Result::Several)
+        message = Tr(L"Several LUTs in the video folder");
+    else
+        message = Tr(L"No LUT in the video folder");
+    backend.ShowMessage(message);
+    if (window && window->WindowExists())
+        SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
 }
 
 STDMETHODIMP Renderer::GetStatus(PlaceboStatus* out)

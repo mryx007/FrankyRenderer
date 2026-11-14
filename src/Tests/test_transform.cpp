@@ -99,6 +99,25 @@ int wmain(int argc, wchar_t** argv)
     Require(draw(0, false) == baseline, "reset and repeated renders do not accumulate transforms");
     puts(
         "PASS GPU pixels: four rotations, both mirror states, non-square aspect, repeat/reset, invalid angles, smooth motion");
+    {
+        // The player's rectangle wins over the video's own aspect ratio, as
+        // for an aspect override or stretching in MPC-HC and MPC-BE.
+        Require(SUCCEEDED(backend.SetRotation(0)), "rotation reset");
+        backend.SetFlip(false);
+        backend.SetGeometry(RECT{}, RECT{0, 0, 96, 32});
+        std::vector<uint8_t> pixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(96, 64, pixels, false, 8, true)),
+                "render into the player's rectangle");
+        const auto value = [&](int x, int y) { return int(pixels[(y * 96 + x) * 4 + 1]); };
+        Require(value(2, 8) > 12 && value(93, 8) > 12, "the picture fills the player's rectangle to both sides");
+        Require(value(48, 48) < 6, "nothing is drawn below the player's rectangle");
+        // A zoomed rectangle larger than the window shows its middle part.
+        backend.SetGeometry(RECT{}, RECT{-96, -64, 192, 128});
+        Require(SUCCEEDED(backend.RenderOffscreen(96, 64, pixels, false, 8, true)), "render a zoomed rectangle");
+        Require(value(2, 2) > 12 && value(93, 61) > 12, "a zoomed rectangle fills the window");
+        backend.SetGeometry(RECT{}, RECT{});
+        puts("PASS player rectangle: aspect override and stretching kept, zoom past the window clipped");
+    }
 
     // Exercise the actual renderer COM interface without registration or playback.
     Require(argc == 2, "renderer path argument");

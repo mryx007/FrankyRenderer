@@ -115,6 +115,34 @@ int main()
                     after.bottom == before.bottom,
                 "end credits keep the film crop instead of zooming into the text column");
     }
+    {
+        // A dark scene in a letterboxed film: the left part of the picture is
+        // black. Only the bars above and below may be cropped, never a side.
+        constexpr int width = 256, height = 144;
+        std::vector<uint8_t> pixels(width * height * 4, 0);
+        for (int y = 18; y < height - 18; ++y)
+            for (int x = 40; x < width; ++x)
+                pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.delay = 0;
+        BlackBarDetector detector;
+        for (int sample = 0; sample < 6; ++sample)
+            detector.Observe(pixels.data(), width, height, width * 4, 1920, 1080, settings, sample * 200);
+        const auto bounds = detector.Bounds(1920, 1080);
+        Require(detector.measured && bounds.left == 0 && bounds.right == 1920 && bounds.top > 0 && bounds.bottom < 1080,
+                "a dark side of the picture is never cropped as a bar");
+        // The same with a dark right side.
+        std::vector<uint8_t> right(width * height * 4, 0);
+        for (int y = 18; y < height - 18; ++y)
+            for (int x = 0; x < width - 60; ++x)
+                right[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+        BlackBarDetector other;
+        for (int sample = 0; sample < 6; ++sample)
+            other.Observe(right.data(), width, height, width * 4, 1920, 1080, settings, sample * 200);
+        const auto rightBounds = other.Bounds(1920, 1080);
+        Require(other.measured && rightBounds.left == 0 && rightBounds.right == 1920, "nor its right side");
+    }
     puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration; "
-         "end credits");
+         "end credits; dark picture sides are not cropped");
 }

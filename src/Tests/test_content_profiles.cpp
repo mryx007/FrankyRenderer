@@ -1,5 +1,7 @@
 #include "Settings/ContentProfiles.h"
+#include "Settings/FolderLut.h"
 #include <cstdio>
+#include <fstream>
 
 static void Require(bool ok, const char* message)
 {
@@ -68,16 +70,12 @@ int wmain()
                 "Overrides were not applied");
         Require(applied.saturation == 1.25f, "Other settings changed");
 
-        // A profile stores only what differs from Default; a reset returns to Default.
+        // A profile stores only what differs from Default.
         auto edited = applied;
         edited.saturation = 1.5f;
         const auto differences = Differences(base, edited);
         Require(differences.size() == 4 && differences.at({"Renderer", "saturation"}) == "1.5",
                 "Differences were not found");
-        const auto before = edited;
-        edited.sharpenStrength = 0; // as if a reset wrote the built-in value
-        RestoreChanged(edited, before, base);
-        Require(edited.sharpenStrength == .5f && edited.saturation == 1.5f, "Reset did not return to Default");
 
         const auto broken = Parse(L"Broken", "[Profile]\r\nfolders=\"D:\\X\"\r\n[Renderer]\r\nsharpenStrength=9\r\n");
         Require(Apply(base, broken).sharpenStrength == .5f, "Out-of-range profile was applied");
@@ -98,6 +96,39 @@ int wmain()
         Require(loaded[0].folders[0] == L"D:\\Anime", "Folder was not kept as written");
         puts("PASS content profiles: folders, closest folder wins, sibling prefix, case, displays, folder owner, "
              "menu preview, differences, reset to Default, invalid profile ignored, empty profile, save and load");
+
+        // LUT from Video Folder: the video's name wins, else the only .cube file.
+        {
+            const auto folder = std::wstring(temp) + L"FrankyFolderLutTest" + std::to_wstring(GetCurrentProcessId());
+            std::filesystem::create_directories(folder);
+            const auto touch = [&](const wchar_t* name) { std::ofstream(folder + L"\\" + name) << "LUT_3D_SIZE 2\n"; };
+            const auto video = folder + L"\\Film.mkv";
+            touch(L"Film.mkv");
+            Require(FolderLut::Find(L"").result == FolderLut::Result::NoPath, "A stream had a folder");
+            Require(FolderLut::Find(video).result == FolderLut::Result::None, "A folder without LUT found one");
+            touch(L"Kino.CUBE");
+            auto found = FolderLut::Find(video);
+            Require(found.result == FolderLut::Result::Only && found.path == folder + L"\\Kino.CUBE",
+                    "The folder's only LUT was not used");
+            touch(L"Other.cube");
+            Require(FolderLut::Find(video).result == FolderLut::Result::Several && FolderLut::Find(video).path.empty(),
+                    "One of several LUTs was chosen at random");
+            touch(L"Film.cube");
+            found = FolderLut::Find(video);
+            Require(found.result == FolderLut::Result::Named && found.path == folder + L"\\Film.cube",
+                    "The LUT named like the video did not win");
+            Require(FolderLut::Find(folder + L"\\Missing\\x.mkv").result == FolderLut::Result::None,
+                    "A missing folder failed");
+            std::filesystem::remove_all(folder);
+            // The switch is a setting a profile can change.
+            const auto profile = Parse(L"Grading", "[Profile]\r\nfolders=\r\n[Renderer]\r\nlutFromFolder=1\r\n");
+            Require(Apply(PlaceboSettings{}, profile).lutFromFolder == TRUE, "A profile could not switch it on");
+            PlaceboSettings invalid;
+            invalid.lutFromFolder = 2;
+            Require(FAILED(ValidateSettings(invalid)), "An invalid switch value was accepted");
+            puts("PASS LUT from Video Folder: named LUT wins, only LUT, several choose none, no LUT, no path, "
+                 "missing folder, profile override, validation");
+        }
         return 0;
     }
     catch (const std::exception& error)

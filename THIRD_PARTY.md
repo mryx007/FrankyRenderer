@@ -8,7 +8,7 @@
 - **PlayKit shader collection** - upstream https://github.com/hooke007/mpv_PlayKit . Included source files retain their original authorship and licenses; see `src/Shaders/PlayKit` and its source manifest. Collection licensing does not replace individual shader licenses.
 - **SSimDownscaler** - LGPL-3.0-or-later, by igv. `src/Shaders/PlayKit/SSimDownscaler_RT.glsl` is igv's original (https://gist.github.com/igv/36508af3ffc84410fe39761d6969be10) with the PlayKit THR and DEBUG parameters added; its notice is retained in the file header.
 - **SubRenderIntf.h** (subtitle renderer interface used by XySubFilter) - BSD license, (C) 2011-2015 madshi; included unchanged under `src/DirectShow/Include`.
-- **Adaptive Sharpen** - original shader source and notice are retained under `src/Shaders` and in the embedded source header.
+- **Adaptive Sharpen** - the notice is in `licenses/adaptive-sharpen/LICENSE.txt` of the package and in the embedded source header; the original shader is under `src/Shaders`.
 
 Bundled source notices take precedence for their respective components. The renderer's name change does not change third-party ownership or licensing.
 
