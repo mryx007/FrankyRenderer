@@ -156,15 +156,6 @@ msgstr ""
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
-msgstr ""
-
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid "Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr ""
-
-#. Setting name (General > Image Analysis)
-#. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
 msgstr ""
 
@@ -3289,8 +3280,8 @@ msgid "Lowers the value by %s."
 msgstr ""
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr ""
 

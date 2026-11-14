@@ -2122,7 +2122,8 @@ struct PlaceboBackend::State
                                     std::clamp(std::min(target.crop.y0, target.crop.y1), 0.f, viewH),
                                     std::clamp(std::max(target.crop.x0, target.crop.x1), 0.f, viewW),
                                     std::clamp(std::max(target.crop.y0, target.crop.y1), 0.f, viewH)};
-        const pl_rect2df* placement = settings.statisticsInVideo ? &picture : nullptr;
+        // Statistics and analysis sit on the picture, never in black bars.
+        const pl_rect2df* placement = &picture;
         probe.Next(RenderProbe::StatisticsInfo);
         // The overlay box keeps its largest size while shown; start over each
         // time the statistics are switched on.

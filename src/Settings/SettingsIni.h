@@ -56,7 +56,6 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
     INI_FIELD(imageAnalysis);
-    INI_FIELD(statisticsInVideo);
     INI_FIELD(statisticsTextScale);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
@@ -329,6 +328,8 @@ inline PlaceboSettings Parse(const std::string& text)
     if (version == entries.end() || version->second != "1")
         throw std::runtime_error("Unsupported settings file version.");
     entries.erase(version);
+    // Settings that no longer exist; older files still load.
+    entries.erase({"Renderer", "statisticsInVideo"});
     PlaceboSettings candidate;
     Visit(candidate,
           [&](const std::string& group, const std::string& name, auto& value)
@@ -358,7 +359,6 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.peakDetect,
                       candidate.showClipping,
                       candidate.imageAnalysis,
-                      candidate.statisticsInVideo,
                       candidate.colorAdjustment,
                       candidate.allowDelayedPeak,
                       candidate.shaderAutoOrder})

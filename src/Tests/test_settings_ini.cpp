@@ -38,7 +38,6 @@ int wmain()
         }
         original.rtxSuperResolution = TRUE;
         original.imageAnalysis = TRUE;
-        original.statisticsInVideo = TRUE;
         original.statisticsTextScale = 150;
         original.clippingProtection = TRUE;
         auto legacy = SettingsIni::Parse(
@@ -73,7 +72,11 @@ int wmain()
         wcscpy_s(original.lutPath, L"C:\\LUTs\\a=b;# test.cube");
         const auto text = SettingsIni::Serialize(original);
         auto restored = SettingsIni::Parse(text);
-        Require(restored.imageAnalysis && restored.statisticsInVideo, "Image analysis flags were lost");
+        Require(restored.imageAnalysis, "Image analysis flag was lost");
+        // Statistics in Video Area was removed; files that still have it load.
+        auto retired = text;
+        retired.insert(retired.find("[Renderer]\r\n") + 12, "statisticsInVideo=1\r\n");
+        Require(SettingsIni::Serialize(SettingsIni::Parse(retired)) == text, "Removed setting blocked an import");
         Require(restored.statisticsTextScale == 150, "Statistics text size was lost");
         Require(restored.presentAhead == 3, "Present in advance was lost");
         Require(restored.displayGammaCurve == 1 && restored.sdrGammaCurve == 235 && restored.displayContrast == 3000 &&

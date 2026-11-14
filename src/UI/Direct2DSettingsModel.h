@@ -337,11 +337,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         scope.desc =
             L"Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles.";
         analysis.controls.push_back(std::move(scope));
-        analysis.controls.push_back(
-            D2DBool(s,
-                    L"Statistics in Video Area",
-                    &s.statisticsInVideo,
-                    L"Ctrl+J statistics and image analysis sit on the picture, not in black bars."));
         analysis.controls.push_back(D2DNumber(s,
                                               L"Statistics Text Size (%)",
                                               &s.statisticsTextScale,
