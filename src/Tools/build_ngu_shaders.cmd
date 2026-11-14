@@ -18,6 +18,10 @@ if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gis /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_class3_scale_y.cso" "Shaders\Ngu\ngu_class3_scale_y.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_cubici2.cso" "Shaders\Ngu\ngu_chroma_cubici2.hlsl"
+
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_quality_cubici0.cso" "Shaders\Ngu\ngu_quality_cubici0.hlsl"
+
+fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\luma_1080_cubici1.cso" "Shaders\Ngu\luma_1080_cubici1.hlsl"
 if errorlevel 1 exit /b 1
 fxc /nologo /T ps_5_0 /E PSMain /O3 /Gfp:strict /Fo "build\bin\shaders\Ngu\ngu_chroma_layer.cso" "Shaders\Ngu\ngu_chroma_layer.hlsl"
 if errorlevel 1 exit /b 1

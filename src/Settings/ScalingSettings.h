@@ -58,6 +58,19 @@ inline bool NativeNguRequested(const ScalingSettings& settings)
     return NativeNguRequested(settings.filters[0]) || NativeNguRequested(settings.filters[2]);
 }
 
+// Native NGU quality is stored in the otherwise-unused first parameter of an
+// ngu_sharp filter. Bit 9 distinguishes an explicit quality from legacy zero
+// initialization, whose default is VeryHigh.
+inline constexpr uint32_t NguQualityOverride = 1u << 9;
+
+inline NguSharpQuality NativeNguQuality(const ScalerSettings& settings)
+{
+    if (!(settings.overrides & NguQualityOverride))
+        return NguSharpQuality::VeryHigh;
+    const int value = std::clamp(int(std::lround(settings.values[0])), 0, 3);
+    return static_cast<NguSharpQuality>(value);
+}
+
 inline bool ScalingName(const char (&name)[64])
 {
     if (!memchr(name, 0, 64) || !name[0])
@@ -110,7 +123,7 @@ inline bool ApplyScaling(pl_options o, const ScalingSettings& settings)
     {
         const auto& s = settings.filters[role];
         if (!ScalingName(s.filter) || !ScalingName(s.preset) || !ScalingName(s.kernel) || !ScalingName(s.window) ||
-            s.overrides & ~511u || s.polar < -1 || s.polar > 1)
+            s.overrides & ~1023u || s.polar < -1 || s.polar > 1)
             return false;
         for (float n : s.values)
             if (!std::isfinite(n))

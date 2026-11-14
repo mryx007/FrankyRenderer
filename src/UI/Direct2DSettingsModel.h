@@ -495,6 +495,29 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             n.detail = [&f, role] { return D2DScalerDescription(role, f.filter); };
             n.reset = [&f] { f = {}; };
             c.controls.push_back(std::move(n));
+            if (role == 2)
+            {
+                D2DControl quality;
+                quality.name = L"NGU Quality: Chroma";
+                quality.desc =
+                    L"madVR-compatible NGU Sharp chroma quality. Image NGU quality remains VeryHigh in this release.";
+                quality.kind = ControlKind::Choice;
+                quality.choices = {{0, L"Low"}, {1, L"Medium"}, {2, L"High"}, {3, L"VeryHigh"}};
+                quality.enabled = [&f] { return !strcmp(f.filter, "ngu_sharp"); };
+                quality.get = [&f] { return float(NativeNguQuality(f)); };
+                quality.set = [&f](float value)
+                {
+                    f.values[0] = std::clamp(value, 0.f, 3.f);
+                    f.overrides |= NguQualityOverride;
+                };
+                quality.defaultValue = [] { return 3.f; };
+                quality.reset = [&f]
+                {
+                    f.overrides &= ~NguQualityOverride;
+                    f.values[0] = 0;
+                };
+                c.controls.push_back(std::move(quality));
+            }
         }
         c.controls.push_back(D2DNumber(s,
                                        L"Global Anti-Ringing",

@@ -95,6 +95,8 @@ struct RenderSettings
     bool smoothMotion = false;
     bool rtxSuperResolution = false, rtxHdr = false;
     NativeScalerKind nativeScaler = NativeScalerKind::None;
+    NguSharpQuality nguLumaQuality = NguSharpQuality::VeryHigh;
+    NguSharpQuality nguChromaQuality = NguSharpQuality::VeryHigh;
     bool imageAnalysis = false;
     bool statisticsInVideo = false; // statistics and analysis follow the picture
     std::optional<ScalingSettings> scaling;

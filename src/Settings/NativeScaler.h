@@ -11,6 +11,16 @@ enum class NativeScalerKind
     NguSharp,
 };
 
+// Quality ordering matches madVR's persisted NGU ordinal: Low, Medium, High,
+// VeryHigh. This is a renderer parameter, not a separate renderer identity.
+enum class NguSharpQuality
+{
+    Low = 0,
+    Medium = 1,
+    High = 2,
+    VeryHigh = 3,
+};
+
 inline NativeScalerKind ResolveNativeScaler(const char* name)
 {
     if (name && !std::strcmp(name, "ngu_sharp"))

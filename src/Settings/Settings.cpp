@@ -659,6 +659,8 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.colorAdjustment = !!s.colorAdjustment;
     out.scaling = s.scaling;
     out.nativeScaler = NativeScalerKind::None;
+    out.nguLumaQuality = NativeNguQuality(s.scaling.filters[0]);
+    out.nguChromaQuality = NativeNguQuality(s.scaling.filters[2]);
     if (NativeNguRequested(s.scaling) || !wcscmp(s.upscaler, L"ngu_sharp"))
         out.nativeScaler = NativeScalerKind::NguSharp;
     else if (s.chromaScaler > 0)

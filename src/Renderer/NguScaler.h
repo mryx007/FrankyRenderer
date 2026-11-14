@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/NguDither.h"
+#include "Settings/NativeScaler.h"
 #include <libplacebo/colorspace.h>
 #include <libplacebo/shaders/custom.h>
 #include <memory>
@@ -9,16 +10,7 @@ struct ID3D11ShaderResourceView;
 struct ID3D11RenderTargetView;
 struct ID3D11Texture2D;
 
-// NGU quality names mirror the target settings. Only VeryHigh has
-// evidence-backed validation stages; the other levels stay fail-closed until
-// their complete graphs are recovered and verified.
-enum class NguQuality
-{
-    Low,
-    Medium,
-    High,
-    VeryHigh,
-};
+using NguQuality = NguSharpQuality;
 
 enum class Ngu720DoubleSurface
 {
@@ -126,6 +118,8 @@ struct NguSourceFrame
     pl_color_repr repr = {};
     bool fullRange = false;
     bool topDown = true;
+    NguQuality lumaQuality = NguQuality::VeryHigh;
+    NguQuality chromaQuality = NguQuality::VeryHigh;
     ID3D11ShaderResourceView* luma = nullptr;
     ID3D11ShaderResourceView* chroma = nullptr;
     ID3D11ShaderResourceView* rgb = nullptr;
@@ -191,9 +185,38 @@ class NguScaler
     bool RunNativeChromaScaleX(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output);
     bool RunNativeChromaScaleY(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output);
     bool PrepareNativeChromaNetwork(pl_gpu gpu);
+    bool PrepareNativeChromaNetworkLegacy(pl_gpu gpu);
+    bool RunNativeChromaCubici2Legacy(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const outputs[4]);
+    bool RunNativeChromaLayerLegacy(ID3D11ShaderResourceView* const inputs[4],
+                                    int layer,
+                                    ID3D11RenderTargetView* output);
+    bool RunNativeChromaDenseLegacy(ID3D11ShaderResourceView* const inputs[4], ID3D11RenderTargetView* output);
     bool RunNativeChromaCubici2(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const outputs[4]);
     bool RunNativeChromaLayer(ID3D11ShaderResourceView* const inputs[4], int layer, ID3D11RenderTargetView* output);
     bool RunNativeChromaDense(ID3D11ShaderResourceView* const inputs[4], ID3D11RenderTargetView* output);
+    bool RunNativeChromaQualityLayerForTest(NguQuality quality,
+                                            ID3D11ShaderResourceView* const* inputs,
+                                            int inputCount,
+                                            int layer,
+                                            ID3D11RenderTargetView* output);
+    bool RunNativeChromaQualityLayerMultiForTest(NguQuality quality,
+                                                 ID3D11ShaderResourceView* const* inputs,
+                                                 int inputCount,
+                                                 int layer,
+                                                 ID3D11RenderTargetView* const* outputs,
+                                                 int outputCount);
+    bool RunNativeChromaMixerForTest(NguQuality quality,
+                                     ID3D11ShaderResourceView* const* inputs,
+                                     ID3D11RenderTargetView* const* outputs,
+                                     int outputCount);
+    bool RunNativeChromaQualityDenseForTest(NguQuality quality,
+                                            ID3D11ShaderResourceView* const* inputs,
+                                            int inputCount,
+                                            ID3D11RenderTargetView* output);
+    bool RunNativeChromaInitialForTest(NguQuality quality,
+                                       ID3D11ShaderResourceView* input,
+                                       ID3D11RenderTargetView* const* outputs,
+                                       int outputCount);
     bool PrepareNativeChromaVeryHigh720(pl_gpu gpu);
     bool RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput);
     bool PrepareNativeChromaVeryHigh1080(pl_gpu gpu);
@@ -229,12 +252,12 @@ class NguScaler
                                          ID3D11ShaderResourceView* baseOriginal,
                                          ID3D11RenderTargetView* output,
                                          bool p010 = false);
-    bool PrepareNativeNgu720FromPlanes(pl_gpu gpu);
+    bool PrepareNativeNgu720FromPlanes(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeNgu720FromPlanes(ID3D11ShaderResourceView* packedUv,
                                    ID3D11ShaderResourceView* yInput,
                                    ID3D11RenderTargetView* finalOutput,
                                    bool p010 = false);
-    bool PrepareNativeNgu720DoubleFromPlanes(pl_gpu gpu);
+    bool PrepareNativeNgu720DoubleFromPlanes(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeNgu720DoubleFromPlanes(ID3D11ShaderResourceView* packedUv,
                                          ID3D11ShaderResourceView* yInput,
                                          ID3D11RenderTargetView* finalOutput,
@@ -243,7 +266,7 @@ class NguScaler
     bool RunNativeLuma720DoubleHighBit(ID3D11ShaderResourceView* sourceRgb, ID3D11RenderTargetView* finalOutput);
     bool CopyNativeLuma720DoubleHighBitRgb(ID3D11RenderTargetView* output);
     bool CopyNativeLuma720DoubleHighBitSurface(NguHighBit720Surface surface, ID3D11RenderTargetView* output);
-    bool PrepareNativeNgu1080FromPlanes(pl_gpu gpu);
+    bool PrepareNativeNgu1080FromPlanes(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeNgu1080FromPlanes(ID3D11ShaderResourceView* packedUv,
                                     ID3D11ShaderResourceView* yInput,
                                     ID3D11RenderTargetView* finalOutput,
@@ -423,21 +446,21 @@ class NguScaler
     bool PrepareNativeClass3ChromaTail720(pl_gpu gpu);
     bool RunNativeClass3ChromaTail720(ID3D11ShaderResourceView* sourcePs4576, ID3D11RenderTargetView* finalOutput);
     bool CopyNativeClass3PostStage720(int stage, ID3D11RenderTargetView* output);
-    bool PrepareNativeChromaCoreClass3_720(pl_gpu gpu);
+    bool PrepareNativeChromaCoreClass3_720(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeChromaCoreClass3_720(ID3D11ShaderResourceView* packedUv,
                                        ID3D11ShaderResourceView* yInput,
                                        ID3D11RenderTargetView* ps4576Output);
-    bool PrepareNativeChromaCoreClass3_1080(pl_gpu gpu);
+    bool PrepareNativeChromaCoreClass3_1080(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeChromaCoreClass3_1080(ID3D11ShaderResourceView* packedUv,
                                         ID3D11ShaderResourceView* yInput,
                                         ID3D11RenderTargetView* ps4576Output);
     bool CopyNativeChromaCoreClass3Stage720(int stage, ID3D11RenderTargetView* output);
     bool CopyNativeChromaCoreClass3Stage1080(int stage, ID3D11RenderTargetView* output);
-    bool PrepareNativeNguClass3_720(pl_gpu gpu);
+    bool PrepareNativeNguClass3_720(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeNguClass3_720(ID3D11ShaderResourceView* packedUv,
                                 ID3D11ShaderResourceView* yInput,
                                 ID3D11RenderTargetView* finalOutput);
-    bool PrepareNativeNguClass3_1080(pl_gpu gpu);
+    bool PrepareNativeNguClass3_1080(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
     bool RunNativeNguClass3_1080(ID3D11ShaderResourceView* packedUv,
                                  ID3D11ShaderResourceView* yInput,
                                  ID3D11RenderTargetView* finalOutput);
@@ -481,9 +504,24 @@ class NguScaler
     struct NativeLuma4x720Tail;
     struct NativeClass3ChromaTail720;
     struct NativeChromaCoreClass3_720;
+    bool RunNativeChromaInitial(
+        NguQuality quality, ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const* outputs, int outputCount);
+    bool RunNativeChromaMixer(
+        NguQuality quality, ID3D11ShaderResourceView* const* inputs, ID3D11RenderTargetView* const* outputs, int outputCount);
+    bool RunNativeChromaQualityLayer(NguQuality quality,
+                                     ID3D11ShaderResourceView* const* inputs,
+                                     int inputCount,
+                                     int layer,
+                                     ID3D11RenderTargetView* const* outputs,
+                                     int outputCount);
+    bool RunNativeChromaQualityDense(NguQuality quality,
+                                     ID3D11ShaderResourceView* const* inputs,
+                                     int inputCount,
+                                     ID3D11RenderTargetView* output);
     bool PrepareNativeChromaCoreClass3(pl_gpu gpu,
                                        int chromaWidth,
                                        int chromaHeight,
+                                       NguQuality quality,
                                        std::unique_ptr<NativeChromaCoreClass3_720>& state,
                                        const char* geometry);
     bool RunNativeChromaCoreClass3(ID3D11ShaderResourceView* packedUv,
@@ -493,14 +531,24 @@ class NguScaler
                                    int chromaHeight,
                                    NativeChromaCoreClass3_720& state);
     bool PrepareNativeChromaVeryHigh(
-        pl_gpu gpu, int width, int height, std::unique_ptr<NativeChromaVeryHighResources>& state, const char* geometry);
+        pl_gpu gpu,
+        int width,
+        int height,
+        NguQuality quality,
+        std::unique_ptr<NativeChromaVeryHighResources>& state,
+        const char* geometry);
     bool RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
                                  ID3D11RenderTargetView* denseOutput,
                                  int width,
                                  int height,
                                  NativeChromaVeryHighResources& state);
     bool PrepareNativeChromaFull(
-        pl_gpu gpu, int width, int height, std::unique_ptr<NativeChromaFullResources>& state, const char* geometry);
+        pl_gpu gpu,
+        int width,
+        int height,
+        NguQuality quality,
+        std::unique_ptr<NativeChromaFullResources>& state,
+        const char* geometry);
     bool RunNativeChromaFull(ID3D11ShaderResourceView* packedUv,
                              ID3D11ShaderResourceView* yInput,
                              ID3D11ShaderResourceView* diffOriginal,
@@ -515,6 +563,7 @@ class NguScaler
     bool PrepareNativeNguFromPlanes(pl_gpu gpu,
                                     int width,
                                     int height,
+                                    NguQuality quality,
                                     std::unique_ptr<NativeNguFromPlanesResources>& state,
                                     const char* geometry,
                                     bool includeFullLuma = true);

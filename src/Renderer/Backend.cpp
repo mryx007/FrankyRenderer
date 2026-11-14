@@ -632,6 +632,8 @@ struct PlaceboBackend::State
         source.repr = image.repr;
         source.fullRange = description.levels == PL_COLOR_LEVELS_FULL;
         source.topDown = !description.bottomUp;
+        source.lumaQuality = settings.nguLumaQuality;
+        source.chromaQuality = settings.nguChromaQuality;
         NguSourceFormatLayout layout;
         if (!DescribeNguSourceFormat(description.format, source.width, source.height, layout))
             return false;
@@ -815,6 +817,15 @@ struct PlaceboBackend::State
         {
             error = "ngu_sharp source format is unsupported";
             return false;
+        }
+        {
+            char qualityTrace[128] = {};
+            std::snprintf(qualityTrace,
+                          sizeof(qualityTrace),
+                          "NGU quality luma=%d chroma=%d",
+                          int(source.lumaQuality),
+                          int(source.chromaQuality));
+            TraceNgu(qualityTrace);
         }
         const bool class3 = source.chromaLayout == NguChromaLayout::SemiPlanar422;
         if (class3 && (targetWidth != 3840 || targetHeight != 2160))
