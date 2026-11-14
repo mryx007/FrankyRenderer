@@ -21,10 +21,10 @@ def package_release(output, channel="stable", build_id=None):
         raise ValueError(f"Use a new output directory: {output}")
     output.mkdir(parents=True)
     result = []
-    version = "nightly-" + build_id if channel == "nightly" else "1.2.1"
+    version = "nightly-" + build_id if channel == "nightly" else "1.4.0"
     name = f"FrankyRenderer-{version}-x64"
     stage = output / name
-    main(stage)
+    main(stage, version=version)
     if channel == "nightly":
         instructions = stage / "INSTALL.txt"
         with instructions.open("a", encoding="utf-8") as stream:

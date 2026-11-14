@@ -129,12 +129,11 @@ int main(int argc, char** argv)
         ComPtr<ID3D11RenderTargetView> cbView;
         ComPtr<ID3D11RenderTargetView> crView;
         ComPtr<ID3D11ShaderResourceView> cbShaderView;
-        Require(SUCCEEDED(d3d->device->CreateRenderTargetView(
-                    cb.Get(), nullptr, &cbView)) &&
-                    SUCCEEDED(d3d->device->CreateRenderTargetView(
-                        cr.Get(), nullptr, &crView)) &&
-                    SUCCEEDED(d3d->device->CreateShaderResourceView(
-                        cb.Get(), nullptr, &cbShaderView)),
+        ComPtr<ID3D11ShaderResourceView> crShaderView;
+        Require(SUCCEEDED(d3d->device->CreateRenderTargetView(cb.Get(), nullptr, &cbView)) &&
+                    SUCCEEDED(d3d->device->CreateRenderTargetView(cr.Get(), nullptr, &crView)) &&
+                    SUCCEEDED(d3d->device->CreateShaderResourceView(cb.Get(), nullptr, &cbShaderView)) &&
+                    SUCCEEDED(d3d->device->CreateShaderResourceView(cr.Get(), nullptr, &crShaderView)),
                 "split views");
         Require(ngu.RunNativeChromaSplit(
                     inputView.Get(), 640, 360, cbView.Get(), crView.Get()),
@@ -183,45 +182,47 @@ int main(int argc, char** argv)
                     "output RTV");
             rawOutputs[index] = outputViews[index].Get();
         }
-        Require(ngu.RunNativeChromaInitialForTest(
-                    quality,
-                    cbShaderView.Get(),
-                    rawOutputs.data(),
-                    int(outputCount)),
-                ngu.LastError());
-        pl_gpu_finish(d3d->gpu);
-
         int failures = 0;
         uint16_t maximum = 0;
         const char* shader =
             quality == NguQuality::Low ? "PS_1152_a9a5033a" : "PS_1412_aad01c2f";
-        for (size_t index = 0; index < outputCount; ++index)
+        const std::array<ID3D11ShaderResourceView*, 2> channels = {cbShaderView.Get(), crShaderView.Get()};
+        const std::array<int, 2> draws =
+            quality == NguQuality::Low ? std::array<int, 2>{9, 16} : std::array<int, 2>{9, 18};
+        for (size_t channel = 0; channel < channels.size(); ++channel)
         {
-            const auto actual = Download(d3d->device, context.Get(), outputs[index].Get());
-            const auto expected = ReadBytes(
-                root / ("draw_0009_" + std::string(shader) + "_rt" +
-                        std::to_string(index) +
-                        "_640x360_f113_1843200.bin"),
-                size_t(640) * 360 * 8);
-            int different = 0;
-            for (size_t offset = 0; offset < actual.size(); offset += 2)
+            Require(ngu.RunNativeChromaInitialForTest(quality, channels[channel], rawOutputs.data(), int(outputCount)),
+                    ngu.LastError());
+            pl_gpu_finish(d3d->gpu);
+            for (size_t index = 0; index < outputCount; ++index)
             {
-                const uint16_t left =
-                    uint16_t(actual[offset]) | (uint16_t(actual[offset + 1]) << 8);
-                const uint16_t right =
-                    uint16_t(expected[offset]) | (uint16_t(expected[offset + 1]) << 8);
-                if (left == right)
-                    continue;
-                ++different;
-                maximum = std::max(
-                    maximum, uint16_t(std::abs(int(left) - int(right))));
+                const auto actual = Download(d3d->device, context.Get(), outputs[index].Get());
+                char drawName[64] = {};
+                std::snprintf(drawName,
+                              sizeof(drawName),
+                              "draw_%04d_%s_rt%zu_640x360_f113_1843200.bin",
+                              draws[channel],
+                              shader,
+                              index);
+                const auto expected = ReadBytes(root / drawName, size_t(640) * 360 * 8);
+                int different = 0;
+                for (size_t offset = 0; offset < actual.size(); offset += 2)
+                {
+                    const uint16_t left = uint16_t(actual[offset]) | (uint16_t(actual[offset + 1]) << 8);
+                    const uint16_t right = uint16_t(expected[offset]) | (uint16_t(expected[offset + 1]) << 8);
+                    if (left == right)
+                        continue;
+                    ++different;
+                    maximum = std::max(maximum, uint16_t(std::abs(int(left) - int(right))));
+                }
+                failures += different;
+                std::printf("%s %s initializer rt%zu: different=%d maximum=%u\n",
+                            qualityName.c_str(),
+                            channel == 0 ? "Cb" : "Cr",
+                            index,
+                            different,
+                            unsigned(maximum));
             }
-            failures += different;
-            std::printf("%s initializer rt%zu: different=%d maximum=%u\n",
-                        qualityName.c_str(),
-                        index,
-                        different,
-                        unsigned(maximum));
         }
         std::printf("%s %s initializer: failures=%d maximum=%u\n",
                     failures == 0 ? "PASS_PRODUCT" : "FAIL_PRODUCT",

@@ -1,3 +1,4 @@
+- Stable 1.4.0: added the NGU Sharp VeryHigh-image / Low-Medium-High-VeryHigh-chroma all-quality path for 1280x720 SDR NV12, with byte-exact `PS_4576` source and packaged DirectShow handoffs; restored the shared high-bit VeryHigh slots used by the P016 720p Double gate and kept unobserved all-quality geometries fail-closed.
 - Stable 1.3.0: added the native NGU Sharp VeryHigh scaler peer with SuperChromaRes strength 3, P016 720p Double, observed P010 SDR/HDR source domains, shared arbitrary-window handling, and exact NGU-boundary verification.
 - Added: Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
 - Added: HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.

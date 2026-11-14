@@ -6,6 +6,7 @@
 #include <libplacebo/d3d11.h>
 #include <wrl/client.h>
 #include <array>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -427,6 +428,59 @@ bool CopyTextureToTarget(pl_gpu gpu, ID3D11Texture2D* source, ID3D11RenderTarget
         return false;
     context->CopyResource(destination.Get(), source);
     return true;
+}
+
+void DumpTextureToPath(pl_gpu gpu, ID3D11Texture2D* source, const char* pathText)
+{
+    if (!gpu || !source || !pathText || !*pathText)
+        return;
+
+    D3D11_TEXTURE2D_DESC desc = {};
+    source->GetDesc(&desc);
+    size_t bytesPerPixel = 0;
+    switch (desc.Format)
+    {
+    case DXGI_FORMAT_R16_UNORM:
+    case DXGI_FORMAT_R16_FLOAT:
+        bytesPerPixel = 2;
+        break;
+    case DXGI_FORMAT_R16G16_UNORM:
+    case DXGI_FORMAT_R16G16_FLOAT:
+    case DXGI_FORMAT_R32_FLOAT:
+        bytesPerPixel = 4;
+        break;
+    case DXGI_FORMAT_R16G16B16A16_UNORM:
+    case DXGI_FORMAT_R16G16B16A16_FLOAT:
+    case DXGI_FORMAT_R32G32_FLOAT:
+        bytesPerPixel = 8;
+        break;
+    default:
+        return;
+    }
+    D3D11_TEXTURE2D_DESC stagingDesc = desc;
+    stagingDesc.Usage = D3D11_USAGE_STAGING;
+    stagingDesc.BindFlags = 0;
+    stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ComPtr<ID3D11Texture2D> staging;
+    ID3D11Device* device = pl_d3d11_get(gpu)->device;
+    ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(context.GetAddressOf());
+    if (!context || FAILED(device->CreateTexture2D(&stagingDesc, nullptr, &staging)))
+        return;
+    context->CopyResource(staging.Get(), source);
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    if (FAILED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+        return;
+    const std::filesystem::path path(pathText);
+    if (!path.parent_path().empty())
+        std::filesystem::create_directories(path.parent_path());
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    const size_t rowBytes = size_t(desc.Width) * bytesPerPixel;
+    for (UINT y = 0; file && y < desc.Height; ++y)
+        file.write(static_cast<const char*>(mapped.pData) + size_t(y) * mapped.RowPitch, std::streamsize(rowBytes));
+    context->Unmap(staging.Get(), 0);
+    if (!file)
+        std::filesystem::remove(path);
 }
 
 void FillClass3PostConstants(std::array<float, 16>& constants, UINT width, UINT height, bool swapAxes)
@@ -2650,6 +2704,24 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         error_ = "NGU VeryHigh chroma constants could not be created";
         return false;
     }
+    state->cubici2 = veryHigh.initial;
+    state->layer = veryHigh.layer;
+    state->dense = veryHigh.dense;
+    state->cubici2Constants = veryHigh.initialConstants[0];
+    state->cubici2Constants1080 = veryHigh.initialConstants[1];
+    state->cubici2ConstantsClass3 = veryHigh.initialConstants[2];
+    state->cubici2ConstantsClass3_1080 = veryHigh.initialConstants[3];
+    state->denseConstants = veryHigh.denseConstants[0];
+    state->denseConstants1080 = veryHigh.denseConstants[1];
+    state->denseConstantsClass3 = veryHigh.denseConstants[2];
+    state->denseConstantsClass3_1080 = veryHigh.denseConstants[3];
+    for (size_t layer = 0; layer < state->layerConstants.size(); ++layer)
+    {
+        state->layerConstants[layer] = veryHigh.layerConstants[0][layer];
+        state->layerConstants1080[layer] = veryHigh.layerConstants[1][layer];
+        state->layerConstantsClass3[layer] = veryHigh.layerConstants[2][layer];
+        state->layerConstantsClass3_1080[layer] = veryHigh.layerConstants[3][layer];
+    }
 
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
@@ -3791,30 +3863,56 @@ bool NguScaler::RunNativeChromaFull(ID3D11ShaderResourceView* packedUv,
         return false;
     }
 
-    if (!RunNativeChromaSplit(packedUv, width, height, state.cbView.Get(), state.crView.Get()) ||
-        !RunNativeChromaVeryHigh(
-            state.cbShaderView.Get(), state.denseCbView.Get(), width, height, *(
-                is1080 ? nativeChromaVeryHigh1080_.get() : nativeChromaVeryHigh720_.get())) ||
-        !RunNativeChromaScaleX(state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
-        !RunNativeChromaScaleY(state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()) ||
-        !RunNativeChromaCombine1(
-            state.cbScaleYShaderView.Get(), state.denseCbShaderView.Get(), state.combine1View.Get()) ||
-        !RunNativeChromaVeryHigh(
-            state.crShaderView.Get(), state.denseCrView.Get(), width, height, *(
-                is1080 ? nativeChromaVeryHigh1080_.get() : nativeChromaVeryHigh720_.get())) ||
-        !RunNativeChromaScaleX(state.crShaderView.Get(), state.crScaleXView.Get()) ||
-        !RunNativeChromaScaleY(state.crScaleXShaderView.Get(), state.crScaleYView.Get()) ||
-        !RunNativeChromaCombine2(state.crScaleYShaderView.Get(),
+    const char* ps4576Path = std::getenv("FRANKY_NGU_PS4576_DUMP");
+    static std::atomic<bool> ps4576Dumped = false;
+    const bool dumpPs4576 = ps4576Path && *ps4576Path && !ps4576Dumped.exchange(true);
+    if (!RunNativeChromaSplit(packedUv, width, height, state.cbView.Get(), state.crView.Get()))
+        return false;
+    if (!RunNativeChromaVeryHigh(state.cbShaderView.Get(),
+                                 state.denseCbView.Get(),
+                                 width,
+                                 height,
+                                 *(is1080 ? nativeChromaVeryHigh1080_.get() : nativeChromaVeryHigh720_.get())))
+        return false;
+    if (!RunNativeChromaScaleX(state.cbShaderView.Get(), state.cbScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.cbScaleXShaderView.Get(), state.cbScaleYView.Get()))
+        return false;
+    if (!RunNativeChromaCombine1(
+            state.cbScaleYShaderView.Get(), state.denseCbShaderView.Get(), state.combine1View.Get()))
+        return false;
+    if (!RunNativeChromaVeryHigh(state.crShaderView.Get(),
+                                 state.denseCrView.Get(),
+                                 width,
+                                 height,
+                                 *(is1080 ? nativeChromaVeryHigh1080_.get() : nativeChromaVeryHigh720_.get())))
+        return false;
+    if (!RunNativeChromaScaleX(state.crShaderView.Get(), state.crScaleXView.Get()) ||
+        !RunNativeChromaScaleY(state.crScaleXShaderView.Get(), state.crScaleYView.Get()))
+        return false;
+    if (!RunNativeChromaCombine2(state.crScaleYShaderView.Get(),
                                  state.combine1ShaderView.Get(),
                                  state.denseCrShaderView.Get(),
-                                 state.combine2View.Get()) ||
-        !RunNativeChromaRealign(state.combine2ShaderView.Get(), state.realignView.Get()) ||
-        !RunNativeChromaYCbCr(yInput, state.realignShaderView.Get(), state.ycbcrView.Get()) ||
-        (is1080 ? !RunNativeSuperResStrength3_1080(
-                      state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010)
-                : !RunNativeSuperResStrength3(
-                      state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010)))
+                                 state.combine2View.Get()))
         return false;
+    if (!RunNativeChromaRealign(state.combine2ShaderView.Get(), state.realignView.Get()))
+        return false;
+    if (!RunNativeChromaYCbCr(yInput, state.realignShaderView.Get(), state.ycbcrView.Get()))
+        return false;
+    const bool superResReady =
+        is1080 ? RunNativeSuperResStrength3_1080(
+                     state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010)
+               : RunNativeSuperResStrength3(
+                     state.ycbcrShaderView.Get(), diffOriginal, mainOriginal, baseOriginal, output, p010);
+    if (!superResReady)
+        return false;
+    if (dumpPs4576)
+    {
+        ComPtr<ID3D11Resource> resource;
+        output->GetResource(&resource);
+        ComPtr<ID3D11Texture2D> texture;
+        if (resource && SUCCEEDED(resource.As(&texture)))
+            DumpTextureToPath(gpu_, texture.Get(), ps4576Path);
+    }
     error_ = "";
     return true;
 }
@@ -5002,6 +5100,16 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
         !source.topDown)
     {
         error_ = "NGU canonical source request is invalid";
+        return false;
+    }
+    const bool allQualityChroma = source.chromaQuality != NguQuality::VeryHigh;
+    const bool allQualityChromaObserved = source.width == 1280 && source.height == 720 &&
+                                          source.chromaLayout == NguChromaLayout::SemiPlanar420 &&
+                                          source.lumaBits == 8 && source.chromaBits == 8 && !plan.hdr &&
+                                          plan.outputWidth == 3840 && plan.outputHeight == 2160;
+    if (allQualityChroma && !allQualityChromaObserved)
+    {
+        error_ = "ngu_sharp Low/Medium/High chroma requires the verified 1280x720 SDR NV12 path";
         return false;
     }
     const bool hdrGeometry =
