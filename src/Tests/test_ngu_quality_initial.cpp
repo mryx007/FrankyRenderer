@@ -79,7 +79,8 @@ std::vector<uint8_t> Download(ID3D11Device* device,
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     Require(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)),
             "map failed");
-    const size_t rowBytes = size_t(desc.Width) * 8;
+    const UINT pixelBytes = desc.Format == DXGI_FORMAT_R16_UNORM ? 2 : 8;
+    const size_t rowBytes = size_t(desc.Width) * pixelBytes;
     std::vector<uint8_t> bytes(rowBytes * desc.Height);
     for (UINT y = 0; y < desc.Height; ++y)
         std::memcpy(bytes.data() + size_t(y) * rowBytes,
@@ -138,6 +139,37 @@ int main(int argc, char** argv)
         Require(ngu.RunNativeChromaSplit(
                     inputView.Get(), 640, 360, cbView.Get(), crView.Get()),
                 ngu.LastError());
+        pl_gpu_finish(d3d->gpu);
+        int splitFailures = 0;
+        for (int index = 0; index < 2; ++index)
+        {
+            const auto actual = Download(
+                d3d->device, context.Get(), index == 0 ? cb.Get() : cr.Get());
+            const auto expected = ReadBytes(
+                root / ("draw_0006_PS_260_cdfc6b55_rt" + std::to_string(index) +
+                        "_640x360_f81_460800.bin"),
+                size_t(640) * 360 * 2);
+            int different = 0;
+            uint16_t splitMaximum = 0;
+            for (size_t offset = 0; offset < actual.size(); offset += 2)
+            {
+                const uint16_t left =
+                    uint16_t(actual[offset]) | (uint16_t(actual[offset + 1]) << 8);
+                const uint16_t right =
+                    uint16_t(expected[offset]) | (uint16_t(expected[offset + 1]) << 8);
+                if (left == right)
+                    continue;
+                ++different;
+                splitMaximum = std::max(
+                    splitMaximum, uint16_t(std::abs(int(left) - int(right))));
+            }
+            splitFailures += different;
+            std::printf("%s split rt%d: different=%d maximum=%u\n",
+                        qualityName.c_str(),
+                        index,
+                        different,
+                        unsigned(splitMaximum));
+        }
         const size_t outputCount = quality == NguQuality::Low ? 2 : 3;
         std::array<ComPtr<ID3D11Texture2D>, 3> outputs;
         std::array<ComPtr<ID3D11RenderTargetView>, 3> outputViews;
@@ -196,7 +228,7 @@ int main(int argc, char** argv)
                     qualityName.c_str(),
                     failures,
                     unsigned(maximum));
-        return failures == 0 ? 0 : 1;
+        return failures == 0 && splitFailures == 0 ? 0 : 1;
     }
     catch (const std::exception& error)
     {
