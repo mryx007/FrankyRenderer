@@ -141,10 +141,6 @@ Tested on **Windows 11 x64**. Windows 10 x64 is expected to work, but I have not
 - **PotPlayer:** Use PotPlayer 261030 Beta 64-bit or a newer build with native FrankyRenderer support. Select **FrankyRenderer** in the video renderer settings.
 - **MPC-HC:** Use MPC-HC 2.8.5.14 or newer and select **FrankyRenderer** in the video renderer settings.
 
-**One package for all players.** FrankyRenderer registers only its own native identity; separate packages per player are not needed.
-
-**Upgrading from an older version:** Export your settings, close all players and uninstall the old FrankyRenderer package using its `Uninstall.cmd`. Then extract the new ZIP to a permanent folder and run `Install.cmd`.
-
 Keep the installation folder in place. To remove the renderer, run `Uninstall.cmd`.
 
 **Settings backup:** **Export** saves all display profiles to an INI file; **Import** restores them. Keep external ICC and LUT files separately.
