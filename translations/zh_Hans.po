@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-15 01:04+0000\n"
+"PO-Revision-Date: 2026-11-15 05:13+0000\n"
 "Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -509,7 +509,7 @@ msgstr "语言"
 msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
-msgstr "此设置窗口的语言。自动：跟随 Windows；缺少翻译时显示英文。"
+msgstr "此设置窗口的语言。自动跟随 Windows；缺少的翻译显示为英文。"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
