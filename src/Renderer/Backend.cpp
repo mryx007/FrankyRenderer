@@ -1215,6 +1215,10 @@ struct PlaceboBackend::State
                       << 1000 / statisticsFps << L" ms)";
             if (period > 0)
                 value << (statisticsFps > 0 ? dot : L"") << L"vsync " << std::setprecision(2) << period / 1e4 << L" ms";
+            // A video faster than the display shows one frame per refresh; the
+            // frames in between are left out on purpose and not listed as drops.
+            if (statisticsFps > 0 && period > 0 && 1000 / statisticsFps < 0.95 * period / 1e4)
+                value << dot << std::setprecision(0) << 1e7 / period << L" fps shown";
         }
         row(L"Size") << description.width << L"×" << description.height << arrow << int(output.crop.x1 - output.crop.x0)
                      << L"×" << int(output.crop.y1 - output.crop.y0) << dot << std::setprecision(2)
@@ -1498,13 +1502,8 @@ struct PlaceboBackend::State
         {
             // Only the counts that are not zero are coloured.
             const auto drops = statisticsDropped >= 0 ? DropTotal() : 0;
-            const auto skips = statisticsDropped >= 0 ? SkipTotal() : 0;
             const auto mark = [](bool problem, const wchar_t* code) { return problem ? code : L"\x02w"; };
             auto& value = row(L"Drops");
-            // Frames the display cannot show (120 fps on 60 Hz) are no fault.
-            if (skips)
-                value << skips << L" skipped (" << std::setprecision(0) << statisticsFps << L" fps on "
-                      << (period > 0 ? 1e7 / period : 0) << L" Hz)" << dot;
             if (statisticsDropped >= 0)
                 value << mark(drops > 0, L"\x02r") << drops << L" dropped" << L"\x02w";
             if (presentation.haveCounters)
