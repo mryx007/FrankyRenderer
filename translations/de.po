@@ -175,17 +175,6 @@ msgstr ""
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
-msgstr "Statistik im Bildbereich"
-
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid ""
-"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr ""
-"Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen Balken."
-
-#. Setting name (General > Image Analysis)
-#. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
 msgstr "Textgröße der Statistik (%)"
 
@@ -3937,8 +3926,8 @@ msgid "Lowers the value by %s."
 msgstr "Verringert den Wert um %s."
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr "Schaltet ein oder aus, jeder Druck wechselt."
 
@@ -4202,12 +4191,16 @@ msgid "Could not open the INI file dialog."
 msgstr "Der INI-Dateidialog konnte nicht geöffnet werden."
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
-msgstr "Alle Anzeigeprofile exportiert."
+msgid "All settings exported."
+msgstr "Alle Einstellungen exportiert."
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
-msgstr "INI-Sicherung exportiert."
+msgid "All settings imported."
+msgstr "Alle Einstellungen importiert."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
+msgstr "Alle Einstellungen durch die aus dieser Datei ersetzen?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All display profiles imported."
@@ -4311,14 +4304,18 @@ msgstr "Hohe Qualität"
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
 
-#. Menu text; keep %d and %s placeholders
-msgid "All settings exported."
-msgstr "Alle Einstellungen exportiert."
+#~ msgid "Statistics in Video Area"
+#~ msgstr "Statistik im Bildbereich"
 
-#. Menu text; keep %d and %s placeholders
-msgid "All settings imported."
-msgstr "Alle Einstellungen importiert."
+#~ msgid ""
+#~ "Ctrl+J statistics and image analysis sit on the picture, not in black "
+#~ "bars."
+#~ msgstr ""
+#~ "Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen "
+#~ "Balken."
 
-#. Menu text; keep %d and %s placeholders
-msgid "Replace all settings with the ones in this file?"
-msgstr "Alle Einstellungen durch die aus dieser Datei ersetzen?"
+#~ msgid "All display profiles exported."
+#~ msgstr "Alle Anzeigeprofile exportiert."
+
+#~ msgid "INI backup exported."
+#~ msgstr "INI-Sicherung exportiert."

@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-15 05:13+0000\n"
+"PO-Revision-Date: 2026-11-15 10:02+0000\n"
 "Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -166,16 +166,6 @@ msgid ""
 "color mapping, without subtitles."
 msgstr ""
 "波形、直方图、RGB 分量、伪色和灰阶，取样于色彩映射之前或之后，不含字幕。"
-
-#. Setting name (General > Image Analysis)
-#. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
-msgstr "在视频区域内显示统计信息"
-
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid ""
-"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr "在视频区域而非黑边中显示统计信息和图像分析。"
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
@@ -2490,7 +2480,7 @@ msgstr "KrigBilateral"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "CfL Prediction"
-msgstr "CfL 预测"
+msgstr "CfL Prediction"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2532,7 +2522,7 @@ msgstr "FSRCNNX 2x"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "AiUpscale Photo 2x"
-msgstr "AiUpscale 照片 2x"
+msgstr "AiUpscale Photo 2x"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2574,7 +2564,7 @@ msgstr "CuNNy 2x12 DS"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "SSimDownscaler"
-msgstr "SSIM 缩小算法"
+msgstr "SSimDownscaler"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -3574,8 +3564,8 @@ msgid "Lowers the value by %s."
 msgstr "将数值降低 %s。"
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr "开启或关闭，每按一次切换一次。"
 
@@ -3836,12 +3826,16 @@ msgid "Could not open the INI file dialog."
 msgstr "无法打开 INI 文件对话框。"
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
-msgstr "所有显示器配置文件已导出。"
+msgid "All settings exported."
+msgstr "已导出全部设置。"
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
-msgstr "INI 备份已导出。"
+msgid "All settings imported."
+msgstr "已导入全部设置。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
+msgstr "用此文件中的设置替换全部设置？"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All display profiles imported."
@@ -3941,14 +3935,16 @@ msgstr "高质量"
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
 
-#. Menu text; keep %d and %s placeholders
-msgid "All settings exported."
-msgstr "已导出全部设置。"
+#~ msgid "Statistics in Video Area"
+#~ msgstr "在视频区域内显示统计信息"
 
-#. Menu text; keep %d and %s placeholders
-msgid "All settings imported."
-msgstr "已导入全部设置。"
+#~ msgid ""
+#~ "Ctrl+J statistics and image analysis sit on the picture, not in black "
+#~ "bars."
+#~ msgstr "在视频区域而非黑边中显示统计信息和图像分析。"
 
-#. Menu text; keep %d and %s placeholders
-msgid "Replace all settings with the ones in this file?"
-msgstr "用此文件中的设置替换全部设置？"
+#~ msgid "All display profiles exported."
+#~ msgstr "所有显示器配置文件已导出。"
+
+#~ msgid "INI backup exported."
+#~ msgstr "INI 备份已导出。"
