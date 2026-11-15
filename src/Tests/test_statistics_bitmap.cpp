@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/StatisticsBitmap.h"
+#include "Renderer/ClockStatistics.h"
 #include "Renderer/StatisticsGamma.h"
 #include <libplacebo/d3d11.h>
 #include <cstdio>
@@ -12,6 +13,55 @@ static void Check(bool ok, const char* message)
         printf("FAIL %s\n", message);
         exit(1);
     }
+}
+
+// The Clock row: deviation of the audio clock and the repeats or drops it causes.
+static void CheckClock()
+{
+    using namespace ClockStatistics;
+    // An audio clock 0.01 % fast that advances in 1 ms steps, read 30 times a
+    // second with some jitter: the fit finds the deviation.
+    RateFit fit;
+    for (int i = 0; i <= 30 * 60; ++i)
+    {
+        const double seconds = 100 + i / 30.0 + (i % 7) * 0.0003;
+        fit.Add(seconds, 5 + std::floor((seconds - 100) * (1 + 1e-4) / 0.001) * 0.001);
+    }
+    Check(std::abs(fit.Deviation() - 1e-4) < 2e-6 && fit.Span() > 59, "clock deviation measured");
+    fit.Add(500, 2000); // another clock
+    Check(fit.Span() == 0, "a jump starts the measurement over");
+
+    RefreshFit display;
+    for (int i = 0; i <= 24 * 20; ++i)
+        display.Add(10 + i / 23.9999, 1000 + i, 24);
+    Check(std::abs(display.Hz() - 23.9999) < 1e-6, "display refresh rate measured");
+
+    Input in;
+    in.clockSpan = 5;
+    in.displayHz = in.nominalHz = in.fps = 24;
+    Check(Text(in) == L"measuring…", "measuring at first");
+    in.clockSpan = 60;
+    in.deviation = 1e-5;
+    Check(Text(in) == L"deviation +0.0010 % · 1 frame dropped every 1.2 h", "fast clock drops frames");
+    in.deviation = 0;
+    in.fps = 23.976;
+    Check(Text(in) == L"deviation +0.0000 % · 1 frame repeated every 41.7 s", "23.976 fps on 24 Hz");
+    in.displayHz = in.nominalHz = 60;
+    in.fps = 24;
+    in.deviation = -2e-6;
+    Check(Text(in) == L"deviation -0.0002 % · 1 frame repeated every 2.3 h", "3:2 cadence on 60 Hz");
+    in.displayHz = in.nominalHz = 144;
+    in.fps = 30;
+    Check(Text(in) == L"deviation -0.0002 % · uneven cadence", "uneven cadence");
+    in.smoothMotion = true;
+    in.deviation = 1e-5;
+    Check(Text(in) == L"deviation +0.0010 % · 1 picture left out every 11.6 min (Smooth Motion)",
+          "Smooth Motion with a fast clock");
+    in.deviation = -1e-8;
+    Check(Text(in) == L"deviation -0.0000 % · 1 refresh repeated less than once in 10 h (Smooth Motion)",
+          "very rare repeats");
+    puts("PASS statistics clock: deviation fit, restart on jumps, display rate, measuring, drops and repeats with "
+         "and without Smooth Motion, 3:2 and uneven cadence");
 }
 
 // The Gamma row: source gamma and what the display gets.
@@ -84,6 +134,7 @@ int main()
 {
     setvbuf(stdout, nullptr, _IONBF, 0);
     CheckGamma();
+    CheckClock();
     // DirectWrite keeps a few GDI objects once it is loaded; draw once first so
     // only what each drawing leaves behind is counted.
     {

@@ -2026,6 +2026,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         {
             QueryPerformanceCounter(&after);
             QueryPerformanceFrequency(&frequency);
+            backend.ObserveClock((before.QuadPart + after.QuadPart) / 2, clock);
             const auto delta = static_cast<REFERENCE_TIME>(m_tStart) + start - clock;
             if (std::abs(static_cast<double>(delta)) < 60e7)
                 dueQpc = (before.QuadPart + after.QuadPart) / 2 +
@@ -3380,6 +3381,11 @@ STDMETHODIMP Renderer::Flt_GetInt64(LPCSTR field, __int64* value)
     if (!strcmp(field, "placeboStatsRtxFrames"))
     {
         *value = backend.RtxFrames();
+        return S_OK;
+    }
+    if (!strcmp(field, "placeboStatsClockDeviationPpb"))
+    {
+        *value = backend.ClockDeviationPpb();
         return S_OK;
     }
     if (!strcmp(field, "placeboShaderCacheLoaded"))

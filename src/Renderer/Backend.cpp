@@ -5,6 +5,7 @@
 #include "Renderer/GpuPacked422.h"
 #include "Renderer/NativeHdrDisplay.h"
 #include "Renderer/NativeHdrSwapchain.h"
+#include "Renderer/ClockStatistics.h"
 #include "Renderer/StatisticsGamma.h"
 #include "Renderer/ColorManagement.h"
 #include "Settings/SettingsChoices.h"
@@ -333,6 +334,9 @@ struct PlaceboBackend::State
     ULONGLONG periodUpdated = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
+    // Statistics "Clock": the reference clock and the display against real time.
+    ClockStatistics::RateFit clockFit;
+    ClockStatistics::RefreshFit refreshFit;
     int measuredWidth = 0, measuredHeight = 0;
     int64_t lastSyncQpc = 0;
     UINT lastSyncRefresh = 0;
@@ -1098,6 +1102,7 @@ struct PlaceboBackend::State
         if (hr == DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
         {
             presentation.Disjoint();
+            refreshFit.Reset();
             lastSyncQpc = 0;
             lastSyncRefresh = 0;
             stableCadence = true;
@@ -1118,6 +1123,9 @@ struct PlaceboBackend::State
             {
                 lastSyncQpc = result.SyncQPCTime.QuadPart;
                 lastSyncRefresh = result.SyncRefreshCount;
+                refreshFit.Add(double(result.SyncQPCTime.QuadPart) / double(frequency.QuadPart),
+                               result.SyncRefreshCount,
+                               measuredPeriod > 0 ? 1e7 / measuredPeriod : 0);
             }
             const auto refreshDelta = static_cast<int64_t>(result.PresentRefreshCount) - result.SyncRefreshCount;
             const auto actual = result.SyncQPCTime.QuadPart +
@@ -1219,6 +1227,17 @@ struct PlaceboBackend::State
             // frames in between are left out on purpose and not listed as drops.
             if (statisticsFps > 0 && period > 0 && 1000 / statisticsFps < 0.95 * period / 1e4)
                 value << dot << std::setprecision(0) << 1e7 / period << L" fps shown";
+        }
+        {
+            // How far the audio clock deviates and how often that repeats or drops a frame.
+            ClockStatistics::Input clock;
+            clock.deviation = clockFit.Deviation();
+            clock.clockSpan = clockFit.Span();
+            clock.displayHz = refreshFit.Span() >= 10 ? refreshFit.Hz() : period > 0 ? 1e7 / period : 0;
+            clock.nominalHz = measuredPeriod > 0 ? 1e7 / measuredPeriod : clock.displayHz;
+            clock.fps = statisticsFps;
+            clock.smoothMotion = settings.smoothMotion;
+            row(L"Clock") << ClockStatistics::Text(clock);
         }
         row(L"Size") << description.width << L"×" << description.height << arrow << int(output.crop.x1 - output.crop.x0)
                      << L"×" << int(output.crop.y1 - output.crop.y0) << dot << std::setprecision(2)
@@ -3420,6 +3439,21 @@ void PlaceboBackend::ShowMessage(const std::wstring& text)
 bool PlaceboBackend::StatisticsVisible() const
 {
     return state->showStatistics.load();
+}
+
+void PlaceboBackend::ObserveClock(int64_t qpc, int64_t clock)
+{
+    LARGE_INTEGER frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    std::lock_guard guard(state->lock);
+    state->clockFit.Add(double(qpc) / double(frequency.QuadPart), double(clock) / 1e7);
+}
+
+int64_t PlaceboBackend::ClockDeviationPpb() const
+{
+    std::lock_guard guard(state->lock);
+    return state->clockFit.Span() >= ClockStatistics::MeasuringSeconds ? std::llround(state->clockFit.Deviation() * 1e9)
+                                                                       : INT64_MIN;
 }
 
 uint64_t PlaceboBackend::RtxFrames() const
