@@ -119,7 +119,7 @@ class RefreshFit
     }
 };
 
-inline constexpr double MeasuringSeconds = 30;
+inline constexpr double MeasuringSeconds = 2; // then the number settles, like madVR
 
 // " · 1 drop every 27.2 s": a drop when the display has fewer refreshes than
 // the clock asks for (mismatch < 0), a repeat when it has more.

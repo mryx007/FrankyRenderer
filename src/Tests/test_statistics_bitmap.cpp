@@ -46,7 +46,7 @@ static void CheckClock()
     Check(std::abs(display.Hz() - 23.9999) < 1e-6, "display refresh rate measured");
 
     Input in;
-    in.clockSpan = 5;
+    in.clockSpan = 1;
     in.displayHz = in.nominalHz = in.fps = 24;
     Check(Text(in) == L"measuring…", "measuring at first");
     in.clockSpan = 60;
