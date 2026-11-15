@@ -2,7 +2,8 @@ FrankyRenderer - video renderer for PotPlayer and MPC-BE (Windows x64)
 ======================================================================
 
 YOU NEED
-  - Windows 10 or 11, 64-bit
+  - Windows 11, 64-bit
+    (Windows 10 is not supported: it may work, but it is not tested.)
   - PotPlayer 64-bit, Beta 261030 or newer
     (https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe)
     or MPC-BE 64-bit
@@ -46,7 +47,6 @@ GOOD TO KNOW
     needed. If you added the old "Franky DV Filter" to your player's
     preferred filters, remove it.
   - The original MPC Video Renderer may stay installed.
-  - Tested on Windows 11. Windows 10 should work but is untested.
 
 
 FOR PLAYER PACKAGES
