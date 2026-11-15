@@ -5,6 +5,7 @@
 #include "Renderer/GpuPacked422.h"
 #include "Renderer/NativeHdrDisplay.h"
 #include "Renderer/NativeHdrSwapchain.h"
+#include "Renderer/StatisticsGamma.h"
 #include "Renderer/ColorManagement.h"
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
@@ -1222,6 +1223,17 @@ struct PlaceboBackend::State
                       << (description.levels == PL_COLOR_LEVELS_LIMITED ? L"limited range"
                           : description.levels == PL_COLOR_LEVELS_FULL  ? L"full range"
                                                                         : L"unknown range");
+        {
+            // The source's gamma and what the display gets (as during this render).
+            StatisticsGamma::Output gamma;
+            gamma.transfer = output.color.transfer;
+            gamma.hdr = pl_color_transfer_is_hdr(output.color.transfer);
+            gamma.icc = settings.iccEnabled;
+            gamma.sdrGamma = sdrGammaCurve;
+            gamma.displayGamma = settings.displayGammaCurve;
+            gamma.displayContrast = settings.displayContrast;
+            row(L"Gamma") << StatisticsGamma::Text(description.color.transfer, gamma);
+        }
         {
             // Dolby Vision status lines "Name: value" become rows; the
             // processing state is yellow unless active.

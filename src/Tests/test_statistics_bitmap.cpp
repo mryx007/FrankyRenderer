@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/StatisticsBitmap.h"
+#include "Renderer/StatisticsGamma.h"
 #include <libplacebo/d3d11.h>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +12,42 @@ static void Check(bool ok, const char* message)
         printf("FAIL %s\n", message);
         exit(1);
     }
+}
+
+// The Gamma row: source gamma and what the display gets.
+static void CheckGamma()
+{
+    using namespace StatisticsGamma;
+    Output sdr;
+    sdr.transfer = PL_COLOR_TRC_SRGB;
+    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"BT.1886 → unchanged", "SDR without gamma settings");
+    auto processed = sdr;
+    processed.sdrGamma = 240;
+    processed.displayGamma = 235;
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"BT.1886 → shown as 2.40 · display 2.35",
+          "SDR gamma processing shows the chosen gammas");
+    processed.displayGamma = 0;
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"BT.1886 → shown as 2.40 · display sRGB", "automatic display");
+    auto toneMapped = sdr;
+    toneMapped.transfer = PL_COLOR_TRC_BT_1886;
+    toneMapped.displayGamma = 1;
+    toneMapped.displayContrast = 1000;
+    Check(Text(PL_COLOR_TRC_PQ, toneMapped) == L"PQ → BT.1886 (1000:1)", "HDR to BT.1886 with contrast");
+    toneMapped.displayContrast = 0;
+    Check(Text(PL_COLOR_TRC_HLG, toneMapped) == L"HLG → BT.1886 (infinite contrast)", "HLG to BT.1886");
+    Output hdr;
+    hdr.transfer = PL_COLOR_TRC_PQ;
+    hdr.hdr = true;
+    Check(Text(PL_COLOR_TRC_PQ, hdr) == L"PQ → PQ (HDR output)", "HDR output");
+    Output linear;
+    linear.transfer = PL_COLOR_TRC_LINEAR;
+    Check(Text(PL_COLOR_TRC_BT_1886, linear) == L"BT.1886 → linear", "16-bit float output");
+    auto icc = processed;
+    icc.icc = true;
+    Check(Text(PL_COLOR_TRC_PQ, icc) == L"PQ → ICC profile", "ICC profile");
+    Check(Text(PL_COLOR_TRC_UNKNOWN, sdr) == L"unknown → unchanged", "unknown source");
+    puts("PASS statistics gamma: SDR unchanged and processed, exact display gamma, BT.1886 contrast, HDR and "
+         "linear output, ICC, unknown source");
 }
 
 static std::optional<StatisticsRasterizer::Image> Wait(StatisticsRasterizer& raster, int viewWidth)
@@ -41,6 +78,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM w, LPA
 int main()
 {
     setvbuf(stdout, nullptr, _IONBF, 0);
+    CheckGamma();
     const DWORD before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProcedure;
