@@ -2,6 +2,8 @@
 
 Status: stable local release prepared 2026-11-15.
 
+Tag: annotated `v1.4.2`
+
 This release completes Image NGU Sharp Low, Medium and High for the observed
 1280x720 SDR 4x path and exposes independent Image and Chroma quality selectors.
 VeryHigh remains the admitted quality for the existing 1080p, HDR and
@@ -63,6 +65,10 @@ ZIP
 E:\FrankyRenderer\releases\local-packages-ngu-all-quality-20261115-v3\
 FrankyRenderer-1.4.2-x64.zip
 31b221343adb3e9cd42d8e566d70d3bd193b3d7276358efe317b36f9db217ab5
+
+source bundle
+E:\FrankyRenderer\releases\local-packages-ngu-all-quality-20261115-v3\
+FrankyRenderer-1.4.2-source.zip
 ```
 
 ## Boundaries
