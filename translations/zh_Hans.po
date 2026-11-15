@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-15 05:13+0000\n"
+"PO-Revision-Date: 2026-11-15 10:02+0000\n"
 "Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -2490,7 +2490,7 @@ msgstr "KrigBilateral"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "CfL Prediction"
-msgstr "CfL 预测"
+msgstr "CfL Prediction"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2532,7 +2532,7 @@ msgstr "FSRCNNX 2x"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "AiUpscale Photo 2x"
-msgstr "AiUpscale 照片 2x"
+msgstr "AiUpscale Photo 2x"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
@@ -2574,7 +2574,7 @@ msgstr "CuNNy 2x12 DS"
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "SSimDownscaler"
-msgstr "SSIM 缩小算法"
+msgstr "SSimDownscaler"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
