@@ -1,12 +1,17 @@
-FrankyRenderer - video renderer for PotPlayer and MPC-BE (Windows x64)
-======================================================================
+FrankyRenderer - video renderer for PotPlayer, MPC-HC and MPC-BE (Windows x64)
+==============================================================================
 
-YOU NEED
-  - Windows 11, 64-bit
-    (Windows 10 is not supported: it may work, but it is not tested.)
-  - PotPlayer 64-bit, Beta 261030 or newer
-    (https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe)
-    or MPC-BE 64-bit
+SYSTEM REQUIREMENTS
+Operating System
+
+* Windows 11 (64-bit)
+* Windows 10 may work but is not officially supported or tested.
+
+Supported Media Players
+
+* PotPlayer (64-bit) — Beta 261030 or newer
+* MPC-HC — Version 2.8.5.27 or newer
+* MPC-BE (64-bit)
 
 
 INSTALL
