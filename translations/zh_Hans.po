@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-15 00:25+0000\n"
+"PO-Revision-Date: 2026-11-15 01:04+0000\n"
 "Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
@@ -986,7 +986,7 @@ msgstr "Mitchell-Netravali 三次样条"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr "平面放大器（色度 / Alpha）"
+msgstr "平面放大器 (色度 / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
@@ -1001,7 +1001,7 @@ msgstr "使用对应的图像缩放滤镜。"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr "平面缩小器（色度 / Alpha）"
+msgstr "平面缩小器 (色度 / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
@@ -1673,7 +1673,7 @@ msgstr ""
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Default (SDR Calibration)"
-msgstr "默认（SDR 校准）"
+msgstr "默认 (SDR 校准)"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
@@ -1791,20 +1791,20 @@ msgstr "开启/关闭"
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
-msgstr "HDR 目标峰值（0 = 自动）"
+msgstr "HDR 目标峰值 (0 = 自动)"
 
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid ""
 "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
 "reports; on some laptops it follows brightness."
 msgstr ""
-"“映射到显示器峰值”使用的峰值亮度（尼特）。0 使用 Windows 报告的值，部分笔记本"
+"“映射到显示器峰值”使用的峰值亮度 (尼特)。0 使用 Windows 报告的值，部分笔记本"
 "会随亮度变化。"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "SDR Target Brightness (nits)"
-msgstr "SDR 目标亮度（尼特）"
+msgstr "SDR 目标亮度 (尼特)"
 
 #. Setting description (HDR > HDR Output > SDR Target Brightness (nits))
 msgid ""
