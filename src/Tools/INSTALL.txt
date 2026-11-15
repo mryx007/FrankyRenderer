@@ -41,27 +41,11 @@ YOUR SETTINGS
   to start again with the default settings.
 
 
-GOOD TO KNOW
-  - Keep all files of this folder together.
-  - Dolby Vision Profile 7 (FEL/MEL) works on its own, no extra filter is
-    needed. If you added the old "Franky DV Filter" to your player's
-    preferred filters, remove it.
-  - The original MPC Video Renderer may stay installed.
-
-
 FOR PLAYER PACKAGES
   Install.cmd, Uninstall.cmd, Import Settings.cmd and Backup Settings.cmd
   accept /s: no questions and no messages; exit code 0 means success.
   Uninstall.cmd /s keeps the settings.
   Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}
-
-
-DOLBY VISION DETAILS
-  Supported: local progressive UHD 3840x2160 Profile 7 files with a
-  1920x1080 enhancement layer. The decoder must deliver 10-bit P010 or
-  native D3D11 surfaces. The renderer reads the same file again for the
-  enhancement data, so network streams are not supported. SDR, HDR10 and
-  other Dolby Vision profiles use the normal renderer path.
 
 
 LICENSES AND SOURCE
