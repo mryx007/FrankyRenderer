@@ -121,4 +121,6 @@
 - Added the source gamma and the gamma the display gets to the Ctrl+J statistics ([#34](https://github.com/mryx007/FrankyRenderer/issues/34)).
 - Fixed Ctrl+J for videos faster than the display (120 fps on 60 Hz): frames the display cannot show count as skipped, not dropped, and the render budget is one refresh ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
 - Added the GPU the renderer uses to the Ctrl+J statistics and the diagnostic report ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
+- Fixed stutter for videos faster than the display (120 fps on 60 Hz): one frame per refresh, the others count as skipped ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
+- Changed: the shader cache is in %LOCALAPPDATA%\FrankyRenderer\Cache; an existing one moves there once. Uninstall.cmd removes it when deleting the settings.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

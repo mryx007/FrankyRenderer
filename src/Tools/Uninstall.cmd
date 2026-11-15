@@ -30,6 +30,8 @@ if not defined quiet (
     choice /c YN /n /m "Also delete all FrankyRenderer settings? [Y/N] "
     if not errorlevel 2 (
         if exist "%APPDATA%\FrankyRenderer" rd /s /q "%APPDATA%\FrankyRenderer"
+        if exist "%LOCALAPPDATA%\FrankyRenderer" rd /s /q "%LOCALAPPDATA%\FrankyRenderer"
+        if exist "%LOCALAPPDATA%\PlaceboRenderer" rd /s /q "%LOCALAPPDATA%\PlaceboRenderer"
         reg delete "HKCU\Software\PlaceboRenderer" /f >nul 2>&1
         reg delete "HKCU\Software\PlaceboRenderer.Backup" /f >nul 2>&1
         set "settings=Your settings were deleted."
