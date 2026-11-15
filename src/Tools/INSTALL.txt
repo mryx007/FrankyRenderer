@@ -1,20 +1,69 @@
-FrankyRenderer - Windows x64
+FrankyRenderer - video renderer for PotPlayer and MPC-BE (Windows x64)
+======================================================================
 
-One native package for PotPlayer and MPC-BE.
-Requires PotPlayer 261030 Beta 64-bit or newer with native FrankyRenderer support,
-or MPC-BE with FrankyRenderer support.
+YOU NEED
+  - Windows 10 or 11, 64-bit
+  - PotPlayer 64-bit, Beta 261030 or newer
+    (https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe)
+    or MPC-BE 64-bit
 
-Extract to a permanent folder, close all video players, right-click Install.cmd
-and choose Run as administrator.
-Select FrankyRenderer in the player's video renderer settings.
-Run Uninstall.cmd the same way before moving or removing the installed folder.
-Player packages: Install.cmd /s and Uninstall.cmd /s run without messages;
-exit code 0 means success.
-Backup Settings.cmd saves the settings as Settings.ini in this folder;
-Import Settings.cmd makes a Settings.ini in this folder the settings.
-The original MPC Video Renderer may remain installed.
-Dolby Vision Profile 7 FEL/MEL processing is automatic; no additional filter is required.
 
-Tested on Windows 11 x64. Windows 10 x64 is expected to work but is untested.
+INSTALL
+  1. Extract the whole ZIP into a folder that stays where it is,
+     for example C:\FrankyRenderer.
+  2. Close PotPlayer, MPC-BE and MPC-HC.
+  3. Right-click Install.cmd and choose "Run as administrator".
+  4. In your player, choose "FrankyRenderer" as the video renderer.
 
-PotPlayer beta download: https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe
+
+UPDATE
+  Close the player, copy the new files over the old ones and run
+  Install.cmd again (as administrator). Your settings stay.
+
+
+UNINSTALL
+  Right-click Uninstall.cmd and choose "Run as administrator".
+  It asks whether your settings should be deleted too.
+  Do this before you move or delete the folder.
+
+
+YOUR SETTINGS
+  All settings are kept in one file:
+    %APPDATA%\FrankyRenderer\Settings.ini
+  In the settings window: Profiles > Settings File > Open shows it.
+
+  Backup Settings.cmd   copies this file into this folder as Settings.ini.
+  Import Settings.cmd   uses a Settings.ini from this folder as your settings.
+
+  If this folder is under C:\Program Files, run Backup Settings.cmd
+  as administrator. Delete Settings.ini in %APPDATA%\FrankyRenderer
+  to start again with the default settings.
+
+
+GOOD TO KNOW
+  - Keep all files of this folder together.
+  - Dolby Vision Profile 7 (FEL/MEL) works on its own, no extra filter is
+    needed. If you added the old "Franky DV Filter" to your player's
+    preferred filters, remove it.
+  - The original MPC Video Renderer may stay installed.
+  - Tested on Windows 11. Windows 10 should work but is untested.
+
+
+FOR PLAYER PACKAGES
+  Install.cmd, Uninstall.cmd, Import Settings.cmd and Backup Settings.cmd
+  accept /s: no questions and no messages; exit code 0 means success.
+  Uninstall.cmd /s keeps the settings.
+  Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}
+
+
+DOLBY VISION DETAILS
+  Supported: local progressive UHD 3840x2160 Profile 7 files with a
+  1920x1080 enhancement layer. The decoder must deliver 10-bit P010 or
+  native D3D11 surfaces. The renderer reads the same file again for the
+  enhancement data, so network streams are not supported. SDR, HDR10 and
+  other Dolby Vision profiles use the normal renderer path.
+
+
+LICENSES AND SOURCE
+  See LICENSE, THIRD_PARTY.md and the licenses folder.
+  Source: https://github.com/mryx007/FrankyRenderer

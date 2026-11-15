@@ -77,37 +77,7 @@ def main(out=OUT, source=SOURCE):
     # The earlier PowerShell installer, when a stage is reused.
     (out / "setup.ps1").unlink(missing_ok=True)
     shutil.rmtree(out / "registration-backup", ignore_errors=True)
-    (out / "INSTALL.txt").write_text(
-        f"FrankyRenderer 1.1 - Windows x64\n\n"
-        "Extract this package to a permanent folder and close all video players.\n"
-        "Right-click Install.cmd and choose Run as administrator.\n"
-        "Run Uninstall.cmd the same way before moving or removing the installed folder.\n"
-        "Player packages: Install.cmd /s and Uninstall.cmd /s run without messages;\n"
-        "exit code 0 means success.\n"
-        "Settings are kept in %APPDATA%\\FrankyRenderer\\Settings.ini.\n"
-        "Uninstall.cmd asks whether to delete them; with /s it keeps them.\n"
-        "Backup Settings.cmd saves them as Settings.ini in this folder (as administrator\n"
-        "when the folder is under Program Files); Import Settings.cmd makes a Settings.ini\n"
-        "in this folder the settings. Both take /s for player packages.\n"
-        "No additional DV filter needs to be added in the player.\n"
-        "Remove any previously configured Franky DV Filter from the player's preferred filters.\n\n"
-        "Select FrankyRenderer in the player\'s video renderer settings.\n"
-        "Requires PotPlayer 261030 Beta 64-bit or newer with native FrankyRenderer support,\n"
-        "or MPC-BE with native FrankyRenderer support.\n"
-        "PotPlayer beta: https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe\n"
-        "Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}\n"
-        "The original MPC Video Renderer may remain installed.\n\n"
-        "Dolby Vision Profile 7 FEL/MEL is detected and processed automatically.\n"
-        "Existing splitters and base-layer video decoders remain in use.\n"
-        "Supported: local progressive UHD 3840x2160 Profile 7 files; FEL enhancement 1920x1080.\n"
-        "The decoder must deliver 10-bit P010 or native D3D11 surfaces.\n"
-        "SDR/HDR10 and other Dolby Vision profiles retain their existing renderer path.\n"
-        "The renderer reads the same local file for enhancement data. Network streams are not supported.\n\n"
-        "Tested on Windows 11 x64. Windows 10 x64 is expected to work but is untested.\n"
-        "Keep all runtime DLLs and shaders beside FrankyRenderer.ax.\n"
-        "See LICENSE, THIRD_PARTY.md and licenses for notices.\n"
-        "Source: https://github.com/mryx007/FrankyRenderer\n", encoding="utf-8",
-    )
+    shutil.copy2(ROOT / "Tools/INSTALL.txt", out / "INSTALL.txt")
     # The other files in Shaders are compiled into the renderer when it is built.
     shutil.rmtree(out / "shaders", ignore_errors=True)
     for folder in ("PlayKit", "Custom"):
