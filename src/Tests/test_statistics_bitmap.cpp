@@ -42,24 +42,22 @@ static void CheckClock()
     Check(Text(in) == L"measuring…", "measuring at first");
     in.clockSpan = 60;
     in.deviation = 1e-5;
-    Check(Text(in) == L"deviation +0.0010 % · 1 frame dropped every 1.2 h", "fast clock drops frames");
+    Check(Text(in) == L"+0.0010 % · 1 drop every 1.2 h", "fast clock drops frames");
     in.deviation = 0;
     in.fps = 23.976;
-    Check(Text(in) == L"deviation +0.0000 % · 1 frame repeated every 41.7 s", "23.976 fps on 24 Hz");
+    Check(Text(in) == L"+0.0000 % · 1 repeat every 41.7 s", "23.976 fps on 24 Hz");
     in.displayHz = in.nominalHz = 60;
     in.fps = 24;
     in.deviation = -2e-6;
-    Check(Text(in) == L"deviation -0.0002 % · 1 frame repeated every 2.3 h", "3:2 cadence on 60 Hz");
+    Check(Text(in) == L"-0.0002 % · 1 repeat every 2.3 h", "3:2 cadence on 60 Hz");
     in.displayHz = in.nominalHz = 144;
     in.fps = 30;
-    Check(Text(in) == L"deviation -0.0002 % · uneven cadence", "uneven cadence");
+    Check(Text(in) == L"-0.0002 % · uneven cadence", "uneven cadence");
     in.smoothMotion = true;
     in.deviation = 1e-5;
-    Check(Text(in) == L"deviation +0.0010 % · 1 picture left out every 11.6 min (Smooth Motion)",
-          "Smooth Motion with a fast clock");
+    Check(Text(in) == L"+0.0010 % · 1 drop every 11.6 min", "Smooth Motion with a fast clock");
     in.deviation = -1e-8;
-    Check(Text(in) == L"deviation -0.0000 % · 1 refresh repeated less than once in 10 h (Smooth Motion)",
-          "very rare repeats");
+    Check(Text(in) == L"-0.0000 % · less than 1 repeat in 10 h", "very rare repeats");
     puts("PASS statistics clock: deviation fit, restart on jumps, display rate, measuring, drops and repeats with "
          "and without Smooth Motion, 3:2 and uneven cadence");
 }

@@ -105,17 +105,21 @@ class RefreshFit
 
 inline constexpr double MeasuringSeconds = 30;
 
-inline std::wstring Interval(double seconds)
+// " · 1 drop every 27.2 s": a drop when the display has fewer refreshes than
+// the clock asks for (mismatch < 0), a repeat when it has more.
+inline std::wstring Event(double mismatch)
 {
+    const wchar_t* what = mismatch > 0 ? L"repeat" : L"drop";
+    const double seconds = 1 / std::abs(mismatch);
     wchar_t text[64];
     if (seconds >= 36000)
-        return L"less than once in 10 h";
-    if (seconds >= 3600)
-        swprintf_s(text, L"every %.1f h", seconds / 3600);
+        swprintf_s(text, L" · less than 1 %ls in 10 h", what);
+    else if (seconds >= 3600)
+        swprintf_s(text, L" · 1 %ls every %.1f h", what, seconds / 3600);
     else if (seconds >= 60)
-        swprintf_s(text, L"every %.1f min", seconds / 60);
+        swprintf_s(text, L" · 1 %ls every %.1f min", what, seconds / 60);
     else
-        swprintf_s(text, L"every %.1f s", seconds);
+        swprintf_s(text, L" · 1 %ls every %.1f s", what, seconds);
     return text;
 }
 
@@ -128,13 +132,14 @@ struct Input
     bool smoothMotion = false;
 };
 
-// e.g. "deviation +0.0012 % · 1 frame repeated every 14.2 min"
+// e.g. "+0.0012 % · 1 repeat every 14.2 min"; with Smooth Motion a drop or
+// repeat is one of its pictures, otherwise a video frame.
 inline std::wstring Text(const Input& in)
 {
     if (in.clockSpan < MeasuringSeconds || !(in.displayHz > 0))
         return L"measuring…";
     wchar_t deviation[48];
-    swprintf_s(deviation, L"deviation %+.4f %%", in.deviation * 100);
+    swprintf_s(deviation, L"%+.4f %%", in.deviation * 100);
     const double rate = 1 + in.deviation; // reference seconds per real second
     std::wstring text = deviation;
     if (in.smoothMotion)
@@ -142,10 +147,7 @@ inline std::wstring Text(const Input& in)
         // One picture per planned refresh of the reference clock; the display
         // shows its own number of refreshes.
         const double mismatch = in.displayHz - (in.nominalHz > 0 ? in.nominalHz : in.displayHz) * rate;
-        if (mismatch != 0)
-            text += (mismatch > 0 ? L" · 1 refresh repeated " : L" · 1 picture left out ") +
-                    Interval(1 / std::abs(mismatch)) + L" (Smooth Motion)";
-        return text;
+        return mismatch != 0 ? text + Event(mismatch) : text;
     }
     if (!(in.fps > 0))
         return text;
@@ -154,8 +156,6 @@ inline std::wstring Text(const Input& in)
     if (cadence <= 0 || std::abs(ratio - cadence) > 0.01)
         return text + L" · uneven cadence";
     const double mismatch = in.displayHz - cadence * in.fps * rate;
-    if (mismatch != 0)
-        text += (mismatch > 0 ? L" · 1 frame repeated " : L" · 1 frame dropped ") + Interval(1 / std::abs(mismatch));
-    return text;
+    return mismatch != 0 ? text + Event(mismatch) : text;
 }
 } // namespace ClockStatistics
