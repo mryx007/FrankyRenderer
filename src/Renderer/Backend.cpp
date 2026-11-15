@@ -839,6 +839,28 @@ struct PlaceboBackend::State
             error = "ngu_sharp source format is unsupported";
             return false;
         }
+        const bool sourceHdr =
+            pl_color_space_is_hdr(&image.color) || pl_color_space_is_hdr(&description.color);
+        const bool qualityObserved =
+            source.width == 1280 && source.height == 720 &&
+            targetWidth == 3840 && targetHeight == 2160 && !sourceHdr &&
+            source.lumaBits == 8 && source.chromaBits == 8 &&
+            (source.chromaLayout == NguChromaLayout::None ||
+             source.chromaLayout == NguChromaLayout::SemiPlanar420);
+        const bool nonVeryHighQuality =
+            source.lumaQuality != NguSharpQuality::VeryHigh ||
+            source.chromaQuality != NguSharpQuality::VeryHigh;
+        if (nonVeryHighQuality && !qualityObserved)
+        {
+            nguHookActive = false;
+            nguHookAtOutput = false;
+            nguCommonFallback = true;
+            nguHdrSource = false;
+            nguPlan = {};
+            error.clear();
+            TraceNgu("NGU quality geometry unsupported; common renderer fallback");
+            return true;
+        }
         {
             char qualityTrace[128] = {};
             std::snprintf(qualityTrace,
@@ -859,7 +881,7 @@ struct PlaceboBackend::State
             TraceNgu("class-3 window target unsupported; common renderer fallback");
             return true;
         }
-        nguHdrSource = pl_color_space_is_hdr(&image.color) || pl_color_space_is_hdr(&description.color);
+        nguHdrSource = sourceHdr;
         char colorTrace[192] = {};
         sprintf_s(colorTrace,
                   "NGU color probe image=(trc=%d prim=%d max=%.1f cll=%.1f) "

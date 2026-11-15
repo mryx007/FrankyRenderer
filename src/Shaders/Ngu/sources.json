@@ -345,5 +345,38 @@
     "evidence": "OpenMadVR E-163/E-165",
     "target_shader": "PS_908_2a1d27a9",
     "role": "P010 720p Double Y/Cb/Cr residual composition"
+  },
+  "luma_quality_upsample2.hlsl": {
+    "sha256": "C515CB098B9572E3C00A2D133B0497CDFC2CD5E45A9D91E432EB04A33167BDC6",
+    "evidence": "OpenMadVR E-176",
+    "target_shader": "PS_3516_f481ce19",
+    "role": "Low two-input four-output upsampler"
+  },
+  "luma_quality_tail_x.hlsl": {
+    "sha256": "8D9663AB408FAF38F9DA3752C12ACDDD4701B35443B36D52F9F4EBB6C45576D5",
+    "evidence": "OpenMadVR E-176",
+    "target_shader": "PS_1416_6ae3afa3 / PS_1612_a3d450ae",
+    "role": "Low/Medium direct and High nonlinear horizontal tail"
+  },
+  "luma_quality_tail_y.hlsl": {
+    "sha256": "C9F19B28A3998485B2EA657D3C60E20A00DB4AAD914C47D04F3B0BAC9D120258",
+    "evidence": "OpenMadVR E-176",
+    "target_shader": "PS_1404_7b76a575 / PS_1576_5e089fd4",
+    "role": "Low/Medium direct and High nonlinear vertical tail"
+  },
+  "ngu_luma_quality_tail_x_table.bin": {
+    "sha256": "CD67902091D09FDDDF12511F1EB97A078777FF1A9AF4DCE91A536901D7ECE1F0",
+    "evidence": "OpenMadVR E-176 target quality captures",
+    "role": "Low/Medium/High common horizontal tail table"
+  },
+  "ngu_luma_quality_tail_y_table.bin": {
+    "sha256": "0ECA43FDABD064D914D9F0D938A95ABFC3CA3B90D585B07EA6C23DE7D284422E",
+    "evidence": "OpenMadVR E-176 target quality captures",
+    "role": "Low/Medium/High common vertical tail table"
+  },
+  "ngu_luma_quality_assets.json": {
+    "sha256": "F96616C993B24F545A8AD7085E93E4C724B06E270097EA0E93837690226B709A",
+    "evidence": "OpenMadVR E-176 target quality captures",
+    "role": "Immutable manifest for Low/Medium/High constants and tail tables"
   }
 }

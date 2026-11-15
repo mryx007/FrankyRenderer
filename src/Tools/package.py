@@ -17,7 +17,7 @@ OUT = ROOT.parent / "dist"
 SOURCE = ROOT / "build/bin"
 
 
-def main(out=OUT, source=SOURCE, version="1.4.1"):
+def main(out=OUT, source=SOURCE, version="1.4.2"):
     with pefile.PE(str(source / "FrankyRenderer.ax")) as binary:
         descriptions = [table.entries.get(b"FileDescription", b"")
                         for group in getattr(binary, "FileInfo", []) for item in group
@@ -113,6 +113,8 @@ def main(out=OUT, source=SOURCE, version="1.4.1"):
     if not compiled_ngu.is_dir():
         raise ValueError("Built NGU shader directory is missing")
     shutil.copytree(compiled_ngu, out / "shaders" / "Ngu")
+    shutil.copy2(ROOT / "Shaders/Ngu/ngu_luma_quality_assets.json",
+                 out / "shaders/Ngu/ngu_luma_quality_assets.json")
     required_ngu_assets = (
         "Ngu/luma_1080_split.cso",
         "Ngu/ngu_hook_output.cso",
@@ -127,6 +129,12 @@ def main(out=OUT, source=SOURCE, version="1.4.1"):
         "Ngu/ngu_class3_scale_y.cso",
         "Ngu/superres_1080_class3_down_x_table.bin",
         "Ngu/luma_4x720_upsample.cso",
+        "Ngu/luma_quality_upsample2.hlsl",
+        "Ngu/luma_quality_tail_x.hlsl",
+        "Ngu/luma_quality_tail_y.hlsl",
+        "Ngu/ngu_luma_quality_tail_x_table.bin",
+        "Ngu/ngu_luma_quality_tail_y_table.bin",
+        "Ngu/ngu_luma_quality_assets.json",
         "Ngu/luma_720_highbit_split.cso",
         "Ngu/luma_720_highbit_6140.cso",
         "Ngu/luma_720_highbit_4280.cso",

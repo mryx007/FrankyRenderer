@@ -37,7 +37,7 @@ inline constexpr D2DScalerPreset D2DScalerPresets[] = {
     {"lanczos", L"Lanczos reconstruction", 3},
     {"ewa_lanczos", L"EWA Lanczos (Jinc) reconstruction (slow)", 1},
     {"ewa_lanczossharp", L"Sharpened version of ewa_lanczos (slow)", 1},
-    {"ngu_sharp", L"Native NGU Sharp (experimental; SDR + P010 1080p PQ)", 1},
+    {"ngu_sharp", L"Native NGU Sharp (SDR + P010 1080p PQ)", 1},
     {"ewa_lanczos4sharpest", L"Very sharp version of ewa_lanczos, with anti-ringing (very slow)", 1},
     {"box", L"Box averaging (very fast)", 2},
     {"hermite", L"Hermite-weighted averaging (fast)", 2},
@@ -502,12 +502,13 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             n.detail = [&f, role] { return D2DScalerDescription(role, f.filter); };
             n.reset = [&f] { f = {}; };
             c.controls.push_back(std::move(n));
-            if (role == 2)
+            if (role == 0 || role == 2)
             {
                 D2DControl quality;
-                quality.name = L"NGU Quality: Chroma";
-                quality.desc =
-                    L"madVR-compatible NGU Sharp chroma quality. Image NGU quality remains VeryHigh in this release.";
+                quality.name = role == 0 ? L"NGU Quality: Image" : L"NGU Quality: Chroma";
+                quality.desc = role == 0
+                                   ? L"madVR-compatible NGU Sharp image (luma) quality."
+                                   : L"madVR-compatible NGU Sharp chroma quality.";
                 quality.kind = ControlKind::Choice;
                 quality.choices = {{0, L"Low"}, {1, L"Medium"}, {2, L"High"}, {3, L"VeryHigh"}};
                 quality.enabled = [&f] { return !strcmp(f.filter, "ngu_sharp"); };

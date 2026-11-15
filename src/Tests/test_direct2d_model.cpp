@@ -262,6 +262,23 @@ int wmain()
             if (role == 0 || role == 2)
             {
                 strcpy_s(filter.filter, "ngu_sharp");
+                auto& quality = find(
+                    L"Scaling",
+                    L"Filters",
+                    role == 0 ? L"NGU Quality: Image" : L"NGU Quality: Chroma");
+                Require(quality.Enabled() && quality.choices.size() == 4,
+                        "NGU quality selector exposes all four qualities");
+                quality.set(0);
+                Require((filter.overrides & NguQualityOverride) &&
+                            NativeNguQuality(filter) == NguSharpQuality::Low,
+                        "NGU image quality persists Low");
+                quality.set(2);
+                Require(NativeNguQuality(filter) == NguSharpQuality::High,
+                        "NGU image quality persists High");
+                quality.reset();
+                Require(!(filter.overrides & NguQualityOverride) &&
+                            NativeNguQuality(filter) == NguSharpQuality::VeryHigh,
+                        "NGU quality reset restores VeryHigh");
                 auto nativeNames = D2DScalerNames(role, true, filter.filter);
                 Require(std::find(nativeNames.begin(), nativeNames.end(), "custom") == nativeNames.end(),
                         "native scaler is not offered as a custom filter");

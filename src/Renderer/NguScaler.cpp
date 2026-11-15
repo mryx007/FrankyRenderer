@@ -1114,6 +1114,73 @@ struct NguScaler::NativeLuma4x720DenseAdd
     ComPtr<ID3D11ShaderResourceView> addShaderView;
 };
 
+struct NguScaler::NativeLumaQuality720
+{
+    NguQuality quality = NguQuality::VeryHigh;
+    int firstFeatures = 0;
+    int firstStageInputs = 0;
+    int firstLayerCount = 0;
+    int firstLayerOutputs = 0;
+    int secondLayerCount = 0;
+    int secondInputs = 0;
+    bool nonlinearTail = false;
+
+    ComPtr<ID3D11PixelShader> initial;
+    ComPtr<ID3D11PixelShader> mixer;
+    ComPtr<ID3D11PixelShader> firstLayer;
+    ComPtr<ID3D11PixelShader> upsample;
+    ComPtr<ID3D11PixelShader> convert;
+    ComPtr<ID3D11PixelShader> secondLayer;
+    ComPtr<ID3D11PixelShader> dense;
+    ComPtr<ID3D11PixelShader> tailX;
+    ComPtr<ID3D11PixelShader> tailY;
+    ComPtr<ID3D11VertexShader> tailVertexX;
+    ComPtr<ID3D11VertexShader> tailVertexY;
+
+    ComPtr<ID3D11Buffer> initialConstants;
+    ComPtr<ID3D11Buffer> mixerConstants;
+    std::array<ComPtr<ID3D11Buffer>, 15> firstLayerConstants;
+    std::array<ComPtr<ID3D11Buffer>, 3> upsampleConstants;
+    std::array<ComPtr<ID3D11Buffer>, 3> convertConstants;
+    std::array<ComPtr<ID3D11Buffer>, 6> secondLayerConstants;
+    ComPtr<ID3D11Buffer> denseConstants;
+    ComPtr<ID3D11Buffer> tailXConstants;
+    ComPtr<ID3D11Buffer> tailYConstants;
+    ComPtr<ID3D11Texture2D> tailXTable;
+    ComPtr<ID3D11ShaderResourceView> tailXTableView;
+    ComPtr<ID3D11Texture2D> tailYTable;
+    ComPtr<ID3D11ShaderResourceView> tailYTableView;
+    ComPtr<ID3D11SamplerState> tailSampler;
+
+    std::array<ComPtr<ID3D11Texture2D>, 4> initialTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 4> initialViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 4> initialShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 2> firstGroupTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 2> firstGroupViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 2> firstGroupShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 3> upFeatureTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 3> upFeatureViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 3> upFeatureShaderViews;
+    std::array<ComPtr<ID3D11Texture2D>, 3> convertTextures;
+    std::array<ComPtr<ID3D11RenderTargetView>, 3> convertViews;
+    std::array<ComPtr<ID3D11ShaderResourceView>, 3> convertShaderViews;
+    std::array<std::array<ComPtr<ID3D11Texture2D>, 4>, 2> secondGroupTextures;
+    std::array<std::array<ComPtr<ID3D11RenderTargetView>, 4>, 2> secondGroupViews;
+    std::array<std::array<ComPtr<ID3D11ShaderResourceView>, 4>, 2> secondGroupShaderViews;
+    ComPtr<ID3D11Texture2D> denseTexture;
+    ComPtr<ID3D11RenderTargetView> denseView;
+    ComPtr<ID3D11ShaderResourceView> denseShaderView;
+    ComPtr<ID3D11Texture2D> addTexture;
+    ComPtr<ID3D11RenderTargetView> addView;
+    ComPtr<ID3D11ShaderResourceView> addShaderView;
+    ComPtr<ID3D11Texture2D> tailXTexture;
+    ComPtr<ID3D11RenderTargetView> tailXView;
+    ComPtr<ID3D11ShaderResourceView> tailXShaderView;
+    ComPtr<ID3D11Texture2D> tailYTexture;
+    ComPtr<ID3D11RenderTargetView> tailYView;
+    ComPtr<ID3D11ShaderResourceView> tailYShaderView;
+};
+
 struct NguScaler::NativeLuma4x720Tail
 {
     ComPtr<ID3D11VertexShader> vertex;
@@ -2293,8 +2360,7 @@ bool NguScaler::PrepareNativeChromaNetworkLegacy(pl_gpu gpu)
     return true;
 }
 
-bool NguScaler::RunNativeChromaCubici2Legacy(ID3D11ShaderResourceView* input,
-                                             ID3D11RenderTargetView* const outputs[4])
+bool NguScaler::RunNativeChromaCubici2Legacy(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const outputs[4])
 {
     const bool is720 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 640, 360);
     const bool is1080 = input && ViewMatchesTexture(input, DXGI_FORMAT_R16_UNORM, 960, 540);
@@ -2384,8 +2450,7 @@ bool NguScaler::RunNativeChromaLayerLegacy(ID3D11ShaderResourceView* const input
     return true;
 }
 
-bool NguScaler::RunNativeChromaDenseLegacy(ID3D11ShaderResourceView* const inputs[4],
-                                           ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaDenseLegacy(ID3D11ShaderResourceView* const inputs[4], ID3D11RenderTargetView* output)
 {
     const bool output720 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 642, 362);
     const bool output1080 = output && ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, 962, 542);
@@ -2505,11 +2570,10 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         }
     }
 
-    const bool shaderAssets =
-        !shaderText.empty() && !cubici0Bytecode.empty() && !cubici1Bytecode.empty() && !cubici2Bytecode.empty() &&
-        !mixer6140Bytecode.empty() && !layer4280Bytecode.empty() && !layer3588Bytecode.empty() &&
-        !layer4620Bytecode.empty() && !dense1528Bytecode.empty() && !dense2100Bytecode.empty() &&
-        !dense2672Bytecode.empty();
+    const bool shaderAssets = !shaderText.empty() && !cubici0Bytecode.empty() && !cubici1Bytecode.empty() &&
+                              !cubici2Bytecode.empty() && !mixer6140Bytecode.empty() && !layer4280Bytecode.empty() &&
+                              !layer3588Bytecode.empty() && !layer4620Bytecode.empty() && !dense1528Bytecode.empty() &&
+                              !dense2100Bytecode.empty() && !dense2672Bytecode.empty();
     const bool constantAssets =
         !lowInitial.empty() && !lowLayer0.empty() && !lowLayer1.empty() && !lowDense.empty() && !medInitial.empty() &&
         !medMixer.empty() && !medLayer0.empty() && !medLayer1.empty() && !medLayer2.empty() && !medDense.empty() &&
@@ -2537,17 +2601,15 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
                                   &errors);
     if (FAILED(hr))
     {
-        error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma quality vertex shader failed";
+        error_ =
+            errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU chroma quality vertex shader failed";
         return false;
     }
 
     ID3D11Device* device = d3d->device;
     auto state = std::make_unique<NativeChromaNetwork>();
     auto createPixel = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11PixelShader>& shader)
-    {
-        return SUCCEEDED(
-            device->CreatePixelShader(bytes.data(), static_cast<SIZE_T>(bytes.size()), nullptr, &shader));
-    };
+    { return SUCCEEDED(device->CreatePixelShader(bytes.data(), static_cast<SIZE_T>(bytes.size()), nullptr, &shader)); };
     ComPtr<ID3D11PixelShader> cubici0, cubici1, cubici2, mixer6140, layer4280, layer3588, layer4620;
     ComPtr<ID3D11PixelShader> dense1528, dense2100, dense2672;
     if (FAILED(device->CreateVertexShader(
@@ -2581,11 +2643,8 @@ bool NguScaler::PrepareNativeChromaNetwork(pl_gpu gpu)
         std::pair<UINT, UINT>{640, 720},
         std::pair<UINT, UINT>{960, 1080},
     };
-    auto adjustedConstants = [&](const std::vector<uint8_t>& bytes,
-                                 int vectorCount,
-                                 bool dense,
-                                 UINT width,
-                                 UINT height)
+    auto adjustedConstants =
+        [&](const std::vector<uint8_t>& bytes, int vectorCount, bool dense, UINT width, UINT height)
     {
         const size_t byteCount = size_t(vectorCount) * sizeof(float) * 4;
         if (bytes.size() != byteCount)
@@ -2942,8 +3001,7 @@ bool NguScaler::RunNativeChromaQualityDense(NguQuality quality,
             error_ = "NGU chroma dense input is invalid";
             return false;
         }
-    if (!ViewMatchesTexture(
-            output, DXGI_FORMAT_R16G16B16A16_FLOAT, denseWidths[geometry], denseHeights[geometry]))
+    if (!ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_FLOAT, denseWidths[geometry], denseHeights[geometry]))
     {
         error_ = "NGU chroma dense output is invalid";
         return false;
@@ -2963,8 +3021,7 @@ bool NguScaler::RunNativeChromaQualityDense(NguQuality quality,
     return true;
 }
 
-bool NguScaler::RunNativeChromaCubici2(ID3D11ShaderResourceView* input,
-                                       ID3D11RenderTargetView* const outputs[4])
+bool NguScaler::RunNativeChromaCubici2(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* const outputs[4])
 {
     return RunNativeChromaInitial(NguQuality::VeryHigh, input, outputs, 4);
 }
@@ -2977,17 +3034,16 @@ bool NguScaler::RunNativeChromaLayer(ID3D11ShaderResourceView* const inputs[4],
     return RunNativeChromaQualityLayer(NguQuality::VeryHigh, inputs, 4, layer, outputs, 1);
 }
 
-bool NguScaler::RunNativeChromaDense(ID3D11ShaderResourceView* const inputs[4],
-                                     ID3D11RenderTargetView* output)
+bool NguScaler::RunNativeChromaDense(ID3D11ShaderResourceView* const inputs[4], ID3D11RenderTargetView* output)
 {
     return RunNativeChromaQualityDense(NguQuality::VeryHigh, inputs, 4, output);
 }
 
 bool NguScaler::RunNativeChromaQualityLayerForTest(NguQuality quality,
-                                                    ID3D11ShaderResourceView* const* inputs,
-                                                    int inputCount,
-                                                    int layer,
-                                                    ID3D11RenderTargetView* output)
+                                                   ID3D11ShaderResourceView* const* inputs,
+                                                   int inputCount,
+                                                   int layer,
+                                                   ID3D11RenderTargetView* output)
 {
     ID3D11RenderTargetView* outputs[1] = {output};
     return RunNativeChromaQualityLayer(quality, inputs, inputCount, layer, outputs, 1);
@@ -3012,9 +3068,9 @@ bool NguScaler::RunNativeChromaMixerForTest(NguQuality quality,
 }
 
 bool NguScaler::RunNativeChromaQualityDenseForTest(NguQuality quality,
-                                                    ID3D11ShaderResourceView* const* inputs,
-                                                    int inputCount,
-                                                    ID3D11RenderTargetView* output)
+                                                   ID3D11ShaderResourceView* const* inputs,
+                                                   int inputCount,
+                                                   ID3D11RenderTargetView* output)
 {
     return RunNativeChromaQualityDense(quality, inputs, inputCount, output);
 }
@@ -3027,13 +3083,12 @@ bool NguScaler::RunNativeChromaInitialForTest(NguQuality quality,
     return RunNativeChromaInitial(quality, input, outputs, outputCount);
 }
 
-bool NguScaler::PrepareNativeChromaVeryHigh(
-    pl_gpu gpu,
-    int width,
-    int height,
-    NguQuality quality,
-    std::unique_ptr<NativeChromaVeryHighResources>& state,
-    const char* geometry)
+bool NguScaler::PrepareNativeChromaVeryHigh(pl_gpu gpu,
+                                            int width,
+                                            int height,
+                                            NguQuality quality,
+                                            std::unique_ptr<NativeChromaVeryHighResources>& state,
+                                            const char* geometry)
 {
     if (!gpu || width <= 0 || height <= 0)
     {
@@ -3130,8 +3185,8 @@ bool NguScaler::RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
 
     if (profile.mixer)
     {
-        std::array<ID3D11RenderTargetView*, 2> mixerTargets = {
-            state.groupViews[0][0].Get(), state.groupViews[0][1].Get()};
+        std::array<ID3D11RenderTargetView*, 2> mixerTargets = {state.groupViews[0][0].Get(),
+                                                               state.groupViews[0][1].Get()};
         if (!RunNativeChromaMixer(state.quality, current.data(), mixerTargets.data(), 2))
             return false;
         current[0] = state.groupShaderViews[0][0].Get();
@@ -3142,8 +3197,7 @@ bool NguScaler::RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
     {
         // Mixer outputs already occupy group 0. Start the first layer in group
         // 1 so a texture is never rebound as both SRV input and RTV output.
-        const size_t set =
-            size_t(((base / profile.layersPerGroup) + (profile.mixer ? 1 : 0)) % 2);
+        const size_t set = size_t(((base / profile.layersPerGroup) + (profile.mixer ? 1 : 0)) % 2);
         if (profile.layerOutputs == 1)
         {
             for (int pass = 0; pass < profile.layersPerGroup; ++pass)
@@ -3176,8 +3230,7 @@ bool NguScaler::RunNativeChromaVeryHigh(ID3D11ShaderResourceView* cb,
 
 bool NguScaler::PrepareNativeChromaVeryHigh720(pl_gpu gpu)
 {
-    return PrepareNativeChromaVeryHigh(
-        gpu, 640, 360, NguQuality::VeryHigh, nativeChromaVeryHigh720_, "720p");
+    return PrepareNativeChromaVeryHigh(gpu, 640, 360, NguQuality::VeryHigh, nativeChromaVeryHigh720_, "720p");
 }
 
 bool NguScaler::RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput)
@@ -3192,8 +3245,7 @@ bool NguScaler::RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb, ID3D11R
 
 bool NguScaler::PrepareNativeChromaVeryHigh1080(pl_gpu gpu)
 {
-    return PrepareNativeChromaVeryHigh(
-        gpu, 960, 540, NguQuality::VeryHigh, nativeChromaVeryHigh1080_, "1080p");
+    return PrepareNativeChromaVeryHigh(gpu, 960, 540, NguQuality::VeryHigh, nativeChromaVeryHigh1080_, "1080p");
 }
 
 bool NguScaler::RunNativeChromaVeryHigh1080(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput)
@@ -3683,13 +3735,12 @@ bool NguScaler::RunNativeChromaYCbCr(ID3D11ShaderResourceView* yInput,
     return true;
 }
 
-bool NguScaler::PrepareNativeChromaFull(
-    pl_gpu gpu,
-    int width,
-    int height,
-    NguQuality quality,
-    std::unique_ptr<NativeChromaFullResources>& state,
-    const char* geometry)
+bool NguScaler::PrepareNativeChromaFull(pl_gpu gpu,
+                                        int width,
+                                        int height,
+                                        NguQuality quality,
+                                        std::unique_ptr<NativeChromaFullResources>& state,
+                                        const char* geometry)
 {
     if (!gpu || width <= 0 || height <= 0)
     {
@@ -3704,12 +3755,7 @@ bool NguScaler::PrepareNativeChromaFull(
     const bool is1080 = width == 960 && height == 540;
     if (!PrepareNativeChromaSplit(gpu) || !PrepareNativeChromaScale(gpu) ||
         !PrepareNativeChromaVeryHigh(
-            gpu,
-            width,
-            height,
-            quality,
-            is1080 ? nativeChromaVeryHigh1080_ : nativeChromaVeryHigh720_,
-            geometry) ||
+            gpu, width, height, quality, is1080 ? nativeChromaVeryHigh1080_ : nativeChromaVeryHigh720_, geometry) ||
         !PrepareNativeChromaCombines(gpu) || !PrepareNativeChromaRealign(gpu) || !PrepareNativeChromaYCbCr(gpu) ||
         (is1080 ? !PrepareNativeSuperResStrength3_1080(gpu) : !PrepareNativeSuperResStrength3(gpu)))
         return false;
@@ -3919,8 +3965,7 @@ bool NguScaler::RunNativeChromaFull(ID3D11ShaderResourceView* packedUv,
 
 bool NguScaler::PrepareNativeChromaVeryHigh720Full(pl_gpu gpu)
 {
-    return PrepareNativeChromaFull(
-        gpu, 640, 360, NguQuality::VeryHigh, nativeChromaVeryHigh720Full_, "720p");
+    return PrepareNativeChromaFull(gpu, 640, 360, NguQuality::VeryHigh, nativeChromaVeryHigh720Full_, "720p");
 }
 
 bool NguScaler::RunNativeChromaVeryHigh720Full(ID3D11ShaderResourceView* packedUv,
@@ -4008,8 +4053,7 @@ bool NguScaler::CopyNativeChromaFullStage720(int stage, ID3D11RenderTargetView* 
 
 bool NguScaler::PrepareNativeChromaVeryHigh1080Full(pl_gpu gpu)
 {
-    return PrepareNativeChromaFull(
-        gpu, 960, 540, NguQuality::VeryHigh, nativeChromaVeryHigh1080Full_, "1080p");
+    return PrepareNativeChromaFull(gpu, 960, 540, NguQuality::VeryHigh, nativeChromaVeryHigh1080Full_, "1080p");
 }
 
 bool NguScaler::RunNativeChromaVeryHigh1080Full(ID3D11ShaderResourceView* packedUv,
@@ -4726,13 +4770,12 @@ bool NguScaler::PrepareNativeNguFromPlanes(pl_gpu gpu,
     if (gpu_ && gpu_ != gpu)
         Reset();
     const bool is1080 = width == 1920 && height == 1080;
-    if (!PrepareNativeChromaFull(
-            gpu,
-            width / 2,
-            height / 2,
-            quality,
-            is1080 ? nativeChromaVeryHigh1080Full_ : nativeChromaVeryHigh720Full_,
-            geometry) ||
+    if (!PrepareNativeChromaFull(gpu,
+                                 width / 2,
+                                 height / 2,
+                                 quality,
+                                 is1080 ? nativeChromaVeryHigh1080Full_ : nativeChromaVeryHigh720Full_,
+                                 geometry) ||
         (includeFullLuma && (is1080 ? !PrepareNativeLumaVeryHigh1080(gpu) : !PrepareNativeLuma4x720Full(gpu))))
         return false;
     ID3D11Device* device = pl_d3d11_get(gpu)->device;
@@ -4836,21 +4879,20 @@ bool NguScaler::RunNativeNguFromPlanes(ID3D11ShaderResourceView* packedUv,
                   1,
                   UINT(width),
                   UINT(height));
-    const bool chromaReady =
-        is1080 ? RunNativeChromaVeryHigh1080Full(packedUv,
-                                                yInput,
-                                                packedUv,
-                                                state.yShaderView.Get(),
-                                                state.yShaderView.Get(),
-                                                state.chromaView.Get(),
-                                                p010)
-               : RunNativeChromaVeryHigh720Full(packedUv,
-                                                yInput,
-                                                packedUv,
-                                                state.yShaderView.Get(),
-                                                state.yShaderView.Get(),
-                                                state.chromaView.Get(),
-                                                p010);
+    const bool chromaReady = is1080 ? RunNativeChromaVeryHigh1080Full(packedUv,
+                                                                      yInput,
+                                                                      packedUv,
+                                                                      state.yShaderView.Get(),
+                                                                      state.yShaderView.Get(),
+                                                                      state.chromaView.Get(),
+                                                                      p010)
+                                    : RunNativeChromaVeryHigh720Full(packedUv,
+                                                                     yInput,
+                                                                     packedUv,
+                                                                     state.yShaderView.Get(),
+                                                                     state.yShaderView.Get(),
+                                                                     state.chromaView.Get(),
+                                                                     p010);
     if (!chromaReady)
         return false;
     if (is1080 ? !RunNativeLumaVeryHigh1080(state.chromaShaderView.Get(), UINT(width), UINT(height), finalOutput)
@@ -5074,9 +5116,14 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
 {
     hdr_ = plan.hdr;
     colorDomain_ = ColorDomainProfile::Sdr;
-    if (source.lumaQuality != NguQuality::VeryHigh)
+    const bool lumaQualityObserved = source.width == 1280 && source.height == 720 && !plan.hdr &&
+                                     source.lumaBits == 8 && source.chromaBits == 8 && !plan.double720 &&
+                                     (source.chromaLayout == NguChromaLayout::None ||
+                                      source.chromaLayout == NguChromaLayout::SemiPlanar420) &&
+                                     plan.outputWidth == 3840 && plan.outputHeight == 2160;
+    if (source.lumaQuality != NguQuality::VeryHigh && !lumaQualityObserved)
     {
-        error_ = "NGU luma quality other than VeryHigh is not implemented";
+        error_ = "NGU Low/Medium/High luma requires the verified 1280x720 SDR path";
         return false;
     }
     if (hdr_)
@@ -5129,7 +5176,11 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
     {
     case NguChromaLayout::None:
         if (source.width == 1280 && source.height == 720)
+        {
+            if (source.lumaQuality != NguQuality::VeryHigh)
+                return PrepareNativeLumaQuality720(gpu, source.lumaQuality);
             return PrepareNativeLuma4x720Full(gpu);
+        }
         if (source.width == 1920 && source.height == 1080)
             return PrepareNativeLumaVeryHigh1080(gpu);
         break;
@@ -5147,6 +5198,12 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
         }
         if (source.width == 1280 && source.height == 720)
         {
+            if (source.lumaQuality != NguQuality::VeryHigh)
+            {
+                return PrepareNativeNguFromPlanes(
+                           gpu, 1280, 720, source.chromaQuality, nativeNgu720FromPlanes_, "720p", false) &&
+                       PrepareNativeLumaQuality720(gpu, source.lumaQuality);
+            }
             return plan.double720 ? PrepareNativeNgu720DoubleFromPlanes(gpu, source.chromaQuality)
                                   : PrepareNativeNgu720FromPlanes(gpu, source.chromaQuality);
         }
@@ -5191,7 +5248,11 @@ bool NguScaler::RunNativeVeryHigh(const NguSourceFrame& source,
             return false;
         }
         if (source.width == 1280 && source.height == 720)
+        {
+            if (source.lumaQuality != NguQuality::VeryHigh)
+                return RunNativeLumaQuality720(source.rgb, 1280, 720, source.lumaQuality, finalOutput);
             return RunNativeLuma4x720Full(source.rgb, 1280, 720, finalOutput);
+        }
         if (source.width == 1920 && source.height == 1080)
             return RunNativeLumaVeryHigh1080(source.rgb, 1920, 1080, finalOutput);
         break;
@@ -5219,9 +5280,42 @@ bool NguScaler::RunNativeVeryHigh(const NguSourceFrame& source,
         if (plan.noLuma)
             return RunNativeNgu1080ChromaOnlyFromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
         if (source.width == 1280 && source.height == 720)
+        {
+            if (source.lumaQuality != NguQuality::VeryHigh)
+            {
+                if (!nativeNgu720FromPlanes_)
+                {
+                    error_ = "NGU luma quality decoder planes are unavailable";
+                    return false;
+                }
+                auto& state = *nativeNgu720FromPlanes_;
+                ID3D11RenderTargetView* yTarget = state.yView.Get();
+                DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                              state.vertex.Get(),
+                              state.expandPixel.Get(),
+                              nullptr,
+                              state.rasterizer.Get(),
+                              &source.luma,
+                              1,
+                              &yTarget,
+                              1,
+                              1280,
+                              720);
+                if (!RunNativeChromaVeryHigh720Full(source.chroma,
+                                                    source.luma,
+                                                    source.chroma,
+                                                    state.yShaderView.Get(),
+                                                    state.yShaderView.Get(),
+                                                    state.chromaView.Get(),
+                                                    false))
+                    return false;
+                return RunNativeLumaQuality720(
+                    state.chromaShaderView.Get(), 1280, 720, source.lumaQuality, finalOutput);
+            }
             return plan.double720
                        ? RunNativeNgu720DoubleFromPlanes(source.chroma, source.luma, finalOutput, highBitDepth)
                        : RunNativeNgu720FromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
+        }
         if (source.width == 1920 && source.height == 1080)
             return RunNativeNgu1080FromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
         break;
@@ -9934,6 +10028,1204 @@ bool NguScaler::CopyNativeLuma4x720Add(ID3D11RenderTargetView* output)
     return true;
 }
 
+bool NguScaler::PrepareNativeLumaQuality720(pl_gpu gpu, NguQuality quality)
+{
+    if (!gpu)
+    {
+        error_ = "NGU luma quality requires a GPU";
+        return false;
+    }
+    if (quality != NguQuality::Low && quality != NguQuality::Medium && quality != NguQuality::High)
+    {
+        error_ = "NGU luma quality profile is not implemented";
+        return false;
+    }
+    if (nativeLumaQuality720_ && gpu == gpu_ && nativeLumaQuality720_->quality == quality)
+        return true;
+    if (gpu_ && gpu_ != gpu)
+        Reset();
+    const auto requirePrerequisite = [&](bool prepared, const char* name)
+    {
+        if (prepared)
+            return true;
+        error_ = std::string("NGU luma quality prerequisite failed: ") + name +
+                 (error_.empty() ? "" : (": " + error_));
+        return false;
+    };
+    if (!requirePrerequisite(PrepareNativeLuma4x720Low(gpu), "low core") ||
+        !requirePrerequisite(PrepareNativeLuma4x720DenseAdd(gpu), "dense/add") ||
+        !requirePrerequisite(PrepareNativeLuma4x720Tail(gpu), "tail") ||
+        !requirePrerequisite(PrepareNativeLumaFinal(gpu), "final") ||
+        !requirePrerequisite(PrepareNativeChromaNetwork(gpu), "chroma network"))
+        return false;
+
+    pl_d3d11 d3d = pl_d3d11_get(gpu);
+    if (!d3d || !d3d->device || !nativeChromaNetwork_ || !nativeLuma4x720Low_ || !nativeLuma4x720DenseAdd_ ||
+        !nativeLuma4x720Tail_)
+    {
+        error_ = "NGU luma quality requires the D3D11 backend";
+        return false;
+    }
+
+    const wchar_t* qualityName = quality == NguQuality::Low ? L"low" : quality == NguQuality::Medium ? L"med" : L"high";
+    auto asset = [&](const wchar_t* suffix, size_t bytes)
+    {
+        return LoadBundledBytes((L"shaders\\Ngu\\ngu_luma_quality_" + std::wstring(qualityName) + suffix).c_str(),
+                                bytes);
+    };
+    auto layerAsset = [&](const wchar_t* stage, int index, size_t bytes)
+    {
+        wchar_t suffix[96] = {};
+        swprintf_s(suffix, L"_%s_%02d_constants.bin", stage, index);
+        return asset(suffix, bytes);
+    };
+
+    auto next = std::make_unique<NativeLumaQuality720>();
+    next->quality = quality;
+    next->initial = nativeChromaNetwork_->qualities[size_t(NguQuality::Medium)].initial;
+    next->firstLayer = quality == NguQuality::Low
+                           ? nativeChromaNetwork_->qualities[size_t(NguQuality::Medium)].layer
+                           : nativeChromaNetwork_->qualities[size_t(NguQuality::High)].layer;
+    next->secondLayer = quality == NguQuality::High
+                            ? nativeChromaNetwork_->qualities[size_t(NguQuality::High)].layer
+                            : nativeChromaNetwork_->qualities[size_t(NguQuality::Medium)].layer;
+    next->dense = quality == NguQuality::High ? nativeChromaNetwork_->qualities[size_t(NguQuality::High)].dense
+                                              : nativeChromaNetwork_->qualities[size_t(NguQuality::Low)].dense;
+    if (quality == NguQuality::Low)
+        next->mixer = nativeChromaNetwork_->qualities[size_t(NguQuality::Medium)].mixer;
+    next->convert = nativeLuma4x720High_->convert;
+
+    next->firstFeatures = quality == NguQuality::High ? 3 : 2;
+    next->firstStageInputs = quality == NguQuality::Low ? 2 : 3;
+    next->firstLayerCount = quality == NguQuality::Low ? 3 : 15;
+    next->firstLayerOutputs = quality == NguQuality::Low ? 2 : 1;
+    next->secondInputs = next->firstFeatures;
+    next->secondLayerCount = quality == NguQuality::Low ? 1 : quality == NguQuality::Medium ? 2 : 6;
+    next->nonlinearTail = quality == NguQuality::High;
+
+    const auto initialConstants = asset(L"_initial_constants.bin", 32 * 16);
+    const auto mixerConstants =
+        quality == NguQuality::Low ? asset(L"_mixer_constants.bin", 220 * 16) : std::vector<uint8_t>{};
+    const auto denseConstants = asset(L"_dense_constants.bin", (quality == NguQuality::High ? 51 : 35) * 16);
+    const auto tailXConstants = asset(L"_tail_x_constants.bin", 2 * 16);
+    const auto tailYConstants = asset(L"_tail_y_constants.bin", 2 * 16);
+    const auto tailXTable =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_luma_quality_tail_x_table.bin", 6 * 3840 * 8);
+    const auto tailYTable =
+        LoadBundledBytes(L"shaders\\Ngu\\ngu_luma_quality_tail_y_table.bin", 6 * 2160 * 8);
+    std::array<std::vector<uint8_t>, 15> firstLayerConstants;
+    std::array<std::vector<uint8_t>, 6> secondLayerConstants;
+    std::array<std::vector<uint8_t>, 3> upsampleConstants;
+    std::array<std::vector<uint8_t>, 3> convertConstants;
+    for (int layer = 0; layer < next->firstLayerCount; ++layer)
+        firstLayerConstants[size_t(layer)] =
+            layerAsset(L"first_layer", layer, (quality == NguQuality::Low ? 148 : 111) * 16);
+    for (int layer = 0; layer < next->secondLayerCount; ++layer)
+        secondLayerConstants[size_t(layer)] =
+            layerAsset(L"second_layer", layer, (quality == NguQuality::High ? 111 : 148) * 16);
+    for (int feature = 0; feature < next->firstFeatures; ++feature)
+    {
+        wchar_t suffix[64] = {};
+        swprintf_s(suffix, L"_upsample_%d_constants.bin", feature);
+        upsampleConstants[size_t(feature)] = asset(suffix, (quality == NguQuality::Low ? 132 : 196) * 16);
+        swprintf_s(suffix, L"_convert_%d_constants.bin", feature);
+        convertConstants[size_t(feature)] = asset(suffix, 2 * 16);
+    }
+    if (initialConstants.empty() || denseConstants.empty() || tailXConstants.empty() || tailYConstants.empty() ||
+        tailXTable.empty() || tailYTable.empty() ||
+        (quality == NguQuality::Low && mixerConstants.empty()) ||
+        !std::all_of(firstLayerConstants.begin(),
+                     firstLayerConstants.begin() + next->firstLayerCount,
+                     [](const auto& value) { return !value.empty(); }) ||
+        !std::all_of(secondLayerConstants.begin(),
+                     secondLayerConstants.begin() + next->secondLayerCount,
+                     [](const auto& value) { return !value.empty(); }) ||
+        !std::all_of(upsampleConstants.begin(),
+                     upsampleConstants.begin() + next->firstFeatures,
+                     [](const auto& value) { return !value.empty(); }) ||
+        !std::all_of(convertConstants.begin(),
+                     convertConstants.begin() + next->firstFeatures,
+                     [](const auto& value) { return !value.empty(); }))
+    {
+        error_ = "NGU luma quality constants are unavailable";
+        return false;
+    }
+
+    const auto upsampleCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_upsample.cso", 0);
+    const auto convertCso = LoadBundledBytes(L"shaders\\Ngu\\luma_4x720_convert.cso", 0);
+    const std::string upsample2Text = LoadBundledText(L"shaders\\Ngu\\luma_quality_upsample2.hlsl", 128 * 1024);
+    const std::string tailXText = LoadBundledText(L"shaders\\Ngu\\luma_quality_tail_x.hlsl", 256 * 1024);
+    const std::string tailYText = LoadBundledText(L"shaders\\Ngu\\luma_quality_tail_y.hlsl", 256 * 1024);
+    if (convertCso.empty() || tailXText.empty() || tailYText.empty() ||
+        (quality == NguQuality::Low && upsample2Text.empty()) || (quality != NguQuality::Low && upsampleCso.empty()))
+    {
+        error_ = "NGU luma quality shader assets are unavailable";
+        return false;
+    }
+    ID3D11Device* device = d3d->device;
+    const UINT shaderFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    auto compilePixel = [&](const std::string& text,
+                            const char* sourceName,
+                            const D3D_SHADER_MACRO* macros,
+                            ComPtr<ID3D11PixelShader>& shader,
+                            UINT compileFlags)
+    {
+        ComPtr<ID3DBlob> blob, errors;
+        const HRESULT compile = D3DCompile(
+            text.data(), text.size(), sourceName, macros, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &blob, &errors);
+        if (FAILED(compile))
+        {
+            error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) : "NGU luma quality shader failed";
+            return false;
+        }
+        if (FAILED(
+                device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &shader)))
+        {
+            error_ = std::string(sourceName) + " could not be created";
+            return false;
+        }
+        return true;
+    };
+    auto compileVertex = [&](const std::string& text,
+                             const char* sourceName,
+                             const D3D_SHADER_MACRO* macros,
+                             ComPtr<ID3D11VertexShader>& shader)
+    {
+        ComPtr<ID3DBlob> blob, errors;
+        const HRESULT compile = D3DCompile(text.data(),
+                                           text.size(),
+                                           sourceName,
+                                           macros,
+                                           nullptr,
+                                           "VSMain",
+                                           "vs_5_0",
+                                           shaderFlags | D3DCOMPILE_IEEE_STRICTNESS,
+                                           0,
+                                           &blob,
+                                           &errors);
+        if (FAILED(compile))
+        {
+            error_ = errors ? static_cast<const char*>(errors->GetBufferPointer()) :
+                              "NGU luma quality vertex shader failed";
+            return false;
+        }
+        if (FAILED(
+                device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &shader)))
+        {
+            error_ = std::string(sourceName) + " vertex shader could not be created";
+            return false;
+        }
+        return true;
+    };
+    if (quality == NguQuality::Low)
+    {
+        if (!compilePixel(upsample2Text, "NGU_LumaQuality_Upsample2", nullptr, next->upsample, shaderFlags))
+            return false;
+    }
+    else if (FAILED(device->CreatePixelShader(
+                 upsampleCso.data(), static_cast<SIZE_T>(upsampleCso.size()), nullptr, &next->upsample)))
+    {
+        error_ = "NGU luma quality upsampler could not be created";
+        return false;
+    }
+    if (FAILED(device->CreatePixelShader(
+            convertCso.data(), static_cast<SIZE_T>(convertCso.size()), nullptr, &next->convert)))
+    {
+        error_ = "NGU luma quality converter could not be created";
+        return false;
+    }
+
+    const D3D_SHADER_MACRO tailXDirect[] = {
+        {"NGU_TAIL_OUTPUT_WIDTH", "3840"},
+        {"NGU_TAIL_OUTPUT_HEIGHT", "2880"},
+        {nullptr, nullptr},
+    };
+    const D3D_SHADER_MACRO tailXNonlinear[] = {
+        {"NGU_TAIL_OUTPUT_WIDTH", "3840"},
+        {"NGU_TAIL_OUTPUT_HEIGHT", "2880"},
+        {"NGU_QUALITY_TAIL_NONLINEAR", "1"},
+        {nullptr, nullptr},
+    };
+    const D3D_SHADER_MACRO tailYDirect[] = {
+        {"NGU_TAIL_OUTPUT_WIDTH", "3840"},
+        {"NGU_TAIL_OUTPUT_HEIGHT", "2160"},
+        {nullptr, nullptr},
+    };
+    const D3D_SHADER_MACRO tailYNonlinear[] = {
+        {"NGU_TAIL_OUTPUT_WIDTH", "3840"},
+        {"NGU_TAIL_OUTPUT_HEIGHT", "2160"},
+        {"NGU_QUALITY_TAIL_NONLINEAR", "1"},
+        {nullptr, nullptr},
+    };
+    if (!compilePixel(tailXText,
+                      "NGU_LumaQuality_TailX",
+                      next->nonlinearTail ? tailXNonlinear : tailXDirect,
+                      next->tailX,
+                      shaderFlags | D3DCOMPILE_IEEE_STRICTNESS) ||
+        !compilePixel(tailYText,
+                      "NGU_LumaQuality_TailY",
+                      next->nonlinearTail ? tailYNonlinear : tailYDirect,
+                      next->tailY,
+                      shaderFlags | D3DCOMPILE_IEEE_STRICTNESS))
+        return false;
+    if (!compileVertex(tailXText,
+                       "NGU_LumaQuality_TailVertexX",
+                       next->nonlinearTail ? tailXNonlinear : tailXDirect,
+                       next->tailVertexX) ||
+        !compileVertex(tailYText,
+                       "NGU_LumaQuality_TailVertexY",
+                       next->nonlinearTail ? tailYNonlinear : tailYDirect,
+                       next->tailVertexY))
+        return false;
+
+    auto createConstants = [&](const std::vector<uint8_t>& bytes, ComPtr<ID3D11Buffer>& buffer)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        desc.ByteWidth = static_cast<UINT>(bytes.size());
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        return SUCCEEDED(device->CreateBuffer(&desc, &data, &buffer));
+    };
+    if (!createConstants(initialConstants, next->initialConstants) ||
+        (!mixerConstants.empty() && !createConstants(mixerConstants, next->mixerConstants)) ||
+        !createConstants(denseConstants, next->denseConstants) ||
+        !createConstants(tailXConstants, next->tailXConstants) ||
+        !createConstants(tailYConstants, next->tailYConstants))
+    {
+        error_ = "NGU luma quality fixed constants could not be created";
+        return false;
+    }
+    for (int layer = 0; layer < next->firstLayerCount; ++layer)
+        if (!createConstants(firstLayerConstants[size_t(layer)], next->firstLayerConstants[size_t(layer)]))
+        {
+            error_ = "NGU luma quality first-layer constants could not be created";
+            return false;
+        }
+    for (int layer = 0; layer < next->secondLayerCount; ++layer)
+        if (!createConstants(secondLayerConstants[size_t(layer)], next->secondLayerConstants[size_t(layer)]))
+        {
+            error_ = "NGU luma quality second-layer constants could not be created";
+            return false;
+        }
+    for (int feature = 0; feature < next->firstFeatures; ++feature)
+        if (!createConstants(upsampleConstants[size_t(feature)], next->upsampleConstants[size_t(feature)]) ||
+            !createConstants(convertConstants[size_t(feature)], next->convertConstants[size_t(feature)]))
+        {
+            error_ = "NGU luma quality feature constants could not be created";
+            return false;
+        }
+
+    auto createTexture = [&](UINT width,
+                             UINT height,
+                             DXGI_FORMAT format,
+                             ComPtr<ID3D11Texture2D>& texture,
+                             ComPtr<ID3D11RenderTargetView>& renderTarget,
+                             ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = width;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        return SUCCEEDED(device->CreateTexture2D(&desc, nullptr, &texture)) &&
+               SUCCEEDED(device->CreateRenderTargetView(texture.Get(), nullptr, &renderTarget)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
+    };
+    for (int index = 0; index < 3; ++index)
+        if (!createTexture(1280,
+                           720,
+                           DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           next->initialTextures[size_t(index)],
+                           next->initialViews[size_t(index)],
+                           next->initialShaderViews[size_t(index)]))
+        {
+            error_ = "NGU luma quality initial surfaces could not be created";
+            return false;
+        }
+    for (int set = 0; set < 2; ++set)
+        for (int index = 0; index < 4; ++index)
+            if (!createTexture(1280,
+                               720,
+                               DXGI_FORMAT_R16G16B16A16_FLOAT,
+                               next->firstGroupTextures[size_t(set)][size_t(index)],
+                               next->firstGroupViews[size_t(set)][size_t(index)],
+                               next->firstGroupShaderViews[size_t(set)][size_t(index)]))
+            {
+                error_ = "NGU luma quality first-stage surfaces could not be created";
+                return false;
+            }
+    for (int feature = 0; feature < next->firstFeatures; ++feature)
+    {
+        for (int part = 0; part < 4; ++part)
+            if (!createTexture(1282,
+                               722,
+                               DXGI_FORMAT_R16G16B16A16_FLOAT,
+                               next->upFeatureTextures[size_t(feature)][size_t(part)],
+                               next->upFeatureViews[size_t(feature)][size_t(part)],
+                               next->upFeatureShaderViews[size_t(feature)][size_t(part)]))
+            {
+                error_ = "NGU luma quality upsample surfaces could not be created";
+                return false;
+            }
+        if (!createTexture(2560,
+                           1440,
+                           DXGI_FORMAT_R16G16B16A16_FLOAT,
+                           next->convertTextures[size_t(feature)],
+                           next->convertViews[size_t(feature)],
+                           next->convertShaderViews[size_t(feature)]))
+        {
+            error_ = "NGU luma quality convert surfaces could not be created";
+            return false;
+        }
+    }
+    for (int set = 0; set < 2; ++set)
+        for (int index = 0; index < 4; ++index)
+            if (!createTexture(2560,
+                               1440,
+                               DXGI_FORMAT_R16G16B16A16_FLOAT,
+                               next->secondGroupTextures[size_t(set)][size_t(index)],
+                               next->secondGroupViews[size_t(set)][size_t(index)],
+                               next->secondGroupShaderViews[size_t(set)][size_t(index)]))
+            {
+                error_ = "NGU luma quality second-stage surfaces could not be created";
+                return false;
+            }
+    if (!createTexture(
+            2562, 1442, DXGI_FORMAT_R16G16B16A16_FLOAT, next->denseTexture, next->denseView, next->denseShaderView) ||
+        !createTexture(5120, 2880, DXGI_FORMAT_R16_UNORM, next->addTexture, next->addView, next->addShaderView) ||
+        !createTexture(
+            3840, 2880, DXGI_FORMAT_R16G16B16A16_UNORM, next->tailXTexture, next->tailXView, next->tailXShaderView) ||
+        !createTexture(
+            3840, 2160, DXGI_FORMAT_R16G16B16A16_UNORM, next->tailYTexture, next->tailYView, next->tailYShaderView))
+    {
+        error_ = "NGU luma quality reconstruction surfaces could not be created";
+        return false;
+    }
+
+    auto createTable = [&](UINT height,
+                           const std::vector<uint8_t>& bytes,
+                           ComPtr<ID3D11Texture2D>& texture,
+                           ComPtr<ID3D11ShaderResourceView>& shaderView)
+    {
+        D3D11_TEXTURE2D_DESC desc = {};
+        desc.Width = 6;
+        desc.Height = height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA data = {};
+        data.pSysMem = bytes.data();
+        data.SysMemPitch = 6 * 8;
+        return SUCCEEDED(device->CreateTexture2D(&desc, &data, &texture)) &&
+               SUCCEEDED(device->CreateShaderResourceView(texture.Get(), nullptr, &shaderView));
+    };
+    if (!createTable(3840, tailXTable, next->tailXTable, next->tailXTableView) ||
+        !createTable(2160, tailYTable, next->tailYTable, next->tailYTableView))
+    {
+        error_ = "NGU luma quality tail tables could not be created";
+        return false;
+    }
+
+    D3D11_SAMPLER_DESC tailSamplerDesc = {};
+    tailSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    tailSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    tailSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    tailSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    tailSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    if (FAILED(device->CreateSamplerState(&tailSamplerDesc, &next->tailSampler)))
+    {
+        error_ = "NGU luma quality tail sampler could not be created";
+        return false;
+    }
+
+    nativeLumaQuality720_ = std::move(next);
+    gpu_ = gpu;
+    cached_.quality = quality;
+    cached_.stage = NguScalerStage::VeryHighLuma4x720Full;
+    cached_.sourceWidth = 1280;
+    cached_.sourceHeight = 720;
+    hasCached_ = true;
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaQuality720Luma(NguQuality quality, ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaQuality720_ || nativeLumaQuality720_->quality != quality || !nativeLuma4x720Low_ ||
+        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ || !output ||
+        !ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160))
+    {
+        error_ = "NGU luma quality surface request is invalid";
+        return false;
+    }
+    auto& state = *nativeLumaQuality720_;
+    auto& low = *nativeLuma4x720Low_;
+    auto& denseAdd = *nativeLuma4x720DenseAdd_;
+    auto& tail = *nativeLuma4x720Tail_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    ID3D11SamplerState* point = nativeLumaSplit_->pointSampler.Get();
+
+    ID3D11ShaderResourceView* scaleXInputs[2] = {low.splitLumaShaderView.Get(), low.scaleXTableView.Get()};
+    ID3D11RenderTargetView* scaleXOutput = low.scaleXView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  low.scaleX.Get(),
+                  low.scaleXConstants.Get(),
+                  low.rasterizer.Get(),
+                  scaleXInputs,
+                  2,
+                  &scaleXOutput,
+                  1,
+                  5120,
+                  720,
+                  point);
+    ID3D11ShaderResourceView* scaleYInputs[2] = {low.scaleXShaderView.Get(), low.scaleYTableView.Get()};
+    ID3D11RenderTargetView* scaleYOutput = low.scaleYView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  low.scaleY.Get(),
+                  low.scaleYConstants.Get(),
+                  low.rasterizer.Get(),
+                  scaleYInputs,
+                  2,
+                  &scaleYOutput,
+                  1,
+                  5120,
+                  2880,
+                  point);
+
+    ID3D11ShaderResourceView* initialInput = low.splitLumaShaderView.Get();
+    ID3D11RenderTargetView* initialTargets[3] = {
+        state.initialViews[0].Get(), state.initialViews[1].Get(), state.initialViews[2].Get()};
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.initial.Get(),
+                  state.initialConstants.Get(),
+                  low.rasterizer.Get(),
+                  &initialInput,
+                  1,
+                  initialTargets,
+                  3,
+                  1280,
+                  720,
+                  point);
+    std::array<ID3D11ShaderResourceView*, 4> current = {};
+    for (int index = 0; index < 3; ++index)
+        current[size_t(index)] = state.initialShaderViews[size_t(index)].Get();
+
+    if (state.mixer)
+    {
+        ID3D11RenderTargetView* targets[2] = {state.firstGroupViews[0][0].Get(), state.firstGroupViews[0][1].Get()};
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.mixer.Get(),
+                      state.mixerConstants.Get(),
+                      low.rasterizer.Get(),
+                      current.data(),
+                      3,
+                      targets,
+                      2,
+                      1280,
+                      720,
+                      point);
+        current[0] = state.firstGroupShaderViews[0][0].Get();
+        current[1] = state.firstGroupShaderViews[0][1].Get();
+    }
+    if (state.firstLayerOutputs == 2)
+    {
+        int set = 0;
+        for (int layer = 0; layer < state.firstLayerCount; ++layer)
+        {
+            set = (set + 1) % 2;
+            ID3D11RenderTargetView* targets[2] = {state.firstGroupViews[size_t(set)][0].Get(),
+                                                  state.firstGroupViews[size_t(set)][1].Get()};
+            DrawD3D11Pass(device,
+                          low.vertex.Get(),
+                          state.firstLayer.Get(),
+                          state.firstLayerConstants[size_t(layer)].Get(),
+                          low.rasterizer.Get(),
+                          current.data(),
+                          2,
+                          targets,
+                          2,
+                          1280,
+                          720,
+                          point);
+            current[0] = state.firstGroupShaderViews[size_t(set)][0].Get();
+            current[1] = state.firstGroupShaderViews[size_t(set)][1].Get();
+        }
+    }
+    else
+    {
+        int set = state.mixer ? 1 : 0;
+        for (int base = 0; base < state.firstLayerCount; base += 3)
+        {
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                ID3D11RenderTargetView* target = state.firstGroupViews[size_t(set)][size_t(pass)].Get();
+                DrawD3D11Pass(device,
+                              low.vertex.Get(),
+                              state.firstLayer.Get(),
+                              state.firstLayerConstants[size_t(base + pass)].Get(),
+                              low.rasterizer.Get(),
+                              current.data(),
+                              3,
+                              &target,
+                              1,
+                              1280,
+                              720,
+                              point);
+            }
+            for (int index = 0; index < 3; ++index)
+                current[size_t(index)] = state.firstGroupShaderViews[size_t(set)][size_t(index)].Get();
+            set = (set + 1) % 2;
+        }
+    }
+
+    const std::array<ID3D11ShaderResourceView*, 4> featureInputs = current;
+    for (int feature = 0; feature < state.firstFeatures; ++feature)
+    {
+        ID3D11RenderTargetView* upsampleTargets[4] = {
+            state.upFeatureViews[size_t(feature)][0].Get(),
+            state.upFeatureViews[size_t(feature)][1].Get(),
+            state.upFeatureViews[size_t(feature)][2].Get(),
+            state.upFeatureViews[size_t(feature)][3].Get(),
+        };
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.upsample.Get(),
+                      state.upsampleConstants[size_t(feature)].Get(),
+                      low.rasterizer.Get(),
+                      featureInputs.data(),
+                      state.firstStageInputs,
+                      upsampleTargets,
+                      4,
+                      1282,
+                      722,
+                      point);
+        ID3D11ShaderResourceView* convertInputs[4] = {
+            state.upFeatureShaderViews[size_t(feature)][0].Get(),
+            state.upFeatureShaderViews[size_t(feature)][1].Get(),
+            state.upFeatureShaderViews[size_t(feature)][2].Get(),
+            state.upFeatureShaderViews[size_t(feature)][3].Get(),
+        };
+        ID3D11RenderTargetView* convertTarget = state.convertViews[size_t(feature)].Get();
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.convert.Get(),
+                      state.convertConstants[size_t(feature)].Get(),
+                      low.rasterizer.Get(),
+                      convertInputs,
+                      4,
+                      &convertTarget,
+                      1,
+                      2560,
+                      1440,
+                      point);
+        current[size_t(feature)] = state.convertShaderViews[size_t(feature)].Get();
+    }
+
+    const int secondOutputs = quality == NguQuality::High ? 1 : 2;
+    if (secondOutputs == 2)
+    {
+        int set = 0;
+        for (int layer = 0; layer < state.secondLayerCount; ++layer)
+        {
+            set = (set + 1) % 2;
+            ID3D11RenderTargetView* targets[2] = {state.secondGroupViews[size_t(set)][0].Get(),
+                                                  state.secondGroupViews[size_t(set)][1].Get()};
+            DrawD3D11Pass(device,
+                          low.vertex.Get(),
+                          state.secondLayer.Get(),
+                          state.secondLayerConstants[size_t(layer)].Get(),
+                          low.rasterizer.Get(),
+                          current.data(),
+                          2,
+                          targets,
+                          2,
+                          2560,
+                          1440,
+                          point);
+            current[0] = state.secondGroupShaderViews[size_t(set)][0].Get();
+            current[1] = state.secondGroupShaderViews[size_t(set)][1].Get();
+        }
+    }
+    else
+    {
+        int set = 0;
+        for (int base = 0; base < state.secondLayerCount; base += 3)
+        {
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                ID3D11RenderTargetView* target = state.secondGroupViews[size_t(set)][size_t(pass)].Get();
+                DrawD3D11Pass(device,
+                              low.vertex.Get(),
+                              state.secondLayer.Get(),
+                              state.secondLayerConstants[size_t(base + pass)].Get(),
+                              low.rasterizer.Get(),
+                              current.data(),
+                              3,
+                              &target,
+                              1,
+                              2560,
+                              1440,
+                              point);
+            }
+            for (int index = 0; index < 3; ++index)
+                current[size_t(index)] = state.secondGroupShaderViews[size_t(set)][size_t(index)].Get();
+            set = (set + 1) % 2;
+        }
+    }
+
+    ID3D11RenderTargetView* denseTarget = state.denseView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.dense.Get(),
+                  state.denseConstants.Get(),
+                  low.rasterizer.Get(),
+                  current.data(),
+                  state.secondInputs,
+                  &denseTarget,
+                  1,
+                  2562,
+                  1442,
+                  point);
+    ID3D11ShaderResourceView* addInputs[2] = {low.scaleYShaderView.Get(), state.denseShaderView.Get()};
+    ID3D11RenderTargetView* addTarget = state.addView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  denseAdd.add.Get(),
+                  denseAdd.addConstants.Get(),
+                  low.rasterizer.Get(),
+                  addInputs,
+                  2,
+                  &addTarget,
+                  1,
+                  5120,
+                  2880,
+                  point);
+
+    ID3D11ShaderResourceView* tailXInputs[2] = {state.addShaderView.Get(), state.tailXTableView.Get()};
+    ID3D11RenderTargetView* tailXTarget = state.tailXView.Get();
+    DrawD3D11Pass(device,
+                  state.tailVertexX.Get(),
+                  state.tailX.Get(),
+                  state.tailXConstants.Get(),
+                  tail.rasterizer.Get(),
+                  tailXInputs,
+                  2,
+                  &tailXTarget,
+                  1,
+                  3840,
+                  2880,
+                  state.tailSampler.Get());
+    ID3D11ShaderResourceView* tailYInputs[2] = {state.tailXShaderView.Get(), state.tailYTableView.Get()};
+    ID3D11RenderTargetView* tailYTarget = state.tailYView.Get();
+    DrawD3D11Pass(device,
+                  state.tailVertexY.Get(),
+                  state.tailY.Get(),
+                  state.tailYConstants.Get(),
+                  tail.rasterizer.Get(),
+                  tailYInputs,
+                  2,
+                  &tailYTarget,
+                  1,
+                  3840,
+                  2160,
+                  state.tailSampler.Get());
+    if (!CopyTextureToTarget(gpu_, state.tailYTexture.Get(), output))
+    {
+        error_ = "NGU luma quality vertical output could not be copied";
+        return false;
+    }
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaQuality720LumaForTest(ID3D11ShaderResourceView* sourceLuma,
+                                                   NguQuality quality,
+                                                   ID3D11RenderTargetView* output)
+{
+    if (!gpu_ || !sourceLuma || !output || !ViewMatchesTexture(sourceLuma, DXGI_FORMAT_R16_UNORM, 1280, 720) ||
+        !PrepareNativeLumaQuality720(gpu_, quality) || !nativeLuma4x720Low_)
+    {
+        error_ = "NGU luma quality fixture request is invalid";
+        return false;
+    }
+    ComPtr<ID3D11Resource> source;
+    sourceLuma->GetResource(&source);
+    if (!source)
+    {
+        error_ = "NGU luma quality fixture source is unavailable";
+        return false;
+    }
+    ComPtr<ID3D11DeviceContext> context;
+    pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+    context->CopyResource(nativeLuma4x720Low_->splitLumaTexture.Get(), source.Get());
+    return RunNativeLumaQuality720Luma(quality, output);
+}
+
+bool NguScaler::CopyNativeLumaQuality720Surface(NguQuality quality,
+                                                NguLumaQuality720Surface surface,
+                                                int index,
+                                                ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaQuality720_ || nativeLumaQuality720_->quality != quality || !output)
+    {
+        error_ = "NGU luma quality surface copy request is invalid";
+        return false;
+    }
+    auto& state = *nativeLumaQuality720_;
+    const auto copy = [&](ID3D11Texture2D* texture)
+    {
+        if (!texture || !CopyTextureToTarget(gpu_, texture, output))
+        {
+            error_ = "NGU luma quality surface is unavailable";
+            return false;
+        }
+        error_ = "";
+        return true;
+    };
+    switch (surface)
+    {
+    case NguLumaQuality720Surface::Initial:
+        if (index < 0 || index >= 3)
+            break;
+        return copy(state.initialTextures[size_t(index)].Get());
+    case NguLumaQuality720Surface::Mixer:
+        if (index < 0 || index >= 2)
+            break;
+        return copy(state.firstGroupTextures[0][size_t(index)].Get());
+    case NguLumaQuality720Surface::FirstGroup0:
+        if (index < 0 || index >= 4)
+            break;
+        return copy(state.firstGroupTextures[0][size_t(index)].Get());
+    case NguLumaQuality720Surface::FirstGroup1:
+        if (index < 0 || index >= 4)
+            break;
+        return copy(state.firstGroupTextures[1][size_t(index)].Get());
+    case NguLumaQuality720Surface::Upsample:
+        if (index < 0 || index >= 12)
+            break;
+        return copy(state.upFeatureTextures[size_t(index / 4)][size_t(index % 4)].Get());
+    case NguLumaQuality720Surface::Convert:
+        if (index < 0 || index >= 3)
+            break;
+        return copy(state.convertTextures[size_t(index)].Get());
+    case NguLumaQuality720Surface::SecondGroup0:
+        if (index < 0 || index >= 4)
+            break;
+        return copy(state.secondGroupTextures[0][size_t(index)].Get());
+    case NguLumaQuality720Surface::SecondGroup1:
+        if (index < 0 || index >= 4)
+            break;
+        return copy(state.secondGroupTextures[1][size_t(index)].Get());
+    case NguLumaQuality720Surface::Dense:
+        return copy(state.denseTexture.Get());
+    case NguLumaQuality720Surface::Add:
+        return copy(state.addTexture.Get());
+    case NguLumaQuality720Surface::TailX:
+        return copy(state.tailXTexture.Get());
+    case NguLumaQuality720Surface::TailY:
+        return copy(state.tailYTexture.Get());
+    }
+    error_ = "NGU luma quality surface index is invalid";
+    return false;
+}
+
+bool NguScaler::RunNativeLumaQuality720MixerForTest(NguQuality quality,
+                                                    const int* initialOrder,
+                                                    ID3D11RenderTargetView* output0,
+                                                    ID3D11RenderTargetView* output1)
+{
+    if (!nativeLumaQuality720_ || nativeLumaQuality720_->quality != quality || quality != NguQuality::Low ||
+        !initialOrder || !nativeLuma4x720Low_ || !output0 || !output1)
+    {
+        error_ = "NGU luma quality mixer test request is invalid";
+        return false;
+    }
+    auto& state = *nativeLumaQuality720_;
+    if (!state.mixer)
+    {
+        error_ = "NGU luma quality mixer is unavailable";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[3] = {};
+    for (int index = 0; index < 3; ++index)
+    {
+        if (initialOrder[index] < 0 || initialOrder[index] >= 3)
+        {
+            error_ = "NGU luma quality mixer test order is invalid";
+            return false;
+        }
+        inputs[index] = state.initialShaderViews[size_t(initialOrder[index])].Get();
+    }
+    ID3D11RenderTargetView* outputs[2] = {output0, output1};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  nativeLuma4x720Low_->vertex.Get(),
+                  state.mixer.Get(),
+                  state.mixerConstants.Get(),
+                  nativeLuma4x720Low_->rasterizer.Get(),
+                  inputs,
+                  3,
+                  outputs,
+                  2,
+                  1280,
+                  720,
+                  nativeLumaSplit_->pointSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaQuality720TailForTest(NguQuality quality,
+                                                   bool vertical,
+                                                   ID3D11ShaderResourceView* source,
+                                                   ID3D11RenderTargetView* output)
+{
+    if (!nativeLumaQuality720_ || nativeLumaQuality720_->quality != quality || !nativeLuma4x720Tail_ ||
+        !source || !output)
+    {
+        error_ = "NGU luma quality tail test request is invalid";
+        return false;
+    }
+    auto& state = *nativeLumaQuality720_;
+    auto& tail = *nativeLuma4x720Tail_;
+    const bool sourceMatches =
+        vertical ? ViewMatchesTexture(source, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880)
+                 : ViewMatchesTexture(source, DXGI_FORMAT_R16_UNORM, 5120, 2880);
+    const bool outputMatches =
+        vertical ? ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2160)
+                 : ViewMatchesTexture(output, DXGI_FORMAT_R16G16B16A16_UNORM, 3840, 2880);
+    if (!sourceMatches || !outputMatches)
+    {
+        error_ = "NGU luma quality tail test geometry is invalid";
+        return false;
+    }
+    ID3D11ShaderResourceView* inputs[2] = {
+        source, vertical ? state.tailYTableView.Get() : state.tailXTableView.Get()};
+    DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
+                  vertical ? state.tailVertexY.Get() : state.tailVertexX.Get(),
+                  vertical ? state.tailY.Get() : state.tailX.Get(),
+                  vertical ? state.tailYConstants.Get() : state.tailXConstants.Get(),
+                  tail.rasterizer.Get(),
+                  inputs,
+                  2,
+                  &output,
+                  1,
+                  vertical ? 3840 : 3840,
+                  vertical ? 2160 : 2880,
+                  state.tailSampler.Get());
+    error_ = "";
+    return true;
+}
+
+bool NguScaler::RunNativeLumaQuality720(ID3D11ShaderResourceView* sourceRgb,
+                                        int sourceWidth,
+                                        int sourceHeight,
+                                        NguQuality quality,
+                                        ID3D11RenderTargetView* finalOutput)
+{
+    if (!nativeLumaQuality720_ || nativeLumaQuality720_->quality != quality || !nativeLuma4x720Low_ ||
+        !nativeLuma4x720DenseAdd_ || !nativeLuma4x720Tail_ || !sourceRgb || sourceWidth != 1280 ||
+        sourceHeight != 720 || !ViewMatchesRgb8(finalOutput, 3840, 2160))
+    {
+        error_ = "NGU luma quality request is outside the verified 720p path";
+        return false;
+    }
+    auto& state = *nativeLumaQuality720_;
+    auto& low = *nativeLuma4x720Low_;
+    auto& denseAdd = *nativeLuma4x720DenseAdd_;
+    auto& tail = *nativeLuma4x720Tail_;
+    ID3D11Device* device = pl_d3d11_get(gpu_)->device;
+    ID3D11SamplerState* point = nativeLumaSplit_->pointSampler.Get();
+
+    if (!RunNativeLumaSplit(sourceRgb, 1280, 720, low.splitLumaView.Get(), low.splitCbCrView.Get()))
+        return false;
+    ID3D11ShaderResourceView* scaleXInputs[2] = {low.splitLumaShaderView.Get(), low.scaleXTableView.Get()};
+    ID3D11RenderTargetView* scaleXOutput = low.scaleXView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  low.scaleX.Get(),
+                  low.scaleXConstants.Get(),
+                  low.rasterizer.Get(),
+                  scaleXInputs,
+                  2,
+                  &scaleXOutput,
+                  1,
+                  5120,
+                  720,
+                  point);
+    ID3D11ShaderResourceView* scaleYInputs[2] = {low.scaleXShaderView.Get(), low.scaleYTableView.Get()};
+    ID3D11RenderTargetView* scaleYOutput = low.scaleYView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  low.scaleY.Get(),
+                  low.scaleYConstants.Get(),
+                  low.rasterizer.Get(),
+                  scaleYInputs,
+                  2,
+                  &scaleYOutput,
+                  1,
+                  5120,
+                  2880,
+                  point);
+
+    ID3D11ShaderResourceView* initialInput = low.splitLumaShaderView.Get();
+    ID3D11RenderTargetView* initialTargets[3] = {
+        state.initialViews[0].Get(), state.initialViews[1].Get(), state.initialViews[2].Get()};
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.initial.Get(),
+                  state.initialConstants.Get(),
+                  low.rasterizer.Get(),
+                  &initialInput,
+                  1,
+                  initialTargets,
+                  3,
+                  1280,
+                  720,
+                  point);
+    std::array<ID3D11ShaderResourceView*, 4> current = {};
+    for (int index = 0; index < 3; ++index)
+        current[size_t(index)] = state.initialShaderViews[size_t(index)].Get();
+
+    if (state.mixer)
+    {
+        ID3D11RenderTargetView* targets[2] = {state.firstGroupViews[0][0].Get(), state.firstGroupViews[0][1].Get()};
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.mixer.Get(),
+                      state.mixerConstants.Get(),
+                      low.rasterizer.Get(),
+                      current.data(),
+                      3,
+                      targets,
+                      2,
+                      1280,
+                      720,
+                      point);
+        current[0] = state.firstGroupShaderViews[0][0].Get();
+        current[1] = state.firstGroupShaderViews[0][1].Get();
+    }
+    if (state.firstLayerOutputs == 2)
+    {
+        int set = 0;
+        for (int layer = 0; layer < state.firstLayerCount; ++layer)
+        {
+            set = (set + 1) % 2;
+            ID3D11RenderTargetView* targets[2] = {state.firstGroupViews[size_t(set)][0].Get(),
+                                                  state.firstGroupViews[size_t(set)][1].Get()};
+            DrawD3D11Pass(device,
+                          low.vertex.Get(),
+                          state.firstLayer.Get(),
+                          state.firstLayerConstants[size_t(layer)].Get(),
+                          low.rasterizer.Get(),
+                          current.data(),
+                          2,
+                          targets,
+                          2,
+                          1280,
+                          720,
+                          point);
+            current[0] = state.firstGroupShaderViews[size_t(set)][0].Get();
+            current[1] = state.firstGroupShaderViews[size_t(set)][1].Get();
+        }
+    }
+    else
+    {
+        int set = state.mixer ? 1 : 0;
+        for (int base = 0; base < state.firstLayerCount; base += 3)
+        {
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                ID3D11RenderTargetView* target = state.firstGroupViews[size_t(set)][size_t(pass)].Get();
+                DrawD3D11Pass(device,
+                              low.vertex.Get(),
+                              state.firstLayer.Get(),
+                              state.firstLayerConstants[size_t(base + pass)].Get(),
+                              low.rasterizer.Get(),
+                              current.data(),
+                              3,
+                              &target,
+                              1,
+                              1280,
+                              720,
+                              point);
+            }
+            for (int index = 0; index < 3; ++index)
+                current[size_t(index)] = state.firstGroupShaderViews[size_t(set)][size_t(index)].Get();
+            set = (set + 1) % 2;
+        }
+    }
+
+    for (int feature = 0; feature < state.firstFeatures; ++feature)
+    {
+        ID3D11RenderTargetView* upsampleTargets[4] = {
+            state.upFeatureViews[size_t(feature)][0].Get(),
+            state.upFeatureViews[size_t(feature)][1].Get(),
+            state.upFeatureViews[size_t(feature)][2].Get(),
+            state.upFeatureViews[size_t(feature)][3].Get(),
+        };
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.upsample.Get(),
+                      state.upsampleConstants[size_t(feature)].Get(),
+                      low.rasterizer.Get(),
+                      current.data(),
+                      state.firstStageInputs,
+                      upsampleTargets,
+                      4,
+                      1282,
+                      722,
+                      point);
+        ID3D11ShaderResourceView* convertInputs[4] = {
+            state.upFeatureShaderViews[size_t(feature)][0].Get(),
+            state.upFeatureShaderViews[size_t(feature)][1].Get(),
+            state.upFeatureShaderViews[size_t(feature)][2].Get(),
+            state.upFeatureShaderViews[size_t(feature)][3].Get(),
+        };
+        ID3D11RenderTargetView* convertTarget = state.convertViews[size_t(feature)].Get();
+        DrawD3D11Pass(device,
+                      low.vertex.Get(),
+                      state.convert.Get(),
+                      state.convertConstants[size_t(feature)].Get(),
+                      low.rasterizer.Get(),
+                      convertInputs,
+                      4,
+                      &convertTarget,
+                      1,
+                      2560,
+                      1440,
+                      point);
+        current[size_t(feature)] = state.convertShaderViews[size_t(feature)].Get();
+    }
+
+    const int secondOutputs = quality == NguQuality::High ? 1 : 2;
+    if (secondOutputs == 2)
+    {
+        int set = 0;
+        for (int layer = 0; layer < state.secondLayerCount; ++layer)
+        {
+            set = (set + 1) % 2;
+            ID3D11RenderTargetView* targets[2] = {state.secondGroupViews[size_t(set)][0].Get(),
+                                                  state.secondGroupViews[size_t(set)][1].Get()};
+            DrawD3D11Pass(device,
+                          low.vertex.Get(),
+                          state.secondLayer.Get(),
+                          state.secondLayerConstants[size_t(layer)].Get(),
+                          low.rasterizer.Get(),
+                          current.data(),
+                          2,
+                          targets,
+                          2,
+                          2560,
+                          1440,
+                          point);
+            current[0] = state.secondGroupShaderViews[size_t(set)][0].Get();
+            current[1] = state.secondGroupShaderViews[size_t(set)][1].Get();
+        }
+    }
+    else
+    {
+        int set = 0;
+        for (int base = 0; base < state.secondLayerCount; base += 3)
+        {
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                ID3D11RenderTargetView* target = state.secondGroupViews[size_t(set)][size_t(pass)].Get();
+                DrawD3D11Pass(device,
+                              low.vertex.Get(),
+                              state.secondLayer.Get(),
+                              state.secondLayerConstants[size_t(base + pass)].Get(),
+                              low.rasterizer.Get(),
+                              current.data(),
+                              3,
+                              &target,
+                              1,
+                              2560,
+                              1440,
+                              point);
+            }
+            for (int index = 0; index < 3; ++index)
+                current[size_t(index)] = state.secondGroupShaderViews[size_t(set)][size_t(index)].Get();
+            set = (set + 1) % 2;
+        }
+    }
+
+    ID3D11RenderTargetView* denseTarget = state.denseView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  state.dense.Get(),
+                  state.denseConstants.Get(),
+                  low.rasterizer.Get(),
+                  current.data(),
+                  state.secondInputs,
+                  &denseTarget,
+                  1,
+                  2562,
+                  1442,
+                  point);
+    ID3D11ShaderResourceView* addInputs[2] = {low.scaleYShaderView.Get(), state.denseShaderView.Get()};
+    ID3D11RenderTargetView* addTarget = state.addView.Get();
+    DrawD3D11Pass(device,
+                  low.vertex.Get(),
+                  denseAdd.add.Get(),
+                  denseAdd.addConstants.Get(),
+                  low.rasterizer.Get(),
+                  addInputs,
+                  2,
+                  &addTarget,
+                  1,
+                  5120,
+                  2880,
+                  point);
+
+    ID3D11ShaderResourceView* tailXInputs[2] = {state.addShaderView.Get(), state.tailXTableView.Get()};
+    ID3D11RenderTargetView* tailXTarget = state.tailXView.Get();
+    DrawD3D11Pass(device,
+                  state.tailVertexX.Get(),
+                  state.tailX.Get(),
+                  state.tailXConstants.Get(),
+                  tail.rasterizer.Get(),
+                  tailXInputs,
+                  2,
+                  &tailXTarget,
+                  1,
+                  3840,
+                  2880,
+                  state.tailSampler.Get());
+    ID3D11ShaderResourceView* tailYInputs[2] = {state.tailXShaderView.Get(), state.tailYTableView.Get()};
+    ID3D11RenderTargetView* tailYTarget = state.tailYView.Get();
+    DrawD3D11Pass(device,
+                  state.tailVertexY.Get(),
+                  state.tailY.Get(),
+                  state.tailYConstants.Get(),
+                  tail.rasterizer.Get(),
+                  tailYInputs,
+                  2,
+                  &tailYTarget,
+                  1,
+                  3840,
+                  2160,
+                  state.tailSampler.Get());
+    if (!RunNativeLuma4x720TailChromaX(low.splitCbCrShaderView.Get(), tail.chromaXView.Get()) ||
+        !RunNativeLuma4x720TailChromaY(tail.chromaXShaderView.Get(), tail.chromaYView.Get()) ||
+        !RunNativeLuma4x720TailMerge(state.tailYShaderView.Get(), tail.chromaYShaderView.Get(), tail.mergeView.Get()) ||
+        !RunNativeLumaFinalOwnedDither(tail.mergeShaderView.Get(), finalOutput))
+        return false;
+    error_ = "";
+    return true;
+}
+
 bool NguScaler::PrepareNativeLuma4x720Tail(pl_gpu gpu)
 {
     if (!gpu)
@@ -11096,6 +12388,7 @@ void NguScaler::Reset()
     nativeLuma4x720High_.reset();
     nativeLuma4x720DenseAdd_.reset();
     nativeLuma4x720Tail_.reset();
+    nativeLumaQuality720_.reset();
     nativeClass3ChromaTail720_.reset();
     nativeChromaCoreClass3_720_.reset();
     nativeChromaCoreClass3_1080_.reset();

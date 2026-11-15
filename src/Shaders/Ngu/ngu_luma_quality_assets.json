@@ -1,0 +1,309 @@
+{
+  "high": {
+    "assets": {
+      "Ngu/ngu_luma_quality_high_convert_0_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_high_convert_1_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_high_convert_2_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_high_dense_constants.bin": {
+        "bytes": 816,
+        "sha256": "A6A60A0DD3F453AFA0AE78A2AD716B01510735877000911608D164D0778734F8"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_00_constants.bin": {
+        "bytes": 1776,
+        "sha256": "9B206C1782D5D029250AB4BE113A924CB95B59731CC966CA493226A222CEAA1D"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_01_constants.bin": {
+        "bytes": 1776,
+        "sha256": "604782491FF2595C3DFA1AB61753086C02B96E36CB1D089BFA206849A438C249"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_02_constants.bin": {
+        "bytes": 1776,
+        "sha256": "65938F54B78058D8F0BE1A147200B3882B4FEA6AE962EA3401C4D0CBFDF81ED2"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_03_constants.bin": {
+        "bytes": 1776,
+        "sha256": "C5D8A27E1C237CCD78168496C5C97016668AE43EE90D06457F8B9300FF72F1DA"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_04_constants.bin": {
+        "bytes": 1776,
+        "sha256": "6376DD3EE1C173D295138791F8A4513CD3EA9EB2FFA9161F63048BBEF039BBA1"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_05_constants.bin": {
+        "bytes": 1776,
+        "sha256": "A16BF6EC975CC76A5DDA001E0F7CE7B60EBE2BEE8026CB9632B275DB534C5BA4"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_06_constants.bin": {
+        "bytes": 1776,
+        "sha256": "E8E5FAB1E89562C8D3C87316DE2730CB2955FEB208FA0EA8236B4084A0750784"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_07_constants.bin": {
+        "bytes": 1776,
+        "sha256": "6102D856D6FAA5FA85EF527B9886CE4A02DE55C23A57FBD27783940FCB926530"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_08_constants.bin": {
+        "bytes": 1776,
+        "sha256": "40C51C8B3114A7310AECB3F3288207A459ABB36EB9FF35E35E8440E543F682FB"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_09_constants.bin": {
+        "bytes": 1776,
+        "sha256": "406439B0F734889D70E972538CF52DFCBF4460C319530B61E09D4951977FAF58"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_10_constants.bin": {
+        "bytes": 1776,
+        "sha256": "A1FBDEB7144CFEC2950B7FE2623A799F4EC91F621EC3E42D189D146E31B3804C"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_11_constants.bin": {
+        "bytes": 1776,
+        "sha256": "9FEBD34D8C4D5E622598BEEC4AD4A7546B9892B3F6BA7914C9237D8115090B54"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_12_constants.bin": {
+        "bytes": 1776,
+        "sha256": "AC9330256E172ED62F4BEEBE54511A028BB76256A15D5C78435027C93A4E9CF8"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_13_constants.bin": {
+        "bytes": 1776,
+        "sha256": "20B73F3C0A63E4BBBA5CD86F89E6C354443753B6E0531BD8DA9A25CEA2357065"
+      },
+      "Ngu/ngu_luma_quality_high_first_layer_14_constants.bin": {
+        "bytes": 1776,
+        "sha256": "CB8DDD84BF35DC1BEFB9E53E072A3E6A6F6C55D1D7E82C2CAD78712F2150D316"
+      },
+      "Ngu/ngu_luma_quality_high_initial_constants.bin": {
+        "bytes": 512,
+        "sha256": "768982B3699D06B2D5067BD0B19F62FAF07973082A1379A22ABB8F9D875A8C72"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_00_constants.bin": {
+        "bytes": 1776,
+        "sha256": "467EBA60867D92D68FF329433A9CADC58BD06201A1243EFA42065ED9F516244E"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_01_constants.bin": {
+        "bytes": 1776,
+        "sha256": "7CEE4A8A8DBBBAAB4B898AF8280CAA1C67F97D8BE82F0C844F25E47CBA51A505"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_02_constants.bin": {
+        "bytes": 1776,
+        "sha256": "A7BA47B9C5B8D69CCD55FEB2B45E5F2508976B58CD1EC7DA74A20E1FC5E390E7"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_03_constants.bin": {
+        "bytes": 1776,
+        "sha256": "EDD3C57529AAA01D07DB68F6F81DA483C85C9A1326C7527FA750CCAE724EABDD"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_04_constants.bin": {
+        "bytes": 1776,
+        "sha256": "644285BC2BDE2250C51AD0674645DFE98A12D767C147197C3B0C083C1ACF69D5"
+      },
+      "Ngu/ngu_luma_quality_high_second_layer_05_constants.bin": {
+        "bytes": 1776,
+        "sha256": "6BA0D5B424643D86D1358DC575593A030D2D947E85A17A077C4FD50B721F2CE4"
+      },
+      "Ngu/ngu_luma_quality_high_tail_x_constants.bin": {
+        "bytes": 32,
+        "sha256": "97FF80FBBA4C23CC310419D794C22EFF98AF07317EA69B0FE5C6244721DFDF42"
+      },
+      "Ngu/ngu_luma_quality_high_tail_y_constants.bin": {
+        "bytes": 32,
+        "sha256": "7E755E888C650C84AC8777945303ED94FDB0B531E935FD91E2B9FF0825B2A3ED"
+      },
+      "Ngu/ngu_luma_quality_high_upsample_0_constants.bin": {
+        "bytes": 3136,
+        "sha256": "3D5EE019E3A446B2301180F078ABD7A3CDF1C756E981FA5F35A40A0BD0BEF6CC"
+      },
+      "Ngu/ngu_luma_quality_high_upsample_1_constants.bin": {
+        "bytes": 3136,
+        "sha256": "FF8F865D45F09AB9E62D4AAB870389259726060EF76BD4D9D1F766F4A759CBAE"
+      },
+      "Ngu/ngu_luma_quality_high_upsample_2_constants.bin": {
+        "bytes": 3136,
+        "sha256": "9C1AD07DCABFBB444159627B1879D3AA1ED7768300FBC595DFAAA5F379D2C70E"
+      }
+    },
+    "events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v8\\high\\events.log",
+    "tail_events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v16\\high\\events.log"
+  },
+  "low": {
+    "assets": {
+      "Ngu/ngu_luma_quality_low_convert_0_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_low_convert_1_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_low_dense_constants.bin": {
+        "bytes": 560,
+        "sha256": "DC3110F00342EED637AF1EFA3D1971BBE879BD9EFE5994E0C46F6EE386AAE102"
+      },
+      "Ngu/ngu_luma_quality_low_first_layer_00_constants.bin": {
+        "bytes": 2368,
+        "sha256": "F667BD9BF65D11068F1DA7661325A324FAAF3B69A2C01A59C58B56CB810F4454"
+      },
+      "Ngu/ngu_luma_quality_low_first_layer_01_constants.bin": {
+        "bytes": 2368,
+        "sha256": "3FE79E2996BE48F773298366E7D12BE2EEEFF3A25F8B202409B6203D3604E75C"
+      },
+      "Ngu/ngu_luma_quality_low_first_layer_02_constants.bin": {
+        "bytes": 2368,
+        "sha256": "0FA48C30516BEAD09B2787DE6367B7D30DE91091D7436039FA536195758F2A99"
+      },
+      "Ngu/ngu_luma_quality_low_initial_constants.bin": {
+        "bytes": 512,
+        "sha256": "958E7A5C5B4B7633EC0B6E88C3E46ECF668603F4F6900EC31F9A826E4031B761"
+      },
+      "Ngu/ngu_luma_quality_low_mixer_constants.bin": {
+        "bytes": 3520,
+        "sha256": "45712F5A7759E4187C0964C5C9ACD3E351C6B83926A45703CC1A83D61AEBF391"
+      },
+      "Ngu/ngu_luma_quality_low_second_layer_00_constants.bin": {
+        "bytes": 2368,
+        "sha256": "D144668510EC4FAF0E082FD5A779EB9C0D6F17C20D040831F673ABFE44815744"
+      },
+      "Ngu/ngu_luma_quality_low_tail_x_constants.bin": {
+        "bytes": 32,
+        "sha256": "97FF80FBBA4C23CC310419D794C22EFF98AF07317EA69B0FE5C6244721DFDF42"
+      },
+      "Ngu/ngu_luma_quality_low_tail_y_constants.bin": {
+        "bytes": 32,
+        "sha256": "7E755E888C650C84AC8777945303ED94FDB0B531E935FD91E2B9FF0825B2A3ED"
+      },
+      "Ngu/ngu_luma_quality_low_upsample_0_constants.bin": {
+        "bytes": 2112,
+        "sha256": "E7533BEE0683765158C20F94BDDCD9C3CB1D3620D0ED540273BAAFBE41930136"
+      },
+      "Ngu/ngu_luma_quality_low_upsample_1_constants.bin": {
+        "bytes": 2112,
+        "sha256": "EA5961A907C89E330D049090867486CBF7BADCBD967CB11717CBB5BE7683FC08"
+      }
+    },
+    "events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v11\\low\\events.log",
+    "tail_events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v10\\low\\events.log"
+  },
+  "med": {
+    "assets": {
+      "Ngu/ngu_luma_quality_med_convert_0_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_med_convert_1_constants.bin": {
+        "bytes": 32,
+        "sha256": "704EA313634529E749F228AA20ED73AA3380C38B0F0ADE5E9C3D66BF1891828A"
+      },
+      "Ngu/ngu_luma_quality_med_dense_constants.bin": {
+        "bytes": 560,
+        "sha256": "1C5CF8D63F62E4CD60B233565A1D983846D66CE1AAA76E0809FF6003874C3092"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_00_constants.bin": {
+        "bytes": 1776,
+        "sha256": "3B86C5AAAEC37FA4FB01270113CC2A1FEBEB195DF716139499C4C8F146CA4301"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_01_constants.bin": {
+        "bytes": 1776,
+        "sha256": "4E333B9E00A78F8DBE552FA1E6B206B3E66A05B443207FD429403C99E6CDE01F"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_02_constants.bin": {
+        "bytes": 1776,
+        "sha256": "304D201433624C35FA1846562E31692A69C194CF816F95DF51963824FACC0233"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_03_constants.bin": {
+        "bytes": 1776,
+        "sha256": "636C41B1E1A95316BB515ED50D315B8BA990BDEE1989823305E026A2A9DDAA8C"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_04_constants.bin": {
+        "bytes": 1776,
+        "sha256": "84DE066B26308C5F113F110B6CA341B49B2080446DFB54DD0FD1AD325A659405"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_05_constants.bin": {
+        "bytes": 1776,
+        "sha256": "BD592A91165CF83975B209AA3D3BBFCA6B3640918422DBC849C029D2A466427E"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_06_constants.bin": {
+        "bytes": 1776,
+        "sha256": "9454585A46662960298912BBC5B202D8CD2B3A90DA01EBBD615AD7A33ED35AE0"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_07_constants.bin": {
+        "bytes": 1776,
+        "sha256": "DB626CEF0D45A03E2E9EAB5720FB38BBBEC1B9865BB5CB12A6DFD6AFD5F976A8"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_08_constants.bin": {
+        "bytes": 1776,
+        "sha256": "F099EEFF75BD2DE2094CC200423C072E77D5EB878130D81E7999736F11791AF5"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_09_constants.bin": {
+        "bytes": 1776,
+        "sha256": "5C4A0C8CF1DEC15F653BB2A16AFB7EF5749BA6A58082CD5A2582CC546A09E1FF"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_10_constants.bin": {
+        "bytes": 1776,
+        "sha256": "B29435CA02010DB785B0DC5FA115246E0383F52B64F8D92DD26BE04EA4FEEA37"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_11_constants.bin": {
+        "bytes": 1776,
+        "sha256": "9981A006AC25A0926A4CBDE94490D1676D4B889AD3CFE2516713381718D50BC1"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_12_constants.bin": {
+        "bytes": 1776,
+        "sha256": "D3868711420E4861B5136033D2B9721D7FDE472C47375F5F90B9A00585E4FC4E"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_13_constants.bin": {
+        "bytes": 1776,
+        "sha256": "37A32DC8F045C3187B3841B7519156B58406B1422AADA4D3DA62B1F4570928A8"
+      },
+      "Ngu/ngu_luma_quality_med_first_layer_14_constants.bin": {
+        "bytes": 1776,
+        "sha256": "0124165E8B618B2B6DA5DFED85A447D20820D36934E3334B93189DCE26DA3C6E"
+      },
+      "Ngu/ngu_luma_quality_med_initial_constants.bin": {
+        "bytes": 512,
+        "sha256": "82DFBD51D2B62AEF7ADE1654459F2E2225704DC18503AF14CB7560868ABAB422"
+      },
+      "Ngu/ngu_luma_quality_med_second_layer_00_constants.bin": {
+        "bytes": 2368,
+        "sha256": "ED61834C25E57B13B22ADD7593E01362A7AD4F78EFCB153B949B4FE8B9D03ED2"
+      },
+      "Ngu/ngu_luma_quality_med_second_layer_01_constants.bin": {
+        "bytes": 2368,
+        "sha256": "75EA75885A12E566F8C83D803C347892EF05739CFE498B8E9408E0867F39AA06"
+      },
+      "Ngu/ngu_luma_quality_med_tail_x_constants.bin": {
+        "bytes": 32,
+        "sha256": "97FF80FBBA4C23CC310419D794C22EFF98AF07317EA69B0FE5C6244721DFDF42"
+      },
+      "Ngu/ngu_luma_quality_med_tail_y_constants.bin": {
+        "bytes": 32,
+        "sha256": "7E755E888C650C84AC8777945303ED94FDB0B531E935FD91E2B9FF0825B2A3ED"
+      },
+      "Ngu/ngu_luma_quality_med_upsample_0_constants.bin": {
+        "bytes": 3136,
+        "sha256": "13F6673CD4D9FCC78E7CD20BCCCDAE100C4C9FB726B719EDB07074568E7159E1"
+      },
+      "Ngu/ngu_luma_quality_med_upsample_1_constants.bin": {
+        "bytes": 3136,
+        "sha256": "4CDDBE3B2B3064E597FCF7FF2C4C389AFED2BEAE85917F588C29540D5A7F300C"
+      }
+    },
+    "events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v4\\med\\events.log",
+    "tail_events": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v10\\med\\events.log"
+  },
+  "quality_tail_tables": {
+    "assets": {
+      "Ngu/ngu_luma_quality_tail_x_table.bin": {
+        "bytes": 184320,
+        "sha256": "CD67902091D09FDDDF12511F1EB97A078777FF1A9AF4DCE91A536901D7ECE1F0"
+      },
+      "Ngu/ngu_luma_quality_tail_y_table.bin": {
+        "bytes": 103680,
+        "sha256": "0ECA43FDABD064D914D9F0D938A95ABFC3CA3B90D585B07EA6C23DE7D284422E"
+      }
+    },
+    "source": "E:\\OpenMadVR\\artifacts_20261031\\openmadvr\\ngu_chroma_capture\\luma_quality_targets_720_v11\\low"
+  }
+}

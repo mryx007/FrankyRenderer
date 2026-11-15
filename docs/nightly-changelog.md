@@ -1,3 +1,6 @@
+- Stable 1.4.2: added target-exact Image NGU Sharp Low/Medium/High for the
+  observed 1280x720 SDR 4x path, exposed independent Image and Chroma quality
+  selectors, and retained VeryHigh for the existing 1080p/HDR/Double paths.
 - Stable 1.4.1: fixed native 3840x2160 playback falling through to a black frame when NGU upscaling is not needed, and kept native NGU out of the libplacebo Custom Filter editor so selecting it cannot create an invalid `custom(ngu_sharp)` preset.
 - Stable 1.4.0: added the NGU Sharp VeryHigh-image / Low-Medium-High-VeryHigh-chroma all-quality path for 1280x720 SDR NV12, with byte-exact `PS_4576` source and packaged DirectShow handoffs; restored the shared high-bit VeryHigh slots used by the P016 720p Double gate and kept unobserved all-quality geometries fail-closed.
 - Stable 1.3.0: added the native NGU Sharp VeryHigh scaler peer with SuperChromaRes strength 3, P016 720p Double, observed P010 SDR/HDR source domains, shared arbitrary-window handling, and exact NGU-boundary verification.
