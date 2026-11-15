@@ -293,6 +293,25 @@ int main()
             Require(!SettingsStore::ReplaceAll("[FrankyRenderer]\r\nStorage=2\r\n"), "newer layout is refused");
         }
 
+        // A file copied in (Import Settings.cmd) while old settings are still in
+        // the registry: they go to the backup, so deleting the file gives the
+        // defaults.
+        {
+            SettingsStore::Flush();
+            const auto copied = (folder / L"Copied" / L"Settings.ini").wstring();
+            std::filesystem::create_directories(folder / L"Copied");
+            WriteText(copied, ReadText(ini));
+            const DWORD left = 1;
+            RegSetKeyValueW(
+                HKEY_CURRENT_USER, (root + L"\\Displays\\" + display).c_str(), L"Left", REG_DWORD, &left, 4);
+            SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_INI", copied.c_str());
+            Later();
+            Require(LoadSettings(display).brightness == .5f, "copied file is read");
+            Require(!RegistryKey(root + L"\\Displays") &&
+                        RegistryValue(root + L".Backup\\Displays\\" + display, L"Left"),
+                    "registry settings left beside a copied file are moved to the backup");
+        }
+
         // Without a place for the file, changes go to the registry.
         SettingsStore::Flush();
         std::filesystem::remove(ini);
@@ -311,7 +330,7 @@ int main()
         puts(
             "PASS settings file: registry takeover with backup, crash notes kept, readable values and blocks, "
             "earlier hex layout converted, grouped writes, "
-            "hand edits, newer layout kept, delete gives defaults, profile lines, export and import of the file, registry "
+            "hand edits, newer layout kept, delete gives defaults, profile lines, export and import of the file, copied file, registry "
             "fallback");
     }
     catch (const std::exception& error)

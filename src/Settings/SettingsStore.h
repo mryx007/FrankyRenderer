@@ -852,6 +852,7 @@ struct State
     Node tree;
     std::vector<Op> pending; // in the tree, not yet in the file
     int batch = 0;
+    bool registryChecked = false; // registry settings left beside a file were moved away
 };
 
 inline State& Shared()
@@ -878,6 +879,7 @@ inline bool Refresh(State& s, bool force = false)
     {
         s.path = path;
         ++Generation;
+        s.registryChecked = false;
         s.ini = s.unreadable = false;
         s.tree = {};
         s.pending.clear();
@@ -919,6 +921,18 @@ inline bool Refresh(State& s, bool force = false)
     s.time = time;
     s.size = size;
     ++Generation;
+    // A file copied in before anything was saved (Import Settings.cmd): the
+    // registry settings left behind go to the backup, so deleting the file
+    // still gives the defaults.
+    if (!s.registryChecked)
+    {
+        s.registryChecked = true;
+        if (!RegistrySettings().Empty())
+        {
+            FileLock lock;
+            RetireRegistry();
+        }
+    }
     return true;
 }
 

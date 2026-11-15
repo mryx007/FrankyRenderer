@@ -72,7 +72,7 @@ def main(out=OUT, source=SOURCE):
         (out / old).unlink(missing_ok=True)
     verify_runtime(out)
 
-    for name in ("Install.cmd", "Uninstall.cmd"):
+    for name in ("Install.cmd", "Uninstall.cmd", "Import Settings.cmd", "Backup Settings.cmd"):
         shutil.copy2(ROOT / "Tools" / name, out / name)
     # The earlier PowerShell installer, when a stage is reused.
     (out / "setup.ps1").unlink(missing_ok=True)
@@ -86,6 +86,9 @@ def main(out=OUT, source=SOURCE):
         "exit code 0 means success.\n"
         "Settings are kept in %APPDATA%\\FrankyRenderer\\Settings.ini.\n"
         "Uninstall.cmd asks whether to delete them; with /s it keeps them.\n"
+        "Backup Settings.cmd saves them as Settings.ini in this folder (as administrator\n"
+        "when the folder is under Program Files); Import Settings.cmd makes a Settings.ini\n"
+        "in this folder the settings. Both take /s for player packages.\n"
         "No additional DV filter needs to be added in the player.\n"
         "Remove any previously configured Franky DV Filter from the player's preferred filters.\n\n"
         "Select FrankyRenderer in the player\'s video renderer settings.\n"

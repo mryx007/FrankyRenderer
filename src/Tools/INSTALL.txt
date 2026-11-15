@@ -10,6 +10,8 @@ Select FrankyRenderer in the player's video renderer settings.
 Run Uninstall.cmd the same way before moving or removing the installed folder.
 Player packages: Install.cmd /s and Uninstall.cmd /s run without messages;
 exit code 0 means success.
+Backup Settings.cmd saves the settings as Settings.ini in this folder;
+Import Settings.cmd makes a Settings.ini in this folder the settings.
 The original MPC Video Renderer may remain installed.
 Dolby Vision Profile 7 FEL/MEL processing is automatic; no additional filter is required.
 
