@@ -84,6 +84,12 @@ int main()
 {
     setvbuf(stdout, nullptr, _IONBF, 0);
     CheckGamma();
+    // DirectWrite keeps a few GDI objects once it is loaded; draw once first so
+    // only what each drawing leaves behind is counted.
+    {
+        StatisticsRasterizer warm;
+        Check(warm.Submit(L"warm up", 640, 360) && Wait(warm, 640).has_value(), "first drawing");
+    }
     const DWORD before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProcedure;
