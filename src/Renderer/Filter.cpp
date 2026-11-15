@@ -1600,12 +1600,22 @@ HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* star
     // DXGI queue, as render cost. It then drops samples half a duration late:
     // about 4 ms for Smooth Motion's display-rate outputs, which ordinary clock
     // jitter reaches. Present such samples; drop only when clearly behind.
+    //
+    // A video faster than the display chooses its frames first, so the
+    // frames between them count as skipped, not as late drops.
+    ComPtr<IMediaSample> fieldInterface;
+    sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
+    const auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
+    if (!(field && field->motion) && SkipForDisplay(sample))
+        return E_FAIL;
     const HRESULT hr = CBaseVideoRenderer::ShouldDrawSampleNow(sample, start, stop);
     REFERENCE_TIME now = 0;
     if (hr != E_FAIL || !m_pClock || FAILED(m_pClock->GetTime(&now)))
         return ScheduleOnRefresh(sample, start, stop, hr);
     const REFERENCE_TIME late = now - m_tStart - *start;
-    const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * (*stop - *start), 250000);
+    // A chosen frame stands for a whole refresh.
+    const REFERENCE_TIME shown = displayDue >= 0 ? std::llround(displayRefresh) : *stop - *start;
+    const REFERENCE_TIME limit = std::max<REFERENCE_TIME>(2 * std::max(*stop - *start, shown), 250000);
     if (late > limit)
         return ScheduleOnRefresh(sample, start, stop, hr);
     // The base class marked a drop; keep its next decision on the normal path.
@@ -1640,6 +1650,44 @@ bool Renderer::WaitForQpc(int64_t until, int64_t deadline)
         QueryPerformanceCounter(&now);
     } while (now.QuadPart < until);
     return true;
+}
+
+// A video faster than the display (120 fps on 60 Hz) can show one frame per
+// refresh. Choose them by time stamp, one refresh apart, so every refresh gets
+// a new frame. Left to lateness, the scheduler would sometimes drop two in a
+// row (a refresh repeats) and sometimes none (the queue backs up).
+bool Renderer::SkipForDisplay(IMediaSample* sample)
+{
+    REFERENCE_TIME begin = 0, end = 0;
+    int64_t syncQpc = 0;
+    uint32_t syncRefresh = 0;
+    double period = 0;
+    if (m_State != State_Running || FAILED(sample->GetTime(&begin, &end)) || end <= begin ||
+        !backend.VsyncGrid(syncQpc, syncRefresh, period))
+    {
+        displayDue = -1;
+        return false;
+    }
+    LARGE_INTEGER frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    const double refresh = period * 1e7 / frequency.QuadPart, duration = double(end - begin), at = double(begin);
+    displayRefresh = refresh;
+    if (duration > refresh * 0.95)
+    {
+        displayDue = -1;
+        return false;
+    }
+    // Start over after a seek, a restart or a gap in the stream.
+    if (displayDue < 0 || at < displayDue - 4 * refresh || at > displayDue + 4 * refresh)
+        displayDue = at;
+    if (at + duration / 2 < displayDue)
+    {
+        ++displaySkips;
+        backend.CountSkippedFrame();
+        return true;
+    }
+    displayDue = std::max(displayDue + refresh, at + refresh - duration / 2);
+    return false;
 }
 
 HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop, HRESULT decided)
@@ -1990,6 +2038,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
+    dropped = std::max(0, dropped - displaySkips); // skipped frames are counted apart
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
     // A refresh-locked tick that woke after its refresh would queue behind
     // the next ones; its refresh shows the previous picture anyway.
@@ -2408,7 +2457,9 @@ HRESULT Renderer::OnStartStreaming()
     dv.Resume();
     int rawDrops = 0;
     get_FramesDroppedInRenderer(&rawDrops);
-    backend.RestartDropMeasurement(rawDrops);
+    backend.RestartDropMeasurement(std::max(0, rawDrops - displaySkips));
+    displaySkips = 0;
+    displayDue = -1;
     return CBaseVideoRenderer::OnStartStreaming();
 }
 

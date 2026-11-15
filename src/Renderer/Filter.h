@@ -197,6 +197,10 @@ class Renderer final : public CBaseVideoRenderer,
     // state changes only request a fresh anchor.
     VsyncSlots vsyncSlots;
     std::atomic<bool> vsyncReanchor = true;
+    // Without Smooth Motion, a video faster than the display shows one frame
+    // per refresh: the stream time the next shown frame is due (-1: none yet).
+    double displayDue = -1, displayRefresh = 0; // 100 ns units
+    int displaySkips = 0;                       // in the current drop counter epoch
     uint64_t surplusTicks = 0;
     unsigned lateTicks = 0;
     HANDLE refreshTimer = nullptr;
@@ -322,6 +326,7 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
     bool WaitForQpc(int64_t until, int64_t deadline);
+    bool SkipForDisplay(IMediaSample* sample);
     void NewSegment(REFERENCE_TIME);
     void ToggleStatistics();
     // Runs a keyboard shortcut (Shortcuts::Action) on the window thread.

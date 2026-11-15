@@ -220,6 +220,8 @@ class PlaceboBackend
     // frame latency limit blocking Present.
     int PresentAheadCeiling() const;
     void RestartDropMeasurement(int rawBeforeReset);
+    // A frame left out because the video is faster than the display.
+    void CountSkippedFrame();
     MeasurementSnapshot Measurements() const;
     BlackBarStatus BlackBars() const;
     int OutputLevels() const;

@@ -292,7 +292,7 @@ struct PlaceboBackend::State
     uint64_t DropTotal()
     {
         std::lock_guard guard(dropsLock);
-        return drops.Real();
+        return drops.total;
     }
 
     uint64_t SkipTotal()
@@ -3454,9 +3454,15 @@ void PlaceboBackend::SetStatisticsInput(double fps, bool direct, int dropped)
     s.statisticsFps = fps;
     s.statisticsDirect = direct;
     s.statisticsDropped = dropped;
-    const double share = DropMeasurement::UnavoidableShare(fps, s.measuredPeriod > 0 ? 1e7 / s.measuredPeriod : 0);
     std::lock_guard dropGuard(s.dropsLock);
-    s.drops.Observe(dropped, share);
+    s.drops.Observe(dropped);
+}
+
+void PlaceboBackend::CountSkippedFrame()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.dropsLock);
+    s.drops.Skip();
 }
 
 void PlaceboBackend::RestartDropMeasurement(int rawBeforeReset)

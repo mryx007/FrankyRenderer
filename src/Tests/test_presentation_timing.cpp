@@ -90,28 +90,18 @@ int main()
     Require(drops.total == 16, "real scheduler drops remain independent of display timing");
     puts("PASS independent real drop counts preserved");
 
-    // 120 fps on 60 Hz: every second frame cannot be shown and counts as skipped,
-    // while drops beyond that stay visible as real ones.
+    // Frames skipped because the video is faster than the display are counted
+    // apart; the drop counter the renderer passes on already leaves them out.
     {
-        Require(DropMeasurement::UnavoidableShare(23.976, 60) == 0 && DropMeasurement::UnavoidableShare(60, 60) == 0,
-                "frames that fit the display are never skipped");
-        const double share = DropMeasurement::UnavoidableShare(119.904, 60.02);
         DropMeasurement fast;
-        int raw = 0;
         for (int frame = 0; frame < 1000; ++frame)
-            fast.Observe(++raw, share);
-        Require(fast.total == 1000 && fast.skipped >= 999 && fast.Real() <= 1,
-                "unavoidable drops of a faster video count as skipped");
-        raw += 4;
-        fast.Observe(raw, share);
-        Require(fast.Real() >= 2, "a burst of real drops is still counted");
-        DropMeasurement slow;
-        slow.Observe(5, DropMeasurement::UnavoidableShare(23.976, 60));
-        Require(slow.Real() == 5 && slow.skipped == 0, "drops of a slower video stay real");
+            fast.Skip();
+        fast.Observe(3);
+        Require(fast.skipped == 1000 && fast.total == 3, "skipped frames are no drops");
         fast.Reset();
         Require(fast.total == 0 && fast.skipped == 0, "reset clears skipped frames");
     }
-    puts("PASS 120 fps on 60 Hz: unavoidable drops skipped, real drops still counted");
+    puts("PASS skipped frames of a faster video counted apart from real drops");
 
     unsigned combinations = 0, injectedStalls = 0;
     constexpr double frequency = 10000000.;
