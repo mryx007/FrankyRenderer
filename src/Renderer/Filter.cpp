@@ -2026,7 +2026,9 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         {
             QueryPerformanceCounter(&after);
             QueryPerformanceFrequency(&frequency);
-            backend.ObserveClock((before.QuadPart + after.QuadPart) / 2, clock);
+            // A slow clock call (the audio renderer busy) gives an inexact pair.
+            if (after.QuadPart - before.QuadPart < frequency.QuadPart / 2000)
+                backend.ObserveClock((before.QuadPart + after.QuadPart) / 2, clock);
             const auto delta = static_cast<REFERENCE_TIME>(m_tStart) + start - clock;
             if (std::abs(static_cast<double>(delta)) < 60e7)
                 dueQpc = (before.QuadPart + after.QuadPart) / 2 +
@@ -2034,7 +2036,10 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         }
     }
     if (sample->IsDiscontinuity() == S_OK)
+    {
         backend.ResetPresentationMeasurement();
+        backend.ResetClockMeasurement();
+    }
     backend.SetPresentationTiming(
         dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
@@ -2459,6 +2464,7 @@ HRESULT Renderer::OnStartStreaming()
     int rawDrops = 0;
     get_FramesDroppedInRenderer(&rawDrops);
     backend.RestartDropMeasurement(std::max(0, rawDrops - displaySkips));
+    backend.ResetClockMeasurement();
     displaySkips = 0;
     displayDue = -1;
     return CBaseVideoRenderer::OnStartStreaming();
@@ -3133,7 +3139,9 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
 void Renderer::UpdateMotionSettings()
 {
     const auto effective = Effective(settings);
-    smoothEnabled = !!effective.smoothMotion;
+    // Switching Smooth Motion restarts the clock statistics.
+    if (smoothEnabled.exchange(!!effective.smoothMotion) != !!effective.smoothMotion)
+        backend.ResetClockMeasurement();
     presentAheadSetting = effective.presentAhead;
     motionRadius = BackendSettings(effective).motionRadius;
     motionLookahead = std::max(2, static_cast<int>(std::ceil(motionRadius.load())) + 1);

@@ -3449,6 +3449,12 @@ void PlaceboBackend::ObserveClock(int64_t qpc, int64_t clock)
     state->clockFit.Add(double(qpc) / double(frequency.QuadPart), double(clock) / 1e7);
 }
 
+void PlaceboBackend::ResetClockMeasurement()
+{
+    std::lock_guard guard(state->lock);
+    state->clockFit.Reset();
+}
+
 int64_t PlaceboBackend::ClockDeviationPpb() const
 {
     std::lock_guard guard(state->lock);

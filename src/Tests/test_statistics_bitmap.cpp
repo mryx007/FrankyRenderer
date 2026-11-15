@@ -30,6 +30,15 @@ static void CheckClock()
     Check(std::abs(fit.Deviation() - 1e-4) < 2e-6 && fit.Span() > 59, "clock deviation measured");
     fit.Add(500, 2000); // another clock
     Check(fit.Span() == 0, "a jump starts the measurement over");
+    // A 50 ms step of the clock in the middle (a flush or resynchronisation)
+    // must not tilt the result: the measurement starts over after it.
+    RateFit stepped;
+    for (int i = 0; i <= 30 * 120; ++i)
+    {
+        const double seconds = i / 30.0, step = seconds >= 60 ? 0.05 : 0;
+        stepped.Add(seconds, std::floor((seconds * (1 + 1e-5) + step) / 0.001) * 0.001);
+    }
+    Check(std::abs(stepped.Deviation() - 1e-5) < 2e-6 && stepped.Span() < 61, "a 50 ms step does not tilt the fit");
 
     RefreshFit display;
     for (int i = 0; i <= 24 * 20; ++i)

@@ -13,6 +13,8 @@ namespace ClockStatistics
 // of several milliseconds, a single pair of readings would be far too coarse.
 class RateFit
 {
+    static constexpr double StepSeconds = 0.03;
+
     double origin = 0, base = 0, n = 0, sx = 0, sz = 0, sxx = 0, sxz = 0, last = 0;
 
   public:
@@ -33,9 +35,23 @@ class RateFit
             origin = seconds;
             base = value;
         }
-        last = seconds;
         // The difference between both clocks against time; its slope is the deviation.
-        const double x = seconds - origin, z = (value - base) - x;
+        double x = seconds - origin, z = (value - base) - x;
+        // A step of the clock against the fitted line (a flush, a seek, an
+        // audio renderer that resynchronises) would tilt the line for a long
+        // time: start over from here. Ordinary readings stay within a few ms.
+        if (n >= 30)
+        {
+            const double slope = Deviation(), intercept = (sz - slope * sx) / n;
+            if (std::abs(z - (intercept + slope * x)) > StepSeconds)
+            {
+                Reset();
+                origin = seconds;
+                base = value;
+                x = z = 0;
+            }
+        }
+        last = seconds;
         n += 1;
         sx += x;
         sz += z;

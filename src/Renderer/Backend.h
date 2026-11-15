@@ -206,6 +206,7 @@ class PlaceboBackend
     // The reference clock against real time (QPC), for the statistics; the
     // deviation in parts per billion, INT64_MIN while still measuring.
     void ObserveClock(int64_t qpc, int64_t clock);
+    void ResetClockMeasurement();
     int64_t ClockDeviationPpb() const;
     void SetSourceCodec(const std::string& codec);
     // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
