@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-10 12:50+0000\n"
-"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-15 05:13+0000\n"
+"Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -14,7 +14,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.11.2.dev0\n"
+"X-Generator: Weblate 2026.12.dev0\n"
 
 #. Category
 #. Category heading
@@ -55,12 +55,12 @@ msgstr "最终输出纹理的精度。自动模式下跟随渲染器的输出选
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Auto (libplacebo)"
-msgstr "自动（libplacebo）"
+msgstr "自动 (libplacebo)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "8-bit Integer (SDR)"
-msgstr "8 位整数（SDR）"
+msgstr "8 位整数 (SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
@@ -170,21 +170,21 @@ msgstr ""
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Statistics in Video Area"
-msgstr "统计信息显示在画面内"
+msgstr "在视频区域内显示统计信息"
 
 #. Setting description (General > Image Analysis > Statistics in Video Area)
 msgid ""
 "Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr "Ctrl+J 统计信息和图像分析显示在画面上，而不是黑边中。"
+msgstr "在视频区域而非黑边中显示统计信息和图像分析。"
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
-msgstr "统计信息文字大小（%）"
+msgstr "统计信息字体大小 (%)"
 
 #. Setting description (General > Image Analysis > Statistics Text Size (%))
 msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
-msgstr "Ctrl+J 统计信息的大小。100 为自动大小。"
+msgstr "统计信息字体大小。100 为自动大小。"
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
@@ -234,7 +234,7 @@ msgstr ""
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
 msgid "Pause After Switching (seconds)"
-msgstr "切换后暂停时长（秒）"
+msgstr "切换后暂停时长 (秒)"
 
 #. Setting description (General > Display Mode > Pause After Switching (seconds))
 msgid "Pauses playback while the display resynchronises after a mode change."
@@ -315,7 +315,7 @@ msgstr "跳过清除画面周围的边框。那里可能残留旧像素。默认
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "Default (Off)"
-msgstr "默认（关闭）"
+msgstr "默认 (关闭)"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
@@ -403,13 +403,13 @@ msgstr "深色棋盘格的蓝色通道值。需配合\"棋盘格混合\"使用�
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Tile Size (pixels)"
-msgstr "方格大小（像素）"
+msgstr "方格大小 (像素)"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid ""
 "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to "
 "256."
-msgstr "输出画面中的棋盘格重复大小（像素）。默认值：32；手动范围：2 至 256。"
+msgstr "输出画面中的棋盘格重复大小 (像素)。默认值：32；手动范围：2 至 256。"
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
@@ -509,12 +509,12 @@ msgstr "语言"
 msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
-msgstr "此设置窗口的语言。自动：跟随 Windows；缺少翻译时显示英文。"
+msgstr "此设置窗口的语言。自动跟随 Windows；缺少的翻译显示为英文。"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "Automatic (Windows)"
-msgstr "自动（跟随 Windows）"
+msgstr "自动 (跟随 Windows)"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
@@ -589,7 +589,7 @@ msgstr "半径"
 
 #. Setting description (Processing > Debanding > Radius)
 msgid "Search radius in pixels."
-msgstr "搜索半径（像素）。"
+msgstr "搜索半径 (像素)。"
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
@@ -827,7 +827,7 @@ msgstr "检测到的最大黑边亮度，以解码后 SDR 白色的百分比表�
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Detection Stability (seconds)"
-msgstr "检测稳定性（秒）"
+msgstr "检测稳定性 (秒)"
 
 #. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
 msgid "Time required for a new detected bar layout to become stable."
@@ -962,13 +962,13 @@ msgstr "使用与放大器相同的滤镜"
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Box averaging (very fast)"
-msgstr "盒式平均（极快）"
+msgstr "盒式平均 (极快)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Hermite-weighted averaging (fast)"
-msgstr "Hermite 加权平均（快速）"
+msgstr "Hermite 加权平均 (快速)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -986,7 +986,7 @@ msgstr "Mitchell-Netravali 三次样条"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr "平面放大器（色度 / Alpha）"
+msgstr "平面放大器 (色度 / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
@@ -1001,7 +1001,7 @@ msgstr "使用对应的图像缩放滤镜。"
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr "平面缩小器（色度 / Alpha）"
+msgstr "平面缩小器 (色度 / Alpha)"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
@@ -1377,12 +1377,12 @@ msgstr "自定义：图像缩小器"
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
-msgstr "自定义：平面放大器（色度 / Alpha）"
+msgstr "自定义：平面放大器 (色度 / Alpha)"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Downscaler (Chroma / Alpha)"
-msgstr "自定义：平面缩小器（色度 / Alpha）"
+msgstr "自定义：平面缩小器 (色度 / Alpha)"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
@@ -1463,7 +1463,7 @@ msgstr "更改画面的色调响应。1 保留原始伽马。"
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Hue (degrees)"
-msgstr "色相（度）"
+msgstr "色相 (度)"
 
 #. Setting description (Color > Picture Controls > Hue (degrees))
 msgid "Rotate chroma hue. 0 preserves the original colors."
@@ -1472,13 +1472,13 @@ msgstr "旋转色度色相。0 保留原始颜色。"
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Temperature (K)"
-msgstr "色温（K）"
+msgstr "色温 (K)"
 
 #. Setting description (Color > Picture Controls > Temperature (K))
 msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
-msgstr "调节白平衡（偏暖至中性）。6500 K 保留原始白平衡。"
+msgstr "调节白平衡 (偏暖至中性)。6500 K 保留原始白平衡。"
 
 #. Section heading (Color)
 #. Section heading (Profiles)
@@ -1520,12 +1520,12 @@ msgstr "BT.2020"
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "DCI-P3 (DCI white)"
-msgstr "DCI-P3（DCI 白点）"
+msgstr "DCI-P3 (DCI 白点)"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "P3-D65 (Display P3)"
-msgstr "P3-D65（Display P3）"
+msgstr "P3-D65 (Display P3)"
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
@@ -1560,7 +1560,7 @@ msgid ""
 "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
 "infinite (OLED), where BT.1886 equals 2.40."
 msgstr ""
-"用于 BT.1886：显示器测得的对比度，例如 1000 表示 1000:1。0 表示无限（OLED），"
+"用于 BT.1886：显示器测得的对比度，例如 1000 表示 1000:1。0 表示无限 (OLED)，"
 "此时 BT.1886 等同于 2.40。"
 
 #. Setting name (Color > Display)
@@ -1625,7 +1625,7 @@ msgstr "感知"
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "3D LUT"
-msgstr "3D LUT（三维查找表）"
+msgstr "3D LUT"
 
 #. Setting name (Color > 3D LUT)
 msgid "LUT File"
@@ -1674,7 +1674,7 @@ msgstr ""
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Default (SDR Calibration)"
-msgstr "默认（SDR 校准）"
+msgstr "默认 (SDR 校准)"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
@@ -1792,20 +1792,20 @@ msgstr "开启/关闭"
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
-msgstr "HDR 目标峰值（0 = 自动）"
+msgstr "HDR 目标峰值 (0 = 自动)"
 
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid ""
 "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
 "reports; on some laptops it follows brightness."
 msgstr ""
-"“映射到显示器峰值”使用的峰值亮度（尼特）。0 使用 Windows 报告的值，部分笔记本"
+"“映射到显示器峰值”使用的峰值亮度 (尼特)。0 使用 Windows 报告的值，部分笔记本"
 "会随亮度变化。"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "SDR Target Brightness (nits)"
-msgstr "SDR 目标亮度（尼特）"
+msgstr "SDR 目标亮度 (尼特)"
 
 #. Setting description (HDR > HDR Output > SDR Target Brightness (nits))
 msgid ""
@@ -1828,7 +1828,7 @@ msgstr "将源亮度压缩至输出范围。下方显示算法相关控件。"
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 msgid "Auto (Metadata)"
-msgstr "自动（元数据）"
+msgstr "自动 (元数据)"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
@@ -1899,7 +1899,7 @@ msgstr "将源颜色映射到输出显示器支持的色域。"
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Default (libplacebo)"
-msgstr "默认（libplacebo）"
+msgstr "默认 (libplacebo)"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
@@ -2044,7 +2044,7 @@ msgstr "膝点最小值"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Minimum)
 msgid "Lower bound for the adaptive knee, in PQ-normalized space."
-msgstr "自适应膝点下限（PQ 归一化空间）。"
+msgstr "自适应膝点下限 (PQ 归一化空间)。"
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
@@ -2053,7 +2053,7 @@ msgstr "膝点最大值"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Maximum)
 msgid "Upper bound for the adaptive knee, in PQ-normalized space."
-msgstr "自适应膝点的上限（PQ 归一化空间）。"
+msgstr "自适应膝点的上限 (PQ 归一化空间)。"
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
@@ -2294,7 +2294,7 @@ msgstr "可视化左边缘"
 #. Setting description (HDR > Mapping Visualization > Visualization Left)
 msgid ""
 "Left edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr "可视化的左边缘（归一化输出坐标，0–1）。"
+msgstr "可视化的左边缘 (归一化输出坐标，0–1)。"
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
@@ -2304,7 +2304,7 @@ msgstr "可视化上边缘"
 #. Setting description (HDR > Mapping Visualization > Visualization Top)
 msgid ""
 "Top edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr "可视化上边缘（归一化输出坐标，0–1）。"
+msgstr "可视化上边缘 (归一化输出坐标，0–1)。"
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
@@ -2314,7 +2314,7 @@ msgstr "可视化右边缘"
 #. Setting description (HDR > Mapping Visualization > Visualization Right)
 msgid ""
 "Right edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr "可视化右边缘（归一化输出坐标，0–1）。"
+msgstr "可视化右边缘 (归一化输出坐标，0–1)。"
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
@@ -2324,12 +2324,12 @@ msgstr "可视化下边缘"
 #. Setting description (HDR > Mapping Visualization > Visualization Bottom)
 msgid ""
 "Bottom edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr "可视化的下边缘（归一化输出坐标，0–1）。"
+msgstr "可视化的下边缘 (归一化输出坐标，0–1)。"
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Hue (radians)"
-msgstr "可视化色相（弧度）"
+msgstr "可视化色相 (弧度)"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Hue (radians))
 msgid "Gamut visualization hue slice, from -pi to pi."
@@ -2338,7 +2338,7 @@ msgstr "色域可视化的色相切片，范围为 -π 到 π。"
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Rotation (radians)"
-msgstr "可视化旋转（弧度）"
+msgstr "可视化旋转 (弧度)"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Rotation (radians))
 msgid "Gamut visualization angle, from 0 to pi/2."
@@ -3107,7 +3107,7 @@ msgstr "调整此着色器的平均阈值。默认保留着色器作者的设定
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Maximum Threshold (THR_MAX)"
-msgstr "最大阈值（THR_MAX）"
+msgstr "最大阈值 (THR_MAX)"
 
 #. Setting description (Shaders > neo-f3kdb > Maximum Threshold (THR_MAX))
 msgid ""
@@ -3308,7 +3308,7 @@ msgstr "细化图像缩小。需要较小的输出尺寸；与 Mitchell 缩小�
 #. Setting name (Shaders > SSimDownscaler)
 #. Setting name (Shortcuts > )
 msgid "Oversharp (THR)"
-msgstr "过度锐化（THR）"
+msgstr "过度锐化 (THR)"
 
 #. Setting description (Shaders > SSimDownscaler > Oversharp (THR))
 msgid "Extra sharpening on top of SSIM. 0 is the author's default."
@@ -3380,7 +3380,7 @@ msgstr "显示器名称"
 #. Input error (Profiles > Display > Display Name)
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a display name (1 to 80 characters)."
-msgstr "输入显示器名称（1 到 80 个字符）。"
+msgstr "输入显示器名称 (1 到 80 个字符)。"
 
 #. Section heading (Profiles)
 msgid "Settings File"
@@ -3432,7 +3432,7 @@ msgstr "最多 60 个字符。"
 
 #. Input error (Profiles > Profile > Name)
 msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr "请输入一个未被使用的配置文件名称（1 到 60 个字符）。"
+msgstr "请输入一个未被使用的配置文件名称 (1 到 60 个字符)。"
 
 #. Setting name (Profiles > Folders)
 msgid "Add Folder"
@@ -3885,11 +3885,11 @@ msgstr "为本机选取最佳设置。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: %s (%.1f of %.1f ms)"
-msgstr "实测：%s（%.1f/%.1f 毫秒）"
+msgstr "实测：%s (%.1f/%.1f 毫秒)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: same as %s (%.1f of %.1f ms)"
-msgstr "实测：与 %s 相同（%.1f/%.1f 毫秒）"
+msgstr "实测：与 %s 相同 (%.1f/%.1f 毫秒)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not measure this display."
