@@ -83,23 +83,55 @@ int wmain()
         const auto empty = Parse(L"New", "[Renderer]\r\nsmoothMotion=1\r\n");
         Require(empty.folders.empty() && !Match({empty}, L"D:\\Anime\\x.mkv"), "Profile without folders matched");
 
-        // Save and load keep folder spelling, displays, overrides and the name.
+        // Save and load keep folder spelling, displays, overrides and the name,
+        // in the settings file. Its own registry key and file, never the user's.
         wchar_t temp[MAX_PATH] = {};
         GetTempPathW(MAX_PATH, temp);
-        const auto directory = std::wstring(temp) + L"FrankyProfilesTest" + std::to_wstring(GetCurrentProcessId());
-        Require(Save(fourK, directory) && Save(anime, directory), "Profile was not saved");
-        const auto loaded = Load(directory);
-        std::filesystem::remove_all(directory);
-        Require(loaded.size() == 2 && loaded[0].name == L"Anime", "Saved profiles were not loaded in order");
+        const auto id = std::to_wstring(GetCurrentProcessId());
+        const auto root = L"Software\\FrankyProfilesTest" + id;
+        const auto folder = std::wstring(temp) + L"FrankyProfilesTest" + id;
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", root.c_str());
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_INI", (folder + L"\\Settings.ini").c_str());
+        // A profile file of an earlier version is taken over and removed.
+        std::filesystem::create_directories(folder + L"\\Profiles");
+        std::ofstream(folder + L"\\Profiles\\Old.ini", std::ios::binary)
+            << "[Profile]\r\nfolders=\"F:\\Old\"\r\nmonitors=\"\"\r\n[Renderer]\r\nsmoothMotion=1\r\n";
+        Require(Save(fourK) && Save(anime), "Profile was not saved");
+        auto loaded = Load();
+        Require(loaded.size() == 3 && loaded[0].name == L"Anime" && loaded[1].name == L"Anime 4K" &&
+                    loaded[2].name == L"Old",
+                "Saved profiles were not loaded in order");
         Require(loaded[0].folders == anime.folders && loaded[1].monitors == fourK.monitors, "Lists changed");
         Require(loaded[0].overrides == anime.overrides, "Overrides changed");
         Require(loaded[0].folders[0] == L"D:\\Anime", "Folder was not kept as written");
+        Require(loaded[2].folders == std::vector<std::wstring>{L"F:\\Old"} && loaded[2].overrides.size() == 1 &&
+                    !std::filesystem::exists(folder + L"\\Profiles"),
+                "An earlier profile file was not taken over");
+        SettingsStore::Flush();
+        std::ifstream file(folder + L"\\Settings.ini", std::ios::binary);
+        const std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        file.close();
+        Require(text.find("[Settings\\Profiles\\Anime]") != text.npos &&
+                    text.find("Renderer.smoothMotion=1") != text.npos &&
+                    text.find("Folders=\"D:\\\\Anime;") != text.npos,
+                "Profiles are not readable in the settings file");
+        // A cancelled menu puts the profiles back as they were.
+        const auto opening = Capture();
+        Require(Remove(L"Old") && Load().size() == 2, "Profile was not removed");
+        Restore(opening);
+        Require(Load().size() == 3 && Find(Load(), L"Old"), "Profiles were not put back");
+        Restore({});
+        Require(Load().empty(), "Profiles were not cleared");
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_INI", nullptr);
+        RegDeleteTreeW(HKEY_CURRENT_USER, root.c_str());
+        std::filesystem::remove_all(folder);
         puts("PASS content profiles: folders, closest folder wins, sibling prefix, case, displays, folder owner, "
-             "menu preview, differences, reset to Default, invalid profile ignored, empty profile, save and load");
+             "menu preview, differences, reset to Default, invalid profile ignored, empty profile, save and load in "
+             "Settings.ini, earlier files taken over, put back after Cancel");
 
         // LUT from Video Folder: the video's name wins, else the only .cube file.
         {
-            const auto folder = std::wstring(temp) + L"FrankyFolderLutTest" + std::to_wstring(GetCurrentProcessId());
+            const auto folder = std::wstring(temp) + L"FrankyFolderLutTest" + id;
             std::filesystem::create_directories(folder);
             const auto touch = [&](const wchar_t* name) { std::ofstream(folder + L"\\" + name) << "LUT_3D_SIZE 2\n"; };
             const auto video = folder + L"\\Film.mkv";

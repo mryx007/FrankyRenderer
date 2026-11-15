@@ -3939,3 +3939,15 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "All settings exported."
+msgstr "已导出全部设置。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "All settings imported."
+msgstr "已导入全部设置。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
+msgstr "用此文件中的设置替换全部设置？"

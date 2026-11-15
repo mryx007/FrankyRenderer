@@ -568,24 +568,24 @@ int wmain(int argc, wchar_t** argv)
     for (int i = 1; i + 1 < argc; ++i)
         if (!wcscmp(argv[i], L"--dll"))
             path = argv[++i];
-    // Profiles live under APPDATA: use an empty folder instead of the user's.
+    // Other files stay under an empty APPDATA instead of the user's.
     wchar_t temp[MAX_PATH] = {};
     GetTempPathW(MAX_PATH, temp);
     const auto appData = std::wstring(temp) + L"FrankyPageTest" + std::to_wstring(GetCurrentProcessId());
     SetEnvironmentVariableW(L"APPDATA", appData.c_str());
-    const auto profiles = std::filesystem::path(appData) / L"FrankyRenderer" / L"Profiles";
-    static constexpr const char* AnimeProfile = "[Profile]\r\nfolders=\"D:\\Anime\"\r\n";
-    const auto writeFile = [](const std::filesystem::path& file, const char* text)
-    { std::ofstream(file, std::ios::binary | std::ios::trunc) << text; };
-    const auto readFile = [](const std::filesystem::path& file)
+    // Content profiles live in the settings (the runner's own registry key).
+    const auto profiles = SettingsStore::Root() + L"\\Profiles";
+    const auto text = [](const std::wstring& value)
     {
-        std::ifstream in(file, std::ios::binary);
-        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const auto bytes = reinterpret_cast<const BYTE*>(value.c_str());
+        return SettingsStore::Value{REG_SZ, std::vector<BYTE>(bytes, bytes + (value.size() + 1) * sizeof(wchar_t))};
     };
+    SettingsStore::Node animeProfile;
+    animeProfile.keys[L"Anime"].values[L"Folders"] = text(L"D:\\Anime");
+    animeProfile.keys[L"Anime"].values[L"Monitors"] = text(L"");
     for (int repeat = 0; repeat < 3; repeat++)
     {
-        std::filesystem::create_directories(profiles);
-        writeFile(profiles / L"Anime.ini", AnimeProfile);
+        SettingsStore::ReplaceSubtree(profiles, animeProfile);
         HMODULE dll =
             LoadLibraryExW(path.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!dll)
@@ -646,9 +646,13 @@ int wmain(int argc, wchar_t** argv)
         auto changed = mock->settings;
         changed.brightness = .125f;
         Check(mock->SetSettings(&changed), "simulate settings preview through interface");
-        writeFile(profiles / L"Anime.ini", "[Profile]\r\nfolders=\"\"\r\n[Renderer]\r\nsaturation=1.5\r\n");
-        writeFile(profiles / L"New.ini", "[Profile]\r\n");
-        writeFile(profiles / L"Selected.txt", "Anime");
+        auto changedProfiles = animeProfile;
+        changedProfiles.keys[L"Anime"].values[L"Folders"] = text(L"");
+        const std::string saturation = "Renderer.saturation=1.5\n";
+        changedProfiles.keys[L"Anime"].values[L"Overrides"] = {REG_BINARY,
+                                                               std::vector<BYTE>(saturation.begin(), saturation.end())};
+        changedProfiles.keys[L"New"].values[L"Folders"] = text(L"");
+        SettingsStore::ReplaceSubtree(profiles, changedProfiles);
         Check(page->Deactivate(), "deactivate");
         DestroyWindow(parent);
         if (mock->settings.brightness != 0 || mock->writes < 2)
@@ -656,8 +660,9 @@ int wmain(int argc, wchar_t** argv)
             puts("FAIL cancel restoration");
             return 5;
         }
-        if (readFile(profiles / L"Anime.ini") != AnimeProfile || std::filesystem::exists(profiles / L"New.ini") ||
-            std::filesystem::exists(profiles / L"Selected.txt"))
+        const auto restored = SettingsStore::Subtree(profiles);
+        if (restored.keys.size() != 1 || !restored.keys.count(L"Anime") ||
+            restored.keys.at(L"Anime").values != animeProfile.keys.at(L"Anime").values)
         {
             puts("FAIL cancel restores content profiles");
             return 25;

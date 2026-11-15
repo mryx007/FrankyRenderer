@@ -3,6 +3,8 @@
 #include "Settings/QualityPresets.h"
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 static void Require(bool ok, const char* label)
 {
@@ -104,14 +106,26 @@ int main()
     {
         // Own values replaced by a preset come back with Custom, and only the
         // settings the presets cover change.
+        // Its own registry key and settings file, never the user's.
+        const auto id = std::to_wstring(GetCurrentProcessId());
+        const auto root = L"Software\\FrankyCustomQualityTest" + id;
         wchar_t temp[MAX_PATH] = {};
         GetTempPathW(MAX_PATH, temp);
-        const auto folder = std::wstring(temp) + L"FrankyCustomQuality" + std::to_wstring(GetCurrentProcessId());
-        SetEnvironmentVariableW(L"APPDATA", folder.c_str());
+        const auto folder = std::filesystem::path(temp) / (L"FrankyCustomQualityTest" + id);
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", root.c_str());
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_INI", (folder / L"Settings.ini").c_str());
         PlaceboSettings own;
         strcpy_s(own.scaling.filters[0].filter, "ewa_lanczos");
         own.deband = TRUE;
         own.peakPercentile = 99.5f;
+        // A file of an earlier version is taken over, then removed.
+        std::filesystem::create_directories(folder / L"CustomQuality");
+        std::ofstream(folder / L"CustomQuality" / L"earlier.ini", std::ios::binary)
+            << SettingsIni::Serialize(own) << "\r\n[Renderer]\r\ndisplayGamma=0\r\n"; // an entry no longer known
+        PlaceboSettings earlier;
+        Require(LoadCustomQuality(L"earlier", earlier) && earlier.deband && earlier.peakPercentile == 99.5f &&
+                    !std::filesystem::exists(folder / L"CustomQuality"),
+                "an earlier Custom file is taken over");
         Require(SaveCustomQuality(L"display", own), "own values saved");
         PlaceboSettings current;
         ApplyQualityPreset(current, 0);
@@ -124,7 +138,17 @@ int main()
         Require(!strcmp(current.scaling.filters[0].filter, "ewa_lanczos") && current.deband &&
                     current.peakPercentile == 99.5f && current.saturation == 1.2f,
                 "Custom restores the quality settings and keeps the others");
-        std::filesystem::remove_all(folder);
+        // Only the quality settings are kept.
+        PlaceboSettings other = own;
+        other.saturation = 1.5f;
+        Require(SaveCustomQuality(L"display", other) && LoadCustomQuality(L"display", saved) &&
+                    saved.saturation == PlaceboSettings{}.saturation && saved.peakPercentile == 99.5f,
+                "Custom keeps settings other than quality");
+        SettingsStore::Flush();
+        SetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_INI", nullptr);
+        RegDeleteTreeW(HKEY_CURRENT_USER, root.c_str());
+        std::error_code error;
+        std::filesystem::remove_all(folder, error);
     }
     puts(
         "PASS quality presets: libplacebo parity, recognition, origin shown until any change, Measured, INI round trip, "

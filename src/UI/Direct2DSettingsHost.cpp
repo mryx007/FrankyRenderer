@@ -123,8 +123,9 @@ static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
                                                L"Select a 3D LUT file first.",
                                                L"Value or combination is outside the supported range.",
                                                L"Could not open the INI file dialog.",
-                                               L"All display profiles exported.",
-                                               L"INI backup exported.",
+                                               L"All settings exported.",
+                                               L"All settings imported.",
+                                               L"Replace all settings with the ones in this file?",
                                                L"All display profiles imported.",
                                                L"INI imported. Select Save to keep it.",
                                                L"INI settings imported.",
@@ -2899,7 +2900,7 @@ void Direct2DHostWindow::TransferIni(bool importing)
     EndEdit();
     if (m_pending)
         Preview();
-    wchar_t path[32768] = L"FrankyRenderer.ini";
+    wchar_t path[32768] = L"Settings.ini";
     OPENFILENAMEW dialog = {sizeof(dialog)};
     dialog.hwndOwner = m_hwnd;
     dialog.lpstrFile = path;
@@ -2924,18 +2925,40 @@ void Direct2DHostWindow::TransferIni(bool importing)
     {
         if (!importing)
         {
-            if (m_displayProfiles)
+            // An export is the settings file itself (Settings.ini).
+            if (SUCCEEDED(SettingsIni::ExportText(path, SettingsStore::Text(), m_error)))
+                m_error = L"All settings exported.";
+        }
+        else if (const auto text = SettingsBackup::ReadFile(path); SettingsStore::IsSettingsText(text))
+        {
+            if (MessageBoxW(m_hwnd,
+                            Tr(L"Replace all settings with the ones in this file?").c_str(),
+                            Tr(L"Import Settings").c_str(),
+                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES ||
+                !*alive)
+                return;
+            if (!SettingsStore::ReplaceAll(text))
+                throw std::runtime_error("Could not apply INI settings. Check external ICC and LUT files.");
+            // The menu, its theme and shortcuts, and the playing video follow.
+            LoadMenuAppearance();
+            LoadMenuLanguage();
+            ++g_menuPaletteVersion;
+            Shortcuts::g_cachedAt = Shortcuts::g_customAt = 0;
+            ++ProfilePage::g_version;
+            const std::wstring selected = m_pSettings->displayProfile;
+            m_devices = DisplayProfiles::All();
+            if (DisplayProfiles::ValidId(selected))
             {
-                const auto text = SettingsBackup::Serialize(SettingsBackup::Capture(m_base));
-                if (SUCCEEDED(SettingsIni::ExportText(path, text, m_error)))
-                    m_error = L"All display profiles exported.";
+                const auto imported = LoadSettings(selected);
+                if (m_preview)
+                    m_preview(imported);
+                AdoptDisplayProfile(selected);
             }
-            else if (SUCCEEDED(SettingsIni::Export(path, m_base, m_error)))
-                m_error = L"INI backup exported.";
+            InitPages();
+            m_error = L"All settings imported.";
         }
         else
         {
-            const auto text = SettingsBackup::ReadFile(path);
             const auto entries = SettingsIni::ReadEntries(text, 16 * 1024 * 1024, 131072);
             const auto version = entries.find({"FrankyRenderer", "FormatVersion"});
             HRESULT hr;

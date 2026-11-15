@@ -263,6 +263,36 @@ int main()
                     "earlier file layout is written readable");
         }
 
+        // Profile values are plain lines; an export is the file itself and an
+        // import of it replaces every setting.
+        {
+            const std::string overrides = "Renderer.smoothMotion=1\nScaling.upscaler.filter=\"ewa_lanczos\"\n";
+            Require(
+                SettingsStore::Put(
+                    root + L"\\Profiles\\Anime", L"Overrides", REG_BINARY, overrides.data(), DWORD(overrides.size())) ==
+                        ERROR_SUCCESS &&
+                    SettingsStore::Flush(),
+                "profile values");
+            const auto file = ReadText(ini);
+            Require(file.find("[Settings\\Profiles\\Anime]\r\nRenderer.smoothMotion=1\r\nScaling.upscaler.filter="
+                              "\"ewa_lanczos\"\r\n") != file.npos &&
+                        file.find("Overrides") == file.npos && file.find("hex") == file.npos,
+                    "profile values are written as lines");
+            const auto exported = SettingsStore::Text();
+            Require(exported == file && SettingsStore::IsSettingsText(exported), "export is the settings file");
+            Require(!SettingsStore::IsSettingsText("[FrankyRenderer]\r\nFormatVersion=2\r\n"),
+                    "an INI backup is not a settings file");
+            auto imported = exported;
+            imported.replace(imported.find("Brightness=0.75"), 15, "Brightness=0.5");
+            const DWORD one = 1;
+            Require(SettingsStore::Put(root + L"\\Extra", L"Gone", REG_DWORD, &one, 4) == ERROR_SUCCESS, "extra key");
+            Require(SettingsStore::ReplaceAll(imported) && SettingsStore::Flush(), "import replaces the settings");
+            Require(LoadSettings(display).brightness == .5f && !SettingsStore::Exists(root + L"\\Extra") &&
+                        SettingsStore::Exists(root + L"\\Profiles\\Anime") && ReadText(ini) == imported,
+                    "imported file is the settings file");
+            Require(!SettingsStore::ReplaceAll("[FrankyRenderer]\r\nStorage=2\r\n"), "newer layout is refused");
+        }
+
         // Without a place for the file, changes go to the registry.
         SettingsStore::Flush();
         std::filesystem::remove(ini);
@@ -278,9 +308,11 @@ int main()
                     RegistryKey(root + L"\\Displays\\" + display),
                 "registry fallback");
 
-        puts("PASS settings file: registry takeover with backup, crash notes kept, readable values and blocks, "
-             "earlier hex layout converted, grouped writes, "
-             "hand edits, newer layout kept, delete gives defaults, registry fallback");
+        puts(
+            "PASS settings file: registry takeover with backup, crash notes kept, readable values and blocks, "
+            "earlier hex layout converted, grouped writes, "
+            "hand edits, newer layout kept, delete gives defaults, profile lines, export and import of the file, registry "
+            "fallback");
     }
     catch (const std::exception& error)
     {

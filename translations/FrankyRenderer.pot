@@ -3542,11 +3542,15 @@ msgid "Could not open the INI file dialog."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
+msgid "All settings exported."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
+msgid "All settings imported."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders

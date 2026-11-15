@@ -321,6 +321,38 @@ inline Entries ReadEntries(const std::string& text, size_t limit = 1024 * 1024, 
     return entries;
 }
 
+// Entries as lines "Section.key=value", sorted by that text, for values kept
+// in the settings file (content profiles, Custom quality).
+inline std::string JoinEntries(const Entries& entries)
+{
+    std::map<std::string, std::string> lines;
+    for (const auto& [key, value] : entries)
+        lines[key.first + "." + key.second] = value;
+    std::string text;
+    for (const auto& [name, value] : lines)
+        text += name + "=" + value + "\n";
+    return text;
+}
+
+inline Entries SplitEntries(const std::string& text)
+{
+    Entries entries;
+    size_t at = 0;
+    while (at < text.size())
+    {
+        auto end = text.find('\n', at);
+        if (end == std::string::npos)
+            end = text.size();
+        const auto line = text.substr(at, end - at);
+        at = end + 1;
+        const auto equals = line.find('=');
+        const auto dot = equals == std::string::npos ? std::string::npos : line.rfind('.', equals);
+        if (dot != std::string::npos && dot)
+            entries[{line.substr(0, dot), line.substr(dot + 1, equals - dot - 1)}] = line.substr(equals + 1);
+    }
+    return entries;
+}
+
 inline PlaceboSettings Parse(const std::string& text)
 {
     auto entries = ReadEntries(text);
@@ -329,7 +361,8 @@ inline PlaceboSettings Parse(const std::string& text)
         throw std::runtime_error("Unsupported settings file version.");
     entries.erase(version);
     // Settings that no longer exist; older files still load.
-    entries.erase({"Renderer", "statisticsInVideo"});
+    for (const char* retired : {"statisticsInVideo", "displayGamma", "sdrGamma"})
+        entries.erase({"Renderer", retired});
     PlaceboSettings candidate;
     Visit(candidate,
           [&](const std::string& group, const std::string& name, auto& value)

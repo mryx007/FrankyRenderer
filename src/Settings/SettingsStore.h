@@ -394,11 +394,11 @@ inline bool ParseValue(const std::string& text, Value& value)
 // from the file keep their defaults. A field named ";" is a comment line.
 struct Codec
 {
-    std::wstring name; // the binary value, e.g. ScalingV1
-    std::string prefix;
-    size_t size = 0;
+    std::wstring name;                                   // the binary value, e.g. ScalingV1
+    std::string prefix;                                  // empty: every field name with a point, without prefix
+    size_t size = 0;                                     // 0: any size
     std::function<bool(const std::wstring& path)> where; // keys the value is found in
-    std::function<void(const BYTE* data, std::vector<std::pair<std::string, std::string>>& fields)> expand;
+    std::function<void(const std::vector<BYTE>& data, std::vector<std::pair<std::string, std::string>>& fields)> expand;
     std::function<void(const std::map<std::string, std::string>& fields, std::vector<BYTE>& data)> collapse;
     // Clears bytes no field holds (after the end of a text), before comparing.
     std::function<void(std::vector<BYTE>& data)> clean;
@@ -414,7 +414,7 @@ inline const Codec* CodecFor(const std::wstring& path, const std::wstring& name,
 {
     for (const auto& codec : Codecs())
         if (!_wcsicmp(codec.name.c_str(), name.c_str()) && value.type == REG_BINARY &&
-            value.data.size() == codec.size && codec.where(path))
+            (!codec.size || value.data.size() == codec.size) && codec.where(path))
             return &codec;
     return nullptr;
 }
@@ -443,7 +443,7 @@ inline void WriteNode(const Node& node, const std::wstring& path, std::string& o
         {
             // Only when the fields give back exactly the same bytes.
             std::vector<std::pair<std::string, std::string>> fields;
-            codec->expand(value.data.data(), fields);
+            codec->expand(value.data, fields);
             std::map<std::string, std::string> map;
             for (const auto& [field, text] : fields)
                 if (field != ";")
@@ -454,7 +454,9 @@ inline void WriteNode(const Node& node, const std::wstring& path, std::string& o
             if (back == cleaned)
             {
                 for (const auto& [field, text] : fields)
-                    out += field == ";" ? "; " + text + "\r\n" : codec->prefix + "." + field + "=" + text + "\r\n";
+                    out += field == ";"            ? "; " + text + "\r\n"
+                           : codec->prefix.empty() ? field + "=" + text + "\r\n"
+                                                   : codec->prefix + "." + field + "=" + text + "\r\n";
                 continue;
             }
         }
@@ -494,7 +496,7 @@ inline bool Parse(const std::string& text, Node& root)
         {
             Value value{REG_BINARY, {}};
             codec->collapse(fields, value.data);
-            if (value.data.size() == codec->size)
+            if (!codec->size || value.data.size() == codec->size)
                 section->values[codec->name] = std::move(value);
         }
         blocks.clear();
@@ -563,12 +565,14 @@ inline bool Parse(const std::string& text, Node& root)
             continue;
         const Codec* block = nullptr;
         for (const auto& codec : Codecs())
-            if (nameText.size() > codec.prefix.size() + 1 && nameText.starts_with(codec.prefix + ".") &&
+            if ((codec.prefix.empty()
+                     ? nameText.find('.') != nameText.npos
+                     : nameText.size() > codec.prefix.size() + 1 && nameText.starts_with(codec.prefix + ".")) &&
                 codec.where(sectionPath))
                 block = &codec;
         if (block)
         {
-            blocks[block][nameText.substr(block->prefix.size() + 1)] = valueText;
+            blocks[block][block->prefix.empty() ? nameText : nameText.substr(block->prefix.size() + 1)] = valueText;
             continue;
         }
         std::wstring name;
@@ -1281,5 +1285,100 @@ inline LONG Put(const std::wstring& path, const wchar_t* name, DWORD type, const
     if (!Relative(path, relative))
         return ERROR_INVALID_PARAMETER;
     return Key(relative).Set(name, type, data, bytes);
+}
+
+// A copy of a key with everything below it, e.g. to put it back later.
+inline Node Subtree(const std::wstring& path)
+{
+    std::wstring relative;
+    if (!Relative(path, relative))
+        return {};
+    auto& s = Shared();
+    std::lock_guard guard(s.lock);
+    FlushDue(s);
+    if (Refresh(s))
+    {
+        const Node* node = Find(s.tree, relative);
+        return node ? *node : Node{};
+    }
+    Node node;
+    HKEY key;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS)
+    {
+        ReadRegistry(key, node, relative.empty());
+        RegCloseKey(key);
+    }
+    return node;
+}
+
+inline void AddOps(const Node& node, const std::wstring& path, std::vector<Op>& ops)
+{
+    ops.push_back({OpKind::CreateKey, path, L"", {}});
+    for (const auto& [name, value] : node.values)
+        ops.push_back({OpKind::Set, path, name, value});
+    for (const auto& [name, child] : node.keys)
+        AddOps(child, path.empty() ? name : path + L"\\" + name, ops);
+}
+
+// Makes a key exactly the given copy (an empty copy removes it).
+inline LONG ReplaceSubtree(const std::wstring& path, const Node& node)
+{
+    std::wstring relative;
+    if (!Relative(path, relative) || relative.empty())
+        return ERROR_INVALID_PARAMETER;
+    Batch batch;
+    LONG result = Change({OpKind::DeleteTree, relative, L"", {}});
+    if (node.Empty())
+        return result;
+    std::vector<Op> ops;
+    AddOps(node, relative, ops);
+    for (const auto& op : ops)
+        if (result == ERROR_SUCCESS)
+            result = Change(op);
+    return result;
+}
+
+// Every setting in the layout of the settings file, for an export.
+inline std::string Text()
+{
+    auto& s = Shared();
+    std::lock_guard guard(s.lock);
+    FlushDue(s);
+    return Serialize(Refresh(s, true) ? s.tree : RegistrySettings());
+}
+
+// Whether the text is a whole settings file (an export of this layout).
+inline bool IsSettingsText(const std::string& text)
+{
+    Node node;
+    return text.find("[FrankyRenderer]") != text.npos && text.find("Storage=") != text.npos && Parse(text, node);
+}
+
+// Replaces every setting with those of a settings file text. The crash notes
+// in the registry stay.
+inline bool ReplaceAll(const std::string& text)
+{
+    Node node;
+    if (!IsSettingsText(text) || !Parse(text, node))
+        return false;
+    auto& s = Shared();
+    std::lock_guard guard(s.lock);
+    Refresh(s, true);
+    Batch batch;
+    // Everything at the root that is not in the new text goes; then the text.
+    const Node current = s.ini ? s.tree : RegistrySettings();
+    for (const auto& [name, child] : current.keys)
+        if (Change({OpKind::DeleteTree, name, L"", {}}) != ERROR_SUCCESS)
+            return false;
+    for (const auto& [name, value] : current.values)
+        if (Change({OpKind::DeleteValue, L"", name, {}}) != ERROR_SUCCESS)
+            return false;
+    std::vector<Op> ops;
+    AddOps(node, L"", ops);
+    for (const auto& op : ops)
+        if (Change(op) != ERROR_SUCCESS)
+            return false;
+    ++Generation;
+    return true;
 }
 } // namespace SettingsStore

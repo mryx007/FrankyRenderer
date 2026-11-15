@@ -4309,3 +4309,15 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#. Menu text; keep %d and %s placeholders
+msgid "All settings exported."
+msgstr "Alle Einstellungen exportiert."
+
+#. Menu text; keep %d and %s placeholders
+msgid "All settings imported."
+msgstr "Alle Einstellungen importiert."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
+msgstr "Alle Einstellungen durch die aus dieser Datei ersetzen?"

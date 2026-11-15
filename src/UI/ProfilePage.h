@@ -83,7 +83,7 @@ inline std::wstring UnusedName()
     }
 }
 
-// Renames a profile and its file; false for an invalid or used name.
+// Renames a profile; false for an invalid or used name.
 inline bool Rename(const std::wstring& from, const std::wstring& to)
 {
     const size_t index = Find(from);
@@ -95,12 +95,20 @@ inline bool Rename(const std::wstring& from, const std::wstring& to)
     const size_t other = Find(to);
     if (other < profiles.size() && other != index)
         return false;
-    const auto directory = ContentProfiles::Directory();
-    const auto oldFile = directory + L"\\" + from + L".ini", newFile = directory + L"\\" + to + L".ini";
-    if (!MoveFileExW(oldFile.c_str(), newFile.c_str(), 0) && _wcsicmp(oldFile.c_str(), newFile.c_str()))
-        return false;
-    profiles[index].name = to;
-    ContentProfiles::Save(profiles[index]);
+    // Its settings come from the store: other pages may have changed them.
+    auto renamed = profiles[index];
+    if (const auto* stored = ContentProfiles::Find(ContentProfiles::Load(), from))
+        renamed.overrides = stored->overrides;
+    renamed.name = to;
+    {
+        SettingsStore::Batch batch;
+        // Only the case changes: saving under the new name replaces it.
+        if (_wcsicmp(from.c_str(), to.c_str()) && !ContentProfiles::Remove(from))
+            return false;
+        if (!ContentProfiles::Save(renamed))
+            return false;
+    }
+    profiles[index] = renamed;
     // The menu keeps showing a renamed profile.
     g_renamedFrom = from;
     g_renamedTo = to;
@@ -157,7 +165,7 @@ inline void Create()
 // Deletes a profile; the host asks first in a dialog.
 inline void Delete(const std::wstring& name)
 {
-    DeleteFileW((ContentProfiles::Directory() + L"\\" + name + L".ini").c_str());
+    ContentProfiles::Remove(name);
     ++g_version;
 }
 

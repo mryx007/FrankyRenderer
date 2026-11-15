@@ -3,6 +3,7 @@
 // (see SettingsStore::Codec). The structures stay the in-memory and registry
 // form; only Settings.ini shows them field by field.
 #include "Settings/Settings.h"
+#include "Settings/SettingsIni.h"
 #include "Settings/SettingsStore.h"
 #include <charconv>
 #include <cstring>
@@ -162,10 +163,10 @@ inline SettingsStore::Codec Base(const wchar_t* name, const char* prefix, size_t
 template <class T> SettingsStore::Codec Simple(const wchar_t* name, const char* prefix, bool appearance)
 {
     auto codec = Base(name, prefix, sizeof(T), appearance);
-    codec.expand = [](const BYTE* data, Fields& fields)
+    codec.expand = [](const std::vector<BYTE>& data, Fields& fields)
     {
         T value;
-        memcpy(&value, data, sizeof(T));
+        memcpy(&value, data.data(), sizeof(T));
         VisitFields(value, Writer{fields});
     };
     codec.collapse = [](const Map& fields, std::vector<BYTE>& data)
@@ -190,10 +191,10 @@ template <class T> SettingsStore::Codec Simple(const wchar_t* name, const char* 
 inline SettingsStore::Codec Shaders()
 {
     auto codec = Base(L"UserShadersV4", "Shaders", sizeof(UserShaderSettings), false);
-    codec.expand = [](const BYTE* data, Fields& fields)
+    codec.expand = [](const std::vector<BYTE>& data, Fields& fields)
     {
         UserShaderSettings value;
-        memcpy(&value, data, sizeof(value));
+        memcpy(&value, data.data(), sizeof(value));
         std::string order;
         for (int i = 0; i < ShaderCount; ++i)
             order += (i ? "," : "") + std::to_string(value.order[i]);
@@ -252,6 +253,36 @@ inline SettingsStore::Codec Shaders()
     return codec;
 }
 
+// Content profiles and Custom quality: lines "Section.key=value" as in INI
+// backups (SettingsIni::JoinEntries), shown without a prefix.
+inline SettingsStore::Codec Overrides()
+{
+    SettingsStore::Codec codec;
+    codec.name = L"Overrides";
+    codec.where = [](const std::wstring& path)
+    {
+        for (const wchar_t* parent : {L"Profiles\\", L"CustomQuality\\"})
+            if (const size_t length = wcslen(parent); !_wcsnicmp(path.c_str(), parent, length) &&
+                                                      path.size() > length && path.find(L'\\', length) == path.npos)
+                return true;
+        return false;
+    };
+    codec.expand = [](const std::vector<BYTE>& data, Fields& fields)
+    {
+        for (const auto& [key, value] : SettingsIni::SplitEntries(std::string(data.begin(), data.end())))
+            fields.push_back({key.first + "." + key.second, value});
+    };
+    codec.collapse = [](const Map& fields, std::vector<BYTE>& data)
+    {
+        std::string text;
+        for (const auto& [field, value] : fields)
+            text += field + "=" + value + "\n";
+        data.assign(text.begin(), text.end());
+    };
+    codec.clean = [](std::vector<BYTE>&) {};
+    return codec;
+}
+
 inline void Register()
 {
     auto& codecs = SettingsStore::Codecs();
@@ -264,5 +295,6 @@ inline void Register()
     codecs.push_back(Simple<ScalingSettings>(L"ScalingV1", "Scaling", false));
     codecs.push_back(Shaders());
     codecs.push_back(Simple<SIZE>(L"WindowSize", "WindowSize", true));
+    codecs.push_back(Overrides());
 }
 } // namespace SettingsFileFields
