@@ -577,3 +577,20 @@ a GPU-only shader timing claim.
 
 Low/Medium/High remain experimental. Only the target-observed VeryHigh graphs
 are admitted; unsupported paths continue to fail closed.
+
+## Native-size fallback and settings placement (2026-11-15)
+
+E-175 closes the player-facing 4K black-frame defect. If `ngu_sharp` is
+selected for a source geometry outside the observed 1280x720/1920x1080 NGU
+inputs and the presentation target does not enlarge that source, the native
+hook stays inactive and the original shared `pl_frame` goes through the common
+Franky renderer. The fallback restores the configured libplacebo scaling and
+dither parameters. This is not a 4K NGU graph and does not admit unsupported
+enlargement.
+
+The same boundary keeps native NGU out of the libplacebo Custom Filter editor.
+It is a renderer peer, not a filter preset with a synthetic kernel/window
+contract. E-005/E-017/E-021 show that target anti-ringing selection belongs to
+the NGU image-upscaling setting area. The exact strength-to-shader mapping is
+still unknown, so the common global Anti-Ringing control is neither moved into
+Custom Filters nor silently applied to native NGU.

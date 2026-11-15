@@ -72,6 +72,10 @@ inline void D2DSetCustomScaling(ScalerSettings& filter, bool enabled)
 {
     if (enabled && strcmp(filter.filter, "custom"))
     {
+        // A native scaler is a renderer peer, not a libplacebo preset. It has
+        // no custom kernel/window parameter namespace to inherit.
+        if (IsNativeScalerIdentifier(filter.filter))
+            return;
         char base[64];
         strcpy_s(base, strcmp(filter.filter, "none") ? filter.filter : "auto");
         if (strcmp(filter.preset, base))
@@ -86,7 +90,10 @@ inline void D2DSetCustomScaling(ScalerSettings& filter, bool enabled)
 inline std::vector<std::string> D2DScalerNames(int role, bool custom, const char* current)
 {
     std::vector<std::string> names = {"auto", "none"};
-    if (custom)
+    // Custom settings configure a libplacebo filter. Keep them out of the
+    // selector while a native scaler is selected so choosing either direction
+    // cannot create the invalid custom(native) combination.
+    if (custom && !IsNativeScalerIdentifier(current))
         names.emplace_back("custom");
     const unsigned usage = role == 4 ? 4 : role % 2 ? 2 : 1;
     // Downscaling uses its own speed order, as in the documentation.
@@ -574,7 +581,12 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             toggle.desc = L"Use custom filter settings based on the starting filter.";
             toggle.kind = ControlKind::Toggle;
             toggle.headerToggle = true;
-            toggle.enabled = [&s, role] { return role != 0 || !s.rtxSuperResolution; };
+            toggle.enabled = [&s, &f, role]
+            {
+                return (role != 0 || !s.rtxSuperResolution) &&
+                       (strcmp(f.filter, "custom") || !IsNativeScalerIdentifier(f.preset)) &&
+                       !IsNativeScalerIdentifier(f.filter);
+            };
             // Show the stored state even while RTX locks the upscaler controls.
             toggle.get = [&f] { return !strcmp(f.filter, "custom") ? 1.f : 0.f; };
             toggle.set = [&f](float v) { D2DSetCustomScaling(f, v != 0); };

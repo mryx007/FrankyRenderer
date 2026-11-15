@@ -259,6 +259,24 @@ int wmain()
             toggle.reset();
             Require(toggle.Value() == 0 && !starting.Enabled(), "custom switch reset disables editor");
             filter = {};
+            if (role == 0 || role == 2)
+            {
+                strcpy_s(filter.filter, "ngu_sharp");
+                auto nativeNames = D2DScalerNames(role, true, filter.filter);
+                Require(std::find(nativeNames.begin(), nativeNames.end(), "custom") == nativeNames.end(),
+                        "native scaler is not offered as a custom filter");
+                Require(!toggle.Enabled(), "native scaler cannot enable custom settings");
+                toggle.set(1);
+                Require(!strcmp(filter.filter, "ngu_sharp") && !toggle.Enabled(),
+                        "native scaler remains intact when custom settings are rejected");
+                D2DSetCustomScaling(filter, true);
+                Require(!strcmp(filter.filter, "ngu_sharp"), "native-to-custom conversion is rejected directly");
+                strcpy_s(filter.preset, "ngu_sharp");
+                strcpy_s(filter.filter, "custom");
+                D2DSetCustomScaling(filter, false);
+                Require(!strcmp(filter.filter, "ngu_sharp"), "disabling an invalid legacy custom filter restores NGU");
+                filter = {};
+            }
             // Every choice of the custom editor must be one the renderer accepts:
             // "none" only for the window, never as kernel or starting filter.
             auto& kernel = find(L"Scaling", title.c_str(), L"Kernel");

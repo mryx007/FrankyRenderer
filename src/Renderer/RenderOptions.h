@@ -108,3 +108,39 @@ inline HRESULT BuildRenderOptions(pl_options options, const RenderSettings& sett
         return E_INVALIDARG;
     return S_OK;
 }
+
+// A native NGU hook suppresses libplacebo's final-dither stage because the
+// target FinalStep already dithers. If an unsupported native-source geometry
+// is already at, or below, its presentation size, the shared renderer takes
+// the frame instead and needs its configured scaling and dither path restored.
+inline void
+ApplyCommonRendererFallback(pl_render_params& params, const RenderSettings& settings, const pl_dither_params* dither)
+{
+    if (settings.scaling)
+    {
+        if (IsNativeScalerIdentifier(settings.scaling->filters[0].filter))
+            params.upscaler = pl_render_default_params.upscaler;
+        if (IsNativeScalerIdentifier(settings.scaling->filters[2].filter))
+            params.plane_upscaler = pl_render_default_params.plane_upscaler;
+    }
+    else
+    {
+        if (IsNativeScalerIdentifier(settings.upscaler.c_str()))
+            params.upscaler = pl_render_default_params.upscaler;
+        if (IsNativeScalerIdentifier(settings.chromaUpscaler.c_str()))
+            params.plane_upscaler = pl_render_default_params.plane_upscaler;
+    }
+
+    static const pl_error_diffusion_kernel* const kernels[] = {&pl_error_diffusion_simple,
+                                                               &pl_error_diffusion_false_fs,
+                                                               &pl_error_diffusion_sierra_lite,
+                                                               &pl_error_diffusion_floyd_steinberg,
+                                                               &pl_error_diffusion_atkinson,
+                                                               &pl_error_diffusion_jarvis_judice_ninke,
+                                                               &pl_error_diffusion_stucki,
+                                                               &pl_error_diffusion_burkes,
+                                                               &pl_error_diffusion_sierra2,
+                                                               &pl_error_diffusion_sierra3};
+    params.dither_params = settings.ditherMethod == 3 ? nullptr : dither;
+    params.error_diffusion = settings.ditherMethod > 3 ? kernels[settings.ditherMethod - 4] : nullptr;
+}

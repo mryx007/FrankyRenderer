@@ -284,6 +284,33 @@ int main(int argc, char** argv)
         Require(nativeDitherOptions->params.dither_params != nullptr, "ordinary scaler retains presentation dither");
         pl_options_free(&nativeDitherOptions);
 
+        auto native4kSettings = settings;
+        native4kSettings.ditherMethod = 0;
+        Require(SUCCEEDED(backend.SetSettings(native4kSettings)), "NGU native 4K common-fallback settings");
+
+        VideoFrame native4k;
+        native4k.width = 3840;
+        native4k.height = 2160;
+        native4k.stride = 3840;
+        native4k.format = PixelFormat::NV12;
+        native4k.matrix = PL_COLOR_SYSTEM_BT_709;
+        native4k.levels = PL_COLOR_LEVELS_LIMITED;
+        native4k.color = pl_color_space_srgb;
+        std::vector<uint8_t> native4kBytes(size_t(3840) * 2160 + size_t(1920) * 1080 * 2);
+        for (int y = 0; y < 2160; ++y)
+            for (int x = 0; x < 3840; ++x)
+                native4kBytes[size_t(y) * 3840 + x] = uint8_t(16 + (x * 219) / 3839);
+        std::fill(native4kBytes.begin() + size_t(3840) * 2160, native4kBytes.end(), uint8_t(128));
+        Require(SUCCEEDED(backend.Upload(native4k, native4kBytes.data(), native4kBytes.size())),
+                "NGU native 4K upload");
+        std::vector<uint8_t> native4kPixels;
+        const HRESULT native4kRender = backend.RenderOffscreen(3840, 2160, native4kPixels);
+        if (FAILED(native4kRender))
+            throw std::runtime_error("NGU native 4K render: " + backend.LastError());
+        Require(native4kPixels.size() == size_t(3840) * 2160 * 4, "NGU native 4K output size");
+        Require(std::any_of(native4kPixels.begin(), native4kPixels.end(), [](uint8_t value) { return value != 0; }),
+                "NGU native 4K fallback output is not black");
+        std::puts("NGU native 4K uses the common renderer with configured dither and no black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
         VideoFrame frame;

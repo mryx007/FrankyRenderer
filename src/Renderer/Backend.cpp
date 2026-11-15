@@ -125,6 +125,7 @@ struct PlaceboBackend::State
     pl_hook nguHook = {};
     bool nguHookActive = false;
     bool nguHookAtOutput = false;
+    bool nguCommonFallback = false;
     bool nguHdrSource = false;
     NguTargetPlan nguPlan;
     int nguOutputWidth = 3840;
@@ -812,6 +813,26 @@ struct PlaceboBackend::State
     {
         if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
+        // NGU has no evidence-backed source graph outside the two observed
+        // source geometries below. If such a source is already at native size
+        // or is being reduced, the common renderer owns conversion and
+        // presentation. Installing the NGU hook would turn this ordinary
+        // no-upscale case into an unsupported NGU geometry and produce a black
+        // frame. An unsupported geometry that actually needs enlargement still
+        // reaches admission and fails closed.
+        const bool admittedSourceGeometry = (description.width == 1280 && description.height == 720) ||
+                                            (description.width == 1920 && description.height == 1080);
+        if (!admittedSourceGeometry && description.width >= targetWidth && description.height >= targetHeight)
+        {
+            nguHookActive = false;
+            nguHookAtOutput = false;
+            nguCommonFallback = true;
+            nguHdrSource = false;
+            nguPlan = {};
+            error.clear();
+            TraceNgu("no upscale required; common renderer fallback");
+            return true;
+        }
         NguSourceFrame source = {};
         if (!DescribeNguSource(source))
         {
@@ -1216,6 +1237,7 @@ struct PlaceboBackend::State
         userShaderMessage.clear();
         nguHookActive = false;
         nguHookAtOutput = false;
+        nguCommonFallback = false;
         nguHdrSource = false;
         nguPlan = {};
         nguOutputWidth = 3840;
@@ -2500,6 +2522,8 @@ struct PlaceboBackend::State
         if (sdrGammaCurve)
             adjustment.gamma *= 220.f / float(sdrGammaCurve);
         pl_render_params params = options->params;
+        if (nguCommonFallback)
+            ApplyCommonRendererFallback(params, settings, &options->dither_params);
         params.color_adjustment = settings.colorAdjustment || sdrGammaCurve ? &adjustment : nullptr;
         // Default preserves the established output-calibration stage. Manual
         // LUT types use libplacebo's actual color-mapping LUT semantics.
