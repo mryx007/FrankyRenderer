@@ -107,7 +107,7 @@ struct MeasurementSnapshot
 {
     bool feedback = false, timing = false, countersAvailable = false;
     uint32_t pending = 0;
-    uint64_t drops = 0;
+    uint64_t drops = 0, skipped = 0; // drops: real ones; skipped: video faster than the display
     uint64_t submissions = 0, confirmed = 0, repeats = 0, glitches = 0, resets = 0;
     uint64_t renderCpuSamples = 0, renderGpuSamples = 0, presentCpuSamples = 0;
     double renderCpuAverage = 0, renderCpuMax = 0, renderGpuAverage = 0, renderGpuMax = 0, presentCpuAverage = 0,

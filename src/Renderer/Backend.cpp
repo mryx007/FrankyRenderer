@@ -182,6 +182,19 @@ struct PlaceboBackend::State
     std::wstring userShaderMessage;
     // Content profile in use, or why none applies; shown in the statistics.
     std::wstring contentProfile;
+    std::wstring renderAdapter; // The GPU libplacebo renders on.
+
+    void NameRenderGpu()
+    {
+        renderAdapter.clear();
+        ComPtr<IDXGIDevice> dxgi;
+        ComPtr<IDXGIAdapter> adapter;
+        DXGI_ADAPTER_DESC desc = {};
+        if (d3d && SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&desc)))
+            renderAdapter = desc.Description;
+        Trace("Render GPU: %ls", renderAdapter.empty() ? L"unknown" : renderAdapter.c_str());
+    }
 
     bool PrepareUserShader(int id)
     {
@@ -279,7 +292,13 @@ struct PlaceboBackend::State
     uint64_t DropTotal()
     {
         std::lock_guard guard(dropsLock);
-        return drops.total;
+        return drops.Real();
+    }
+
+    uint64_t SkipTotal()
+    {
+        std::lock_guard guard(dropsLock);
+        return drops.skipped;
     }
 
     std::atomic<unsigned> measurementReset = 0;
@@ -918,6 +937,7 @@ struct PlaceboBackend::State
             d3d = pl_d3d11_create(log, &params);
             if (!d3d)
                 return E_FAIL;
+            NameRenderGpu();
         }
         return S_OK;
     }
@@ -1399,11 +1419,16 @@ struct PlaceboBackend::State
         row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
 
         heading(L"Performance");
+        if (!renderAdapter.empty())
+            row(L"GPU") << renderAdapter;
         // Time available per rendered picture: one refresh with Smooth Motion,
-        // otherwise one video frame (one field when deinterlacing).
+        // otherwise one video frame (one field when deinterlacing), but never
+        // less than a refresh: a faster video only shows one picture per refresh.
+        const double frameBudget =
+            statisticsFps > 0 ? 1000 / statisticsFps / (statisticsField != PL_FIELD_NONE ? 2 : 1) : 0;
         const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
-                              : statisticsFps > 0 ? 1000 / statisticsFps / (statisticsField != PL_FIELD_NONE ? 2 : 1)
-                                                  : period / 1e4;
+                              : period > 0                                  ? std::max(frameBudget, period / 1e4)
+                                                                            : frameBudget;
         // Show recent sustained render load. A single expensive cache build
         // must not dominate the display for five seconds as a peak did.
         const auto render = [&]()
@@ -1473,8 +1498,13 @@ struct PlaceboBackend::State
         {
             // Only the counts that are not zero are coloured.
             const auto drops = statisticsDropped >= 0 ? DropTotal() : 0;
+            const auto skips = statisticsDropped >= 0 ? SkipTotal() : 0;
             const auto mark = [](bool problem, const wchar_t* code) { return problem ? code : L"\x02w"; };
             auto& value = row(L"Drops");
+            // Frames the display cannot show (120 fps on 60 Hz) are no fault.
+            if (skips)
+                value << skips << L" skipped (" << std::setprecision(0) << statisticsFps << L" fps on "
+                      << (period > 0 ? 1e7 / period : 0) << L" Hz)" << dot;
             if (statisticsDropped >= 0)
                 value << mark(drops > 0, L"\x02r") << drops << L" dropped" << L"\x02w";
             if (presentation.haveCounters)
@@ -2303,6 +2333,7 @@ HRESULT PlaceboBackend::SetDevice(ID3D11Device* device, HANDLE mutex)
     s.d3d = pl_d3d11_create(s.log, &params);
     if (!s.d3d)
         return E_FAIL;
+    s.NameRenderGpu();
     return s.Ensure();
 }
 
@@ -3423,8 +3454,9 @@ void PlaceboBackend::SetStatisticsInput(double fps, bool direct, int dropped)
     s.statisticsFps = fps;
     s.statisticsDirect = direct;
     s.statisticsDropped = dropped;
+    const double share = DropMeasurement::UnavoidableShare(fps, s.measuredPeriod > 0 ? 1e7 / s.measuredPeriod : 0);
     std::lock_guard dropGuard(s.dropsLock);
-    s.drops.Observe(dropped);
+    s.drops.Observe(dropped, share);
 }
 
 void PlaceboBackend::RestartDropMeasurement(int rawBeforeReset)
@@ -3486,6 +3518,7 @@ MeasurementSnapshot PlaceboBackend::Measurements() const
     out.timing = s.presentation.timing;
     out.countersAvailable = s.presentation.haveCounters;
     out.drops = s.DropTotal();
+    out.skipped = s.SkipTotal();
     out.pending = s.presentation.pending;
     out.submissions = s.presentation.submissions;
     out.confirmed = s.presentation.confirmed;

@@ -288,13 +288,31 @@ class PresentBacklog
 
 // DirectShow restarts its raw drop counter at OnStartStreaming. Accumulate
 // increments across those source epochs instead of losing the previous total.
+// When the video has more frames than the display has refreshes (120 fps on
+// 60 Hz), part of the drops cannot be avoided; those count as skipped.
 class DropMeasurement
 {
     int previous = 0;
     bool seen = false;
+    double credit = 0;
 
   public:
-    uint64_t total = 0;
+    uint64_t total = 0, skipped = 0;
+
+    // Drops beyond the unavoidable share.
+    uint64_t Real() const
+    {
+        return total - skipped;
+    }
+
+    // Share of the video frames a display can never show, with some slack
+    // for clock differences; 0 when every frame fits.
+    static double UnavoidableShare(double fps, double displayHz)
+    {
+        if (!(fps > 0) || !(displayHz > 0) || fps <= displayHz * 1.01)
+            return 0;
+        return std::max(0.0, 1 - displayHz * 0.97 / fps);
+    }
 
     void RestartSource()
     {
@@ -303,16 +321,29 @@ class DropMeasurement
 
     void Reset()
     {
-        total = 0;
+        total = skipped = 0;
+        credit = 0;
     }
 
-    void Observe(int value)
+    // Called once per shown frame with the raw counter. share is
+    // UnavoidableShare() for the current video and display.
+    void Observe(int value, double share = 0)
     {
         if (value < 0)
             return;
-        total += !seen || value < previous ? static_cast<uint64_t>(value) : static_cast<uint64_t>(value - previous);
+        const auto added =
+            !seen || value < previous ? static_cast<uint64_t>(value) : static_cast<uint64_t>(value - previous);
+        total += added;
         previous = value;
         seen = true;
+        if (share <= 0)
+            return;
+        // Every frame received (the shown one and the dropped ones) earns its
+        // share; at most two skips can be saved up, so real drops still show.
+        credit = std::min(credit + double(added + 1) * share, 2.0);
+        const auto skip = std::min<uint64_t>(added, static_cast<uint64_t>(credit));
+        credit -= double(skip);
+        skipped += skip;
     }
 };
 
