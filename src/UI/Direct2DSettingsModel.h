@@ -877,7 +877,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                &s.displayGammaCurve,
                                std::move(displayCurves),
                                L"How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-                               L"tone mapped to SDR.");
+                               L"tone mapped to SDR and by SDR Gamma Processing.");
         gamma.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(gamma));
         auto contrast = D2DNumber(s,

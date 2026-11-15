@@ -1672,10 +1672,11 @@ msgstr "Display-Gamma"
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-"tone mapped to SDR."
+"tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
 "Wie der Bildschirm das Signal dekodiert, z. B. 2.4 bei vielen TVs. Wird "
-"genutzt, wenn HDR auf SDR umgerechnet wird."
+"genutzt, wenn HDR auf SDR umgerechnet wird, und von der SDR-Gamma-"
+"Verarbeitung."
 
 #. Choice (Color > Display > Display Gamma)
 #. Setting name (Shortcuts > )

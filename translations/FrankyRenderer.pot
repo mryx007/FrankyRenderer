@@ -1412,7 +1412,7 @@ msgid "Display Gamma"
 msgstr ""
 
 #. Setting description (Color > Display > Display Gamma)
-msgid "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is tone mapped to SDR."
+msgid "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
 
 #. Choice (Color > Display > Display Gamma)

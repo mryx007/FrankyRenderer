@@ -1535,9 +1535,10 @@ msgstr "显示器伽马"
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-"tone mapped to SDR."
+"tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
-"显示器解码信号的方式，例如许多电视为 2.4。在 HDR 色调映射到 SDR 时使用。"
+"显示器解码信号的方式，例如许多电视为 2.4。在 HDR 色调映射到 SDR 以及 SDR 伽马"
+"处理时使用。"
 
 #. Choice (Color > Display > Display Gamma)
 #. Setting name (Shortcuts > )

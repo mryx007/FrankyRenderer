@@ -68,7 +68,8 @@ struct Output
     int displayContrast = 0;                           // for BT.1886; 0 = infinite
 };
 
-// e.g. "BT.1886 → unchanged", "PQ → BT.1886 (1000:1)", "BT.1886 → shown as 2.40 · display 2.20"
+// e.g. "source BT.1886 → output unchanged", "source PQ → output BT.1886 (1000:1)",
+// "source BT.1886 → output shown as 2.40 on display 2.20"
 inline std::wstring Text(pl_color_transfer source, const Output& out)
 {
     const auto display = [&]
@@ -86,15 +87,22 @@ inline std::wstring Text(pl_color_transfer source, const Output& out)
     if (out.icc)
         shown = L"ICC profile";
     else if (out.hdr)
-        shown = Name(out.transfer) + L" (HDR output)";
+        shown = Name(out.transfer) + L" (HDR)";
     else if (out.transfer == PL_COLOR_TRC_LINEAR || out.transfer == PL_COLOR_TRC_SCRGB)
         shown = Name(out.transfer);
     else if (out.sdrGamma > 0)
-        shown = L"shown as " + Curve(out.sdrGamma) + L" · display " + display();
+        shown = L"shown as " + Curve(out.sdrGamma) + L" on display " + display();
     else if (pl_color_transfer_is_hdr(source))
         shown = display();
     else
+    {
+        // SDR stays as it is: a chosen display gamma is not used for it.
         shown = L"unchanged";
-    return Name(source) + L" → " + shown;
+        if (out.displayGamma == 1)
+            shown += L" (Display Gamma BT.1886 not used)";
+        else if (out.displayGamma >= 100)
+            shown += L" (Display Gamma " + Curve(out.displayGamma) + L" not used)";
+    }
+    return L"source " + Name(source) + L" → output " + shown;
 }
 } // namespace StatisticsGamma

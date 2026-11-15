@@ -20,32 +20,37 @@ static void CheckGamma()
     using namespace StatisticsGamma;
     Output sdr;
     sdr.transfer = PL_COLOR_TRC_SRGB;
-    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"BT.1886 → unchanged", "SDR without gamma settings");
+    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output unchanged", "SDR without gamma settings");
     auto processed = sdr;
     processed.sdrGamma = 240;
     processed.displayGamma = 235;
-    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"BT.1886 → shown as 2.40 · display 2.35",
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"source BT.1886 → output shown as 2.40 on display 2.35",
           "SDR gamma processing shows the chosen gammas");
     processed.displayGamma = 0;
-    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"BT.1886 → shown as 2.40 · display sRGB", "automatic display");
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"source BT.1886 → output shown as 2.40 on display sRGB",
+          "automatic display");
     auto toneMapped = sdr;
     toneMapped.transfer = PL_COLOR_TRC_BT_1886;
     toneMapped.displayGamma = 1;
     toneMapped.displayContrast = 1000;
-    Check(Text(PL_COLOR_TRC_PQ, toneMapped) == L"PQ → BT.1886 (1000:1)", "HDR to BT.1886 with contrast");
+    Check(Text(PL_COLOR_TRC_PQ, toneMapped) == L"source PQ → output BT.1886 (1000:1)", "HDR to BT.1886 with contrast");
     toneMapped.displayContrast = 0;
-    Check(Text(PL_COLOR_TRC_HLG, toneMapped) == L"HLG → BT.1886 (infinite contrast)", "HLG to BT.1886");
+    Check(Text(PL_COLOR_TRC_HLG, toneMapped) == L"source HLG → output BT.1886 (infinite contrast)", "HLG to BT.1886");
     Output hdr;
     hdr.transfer = PL_COLOR_TRC_PQ;
     hdr.hdr = true;
-    Check(Text(PL_COLOR_TRC_PQ, hdr) == L"PQ → PQ (HDR output)", "HDR output");
+    Check(Text(PL_COLOR_TRC_PQ, hdr) == L"source PQ → output PQ (HDR)", "HDR output");
     Output linear;
     linear.transfer = PL_COLOR_TRC_LINEAR;
-    Check(Text(PL_COLOR_TRC_BT_1886, linear) == L"BT.1886 → linear", "16-bit float output");
+    Check(Text(PL_COLOR_TRC_BT_1886, linear) == L"source BT.1886 → output linear", "16-bit float output");
     auto icc = processed;
     icc.icc = true;
-    Check(Text(PL_COLOR_TRC_PQ, icc) == L"PQ → ICC profile", "ICC profile");
-    Check(Text(PL_COLOR_TRC_UNKNOWN, sdr) == L"unknown → unchanged", "unknown source");
+    Check(Text(PL_COLOR_TRC_PQ, icc) == L"source PQ → output ICC profile", "ICC profile");
+    Check(Text(PL_COLOR_TRC_UNKNOWN, sdr) == L"source unknown → output unchanged", "unknown source");
+    auto unused = sdr;
+    unused.displayGamma = 245;
+    Check(Text(PL_COLOR_TRC_BT_1886, unused) == L"source BT.1886 → output unchanged (Display Gamma 2.45 not used)",
+          "SDR says the display gamma is not used");
     puts("PASS statistics gamma: SDR unchanged and processed, exact display gamma, BT.1886 contrast, HDR and "
          "linear output, ICC, unknown source");
 }
