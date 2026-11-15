@@ -165,16 +165,6 @@ msgstr ""
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
-msgstr ""
-
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid ""
-"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr ""
-
-#. Setting name (General > Image Analysis)
-#. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
 msgstr ""
 
@@ -1518,7 +1508,7 @@ msgstr ""
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-"tone mapped to SDR."
+"tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
 
 #. Choice (Color > Display > Display Gamma)
@@ -3541,8 +3531,8 @@ msgid "Lowers the value by %s."
 msgstr ""
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr ""
 
@@ -3803,11 +3793,15 @@ msgid "Could not open the INI file dialog."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
+msgid "All settings exported."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
+msgid "All settings imported."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
