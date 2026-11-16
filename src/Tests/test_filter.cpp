@@ -54,6 +54,7 @@ static int nguInitialFrames = 5;
 static std::wstring nguCaptureRoot;
 static std::vector<BYTE> nguCapturedInput;
 static bool nguNv12Test = false;
+static bool nguWindowTest = false;
 static std::wstring nguNv12InputPath;
 static std::vector<BYTE> nguNv12Input;
 static std::wstring p010FixtureInputPath;
@@ -1388,6 +1389,8 @@ int wmain(int argc, wchar_t** argv)
             nguSourceHeight = 2160;
             nguNv12InputPath = argv[++i];
         }
+        if (wcscmp(argv[i], L"--ngu-window") == 0)
+            nguWindowTest = true;
         if (wcscmp(argv[i], L"--p010-input") == 0 && i + 1 < argc)
             p010FixtureInputPath = argv[++i];
         if (wcscmp(argv[i], L"--p010-oracle") == 0 && i + 1 < argc)
@@ -1483,6 +1486,11 @@ int wmain(int argc, wchar_t** argv)
             puts("FAIL 4K NV12 fixture must be 3840x2160");
             return 1;
         }
+    }
+    if (nguWindowTest && !nguNv12Test)
+    {
+        puts("FAIL --ngu-window requires --ngu-4k-nv12");
+        return 1;
     }
     if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())
     {
@@ -1883,7 +1891,9 @@ int wmain(int argc, wchar_t** argv)
     }
     Check(window->put_AutoShow(OAFALSE), "disable autoshow");
     Check(window->put_Visible(OAFALSE), "hide test window");
-    Check(window->SetWindowPosition(0, 0, nguTest ? 3840 : 128, nguTest ? 2160 : 128),
+    const int nguWindowWidth = nguWindowTest ? 1920 : 3840;
+    const int nguWindowHeight = nguWindowTest ? 1080 : 2160;
+    Check(window->SetWindowPosition(0, 0, nguTest ? nguWindowWidth : 128, nguTest ? nguWindowHeight : 128),
           nguTest ? "NGU video size" : "video size");
     if (measureTest)
     {
@@ -1948,7 +1958,19 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
         int different = 0, maximum = 0, overOne = 0;
-        if (!nguCaptureRoot.empty())
+        if (nguWindowTest)
+        {
+            std::vector<BYTE> pixels(size_t(nguWindowWidth) * nguWindowHeight * 4);
+            Check(config->ReadPixels(nguWindowWidth, nguWindowHeight, pixels.data(), pixels.size()),
+                  "NGU 4K window pixels");
+            if (std::all_of(pixels.begin(), pixels.end(), [](BYTE value) { return value == 0; }))
+            {
+                puts("FAIL_PRODUCT NGU 4K source produced a black 1080 window");
+                return 1;
+            }
+            puts("PASS_PRODUCT NGU 4K source produced a visible 1080 window");
+        }
+        else if (!nguCaptureRoot.empty())
         {
             std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
             Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()), "NGU DirectShow pixels");

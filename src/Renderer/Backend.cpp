@@ -818,8 +818,9 @@ struct PlaceboBackend::State
         if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
         NguSourceFormatLayout nativeLayout = {};
-        const bool native4KChroma =
+        const bool native4KChromaAt4K =
             description.width == 3840 && description.height == 2160 &&
+            targetWidth == 3840 && targetHeight == 2160 &&
             DescribeNguSourceFormat(description.format, description.width, description.height, nativeLayout) &&
             nativeLayout.chromaLayout == NguChromaLayout::SemiPlanar420 && nativeLayout.chromaWidth == 1920 &&
             nativeLayout.chromaHeight == 1080;
@@ -829,7 +830,7 @@ struct PlaceboBackend::State
         // on the ordinary renderer because no native scaler work is needed.
         const bool admittedSourceGeometry = (description.width == 1280 && description.height == 720) ||
                                             (description.width == 1920 && description.height == 1080) ||
-                                            native4KChroma;
+                                            native4KChromaAt4K;
         if (!admittedSourceGeometry && description.width >= targetWidth && description.height >= targetHeight)
         {
             nguHookActive = false;

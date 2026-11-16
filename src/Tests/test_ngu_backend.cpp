@@ -323,6 +323,18 @@ int main(int argc, char** argv)
         Require(native4kStatistics.find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
                 "NGU native 4K statistics identify active chroma upscaling");
         backend.ShowStatistics(false);
+
+        std::vector<uint8_t> native4kWindowPixels;
+        const HRESULT native4kWindowRender = backend.RenderOffscreen(1920, 1080, native4kWindowPixels);
+        if (FAILED(native4kWindowRender))
+            throw std::runtime_error("NGU native 4K window render: " + backend.LastError());
+        Require(native4kWindowPixels.size() == size_t(1920) * 1080 * 4,
+                "NGU native 4K window output size");
+        Require(std::any_of(native4kWindowPixels.begin(), native4kWindowPixels.end(),
+                            [](uint8_t value) { return value != 0; }),
+                "NGU native 4K window output is not black");
+        std::puts("NGU native 4K source falls back visibly for a 1080 window target");
+
         std::puts("NGU native 4K executes the all-quality chroma hook without a black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
