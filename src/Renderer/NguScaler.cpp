@@ -801,6 +801,7 @@ struct NguScaler::NativeHookOutput
     ComPtr<ID3D11VertexShader> vertex;
     ComPtr<ID3D11PixelShader> pixel;
     ComPtr<ID3D11PixelShader> chromaPixel;
+    ComPtr<ID3D11Buffer> chromaConstants;
     ComPtr<ID3D11RasterizerState> rasterizer;
 };
 
@@ -5323,6 +5324,8 @@ bool NguScaler::RunNativeNgu1080ChromaOnlyFromPlanes(ID3D11ShaderResourceView* p
 NguTargetPlan NguScaler::PlanNativeVeryHigh(const NguSourceFrame& source, int targetWidth, int targetHeight) const
 {
     NguTargetPlan plan;
+    plan.chromaBits = source.chromaBits;
+    plan.fullRange = source.fullRange;
     plan.hdr = pl_color_space_is_hdr(&source.color);
     if (plan.hdr)
     {
@@ -6904,6 +6907,17 @@ bool NguScaler::PrepareNativeHookOutput(pl_gpu gpu)
         return false;
     }
 
+    D3D11_BUFFER_DESC chromaConstantsDesc = {};
+    chromaConstantsDesc.ByteWidth = sizeof(float) * 4;
+    chromaConstantsDesc.Usage = D3D11_USAGE_DYNAMIC;
+    chromaConstantsDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    chromaConstantsDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    if (FAILED(device->CreateBuffer(&chromaConstantsDesc, nullptr, &state->chromaConstants)))
+    {
+        error_ = "NGU chroma hook constants could not be created";
+        return false;
+    }
+
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
@@ -6925,17 +6939,48 @@ bool NguScaler::RunNativeHookOutput(ID3D11ShaderResourceView* input,
                                     ID3D11RenderTargetView* output,
                                     int width,
                                     int height,
-                                    bool chroma)
+                                    bool chroma,
+                                    int chromaBits,
+                                    bool fullRange)
 {
-    if (!nativeHookOutput_ || !input || !output || width <= 0 || height <= 0)
+    if (!nativeHookOutput_ || !input || !output || width <= 0 || height <= 0 ||
+        (chroma && chromaBits != 8 && chromaBits != 10 && chromaBits != 16))
     {
         error_ = "NGU hook output request is invalid";
         return false;
     }
+    ID3D11Buffer* constants = nullptr;
+    if (chroma)
+    {
+        float values[4] = {128.f / 255.f, 255.f / 224.f, fullRange ? 1.f : 0.f, 0.f};
+        if (chromaBits == 10)
+        {
+            values[0] = 512.f / 1023.f;
+            values[1] = 1023.f / 896.f;
+        }
+        else if (chromaBits == 16)
+        {
+            values[0] = 32768.f / 65535.f;
+            values[1] = 65535.f / 57344.f;
+        }
+        ID3D11DeviceContext* context = nullptr;
+        pl_d3d11_get(gpu_)->device->GetImmediateContext(&context);
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (FAILED(context->Map(nativeHookOutput_->chromaConstants.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+        {
+            context->Release();
+            error_ = "NGU chroma hook constants could not be updated";
+            return false;
+        }
+        std::memcpy(mapped.pData, values, sizeof(values));
+        context->Unmap(nativeHookOutput_->chromaConstants.Get(), 0);
+        context->Release();
+        constants = nativeHookOutput_->chromaConstants.Get();
+    }
     DrawD3D11Pass(pl_d3d11_get(gpu_)->device,
                   nativeHookOutput_->vertex.Get(),
                   (chroma ? nativeHookOutput_->chromaPixel.Get() : nativeHookOutput_->pixel.Get()),
-                  nullptr,
+                  constants,
                   nativeHookOutput_->rasterizer.Get(),
                   &input,
                   1,

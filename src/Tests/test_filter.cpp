@@ -55,8 +55,11 @@ static std::wstring nguCaptureRoot;
 static std::vector<BYTE> nguCapturedInput;
 static bool nguNv12Test = false;
 static bool nguWindowTest = false;
+static bool nguP010Test = false;
+static bool nguTransitionTest = false;
 static std::wstring nguNv12InputPath;
 static std::vector<BYTE> nguNv12Input;
+static std::vector<BYTE> nguP010Input;
 static std::wstring p010FixtureInputPath;
 static std::wstring p010FixtureOraclePath;
 static std::wstring p010FixtureOutputPath;
@@ -241,6 +244,8 @@ static DWORD FourCC()
         return MAKEFOURCC('P', '2', '1', '6');
     if (nguNv12Test)
         return MAKEFOURCC('N', 'V', '1', '2');
+    if (nguP010Test)
+        return MAKEFOURCC('P', '0', '1', '0');
     if (nguTest && !hardware && !explicitP016)
         return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
@@ -254,6 +259,8 @@ static long SampleBytes()
         return static_cast<long>(class3FixtureInput.size());
     if (nguNv12Test)
         return static_cast<long>(nguNv12Input.size());
+    if (nguP010Test)
+        return static_cast<long>(nguP010Input.size());
     if (nguTest && !hardware && !explicitP016)
         return nguSourceWidth * nguSourceHeight * 6;
     if (nguTest && !hardware && explicitP016)
@@ -901,6 +908,15 @@ class PatternStream final : public CSourceStream
             color.VideoTransferFunction = MFVideoTransFunc_709;
             info->dwControlFlags = color.value | AMCONTROL_COLORINFO_PRESENT;
         }
+        else if (nguP010Test)
+        {
+            DXVA2_ExtendedFormat color = {};
+            color.NominalRange = DXVA2_NominalRange_16_235;
+            color.VideoTransferMatrix = MFVideoTransferMatrix_BT709;
+            color.VideoPrimaries = MFVideoPrimaries_BT709;
+            color.VideoTransferFunction = MFVideoTransFunc_709;
+            info->dwControlFlags = color.value | AMCONTROL_COLORINFO_PRESENT;
+        }
         info->dwPictAspectRatioX = nguTest ? 16 : 1;
         info->dwPictAspectRatioY = nguTest ? 9 : 1;
         info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -910,6 +926,8 @@ class PatternStream final : public CSourceStream
         info->bmiHeader.biBitCount = (explicitP210 || explicitP216) ? 32
                                      : nguNv12Test
                                          ? 12
+                                     : nguP010Test
+                                         ? 24
                                      : nguTest && !hardware && !explicitP016
                                          ? 48
                                          : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
@@ -1007,6 +1025,10 @@ class PatternStream final : public CSourceStream
         else if (nguNv12Test)
         {
             std::memcpy(bytes, nguNv12Input.data(), nguNv12Input.size());
+        }
+        else if (nguP010Test)
+        {
+            std::memcpy(bytes, nguP010Input.data(), nguP010Input.size());
         }
         else if (nguTest && !hardware && !explicitP016)
         {
@@ -1391,6 +1413,15 @@ int wmain(int argc, wchar_t** argv)
         }
         if (wcscmp(argv[i], L"--ngu-window") == 0)
             nguWindowTest = true;
+        if (wcscmp(argv[i], L"--ngu-transition") == 0)
+            nguTransitionTest = true;
+        if (wcscmp(argv[i], L"--ngu-4k-p010") == 0 && i + 1 < argc)
+        {
+            nguP010Test = true;
+            nguSourceWidth = 3840;
+            nguSourceHeight = 2160;
+            nguP010Input = ReadFile(argv[++i], size_t(3840) * 2160 * 2 + size_t(1920) * 1080 * 4);
+        }
         if (wcscmp(argv[i], L"--p010-input") == 0 && i + 1 < argc)
             p010FixtureInputPath = argv[++i];
         if (wcscmp(argv[i], L"--p010-oracle") == 0 && i + 1 < argc)
@@ -1438,6 +1469,7 @@ int wmain(int argc, wchar_t** argv)
         }
     }
     if (nguTest && !hardware && !explicitP016 && !explicitP210 && !explicitP216 && !nguNv12Test &&
+        !nguP010Test &&
         (nguSourceWidth != 1280 || nguSourceHeight != 720))
     {
         puts("FAIL --ngu-1080 is a P010 GPU smoke; use --gpu");
@@ -1487,9 +1519,19 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
     }
-    if (nguWindowTest && !nguNv12Test)
+    if (nguWindowTest && !nguNv12Test && !nguP010Test)
     {
-        puts("FAIL --ngu-window requires --ngu-4k-nv12");
+        puts("FAIL --ngu-window requires --ngu-4k-nv12 or --ngu-4k-p010");
+        return 1;
+    }
+    if (nguTransitionTest && !nguWindowTest)
+    {
+        puts("FAIL --ngu-transition requires --ngu-window");
+        return 1;
+    }
+    if (nguP010Test && nguP010Input.empty())
+    {
+        puts("FAIL 4K P010 fixture must be 3840x2160 P010");
         return 1;
     }
     if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())
@@ -1969,6 +2011,27 @@ int wmain(int argc, wchar_t** argv)
                 return 1;
             }
             puts("PASS_PRODUCT NGU 4K source produced a visible 1080 window");
+            if (nguTransitionTest)
+            {
+                const auto baseline = status.rendered;
+                Check(window->SetWindowPosition(0, 0, 3840, 2160), "NGU fullscreen transition");
+                const DWORD deadline = GetTickCount();
+                do
+                {
+                    Sleep(20);
+                    Check(config->GetStatus(&status), "NGU fullscreen status");
+                } while (status.rendered <= baseline && SUCCEEDED(sourceFailure.load()) &&
+                         GetTickCount() - deadline < 3000);
+                std::vector<BYTE> fullscreen(size_t(3840) * 2160 * 4);
+                Check(config->ReadPixels(3840, 2160, fullscreen.data(), fullscreen.size()),
+                      "NGU fullscreen pixels");
+                if (std::all_of(fullscreen.begin(), fullscreen.end(), [](BYTE value) { return value == 0; }))
+                {
+                    puts("FAIL_PRODUCT NGU fullscreen transition produced a black frame");
+                    return 1;
+                }
+                puts("PASS_PRODUCT NGU window-to-fullscreen transition is visible");
+            }
         }
         else if (!nguCaptureRoot.empty())
         {

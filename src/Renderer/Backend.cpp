@@ -815,6 +815,7 @@ struct PlaceboBackend::State
 
     bool PrepareNguHook(int targetWidth, int targetHeight)
     {
+        nguCommonFallback = false;
         if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
         NguSourceFormatLayout nativeLayout = {};
@@ -1081,7 +1082,9 @@ struct PlaceboBackend::State
                                            self->nguHookOutputView.Get(),
                                            self->nguOutputWidth,
                                            self->nguOutputHeight,
-                                           self->nguHookAtChroma))
+                                           self->nguHookAtChroma,
+                                           self->nguPlan.chromaBits,
+                                           self->nguPlan.fullRange))
         {
             if (self->error.empty())
                 self->error = self->ngu.LastError();
@@ -1972,7 +1975,9 @@ struct PlaceboBackend::State
             return L"custom (" + detail + L")";
         };
         const bool chromaPlane = options->params.plane_upscaler != nullptr;
-        const auto* chromaFilter = chromaPlane ? options->params.plane_upscaler : options->params.upscaler;
+        const auto* chromaFilter =
+            nguCommonFallback ? pl_render_default_params.plane_upscaler
+                              : chromaPlane ? options->params.plane_upscaler : options->params.upscaler;
         if (rtxDirect)
             row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
         else if (nativeNgu)
@@ -2009,7 +2014,12 @@ struct PlaceboBackend::State
             else
             {
                 value << dot
-                      << filterName(down ? options->params.downscaler : options->params.upscaler, "bilinear", down ? 1 : 0);
+                      << filterName(
+                             nguCommonFallback
+                                 ? (down ? pl_render_default_params.downscaler : pl_render_default_params.upscaler)
+                                 : (down ? options->params.downscaler : options->params.upscaler),
+                             "bilinear",
+                             down ? 1 : 0);
                 if (nativeNguSelected)
                     value << L" (NGU Sharp " << nguQualityName(settings.nguLumaQuality)
                           << L" inactive; common renderer fallback)";

@@ -146,6 +146,8 @@ struct NguTargetPlan
 {
     int outputWidth = 0;
     int outputHeight = 0;
+    int chromaBits = 8;
+    bool fullRange = false;
     bool noLuma = false;
     bool chromaOnly4K = false;
     bool double720 = false;
@@ -332,7 +334,9 @@ class NguScaler
                              ID3D11RenderTargetView* output,
                              int width,
                              int height,
-                             bool chroma = false);
+                             bool chroma = false,
+                             int chromaBits = 8,
+                             bool fullRange = false);
     void ResetDitherPhase();
     bool RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
                                      ID3D11ShaderResourceView* dither,
