@@ -108,6 +108,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_BAR(crop);
     INI_BAR(keepSubtitles);
     INI_BAR(zoom);
+    INI_BAR(position);
     INI_BAR(threshold);
     INI_BAR(delay);
     INI_BAR(stableZoom);

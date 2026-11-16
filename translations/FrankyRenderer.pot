@@ -748,6 +748,30 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
+msgid "Image Position"
+msgstr ""
+
+#. Setting description (Processing > Detection & Zoom > Image Position)
+msgid "Where a picture lower than the output sits, for example on a scope screen."
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Image Position)
+#. Setting name (Shortcuts > )
+msgid "Center"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Image Position)
+#. Setting name (Shortcuts > )
+msgid "Top"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Image Position)
+#. Setting name (Shortcuts > )
+msgid "Bottom"
+msgstr ""
+
+#. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Black Threshold"
 msgstr ""
 

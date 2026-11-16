@@ -872,6 +872,21 @@ msgstr "Einpassen (gesamten Inhalt erhalten)"
 msgid "Fill (May Crop Content)"
 msgstr "Ausfüllen (kann Inhalt abschneiden)"
 
+msgid "Image Position"
+msgstr "Bildposition"
+
+msgid "Where a picture lower than the output sits, for example on a scope screen."
+msgstr "Wo ein Bild sitzt, das niedriger als die Ausgabe ist, zum Beispiel auf einer Scope-Leinwand."
+
+msgid "Center"
+msgstr "Mitte"
+
+msgid "Top"
+msgstr "Oben"
+
+msgid "Bottom"
+msgstr "Unten"
+
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Black Threshold"

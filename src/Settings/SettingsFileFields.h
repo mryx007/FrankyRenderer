@@ -102,6 +102,7 @@ inline void VisitFields(BlackBarSettings& s, auto&& field)
     field("crop", s.crop);
     field("keepSubtitles", s.keepSubtitles);
     field("zoom", s.zoom);
+    field("position", s.position);
     field("threshold", s.threshold);
     field("delay", s.delay);
     field("stableZoom", s.stableZoom);
