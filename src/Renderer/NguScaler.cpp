@@ -5340,7 +5340,7 @@ NguTargetPlan NguScaler::PlanNativeVeryHigh(const NguSourceFrame& source, int ta
     const bool chromaOnly1080 =
         source.width == 1920 && source.height == 1080 && targetWidth == 1920 && targetHeight == 1080;
     plan.chromaOnly4K =
-        source.width == 3840 && source.height == 2160 && targetWidth == 3840 && targetHeight == 2160 &&
+        source.width == 3840 && source.height == 2160 && targetWidth <= 3840 && targetHeight <= 2160 &&
         (source.chromaLayout == NguChromaLayout::SemiPlanar420 ||
          source.chromaLayout == NguChromaLayout::Planar420);
     plan.noLuma = chromaOnly1080 || plan.chromaOnly4K;

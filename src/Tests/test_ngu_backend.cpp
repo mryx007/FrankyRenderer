@@ -352,6 +352,16 @@ int main(int argc, char** argv)
         const auto native4kStatistics = backend.StatisticsSnapshot();
         Require(native4kStatistics.find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
                 "NGU native 4K statistics identify active chroma upscaling");
+        bool native4kWindowHook = false;
+        pl_hook_stage native4kWindowHookStage = static_cast<pl_hook_stage>(0);
+        pl_rect2df native4kWindowHookRect = {};
+        backend.SetNguHookProbeForTest(
+            [&](const pl_hook_params& params, const pl_hook_res& result)
+            {
+                native4kWindowHook = true;
+                native4kWindowHookStage = params.stage;
+                native4kWindowHookRect = result.rect;
+            });
         std::vector<uint8_t> native4kWindowPixels;
         const HRESULT native4kWindowRender = backend.RenderOffscreen(1920, 1080, native4kWindowPixels);
         if (FAILED(native4kWindowRender))
@@ -361,15 +371,20 @@ int main(int argc, char** argv)
         Require(std::any_of(native4kWindowPixels.begin(), native4kWindowPixels.end(),
                             [](uint8_t value) { return value != 0; }),
                 "NGU native 4K window output is not black");
+        Require(native4kWindowHook && native4kWindowHookStage == PL_HOOK_CHROMA_INPUT,
+                "NGU native 4K window executes the chroma hook");
+        Require(native4kWindowHookRect.x1 == 3840.0f && native4kWindowHookRect.y1 == 2160.0f,
+                "NGU native 4K window hook returns full-chroma geometry");
+        backend.SetNguHookProbeForTest({});
         Sleep(300);
         Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, native4kWindowPixels)),
                 "NGU native 4K window statistics render");
-        const auto windowStatistics = backend.StatisticsSnapshot();
-        Require(windowStatistics.find(L"nearest") == std::wstring::npos,
-                "NGU native-size fallback reports the real scaler");
-        Require(windowStatistics.find(L"inactive; common renderer fallback") != std::wstring::npos,
-                "NGU native-size fallback reports the inactive NGU state");
-        std::puts("NGU native 4K source falls back visibly for a 1080 window target");
+        const auto native4kWindowStatistics = backend.StatisticsSnapshot();
+        Require(native4kWindowStatistics.find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
+                "NGU native 4K window statistics identify active chroma upscaling");
+        Require(native4kWindowStatistics.find(L"nearest") == std::wstring::npos,
+                "NGU native 4K window does not report its inactive placeholder");
+        std::puts("NGU native 4K chroma pre-scales then common renderer reduces the window");
         backend.ShowStatistics(false);
 
         VideoFrame native4kHdr = native4k;
