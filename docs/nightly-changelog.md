@@ -124,6 +124,6 @@
 - Fixed stutter for videos faster than the display (120 fps on 60 Hz): one frame per refresh, and Ctrl+J shows how many fps are shown ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
 - Changed: the shader cache is in %LOCALAPPDATA%\FrankyRenderer\Cache; an existing one moves there once. Uninstall.cmd removes it when deleting the settings.
 - Added a Clock row to the Ctrl+J statistics, like madVR: how far the audio clock deviates and how often a frame repeats or drops because of it.
-- Fixed occasional stutter without Smooth Motion: every frame is now rendered ahead and shown exactly on its own refresh, also for interlaced video and videos faster than the display.
+- Improved frame timing without Smooth Motion.
 - Fixed a slanted, broken picture with some software decoders when the video width is not a multiple of 16 (for example 854×480).
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
