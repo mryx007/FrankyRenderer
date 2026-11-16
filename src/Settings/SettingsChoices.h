@@ -18,7 +18,7 @@ inline constexpr RendererChoice ScalerChoices[] = {
     {"spline16", L"Spline16"},
     {"spline64", L"Spline64"},
     {"ewa_lanczossharp", L"EWA Lanczos Sharp"},
-    {"ngu_sharp", L"NGU Sharp (native; SDR + 1080p PQ)"},
+    {"ngu_sharp", L"NGU Sharp (native render hook)"},
     {"ewa_lanczos4sharpest", L"EWA Lanczos4 Sharpest"},
     {"gaussian", L"Gaussian"},
     {"sinc", L"Sinc"},

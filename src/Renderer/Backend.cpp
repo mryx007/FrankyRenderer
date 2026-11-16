@@ -1883,7 +1883,23 @@ struct PlaceboBackend::State
         }
 
         heading(L"Processing");
-        const bool nativeNgu = settings.nativeScaler == NativeScalerKind::NguSharp && nguHookActive;
+        const bool nativeNguSelected = settings.nativeScaler == NativeScalerKind::NguSharp;
+        const bool nativeNgu = nativeNguSelected && nguHookActive;
+        const auto nguQualityName = [](NguSharpQuality quality) -> const wchar_t*
+        {
+            switch (quality)
+            {
+            case NguSharpQuality::Low:
+                return L"Low";
+            case NguSharpQuality::Medium:
+                return L"Medium";
+            case NguSharpQuality::High:
+                return L"High";
+            case NguSharpQuality::VeryHigh:
+                return L"VeryHigh";
+            }
+            return L"Unknown";
+        };
         // libplacebo names a filter built from parts "custom"; spell out its
         // preset, kernel and window, e.g. "custom (ewa_lanczos: jinc / jinc, EWA)".
         // role indexes ScalingSettings::filters for the preset it started from.
@@ -1908,22 +1924,45 @@ struct PlaceboBackend::State
         if (rtxDirect)
             row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
         else if (nativeNgu)
-            row(L"Chroma") << L"upscale" << dot << L"NGU Sharp (native hook)";
+            row(L"Chroma") << L"upscale" << dot << L"NGU Sharp "
+                           << nguQualityName(settings.nguChromaQuality) << L" (native hook)";
         else
-            row(L"Chroma") << L"upscale" << dot << filterName(chromaFilter, "bilinear", chromaPlane ? 2 : 0);
+        {
+            auto& value = row(L"Chroma") << L"upscale" << dot
+                                         << filterName(chromaFilter, "bilinear", chromaPlane ? 2 : 0);
+            if (nativeNguSelected)
+                value << L" (NGU Sharp " << nguQualityName(settings.nguChromaQuality)
+                      << L" inactive; common renderer fallback)";
+        }
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
                           output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0;
-        row(L"Image") << (same && rtxUpscaled ? L"RTX Super Resolution"
-                          : same              ? L"native size"
-                          : down              ? L"downscale"
-                                              : L"upscale")
-                      << (same        ? L""
-                          : nativeNgu ? dot + std::wstring(L"NGU Sharp (native hook)")
-                                      : dot + filterName(down ? options->params.downscaler : options->params.upscaler,
-                                                         "bilinear",
-                                                         down ? 1 : 0));
+        {
+            auto& value = row(L"Image");
+            value << (same && rtxUpscaled ? L"RTX Super Resolution"
+                      : same              ? L"native size"
+                      : down              ? L"downscale"
+                                          : L"upscale");
+            if (same)
+            {
+                if (nativeNguSelected)
+                    value << dot << L"NGU Sharp " << nguQualityName(settings.nguLumaQuality)
+                          << L" inactive (common renderer fallback)";
+            }
+            else if (nativeNgu)
+            {
+                value << dot << L"NGU Sharp " << nguQualityName(settings.nguLumaQuality) << L" (native hook)";
+            }
+            else
+            {
+                value << dot
+                      << filterName(down ? options->params.downscaler : options->params.upscaler, "bilinear", down ? 1 : 0);
+                if (nativeNguSelected)
+                    value << L" (NGU Sharp " << nguQualityName(settings.nguLumaQuality)
+                          << L" inactive; common renderer fallback)";
+            }
+        }
         {
             auto& value = row(L"Smooth motion");
             if (mixing && settings.smoothMotion)

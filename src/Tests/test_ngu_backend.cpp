@@ -310,6 +310,15 @@ int main(int argc, char** argv)
         Require(native4kPixels.size() == size_t(3840) * 2160 * 4, "NGU native 4K output size");
         Require(std::any_of(native4kPixels.begin(), native4kPixels.end(), [](uint8_t value) { return value != 0; }),
                 "NGU native 4K fallback output is not black");
+        backend.ShowStatistics(true);
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kPixels)),
+                "NGU native 4K fallback statistics render");
+        const auto native4kStatistics = backend.StatisticsSnapshot();
+        Require(native4kStatistics.find(L"nearest") != std::wstring::npos &&
+                    native4kStatistics.find(L"NGU Sharp VeryHigh inactive; common renderer fallback") !=
+                        std::wstring::npos,
+                "NGU native 4K statistics identify the inactive native path");
+        backend.ShowStatistics(false);
         std::puts("NGU native 4K uses the common renderer with configured dither and no black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
@@ -532,7 +541,7 @@ int main(int argc, char** argv)
 
         backend.ShowStatistics(true);
         Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, nv12WindowPixels)), "NGU NV12 statistics render");
-        Require(backend.StatisticsSnapshot().find(L"NGU Sharp (native hook)") != std::wstring::npos,
+        Require(backend.StatisticsSnapshot().find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
                 "NGU statistics name");
         backend.ShowStatistics(false);
         std::printf("NGU backend statistics native-hook name\n");

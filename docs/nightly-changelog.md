@@ -1,3 +1,6 @@
+- Stable 1.4.3: removed stale NGU capability text, displayed the selected Image
+  and Chroma NGU quality in `Ctrl+J`, and identified inactive native-size
+  fallback instead of showing an unexplained `nearest` filter.
 - Stable 1.4.2: added target-exact Image NGU Sharp Low/Medium/High for the
   observed 1280x720 SDR 4x path, exposed independent Image and Chroma quality
   selectors, and retained VeryHigh for the existing 1080p/HDR/Double paths.
