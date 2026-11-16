@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/BlackBarDetector.h"
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -143,6 +144,63 @@ int main()
         const auto rightBounds = other.Bounds(1920, 1080);
         Require(other.measured && rightBounds.left == 0 && rightBounds.right == 1920, "nor its right side");
     }
+    {
+        // A flash or an object passing into a bar must not move the crop;
+        // a real change of format and a subtitle that stays must.
+        constexpr int width = 256, height = 144;
+        auto film = [&](int top, int bottom, bool flash, bool caption)
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = top; y < height - bottom; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            if (flash)
+                for (int y = 4; y < 16; ++y)
+                    for (int x = 90; x < 160; ++x)
+                        pixels[(y * width + x) * 4] = 255;
+            if (caption)
+                for (int y = height - 12; y < height - 6; ++y)
+                    for (int x = 70; x < 186; ++x)
+                        if (x % 5 < 3)
+                            pixels[(y * width + x) * 4 + 1] = 230;
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.delay = 2;
+        settings.keepSubtitles = TRUE;
+        BlackBarDetector detector;
+        const auto plain = film(18, 18, false, false), flashed = film(18, 18, true, false),
+                   captioned = film(18, 18, false, true), full = film(0, 0, false, false);
+        uint64_t now = 0;
+        auto show = [&](const std::vector<uint8_t>& pixels, int samples, uint64_t step)
+        {
+            for (int i = 0; i < samples; ++i, now += step)
+                detector.Observe(pixels.data(), width, height, width * 4, 1920, 1080, settings, now);
+        };
+        show(plain, 20, 200);
+        const auto crop = detector.Bounds(1920, 1080);
+        Require(detector.measured && crop.top > 0 && crop.bottom < 1080, "letterbox crop established");
+        auto same = [&](const RECT& a) { return std::memcmp(&a, &crop, sizeof(RECT)) == 0; };
+        show(flashed, 1, 200);
+        show(plain, 20, 200);
+        Require(same(detector.Bounds(1920, 1080)), "a flash in one sample keeps the crop");
+        show(flashed, 2, 200);
+        show(plain, 20, 200);
+        Require(same(detector.Bounds(1920, 1080)), "a flash under 0.6 s keeps the crop");
+        show(captioned, 1, 200);
+        Require(same(detector.Bounds(1920, 1080)) && !detector.subtitleProtection,
+                "a subtitle is not yet shown at once");
+        show(captioned, 4, 200);
+        Require(detector.subtitleProtection && detector.Bounds(1920, 1080).bottom > crop.bottom,
+                "a subtitle that stays opens the bottom bar");
+        show(plain, 30, 200);
+        Require(same(detector.Bounds(1920, 1080)) && !detector.subtitleProtection, "and the crop returns after it");
+        show(full, 6, 200);
+        const auto opened = detector.Bounds(1920, 1080);
+        Require(opened.top == 0 && opened.bottom == 1080, "a real change to full height is followed");
+    }
+    puts("PASS black bars: flashes under 0.6 s keep the crop, staying subtitles and format changes are followed");
     puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration; "
          "end credits; dark picture sides are not cropped");
 }

@@ -10,10 +10,34 @@
 // isolated bright border bands are treated as possible embedded text/logos.
 class BlackBarDetector
 {
-    RECT active = {}, base = {}, candidate = {}, subtitleBounds = {};
-    uint64_t since = 0, subtitleUntil = 0;
-    unsigned confirmations = 0;
+    // A larger picture or text in a bar counts only once it stayed this long
+    // over consecutive samples: a flash or an object passing the edge must
+    // not make the picture jump.
+    static constexpr uint64_t PersistMs = 600;
+    RECT active = {}, base = {}, candidate = {}, subtitleBounds = {}, grow = {}, text = {};
+    uint64_t since = 0, subtitleUntil = 0, growSince = 0, textSince = 0;
+    unsigned confirmations = 0, growSeen = 0, textSeen = 0;
     bool haveBase = false;
+
+    static RECT Union(const RECT& a, const RECT& b)
+    {
+        return {
+            std::min(a.left, b.left), std::min(a.top, b.top), std::max(a.right, b.right), std::max(a.bottom, b.bottom)};
+    }
+
+    // Seen in consecutive samples for PersistMs; collects their union in area.
+    static bool Persists(RECT& area, uint64_t& first, unsigned& seen, const RECT& now, uint64_t at)
+    {
+        if (!seen)
+        {
+            area = now;
+            first = at;
+        }
+        else
+            area = Union(area, now);
+        ++seen;
+        return seen >= 2 && at - first >= PersistMs;
+    }
 
     static bool Near(const RECT& a, const RECT& b, int t = 2)
     {
@@ -28,9 +52,9 @@ class BlackBarDetector
 
     void Reset()
     {
-        active = base = candidate = subtitleBounds = {};
-        since = subtitleUntil = 0;
-        confirmations = 0;
+        active = base = candidate = subtitleBounds = grow = text = {};
+        since = subtitleUntil = growSince = textSince = 0;
+        confirmations = growSeen = textSeen = 0;
         measured = haveBase = subtitleProtection = false;
         samples = 0;
     }
@@ -41,7 +65,7 @@ class BlackBarDetector
     {
         candidate = {};
         since = 0;
-        confirmations = 0;
+        confirmations = growSeen = textSeen = 0;
         subtitleUntil = 0;
     }
 
@@ -63,6 +87,9 @@ class BlackBarDetector
         if (!pixels || w < 16 || h < 16 || sourceW < 16 || sourceH < 16 || pitch < size_t(w) * 4)
             return false;
         const int limit = static_cast<int>(settings.threshold * 2.55f);
+        // Edges a few pixels apart (compression noise, soft bar edges) are the
+        // same crop: half a percent of the height, 5 pixels at 1080p.
+        const int tolerance = std::max(2, sourceH / 200);
         std::vector<int> rows(h), cols(w);
         const int bright = CountBlackBarPixels(pixels, w, h, pitch, limit, rows.data(), cols.data());
         const auto report = [&](const char* verdict, const RECT& found)
@@ -109,7 +136,7 @@ class BlackBarDetector
         if (bright < std::max(16, w * h / 100))
         {
             report("too little picture", RECT{});
-            confirmations = 0;
+            confirmations = growSeen = textSeen = 0;
             return false;
         }
         // Skip short isolated bands only when separated by black space from
@@ -167,7 +194,7 @@ class BlackBarDetector
             next.bottom - next.top < sourceH / 3)
         {
             report("implausible bounds", next);
-            confirmations = 0;
+            confirmations = growSeen = textSeen = 0;
             return false;
         }
         // Sparse title cards and small illuminated objects do not establish
@@ -179,7 +206,7 @@ class BlackBarDetector
             *std::max_element(cols.begin(), cols.end()) < contentH * .65)
         {
             report("sparse picture", next);
-            confirmations = 0;
+            confirmations = growSeen = textSeen = 0;
             return false;
         }
         // A picture fills its bounds; text on black (end credits, title cards)
@@ -197,12 +224,12 @@ class BlackBarDetector
             if (lit < area * .4)
             {
                 report("low fill", next);
-                confirmations = 0;
+                confirmations = growSeen = textSeen = 0;
                 return false;
             }
         }
         const RECT old = Bounds(sourceW, sourceH);
-        if (!Near(candidate, next))
+        if (!Near(candidate, next, tolerance))
         {
             candidate = next;
             since = now;
@@ -212,12 +239,15 @@ class BlackBarDetector
             ++confirmations;
         if (haveBase)
         {
-            RECT expanded = {std::min(base.left, next.left),
-                             std::min(base.top, next.top),
-                             std::max(base.right, next.right),
-                             std::max(base.bottom, next.bottom)};
-            if (!Near(base, expanded))
-                base = expanded;
+            // More picture than the crop shows: follow it only when it stays.
+            const RECT expanded = Union(base, next);
+            if (Near(base, expanded, tolerance))
+                growSeen = 0;
+            else if (Persists(grow, growSince, growSeen, expanded, now))
+            {
+                base = Union(base, grow);
+                growSeen = 0;
+            }
         }
         if (confirmations >= 3 && (!haveBase || now - since >= uint64_t(settings.delay * 1000.f)))
         {
@@ -230,25 +260,27 @@ class BlackBarDetector
             return false;
         }
         RECT wanted = base;
-        bool text = false;
+        bool shown = false;
         if (settings.keepSubtitles)
         {
-            wanted = {std::min(base.left, visible.left),
-                      std::min(base.top, visible.top),
-                      std::max(base.right, visible.right),
-                      std::max(base.bottom, visible.bottom)};
-            text = !Near(wanted, base);
+            // Text in a bar is a subtitle once it stays; a flash is not.
+            const RECT seen = Union(base, visible);
+            if (Near(seen, base, tolerance))
+                textSeen = 0;
+            else
+                shown = Persists(text, textSince, textSeen, seen, now);
         }
-        if (text)
+        if (shown)
         {
             subtitleUntil = now + uint64_t(settings.delay * 1000.f);
-            subtitleBounds = wanted;
+            subtitleBounds = Union(base, text);
+            wanted = subtitleBounds;
         }
         else if (now < subtitleUntil)
             wanted = subtitleBounds;
-        subtitleProtection = text || now < subtitleUntil;
+        subtitleProtection = shown || now < subtitleUntil;
         report(subtitleProtection ? "subtitle protection" : "bars", wanted);
-        if (!measured || !Near(old, wanted))
+        if (!measured || !Near(old, wanted, tolerance))
         {
             active = wanted;
             measured = true;
