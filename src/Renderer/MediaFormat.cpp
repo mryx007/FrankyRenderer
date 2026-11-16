@@ -212,19 +212,15 @@ HRESULT ParseFormat(const AM_MEDIA_TYPE& type, MediaFormat& out)
     if (next.frame.height > 16384 || ((next.frame.width & 1) && layout.chromaX) ||
         ((next.frame.height & 1) && layout.chromaY))
         return VFW_E_TYPE_NOT_ACCEPTED;
+    // The row pitch is biWidth (RGB rounded to whole DWORDs). A decoder with
+    // wider rows says so in biWidth and gives the picture in rcSource;
+    // biSizeImage may hold any amount of spare room (854x480 from MPC Video
+    // Decoder declares 1440 bytes more than its rows need).
     next.frame.stride = MinimumStride(next.frame.format, next.frame.width);
     // Uncompressed RGB (BI_RGB or BI_BITFIELDS) with a positive height is a
     // bottom-up DIB; YUV is always top-down.
     next.frame.bottomUp =
         layout.rgb && (bitmap.biCompression == BI_RGB || bitmap.biCompression == BI_BITFIELDS) && bitmap.biHeight > 0;
-    const size_t minimum = ImageBytes(next.frame.format, next.frame.stride, next.frame.height);
-    if (bitmap.biSizeImage >= minimum)
-    {
-        size_t padded = static_cast<size_t>(next.frame.stride) * bitmap.biSizeImage / minimum;
-        if (padded < INT_MAX &&
-            ImageBytes(next.frame.format, static_cast<int>(padded), next.frame.height) == bitmap.biSizeImage)
-            next.frame.stride = static_cast<int>(padded);
-    }
     if (IsRectEmpty(&next.source))
         next.source = {0, 0, next.frame.width, next.frame.height};
     if (next.source.left < 0 || next.source.top < 0 || next.source.right > next.frame.width ||
