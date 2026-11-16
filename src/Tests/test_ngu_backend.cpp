@@ -372,6 +372,45 @@ int main(int argc, char** argv)
         std::puts("NGU native 4K source falls back visibly for a 1080 window target");
         backend.ShowStatistics(false);
 
+        VideoFrame native4kHdr = native4k;
+        native4kHdr.format = PixelFormat::P010;
+        native4kHdr.stride = 3840 * 2;
+        native4kHdr.color = pl_color_space_srgb;
+        native4kHdr.color.transfer = PL_COLOR_TRC_PQ;
+        native4kHdr.color.primaries = PL_COLOR_PRIM_BT_2020;
+        native4kHdr.matrix = PL_COLOR_SYSTEM_BT_2020_NC;
+        const size_t native4kHdrBytes = size_t(3840) * 2160 * 2 + size_t(1920) * 1080 * 4;
+        std::vector<uint8_t> native4kHdrData(native4kHdrBytes);
+        auto native4kHdrY = reinterpret_cast<uint16_t*>(native4kHdrData.data());
+        for (int y = 0; y < 2160; ++y)
+            for (int x = 0; x < 3840; ++x)
+                native4kHdrY[size_t(y) * 3840 + x] =
+                    uint16_t((16 + (x * 219) / 3839) << 6);
+        auto native4kHdrUv = reinterpret_cast<uint16_t*>(
+            native4kHdrData.data() + size_t(3840) * 2160 * 2);
+        for (size_t i = 0; i < size_t(1920) * 1080; ++i)
+        {
+            native4kHdrUv[i * 2] = uint16_t(512 << 6);
+            native4kHdrUv[i * 2 + 1] = uint16_t(512 << 6);
+        }
+        Require(SUCCEEDED(backend.Upload(native4kHdr, native4kHdrData.data(), native4kHdrData.size())),
+                "NGU native 4K HDR upload");
+        std::vector<uint8_t> native4kHdrPixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kHdrPixels)),
+                "NGU native 4K HDR common-renderer fallback");
+        Require(std::any_of(native4kHdrPixels.begin(), native4kHdrPixels.end(),
+                            [](uint8_t value) { return value != 0; }),
+                "NGU native 4K HDR fallback is not blue/black");
+        uint64_t hdrRed = 0, hdrGreen = 0, hdrBlue = 0;
+        for (size_t i = 0; i + 3 < native4kHdrPixels.size(); i += 4)
+        {
+            hdrBlue += native4kHdrPixels[i];
+            hdrGreen += native4kHdrPixels[i + 1];
+            hdrRed += native4kHdrPixels[i + 2];
+        }
+        Require(hdrRed > 0 && hdrGreen > 0, "NGU native 4K HDR fallback is not a blue-only frame");
+        std::puts("NGU native 4K HDR without an observed plan falls back visibly");
+
         std::puts("NGU native 4K executes the all-quality chroma hook without a black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
