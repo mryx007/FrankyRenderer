@@ -53,6 +53,9 @@ static bool nguHdrTest = false;
 static int nguInitialFrames = 5;
 static std::wstring nguCaptureRoot;
 static std::vector<BYTE> nguCapturedInput;
+static bool nguNv12Test = false;
+static std::wstring nguNv12InputPath;
+static std::vector<BYTE> nguNv12Input;
 static std::wstring p010FixtureInputPath;
 static std::wstring p010FixtureOraclePath;
 static std::wstring p010FixtureOutputPath;
@@ -77,6 +80,28 @@ static std::vector<BYTE> ReadFile(const std::wstring& path, size_t expected)
     if (!file.read(reinterpret_cast<char*>(bytes.data()), std::streamsize(expected)))
         return {};
     return bytes;
+}
+
+static std::vector<BYTE> ReadI420AsNv12(const std::wstring& path, int width, int height)
+{
+    const size_t lumaBytes = size_t(width) * height;
+    const size_t planeBytes = size_t(width / 2) * (height / 2);
+    const auto i420 = ReadFile(path, lumaBytes + planeBytes * 2);
+    if (i420.empty())
+        return {};
+    std::vector<BYTE> nv12(lumaBytes + planeBytes * 2);
+    std::memcpy(nv12.data(), i420.data(), lumaBytes);
+    const BYTE* u = i420.data() + lumaBytes;
+    const BYTE* v = u + planeBytes;
+    BYTE* uv = nv12.data() + lumaBytes;
+    for (size_t row = 0; row < size_t(height / 2); ++row)
+        for (size_t column = 0; column < size_t(width / 2); ++column)
+        {
+            const size_t source = row * size_t(width / 2) + column;
+            uv[source * 2] = u[source];
+            uv[source * 2 + 1] = v[source];
+        }
+    return nv12;
 }
 
 static bool WriteFile(const std::wstring& path, const std::vector<BYTE>& bytes)
@@ -213,6 +238,8 @@ static DWORD FourCC()
         return MAKEFOURCC('P', '2', '1', '0');
     if (explicitP216)
         return MAKEFOURCC('P', '2', '1', '6');
+    if (nguNv12Test)
+        return MAKEFOURCC('N', 'V', '1', '2');
     if (nguTest && !hardware && !explicitP016)
         return MAKEFOURCC('R', 'G', 'B', 48);
     return textureFormat == DXGI_FORMAT_NV12   ? MAKEFOURCC('N', 'V', '1', '2')
@@ -224,6 +251,8 @@ static long SampleBytes()
 {
     if (explicitP210 || explicitP216)
         return static_cast<long>(class3FixtureInput.size());
+    if (nguNv12Test)
+        return static_cast<long>(nguNv12Input.size());
     if (nguTest && !hardware && !explicitP016)
         return nguSourceWidth * nguSourceHeight * 6;
     if (nguTest && !hardware && explicitP016)
@@ -862,6 +891,15 @@ class PatternStream final : public CSourceStream
             color.VideoTransferFunction = MFVideoTransFunc_2084;
             info->dwControlFlags = color.value | AMCONTROL_COLORINFO_PRESENT;
         }
+        else if (nguNv12Test)
+        {
+            DXVA2_ExtendedFormat color = {};
+            color.NominalRange = DXVA2_NominalRange_16_235;
+            color.VideoTransferMatrix = MFVideoTransferMatrix_BT601;
+            color.VideoPrimaries = MFVideoPrimaries_BT709;
+            color.VideoTransferFunction = MFVideoTransFunc_709;
+            info->dwControlFlags = color.value | AMCONTROL_COLORINFO_PRESENT;
+        }
         info->dwPictAspectRatioX = nguTest ? 16 : 1;
         info->dwPictAspectRatioY = nguTest ? 9 : 1;
         info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -869,6 +907,8 @@ class PatternStream final : public CSourceStream
         info->bmiHeader.biHeight = nguTest ? -nguSourceHeight : 64;
         info->bmiHeader.biPlanes = 1;
         info->bmiHeader.biBitCount = (explicitP210 || explicitP216) ? 32
+                                     : nguNv12Test
+                                         ? 12
                                      : nguTest && !hardware && !explicitP016
                                          ? 48
                                          : (textureFormat == DXGI_FORMAT_NV12 ? 12 : 24);
@@ -962,6 +1002,10 @@ class PatternStream final : public CSourceStream
         if (explicitP210 || explicitP216)
         {
             std::memcpy(bytes, class3FixtureInput.data(), class3FixtureInput.size());
+        }
+        else if (nguNv12Test)
+        {
+            std::memcpy(bytes, nguNv12Input.data(), nguNv12Input.size());
         }
         else if (nguTest && !hardware && !explicitP016)
         {
@@ -1337,6 +1381,13 @@ int wmain(int argc, wchar_t** argv)
             nguHdrTest = true;
         if (wcscmp(argv[i], L"--ngu-root") == 0 && i + 1 < argc)
             nguCaptureRoot = argv[++i];
+        if (wcscmp(argv[i], L"--ngu-4k-nv12") == 0 && i + 1 < argc)
+        {
+            nguNv12Test = true;
+            nguSourceWidth = 3840;
+            nguSourceHeight = 2160;
+            nguNv12InputPath = argv[++i];
+        }
         if (wcscmp(argv[i], L"--p010-input") == 0 && i + 1 < argc)
             p010FixtureInputPath = argv[++i];
         if (wcscmp(argv[i], L"--p010-oracle") == 0 && i + 1 < argc)
@@ -1374,7 +1425,7 @@ int wmain(int argc, wchar_t** argv)
             textureFormat = DXGI_FORMAT_P016;
         }
     }
-    if (nguTest && !nguCaptureRoot.empty() && !explicitP210 && !explicitP216)
+    if (nguTest && !nguCaptureRoot.empty() && !explicitP210 && !explicitP216 && !nguNv12Test)
     {
         nguCapturedInput = ReadFile(nguCaptureRoot + L"\\input_00224_PS_460_bfe50921_s0.bin", size_t(1280) * 720 * 8);
         if (nguCapturedInput.empty())
@@ -1383,7 +1434,7 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
     }
-    if (nguTest && !hardware && !explicitP016 && !explicitP210 && !explicitP216 &&
+    if (nguTest && !hardware && !explicitP016 && !explicitP210 && !explicitP216 && !nguNv12Test &&
         (nguSourceWidth != 1280 || nguSourceHeight != 720))
     {
         puts("FAIL --ngu-1080 is a P010 GPU smoke; use --gpu");
@@ -1416,6 +1467,20 @@ int wmain(int argc, wchar_t** argv)
         if (class3FixtureInput.empty())
         {
             printf("FAIL class-3 input must be %dx%d P210/P216\n", nguSourceWidth, nguSourceHeight);
+            return 1;
+        }
+    }
+    if (nguNv12Test)
+    {
+        if (!nguTest || hardware || !nguCaptureRoot.empty())
+        {
+            puts("FAIL --ngu-4k-nv12 requires --ngu without --gpu or --ngu-root");
+            return 1;
+        }
+        nguNv12Input = ReadI420AsNv12(nguNv12InputPath, 3840, 2160);
+        if (nguNv12Input.empty())
+        {
+            puts("FAIL 4K NV12 fixture must be 3840x2160");
             return 1;
         }
     }
@@ -1910,6 +1975,11 @@ int wmain(int argc, wchar_t** argv)
         {
             std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
             Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()), "class-3 DirectShow pixels");
+            if (!nguCpuPlaneOutputPath.empty() && !WriteBmp32(nguCpuPlaneOutputPath, 3840, 2160, pixels))
+            {
+                puts("FAIL could not write NGU DirectShow output BMP");
+                return 1;
+            }
             const auto expected = BgraToRgba(ReadFile(nguFinalOraclePath, size_t(3840) * 2160 * 4));
             if (expected.empty() || !CompareNguRgb(pixels, expected, different, maximum, overOne) || maximum > 1 ||
                 overOne != 0)

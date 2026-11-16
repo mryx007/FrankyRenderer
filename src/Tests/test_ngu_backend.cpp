@@ -241,6 +241,12 @@ int main(int argc, char** argv)
         Require(noLumaPlan.noLuma && noLumaPlan.outputHook && noLumaPlan.outputWidth == 1920 &&
                     noLumaPlan.outputHeight == 1080,
                 "canonical 1080 no-luma plan");
+        planSource.width = 3840;
+        planSource.height = 2160;
+        const auto chroma4KPlan = planner.PlanNativeVeryHigh(planSource, 3840, 2160);
+        Require(chroma4KPlan.chromaOnly4K && chroma4KPlan.noLuma && chroma4KPlan.outputHook &&
+                    chroma4KPlan.outputWidth == 3840 && chroma4KPlan.outputHeight == 2160,
+                "canonical native 4K chroma-only plan");
         planSource.width = 1280;
         planSource.height = 720;
         planSource.chromaLayout = NguChromaLayout::SemiPlanar422;
@@ -286,7 +292,7 @@ int main(int argc, char** argv)
 
         auto native4kSettings = settings;
         native4kSettings.ditherMethod = 0;
-        Require(SUCCEEDED(backend.SetSettings(native4kSettings)), "NGU native 4K common-fallback settings");
+        Require(SUCCEEDED(backend.SetSettings(native4kSettings)), "NGU native 4K chroma settings");
 
         VideoFrame native4k;
         native4k.width = 3840;
@@ -309,17 +315,15 @@ int main(int argc, char** argv)
             throw std::runtime_error("NGU native 4K render: " + backend.LastError());
         Require(native4kPixels.size() == size_t(3840) * 2160 * 4, "NGU native 4K output size");
         Require(std::any_of(native4kPixels.begin(), native4kPixels.end(), [](uint8_t value) { return value != 0; }),
-                "NGU native 4K fallback output is not black");
+                "NGU native 4K chroma output is not black");
         backend.ShowStatistics(true);
         Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kPixels)),
-                "NGU native 4K fallback statistics render");
+                "NGU native 4K chroma statistics render");
         const auto native4kStatistics = backend.StatisticsSnapshot();
-        Require(native4kStatistics.find(L"nearest") != std::wstring::npos &&
-                    native4kStatistics.find(L"NGU Sharp VeryHigh inactive; common renderer fallback") !=
-                        std::wstring::npos,
-                "NGU native 4K statistics identify the inactive native path");
+        Require(native4kStatistics.find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
+                "NGU native 4K statistics identify active chroma upscaling");
         backend.ShowStatistics(false);
-        std::puts("NGU native 4K uses the common renderer with configured dither and no black frame");
+        std::puts("NGU native 4K executes the all-quality chroma hook without a black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");
 
         VideoFrame frame;

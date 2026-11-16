@@ -99,6 +99,7 @@ enum class NguScalerStage
     VeryHighNguClass3_720,
     VeryHighChromaCoreClass3_1080,
     VeryHighNguClass3_1080,
+    VeryHighChroma4K,
 };
 
 enum class NguScalerSupport
@@ -146,6 +147,7 @@ struct NguTargetPlan
     int outputWidth = 0;
     int outputHeight = 0;
     bool noLuma = false;
+    bool chromaOnly4K = false;
     bool double720 = false;
     bool outputHook = false;
     bool hdr = false;
@@ -236,6 +238,12 @@ class NguScaler
     bool RunNativeChromaVeryHigh720(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput);
     bool PrepareNativeChromaVeryHigh1080(pl_gpu gpu);
     bool RunNativeChromaVeryHigh1080(ID3D11ShaderResourceView* cb, ID3D11RenderTargetView* denseOutput);
+    bool PrepareNativeChroma4K(pl_gpu gpu, NguQuality quality = NguQuality::VeryHigh);
+    bool RunNativeChroma4K(ID3D11ShaderResourceView* packedUv,
+                           ID3D11ShaderResourceView* yInput,
+                           NguQuality quality,
+                           ID3D11RenderTargetView* finalOutput);
+    bool DumpNativeChroma4KStage(int stage, int index, const char* path);
     bool PrepareNativeChromaCombines(pl_gpu gpu);
     bool RunNativeChromaCombine1(ID3D11ShaderResourceView* addInput,
                                  ID3D11ShaderResourceView* nnInput,
@@ -320,7 +328,11 @@ class NguScaler
     bool RunNativeLumaFinal1080(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output);
     bool RunNativeLumaFinal720(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output);
     bool PrepareNativeHookOutput(pl_gpu gpu);
-    bool RunNativeHookOutput(ID3D11ShaderResourceView* input, ID3D11RenderTargetView* output, int width, int height);
+    bool RunNativeHookOutput(ID3D11ShaderResourceView* input,
+                             ID3D11RenderTargetView* output,
+                             int width,
+                             int height,
+                             bool chroma = false);
     void ResetDitherPhase();
     bool RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
                                      ID3D11ShaderResourceView* dither,
@@ -653,6 +665,7 @@ class NguScaler
     std::unique_ptr<NativeChromaNetwork> nativeChromaNetwork_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh720_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh1080_;
+    std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHigh4K_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHighClass3_720_;
     std::unique_ptr<NativeChromaVeryHighResources> nativeChromaVeryHighClass3_1080_;
     std::unique_ptr<NativeChromaCombines> nativeChromaCombines_;
@@ -660,6 +673,7 @@ class NguScaler
     std::unique_ptr<NativeChromaYCbCr> nativeChromaYCbCr_;
     std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh720Full_;
     std::unique_ptr<NativeChromaFullResources> nativeChromaVeryHigh1080Full_;
+    std::unique_ptr<NativeChromaFullResources> nativeChroma4K_;
     std::unique_ptr<NativeNguFromPlanesResources> nativeNgu720FromPlanes_;
     std::unique_ptr<NativeNguFromPlanesResources> nativeNgu1080FromPlanes_;
     std::unique_ptr<NativeLumaLayers> nativeLumaLayers_;

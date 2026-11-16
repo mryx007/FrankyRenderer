@@ -125,6 +125,7 @@ struct PlaceboBackend::State
     pl_hook nguHook = {};
     bool nguHookActive = false;
     bool nguHookAtOutput = false;
+    bool nguHookAtChroma = false;
     bool nguCommonFallback = false;
     bool nguHdrSource = false;
     NguTargetPlan nguPlan;
@@ -663,7 +664,10 @@ struct PlaceboBackend::State
         nguOutputWidth = nguPlan.outputWidth;
         nguOutputHeight = nguPlan.outputHeight;
         const DXGI_FORMAT outputFormat =
-            (nguHdrSource || nguPlan.preFinalRgb16) ? DXGI_FORMAT_R16G16B16A16_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+            (nguHdrSource || nguPlan.preFinalRgb16 || nguPlan.chromaOnly4K) ? DXGI_FORMAT_R16G16B16A16_UNORM
+                                                                            : DXGI_FORMAT_R8G8B8A8_UNORM;
+        const DXGI_FORMAT hookOutputFormat =
+            nguPlan.chromaOnly4K ? DXGI_FORMAT_R16G16_UNORM : outputFormat;
         bool recreateOutput = !nguOutput;
         if (nguOutput)
         {
@@ -703,7 +707,7 @@ struct PlaceboBackend::State
             D3D11_TEXTURE2D_DESC current = {};
             nguHookOutput->GetDesc(&current);
             recreateHookOutput = current.Width != UINT(nguOutputWidth) || current.Height != UINT(nguOutputHeight) ||
-                                 current.Format != outputFormat;
+                                 current.Format != hookOutputFormat;
         }
         if (recreateHookOutput)
         {
@@ -719,7 +723,7 @@ struct PlaceboBackend::State
             desc.Height = UINT(nguOutputHeight);
             desc.MipLevels = 1;
             desc.ArraySize = 1;
-            desc.Format = outputFormat;
+            desc.Format = hookOutputFormat;
             desc.SampleDesc.Count = 1;
             desc.Usage = D3D11_USAGE_DEFAULT;
             desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -734,7 +738,7 @@ struct PlaceboBackend::State
         {
             pl_d3d11_wrap_params wrap = {};
             wrap.tex = nguHookOutput.Get();
-            wrap.fmt = outputFormat;
+            wrap.fmt = hookOutputFormat;
             wrap.w = UINT(nguOutputWidth);
             wrap.h = UINT(nguOutputHeight);
             nguHookOutputPlane = pl_d3d11_wrap(d3d->gpu, &wrap);
@@ -813,19 +817,24 @@ struct PlaceboBackend::State
     {
         if (settings.nativeScaler != NativeScalerKind::NguSharp)
             return true;
-        // NGU has no evidence-backed source graph outside the two observed
-        // source geometries below. If such a source is already at native size
-        // or is being reduced, the common renderer owns conversion and
-        // presentation. Installing the NGU hook would turn this ordinary
-        // no-upscale case into an unsupported NGU geometry and produce a black
-        // frame. An unsupported geometry that actually needs enlargement still
-        // reaches admission and fails closed.
+        NguSourceFormatLayout nativeLayout = {};
+        const bool native4KChroma =
+            description.width == 3840 && description.height == 2160 &&
+            DescribeNguSourceFormat(description.format, description.width, description.height, nativeLayout) &&
+            nativeLayout.chromaLayout == NguChromaLayout::SemiPlanar420 && nativeLayout.chromaWidth == 1920 &&
+            nativeLayout.chromaHeight == 1080;
+        // E-178: native-size 4:2:0 sources still need chroma upscaling. The
+        // admitted 4K path executes only NGU chroma; luma remains the shared
+        // renderer's source plane. Non-subsampled native-size sources remain
+        // on the ordinary renderer because no native scaler work is needed.
         const bool admittedSourceGeometry = (description.width == 1280 && description.height == 720) ||
-                                            (description.width == 1920 && description.height == 1080);
+                                            (description.width == 1920 && description.height == 1080) ||
+                                            native4KChroma;
         if (!admittedSourceGeometry && description.width >= targetWidth && description.height >= targetHeight)
         {
             nguHookActive = false;
             nguHookAtOutput = false;
+            nguHookAtChroma = false;
             nguCommonFallback = true;
             nguHdrSource = false;
             nguPlan = {};
@@ -842,10 +851,14 @@ struct PlaceboBackend::State
         const bool sourceHdr =
             pl_color_space_is_hdr(&image.color) || pl_color_space_is_hdr(&description.color);
         const bool qualityObserved =
-            source.width == 1280 && source.height == 720 &&
-            targetWidth == 3840 && targetHeight == 2160 && !sourceHdr &&
-            source.lumaBits == 8 && source.chromaBits == 8 &&
-            (source.chromaLayout == NguChromaLayout::None ||
+            (source.width == 1280 && source.height == 720 &&
+             targetWidth == 3840 && targetHeight == 2160 && !sourceHdr &&
+             source.lumaBits == 8 && source.chromaBits == 8 &&
+             (source.chromaLayout == NguChromaLayout::None ||
+              source.chromaLayout == NguChromaLayout::SemiPlanar420)) ||
+            (source.width == 3840 && source.height == 2160 &&
+             targetWidth == 3840 && targetHeight == 2160 && !sourceHdr &&
+             source.lumaBits == 8 && source.chromaBits == 8 &&
              source.chromaLayout == NguChromaLayout::SemiPlanar420);
         const bool nonVeryHighQuality =
             source.lumaQuality != NguSharpQuality::VeryHigh ||
@@ -854,6 +867,7 @@ struct PlaceboBackend::State
         {
             nguHookActive = false;
             nguHookAtOutput = false;
+            nguHookAtChroma = false;
             nguCommonFallback = true;
             nguHdrSource = false;
             nguPlan = {};
@@ -923,8 +937,12 @@ struct PlaceboBackend::State
         // bypass the common RGB pass. HDR must stop before Franky's colour
         // management so the common renderer owns tone mapping, transfer,
         // primaries, peak metadata and output encoding.
-        nguHookAtOutput = !nguHdrSource && ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight).outputHook;
-        nguHook.stages = nguHookAtOutput ? PL_HOOK_OUTPUT : PL_HOOK_RGB;
+        nguHookAtChroma = !nguHdrSource && nguPlan.chromaOnly4K;
+        nguHookAtOutput =
+            !nguHookAtChroma && !nguHdrSource && ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight).outputHook;
+        nguHook.stages = nguHookAtChroma ? PL_HOOK_CHROMA_INPUT
+                         : nguHookAtOutput ? PL_HOOK_OUTPUT
+                                           : PL_HOOK_RGB;
         nguHook.input = PL_HOOK_SIG_TEX;
         nguHook.priv = this;
         nguHook.hook = &State::RunNguHook;
@@ -1040,8 +1058,12 @@ struct PlaceboBackend::State
         pl_hook_res result = {};
         result.failed = true;
         TraceNgu("NGU output hook entered");
-        const pl_hook_stage expectedStage = self && self->nguHookAtOutput ? PL_HOOK_OUTPUT : PL_HOOK_RGB;
-        if (!self || !params || params->stage != expectedStage || params->components < 3 || !self->nguHookActive ||
+        const pl_hook_stage expectedStage = self && self->nguHookAtChroma ? PL_HOOK_CHROMA_INPUT
+                                              : self && self->nguHookAtOutput ? PL_HOOK_OUTPUT
+                                                                              : PL_HOOK_RGB;
+        const int requiredComponents = self && self->nguHookAtChroma ? 2 : 3;
+        if (!self || !params || params->stage != expectedStage || params->components < requiredComponents ||
+            !self->nguHookActive ||
             !self->nguHookOutputPlane || !self->RunNgu())
         {
             if (self && self->error.empty())
@@ -1051,11 +1073,14 @@ struct PlaceboBackend::State
             TraceNgu("NGU output hook rejected");
             return result;
         }
-        TraceNgu(self->nguHookAtOutput ? "native-output storage adapter" : "RGBA storage adapter");
+        TraceNgu(self->nguHookAtChroma ? "RGBA16 chroma storage adapter"
+                  : self->nguHookAtOutput ? "native-output storage adapter"
+                                          : "RGBA storage adapter");
         if (!self->ngu.RunNativeHookOutput(self->nguOutputShaderView.Get(),
                                            self->nguHookOutputView.Get(),
                                            self->nguOutputWidth,
-                                           self->nguOutputHeight))
+                                           self->nguOutputHeight,
+                                           self->nguHookAtChroma))
         {
             if (self->error.empty())
                 self->error = self->ngu.LastError();
@@ -1067,6 +1092,30 @@ struct PlaceboBackend::State
         result.output = PL_HOOK_SIG_TEX;
         result.tex = self->nguHookOutputPlane;
         result.rect = {0.0f, 0.0f, static_cast<float>(self->nguOutputWidth), static_cast<float>(self->nguOutputHeight)};
+        if (self->nguHookAtChroma)
+        {
+            result.repr = self->image.repr;
+            result.repr.bits = {16, 16, 0};
+            result.repr.alpha = PL_ALPHA_NONE;
+            result.repr.levels = PL_COLOR_LEVELS_FULL;
+            result.color = self->image.color;
+            result.components = 2;
+            char outputMessage[96] = {};
+            sprintf_s(outputMessage,
+                      "NGU chroma hook returned %dx%d RGBA16 texture (sys=%d levels=%d bits=%d/%d)",
+                      self->nguOutputWidth,
+                      self->nguOutputHeight,
+                      int(result.repr.sys),
+                      int(result.repr.levels),
+                      int(result.repr.bits.sample_depth),
+                      int(result.repr.bits.color_depth));
+            TraceNgu(outputMessage);
+#ifdef PLACEBO_TEST_PRESENT_PIXELS
+            if (self->nguHookProbe)
+                self->nguHookProbe(*params, result);
+#endif
+            return result;
+        }
         result.repr = pl_color_repr_rgb;
         const bool wideColorDomain = self->nguHdrSource || self->nguPlan.preFinalRgb16;
         result.repr.bits = wideColorDomain ? pl_bit_encoding{16, 16, 0} : pl_bit_encoding{8, 8, 0};
@@ -1092,6 +1141,7 @@ struct PlaceboBackend::State
                   self->nguOutputHeight,
                   self->nguPlan.hdr             ? "source-resolution HDR"
                   : self->nguPlan.preFinalRgb16 ? "pre-final Double RGB16"
+                  : self->nguPlan.chromaOnly4K  ? "4K chroma-only"
                   : self->nguPlan.noLuma        ? "chroma-only"
                   : self->nguPlan.double720     ? "Double"
                                                 : "target");
@@ -1259,6 +1309,7 @@ struct PlaceboBackend::State
         userShaderMessage.clear();
         nguHookActive = false;
         nguHookAtOutput = false;
+        nguHookAtChroma = false;
         nguCommonFallback = false;
         nguHdrSource = false;
         nguPlan = {};
@@ -1947,8 +1998,8 @@ struct PlaceboBackend::State
             if (same)
             {
                 if (nativeNguSelected)
-                    value << dot << L"NGU Sharp " << nguQualityName(settings.nguLumaQuality)
-                          << L" inactive (common renderer fallback)";
+                    value << dot << L"luma passthrough (NGU Sharp " << nguQualityName(settings.nguLumaQuality)
+                          << L" inactive for luma)";
             }
             else if (nativeNgu)
             {
@@ -2445,6 +2496,7 @@ struct PlaceboBackend::State
 
         nguHookActive = false;
         nguHookAtOutput = false;
+        nguHookAtChroma = false;
         nguHdrSource = false;
         nguPlan = {};
         if (settings.nativeScaler == NativeScalerKind::NguSharp)
