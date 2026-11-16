@@ -95,7 +95,7 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           BUILD_ID: ${{ inputs.build_id }}
         run: |
-          $arguments = @('src/Tools/package_release.py', '--output', 'releases/ci', '--channel', $env:CHANNEL)
+          $arguments = @('src/Tools/package_release.py', '--output', 'releases/ci', '--channel', $env:CHANNEL, '--no-register')
           if ($env:CHANNEL -eq 'nightly') { $arguments += @('--build-id', $env:BUILD_ID) }
           python @arguments
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

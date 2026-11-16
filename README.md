@@ -188,7 +188,7 @@ Follow the [build guide](docs/build.md) to prepare dependencies, then run these 
 python src/Tools/package_release.py --output releases/local-packages
 ```
 
-This builds the shared native renderer and creates one ZIP without installing it. For automated builds and releases, see [GitHub automation](docs/automation.md).
+This builds the shared native renderer, creates one ZIP and automatically registers the packaged AX for the current Windows user so the latest local test package replaces the previous one. Use `--no-register` when preparing an archive only. For automated builds and releases, see [GitHub automation](docs/automation.md).
 
 ## Code formatting
 

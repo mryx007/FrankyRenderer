@@ -1,4 +1,4 @@
-param([ValidateSet('Install','Remove','ForceRemove','Check')][string]$Action='Install',[switch]$Quiet,[string]$MessageFile)
+param([ValidateSet('Install','Remove','ForceRemove','Check','RegisterUser')][string]$Action='Install',[switch]$Quiet,[string]$MessageFile)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
 $taskAx=[IO.Path]::GetFullPath((Join-Path $taskRoot 'FrankyRenderer.ax'))
@@ -17,6 +17,35 @@ function RegisteredPath([string]$id,[string]$hive='HKEY_LOCAL_MACHINE') {
     $key="Registry::$hive\SOFTWARE\Classes\CLSID\$id\InprocServer32"
     if(Test-Path -LiteralPath $key){return (Get-Item -LiteralPath $key).GetValue('')}
     return $null
+}
+function RegisterUserPackage {
+    $rendererId='{B864E92A-1BDF-4DA1-9004-CBF467DF239A}'
+    $pageId='{19A4F3E2-F52E-4DBE-9167-332E7C38E80C}'
+    $categoryId='{083863F1-70DE-11D0-BD40-00A0C911CE86}'
+    $classes='HKCU:\SOFTWARE\Classes\CLSID'
+    $renderer="$classes\$rendererId"
+    $rendererServer="$renderer\InprocServer32"
+    $page="$classes\$pageId"
+    $pageServer="$page\InprocServer32"
+    $category="$classes\$categoryId\Instance\$rendererId"
+    foreach($path in @($renderer,$rendererServer,$page,$pageServer,$category)){
+        $null=New-Item -Path $path -Force
+    }
+    Set-Item -LiteralPath $renderer -Value 'FrankyRenderer'
+    Set-ItemProperty -LiteralPath $rendererServer -Name '(default)' -Value $taskAx
+    Set-ItemProperty -LiteralPath $rendererServer -Name ThreadingModel -Value Both
+    Set-Item -LiteralPath $page -Value 'FrankyRenderer Settings'
+    Set-ItemProperty -LiteralPath $pageServer -Name '(default)' -Value $taskAx
+    Set-ItemProperty -LiteralPath $pageServer -Name ThreadingModel -Value Both
+    Set-ItemProperty -LiteralPath $category -Name FriendlyName -Value FrankyRenderer
+    Set-ItemProperty -LiteralPath $category -Name CLSID -Value $rendererId
+    [byte[]]$filterData=0x02,0x00,0x00,0x00,0x00,0x00,0x20,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x30,0x70,0x69,0x33,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x74,0x79,0x33,0x00,0x00,0x00,0x00,
+        0x38,0x00,0x00,0x00,0x48,0x00,0x00,0x00,0x76,0x69,0x64,0x73,0x00,0x00,0x10,0x00,
+        0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    Set-ItemProperty -LiteralPath $category -Name FilterData -Value $filterData -Type Binary
 }
 function IsFrankyId([string]$id) {
     foreach($known in @($taskIds+$taskFilterIds)){
@@ -139,6 +168,12 @@ try {
     }
     if($Action -eq 'Check') {
         foreach($component in $taskComponents){foreach($id in $component.ids){[pscustomobject]@{CLSID=$id;Machine=(RegisteredPath $id);User=(RegisteredPath $id 'HKEY_CURRENT_USER')}}}
+        exit 0
+    }
+    if($Action -eq 'RegisterUser') {
+        foreach($component in $taskComponents){if(!(Test-Path -LiteralPath $component.file)){throw "Required file is missing: $($component.file)"}}
+        RegisterUserPackage
+        ShowSetupMessage "FrankyRenderer registered for the current Windows user. Previous per-user registrations now point to this package."
         exit 0
     }
     $taskIdentity=[Security.Principal.WindowsIdentity]::GetCurrent()

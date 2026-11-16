@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 import shutil
 
 import pefile
@@ -15,9 +16,22 @@ from runtime_names import (
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT.parent / "dist"
 SOURCE = ROOT / "build/bin"
+VERSION_HEADER = ROOT / "Renderer/Version.h"
 
 
-def main(out=OUT, source=SOURCE, version="1.4.5"):
+def current_version():
+    text = VERSION_HEADER.read_text(encoding="utf-8")
+    match = re.search(r'^#define FRANKY_VERSION_STRING "([^"]+)"$', text, re.MULTILINE)
+    if not match:
+        raise ValueError(f"Version string is missing from {VERSION_HEADER}")
+    return match.group(1)
+
+
+DEFAULT_VERSION = current_version()
+
+
+def main(out=OUT, source=SOURCE, version=None):
+    version = version or current_version()
     with pefile.PE(str(source / "FrankyRenderer.ax")) as binary:
         descriptions = [table.entries.get(b"FileDescription", b"")
                         for group in getattr(binary, "FileInfo", []) for item in group

@@ -4,6 +4,9 @@ Status: stable local release prepared 2026-11-17.
 
 Tag: annotated `v1.4.5`
 
+> Superseded by `1.4.6`, which retains this playback fix and adds the version
+> row in `Ctrl+J` plus automatic local package registration.
+
 This release fixes real hardware-decoder 4K SDR playback for native NGU Sharp.
 It supersedes `v1.4.4`: the Cb/Cr storage order was already correct in 1.4.4,
 but Direct3D hardware-decoder plane views did not reliably supply that surface

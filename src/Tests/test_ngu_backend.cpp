@@ -3,6 +3,7 @@
 #include "Renderer/NguScaler.h"
 #include "Renderer/NguSourceFormat.h"
 #include "Renderer/RenderOptions.h"
+#include "Renderer/Version.h"
 #include <libplacebo/d3d11.h>
 #include <libplacebo/colorspace.h>
 #include <wrl/client.h>
@@ -406,6 +407,8 @@ int main(int argc, char** argv)
         const auto native4kStatistics = backend.StatisticsSnapshot();
         Require(native4kStatistics.find(L"NGU Sharp VeryHigh (native hook)") != std::wstring::npos,
                 "NGU native 4K statistics identify active chroma upscaling");
+        Require(native4kStatistics.ends_with(std::wstring(L"Version\t") + FRANKY_VERSION_WSTRING),
+                "NGU statistics end with the FrankyRenderer version");
         bool native4kWindowHook = false;
         pl_hook_stage native4kWindowHookStage = static_cast<pl_hook_stage>(0);
         pl_rect2df native4kWindowHookRect = {};

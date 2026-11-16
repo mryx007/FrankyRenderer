@@ -1,3 +1,7 @@
+- Stable 1.4.6: `Ctrl+J` now ends with the running renderer version, and local
+  packages automatically register the new AX for the current Windows user so
+  the latest test build replaces the previous package without a separate
+  install step.
 - Stable 1.4.5: fixed real hardware-decoder 4K SDR NGU playback by feeding the
   NGU adapter from the shared `PL_HOOK_CHROMA_INPUT` surface after decoder
   plane views returned invalid chroma. Window and fullscreen now match the

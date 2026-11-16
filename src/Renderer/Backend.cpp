@@ -9,6 +9,7 @@
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
 #include "Renderer/StatisticsBitmap.h"
+#include "Renderer/Version.h"
 #include "Renderer/ImageAnalysis.h"
 #include "Renderer/PresentationMeasurement.h"
 #include "Renderer/GpuMeasurement.h"
@@ -2369,6 +2370,7 @@ struct PlaceboBackend::State
         }
         row(L"DXGI timing") << presentation.confirmed << L" confirmed" << dot << presentation.resets << L" resets ("
                             << (presentation.timing ? L"active" : L"collecting") << L")";
+        row(L"Version") << FRANKY_VERSION_WSTRING;
         statisticsText = text.str();
     }
 
