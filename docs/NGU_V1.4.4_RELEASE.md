@@ -1,5 +1,9 @@
 # FrankyRenderer 1.4.4
 
+> Superseded by `1.4.5`. The Cb/Cr order change in 1.4.4 was necessary but did
+> not fix the hardware-decoder plane adapter. Real 4K playback could still
+> receive neutral chroma. See `docs/NGU_V1.4.5_RELEASE.md`.
+
 Status: stable local release prepared 2026-11-16.
 
 Tag: annotated `v1.4.4`

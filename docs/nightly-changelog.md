@@ -1,6 +1,10 @@
-- Stable 1.4.4: corrected 4K SDR NGU chroma channel order at the shared
-  `PL_HOOK_CHROMA_INPUT` adapter, eliminating blue/cyan output in real 4K
-  window and fullscreen playback while preserving target-exact NGU surfaces.
+- Stable 1.4.5: fixed real hardware-decoder 4K SDR NGU playback by feeding the
+  NGU adapter from the shared `PL_HOOK_CHROMA_INPUT` surface after decoder
+  plane views returned invalid chroma. Window and fullscreen now match the
+  source, while all four NGU Sharp chroma qualities remain exact.
+- Stable 1.4.4: changed the 4K FinalStep storage order to target `Cb,Cr`.
+  This was necessary but insufficient; 1.4.5 supersedes it after fixing the
+  decoder-to-NGU source adapter.
 - Stable 1.4.3: removed stale NGU capability text, displayed the selected Image
   and Chroma NGU quality in `Ctrl+J`, and identified inactive native-size
   fallback instead of showing an unexplained `nearest` filter.

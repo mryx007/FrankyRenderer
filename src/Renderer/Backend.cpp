@@ -108,6 +108,13 @@ struct PlaceboBackend::State
     ComPtr<ID3D11ShaderResourceView> nguOutputShaderView;
     ComPtr<ID3D11Texture2D> nguHookOutput;
     ComPtr<ID3D11RenderTargetView> nguHookOutputView;
+    ComPtr<ID3D11Texture2D> nguHookChromaTexture;
+    ComPtr<ID3D11ShaderResourceView> nguHookChromaShaderView;
+    ComPtr<ID3D11Texture2D> nguHookLumaTexture;
+    ComPtr<ID3D11ShaderResourceView> nguHookLumaShaderView;
+    pl_tex nguHookChromaPlane = nullptr;
+    pl_pass nguHookChromaCopyPass = nullptr;
+    bool nguHookChromaReady = false;
     ComPtr<ID3D11ShaderResourceView> nguSourceView;
     ComPtr<ID3D11Texture2D> nguCpuPlaneYTexture;
     ComPtr<ID3D11Texture2D> nguCpuPlaneUvTexture;
@@ -622,6 +629,142 @@ struct PlaceboBackend::State
         return S_OK;
     }
 
+    bool PrepareNguChromaHookSource(int lumaWidth, int lumaHeight, int chromaWidth, int chromaHeight)
+    {
+        if (!d3d || !d3d->device || !d3d->gpu || lumaWidth <= 0 || lumaHeight <= 0 ||
+            chromaWidth <= 0 || chromaHeight <= 0)
+            return false;
+
+        bool recreateChroma = !nguHookChromaTexture;
+        if (!recreateChroma)
+        {
+            D3D11_TEXTURE2D_DESC current = {};
+            nguHookChromaTexture->GetDesc(&current);
+            recreateChroma = current.Width != UINT(chromaWidth) || current.Height != UINT(chromaHeight) ||
+                             current.Format != DXGI_FORMAT_B8G8R8A8_UNORM;
+        }
+        if (recreateChroma)
+        {
+            if (nguHookChromaPlane)
+                pl_tex_destroy(d3d->gpu, &nguHookChromaPlane);
+            nguHookChromaShaderView.Reset();
+            nguHookChromaTexture.Reset();
+
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = UINT(chromaWidth);
+            desc.Height = UINT(chromaHeight);
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_DEFAULT;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+            if (FAILED(d3d->device->CreateTexture2D(&desc, nullptr, &nguHookChromaTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(
+                    nguHookChromaTexture.Get(), nullptr, &nguHookChromaShaderView)))
+            {
+                TraceNgu("chroma hook target creation failed");
+                return false;
+            }
+        }
+        if (!nguHookChromaPlane)
+        {
+            pl_d3d11_wrap_params wrap = {};
+            wrap.tex = nguHookChromaTexture.Get();
+            wrap.fmt = DXGI_FORMAT_B8G8R8A8_UNORM;
+            wrap.w = UINT(chromaWidth);
+            wrap.h = UINT(chromaHeight);
+            nguHookChromaPlane = pl_d3d11_wrap(d3d->gpu, &wrap);
+            if (!nguHookChromaPlane)
+            {
+                TraceNgu("chroma hook target wrap failed");
+                return false;
+            }
+        }
+        if (!nguHookChromaCopyPass)
+        {
+            pl_desc descriptor = {};
+            descriptor.name = "src";
+            descriptor.type = PL_DESC_SAMPLED_TEX;
+            static const char* vertexShader =
+                "#version 450\n"
+                "layout(location=0) in vec2 position;\n"
+                "void main() { gl_Position = vec4(position, 0.0, 1.0); }\n";
+            static const char* fragmentShader =
+                "#version 450\n"
+                "layout(binding=0) uniform sampler2D src;\n"
+                "layout(location=0) out vec4 color;\n"
+                "void main() {\n"
+                "    color = texture(src, gl_FragCoord.xy / vec2(textureSize(src, 0)));\n"
+                "}\n";
+            pl_pass_params pass = {};
+            pass.type = PL_PASS_RASTER;
+            pass.descriptors = &descriptor;
+            pass.num_descriptors = 1;
+            pass.glsl_shader = fragmentShader;
+            pass.vertex_shader = vertexShader;
+            pass.target_format = nguHookChromaPlane->params.format;
+            pass.vertex_type = PL_PRIM_TRIANGLE_LIST;
+            pass.vertex_stride = sizeof(float) * 2;
+            pl_vertex_attrib attrib = {};
+            attrib.name = "position";
+            attrib.fmt = pl_find_vertex_fmt(d3d->gpu, PL_FMT_FLOAT, 2);
+            attrib.location = 0;
+            attrib.offset = 0;
+            pass.vertex_attribs = &attrib;
+            pass.num_vertex_attribs = 1;
+            if (!attrib.fmt)
+            {
+                TraceNgu("chroma hook vertex format unavailable");
+                return false;
+            }
+            nguHookChromaCopyPass = pl_pass_create(d3d->gpu, &pass);
+            if (!nguHookChromaCopyPass)
+            {
+                TraceNgu("chroma hook copy pass creation failed");
+                return false;
+            }
+        }
+
+        bool recreateLuma = !nguHookLumaTexture;
+        if (!recreateLuma)
+        {
+            D3D11_TEXTURE2D_DESC current = {};
+            nguHookLumaTexture->GetDesc(&current);
+            recreateLuma = current.Width != UINT(lumaWidth) || current.Height != UINT(lumaHeight) ||
+                           current.Format != DXGI_FORMAT_R8_UNORM;
+        }
+        if (recreateLuma)
+        {
+            nguHookLumaShaderView.Reset();
+            nguHookLumaTexture.Reset();
+            // The observed 4K chroma-only plan validates the shared luma shape
+            // but does not sample it; luma remains owned by the common renderer.
+            std::vector<uint8_t> initial(size_t(lumaWidth) * size_t(lumaHeight), 16);
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = UINT(lumaWidth);
+            desc.Height = UINT(lumaHeight);
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = DXGI_FORMAT_R8_UNORM;
+            desc.SampleDesc.Count = 1;
+            desc.Usage = D3D11_USAGE_IMMUTABLE;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            D3D11_SUBRESOURCE_DATA data = {};
+            data.pSysMem = initial.data();
+            data.SysMemPitch = UINT(lumaWidth);
+            if (FAILED(d3d->device->CreateTexture2D(&desc, &data, &nguHookLumaTexture)) ||
+                FAILED(d3d->device->CreateShaderResourceView(
+                    nguHookLumaTexture.Get(), nullptr, &nguHookLumaShaderView)))
+            {
+                TraceNgu("chroma hook luma token creation failed");
+                return false;
+            }
+        }
+        nguHookChromaReady = false;
+        return true;
+    }
+
     bool DescribeNguSource(NguSourceFrame& source) const
     {
         source = {};
@@ -959,6 +1102,15 @@ struct PlaceboBackend::State
         nguHookAtChroma = !nguHdrSource && nguPlan.chromaOnly4K;
         nguHookAtOutput =
             !nguHookAtChroma && !nguHdrSource && ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight).outputHook;
+        if (nguHookAtChroma &&
+            !PrepareNguChromaHookSource(source.width,
+                                        source.height,
+                                        source.chromaWidth,
+                                        source.chromaHeight))
+        {
+            error = "ngu_sharp chroma hook source could not be prepared";
+            return false;
+        }
         nguHook.stages = nguHookAtChroma ? PL_HOOK_CHROMA_INPUT
                          : nguHookAtOutput ? PL_HOOK_OUTPUT
                                            : PL_HOOK_RGB;
@@ -1015,34 +1167,15 @@ struct PlaceboBackend::State
                 source.luma = nguCpuPlaneYView.Get();
                 source.chroma = nguCpuPlaneUvView.Get();
             }
+            else if (nguHookAtChroma && nguHookChromaReady)
+            {
+                source.luma = nguHookLumaShaderView.Get();
+                source.chroma = nguHookChromaShaderView.Get();
+            }
             else
             {
-                NguSourceFormatLayout layout;
-                if (!DescribeNguSourceFormat(description.format, description.width, description.height, layout) ||
-                    layout.decoderFormat == DXGI_FORMAT_UNKNOWN || !nguSource ||
-                    sourceDesc.Format != layout.decoderFormat)
-                {
-                    error = "ngu_sharp decoder texture does not match the canonical source";
-                    return false;
-                }
-                if (!nguPlaneYView || !nguPlaneUvView || !nguPlaneYShaderView || !nguPlaneUvShaderView)
-                {
-                    error = "ngu_sharp decoder plane surfaces are unavailable";
-                    return false;
-                }
-                const bool copied = ngu.RunNativeDecoderSourceCopy(nguSource.Get(),
-                                                                   0,
-                                                                   description.width,
-                                                                   description.height,
-                                                                   nguPlaneYView.Get(),
-                                                                   nguPlaneUvView.Get());
-                if (!copied)
-                {
-                    error = ngu.LastError();
-                    return false;
-                }
-                source.luma = nguPlaneYShaderView.Get();
-                source.chroma = nguPlaneUvShaderView.Get();
+                error = "ngu_sharp decoder source planes were not prepared";
+                return false;
             }
         }
         else
@@ -1077,6 +1210,26 @@ struct PlaceboBackend::State
         pl_hook_res result = {};
         result.failed = true;
         TraceNgu("NGU output hook entered");
+        if (self && self->nguHookAtChroma && params && params->tex && self->nguHookChromaPlane &&
+            self->nguHookChromaCopyPass)
+        {
+            static const float vertices[] = {-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
+            pl_desc_binding binding = {};
+            binding.object = params->tex;
+            binding.address_mode = PL_TEX_ADDRESS_CLAMP;
+            binding.sample_mode = PL_TEX_SAMPLE_NEAREST;
+            pl_pass_run_params copy = {};
+            copy.pass = self->nguHookChromaCopyPass;
+            copy.desc_bindings = &binding;
+            copy.target = self->nguHookChromaPlane;
+            copy.vertex_count = 3;
+            copy.vertex_data = vertices;
+            pl_pass_run(params->gpu, &copy);
+            self->nguHookChromaReady = true;
+            TraceNgu("NGU chroma hook source copied through libplacebo");
+        }
+        else if (self)
+            self->nguHookChromaReady = false;
         const pl_hook_stage expectedStage = self && self->nguHookAtChroma ? PL_HOOK_CHROMA_INPUT
                                               : self && self->nguHookAtOutput ? PL_HOOK_OUTPUT
                                                                               : PL_HOOK_RGB;
@@ -1339,6 +1492,15 @@ struct PlaceboBackend::State
         ngu.Reset();
         if (d3d && nguHookOutputPlane)
             pl_tex_destroy(d3d->gpu, &nguHookOutputPlane);
+        if (d3d && nguHookChromaPlane)
+            pl_tex_destroy(d3d->gpu, &nguHookChromaPlane);
+        if (d3d && nguHookChromaCopyPass)
+            pl_pass_destroy(d3d->gpu, &nguHookChromaCopyPass);
+        nguHookChromaShaderView.Reset();
+        nguHookChromaTexture.Reset();
+        nguHookLumaShaderView.Reset();
+        nguHookLumaTexture.Reset();
+        nguHookChromaReady = false;
         nguSourceView.Reset();
         nguPlaneYShaderView.Reset();
         nguPlaneUvShaderView.Reset();
