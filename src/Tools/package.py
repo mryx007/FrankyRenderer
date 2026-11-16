@@ -17,7 +17,7 @@ OUT = ROOT.parent / "dist"
 SOURCE = ROOT / "build/bin"
 
 
-def main(out=OUT, source=SOURCE, version="1.4.3"):
+def main(out=OUT, source=SOURCE, version="1.4.4"):
     with pefile.PE(str(source / "FrankyRenderer.ax")) as binary:
         descriptions = [table.entries.get(b"FileDescription", b"")
                         for group in getattr(binary, "FileInfo", []) for item in group

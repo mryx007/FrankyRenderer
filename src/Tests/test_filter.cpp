@@ -136,6 +136,14 @@ static bool WriteBmp32(const std::wstring& path, UINT width, UINT height, const 
            out.write(reinterpret_cast<const char*>(pixels.data()), std::streamsize(pixels.size()));
 }
 
+static std::wstring AppendPathSuffix(const std::wstring& path, const wchar_t* suffix)
+{
+    std::wstring result = path;
+    const auto extension = result.find_last_of(L'.');
+    result.insert(extension == std::wstring::npos ? result.size() : extension, suffix);
+    return result;
+}
+
 static bool CompareNguRgb(
     const std::vector<BYTE>& actual, const std::vector<BYTE>& expected, int& different, int& maximum, int& overOne)
 {
@@ -1717,6 +1725,13 @@ int wmain(int argc, wchar_t** argv)
         for (int i = 0; i < scalerCount; ++i)
             if (!strcmp(ScalerChoices[i].name, "ngu_sharp"))
                 settings.chromaScaler = i + 1;
+        if (GetEnvironmentVariableA("PLACEBO_TEST_NGU_OFF", nullptr, 0))
+        {
+            wcscpy_s(settings.upscaler, L"bilinear");
+            strcpy_s(settings.scaling.filters[0].filter, "bilinear");
+            strcpy_s(settings.scaling.filters[2].filter, "bilinear");
+            settings.chromaScaler = 1;
+        }
     }
     Check(ValidUserShaders(settings.userShaders), "NGU settings keep the shader catalogue valid");
     Check(ValidScaling(settings.scaling), "NGU settings keep native scaling valid");
@@ -2005,6 +2020,12 @@ int wmain(int argc, wchar_t** argv)
             std::vector<BYTE> pixels(size_t(nguWindowWidth) * nguWindowHeight * 4);
             Check(config->ReadPixels(nguWindowWidth, nguWindowHeight, pixels.data(), pixels.size()),
                   "NGU 4K window pixels");
+            if (!nguCpuPlaneOutputPath.empty() &&
+                !WriteBmp32(nguCpuPlaneOutputPath, nguWindowWidth, nguWindowHeight, pixels))
+            {
+                puts("FAIL could not write NGU window output BMP");
+                return 1;
+            }
             if (std::all_of(pixels.begin(), pixels.end(), [](BYTE value) { return value == 0; }))
             {
                 puts("FAIL_PRODUCT NGU 4K source produced a black 1080 window");
@@ -2025,6 +2046,15 @@ int wmain(int argc, wchar_t** argv)
                 std::vector<BYTE> fullscreen(size_t(3840) * 2160 * 4);
                 Check(config->ReadPixels(3840, 2160, fullscreen.data(), fullscreen.size()),
                       "NGU fullscreen pixels");
+                if (!nguCpuPlaneOutputPath.empty())
+                {
+                    const std::wstring fullscreenPath = AppendPathSuffix(nguCpuPlaneOutputPath, L"_fullscreen");
+                    if (!WriteBmp32(fullscreenPath, 3840, 2160, fullscreen))
+                    {
+                        puts("FAIL could not write NGU fullscreen output BMP");
+                        return 1;
+                    }
+                }
                 if (std::all_of(fullscreen.begin(), fullscreen.end(), [](BYTE value) { return value == 0; }))
                 {
                     puts("FAIL_PRODUCT NGU fullscreen transition produced a black frame");
@@ -2122,7 +2152,9 @@ int wmain(int argc, wchar_t** argv)
         {
             std::vector<BYTE> pixels(size_t(3840) * 2160 * 4);
             Check(config->ReadPixels(3840, 2160, pixels.data(), pixels.size()), "high-bit CPU plane NGU pixels");
-            if (!WriteBmp32(nguCpuPlaneOutputPath, 3840, 2160, pixels))
+            const std::wstring outputPath =
+                nguWindowTest ? AppendPathSuffix(nguCpuPlaneOutputPath, L"_cpuplane") : nguCpuPlaneOutputPath;
+            if (!WriteBmp32(outputPath, 3840, 2160, pixels))
             {
                 puts("FAIL could not write high-bit CPU plane NGU BMP");
                 return 1;

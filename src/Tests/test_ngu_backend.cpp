@@ -310,7 +310,11 @@ int main(int argc, char** argv)
         for (int y = 0; y < 2160; ++y)
             for (int x = 0; x < 3840; ++x)
                 native4kBytes[size_t(y) * 3840 + x] = uint8_t(16 + (x * 219) / 3839);
-        std::fill(native4kBytes.begin() + size_t(3840) * 2160, native4kBytes.end(), uint8_t(128));
+        for (size_t i = size_t(3840) * 2160; i + 1 < native4kBytes.size(); i += 2)
+        {
+            native4kBytes[i] = 90;
+            native4kBytes[i + 1] = 128;
+        }
         Require(SUCCEEDED(backend.Upload(native4k, native4kBytes.data(), native4kBytes.size())),
                 "NGU native 4K upload");
         bool native4kHook = false;
@@ -346,6 +350,56 @@ int main(int argc, char** argv)
                     native4kHookOutputRepr.bits.sample_depth,
                     native4kHookOutputRepr.bits.color_depth);
         backend.SetNguHookProbeForTest({});
+
+        VideoFrame native4kUnknown = native4k;
+        native4kUnknown.matrix = PL_COLOR_SYSTEM_UNKNOWN;
+        Require(SUCCEEDED(backend.Upload(native4kUnknown, native4kBytes.data(), native4kBytes.size())),
+                "NGU native 4K unknown-matrix upload");
+        std::vector<uint8_t> unknownMatrixPixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, unknownMatrixPixels)),
+                "NGU native 4K unknown-matrix fallback");
+        uint64_t unknownRed = 0, unknownGreen = 0, unknownBlue = 0;
+        for (size_t i = 0; i + 3 < unknownMatrixPixels.size(); i += 4)
+        {
+            unknownBlue += unknownMatrixPixels[i];
+            unknownGreen += unknownMatrixPixels[i + 1];
+            unknownRed += unknownMatrixPixels[i + 2];
+        }
+        Require(unknownRed > unknownBlue && unknownGreen > 0,
+                "NGU native 4K unknown matrix preserves the source color orientation");
+        std::puts("NGU native 4K unknown matrix remains visible");
+
+        D3D11_TEXTURE2D_DESC native4kDecoderDesc = {};
+        native4kDecoderDesc.Width = 3840;
+        native4kDecoderDesc.Height = 2160;
+        native4kDecoderDesc.MipLevels = 1;
+        native4kDecoderDesc.ArraySize = 1;
+        native4kDecoderDesc.Format = DXGI_FORMAT_NV12;
+        native4kDecoderDesc.SampleDesc.Count = 1;
+        native4kDecoderDesc.Usage = D3D11_USAGE_DEFAULT;
+        native4kDecoderDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA native4kDecoderData = {};
+        native4kDecoderData.pSysMem = native4kBytes.data();
+        native4kDecoderData.SysMemPitch = 3840;
+        ComPtr<ID3D11Texture2D> native4kDecoder;
+        Require(SUCCEEDED(backend.Device()->CreateTexture2D(
+                    &native4kDecoderDesc, &native4kDecoderData, &native4kDecoder)),
+                "NGU native 4K decoder texture");
+        Require(SUCCEEDED(backend.Import(native4k, native4kDecoder.Get(), 0)),
+                "NGU native 4K decoder import");
+        std::vector<uint8_t> native4kImportedPixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kImportedPixels)),
+                "NGU native 4K imported render");
+        int native4kImportMaximum = 0, native4kImportOverOne = 0;
+        const int native4kImportDifferent =
+            CompareRgb(native4kPixels, native4kImportedPixels, native4kImportMaximum, native4kImportOverOne);
+        std::printf("NGU native 4K Upload/Import different=%d maximum=%d diff_gt_1_pixels=%d\n",
+                    native4kImportDifferent,
+                    native4kImportMaximum,
+                    native4kImportOverOne);
+        Require(native4kImportMaximum <= 1 && native4kImportOverOne == 0,
+                "NGU native 4K decoder import matches CPU upload");
+
         backend.ShowStatistics(true);
         Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kPixels)),
                 "NGU native 4K chroma statistics render");
