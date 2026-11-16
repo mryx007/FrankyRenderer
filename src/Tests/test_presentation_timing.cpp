@@ -67,6 +67,24 @@ int main()
     }
     puts("PASS ordinary 23.976/24/25/30/50/59.94/60/120 fps cadence");
 
+    {
+        // Without Smooth Motion a picture may sit up to a third of a refresh
+        // on either side of its rounded refresh; drifting from one side to the
+        // other is two refreshes in total but never a missed refresh.
+        PresentationMeasurement swing;
+        swing.Period(period);
+        for (uint32_t id = 1; id <= 300; ++id)
+        {
+            const int64_t timeline = static_cast<int64_t>(std::llround(id * 6.006 * period));
+            const int side = id <= 100 ? -1 : id <= 200 ? 0 : 1;
+            const auto refresh = static_cast<uint32_t>(std::llround(double(timeline) / period) + 100 + side);
+            swing.Submit(id, epoch + timeline, true, timeline);
+            swing.Observe(id, refresh, true, true, epoch + (refresh - 100) * period);
+        }
+        Require(swing.glitches == 0 && swing.repeatedRefreshes == 0, "a slow swing across a refresh is not counted");
+    }
+    puts("PASS a picture moving across its refresh boundary is not counted as two refreshes late");
+
     PresentationMeasurement stall;
     stall.Period(period);
     for (uint32_t id = 1; id <= 1000; ++id)

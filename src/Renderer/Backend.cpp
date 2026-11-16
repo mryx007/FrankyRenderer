@@ -409,8 +409,30 @@ struct PlaceboBackend::State
         return true;
     }
 
+    // A picture rendered ahead and not yet handed to DXGI (Present holdSwap).
+    bool swapPending = false, pendingTimed = false;
+    int64_t pendingDue = 0;
+    int pendingTextureFormat = 0;
+
+    void FinishSwap()
+    {
+        if (!swapPending)
+            return;
+        swapPending = false;
+        LARGE_INTEGER begin = {}, end = {}, frequency = {};
+        QueryPerformanceFrequency(&frequency);
+        QueryPerformanceCounter(&begin);
+        pl_swapchain_swap_buffers(swapchain);
+        QueryPerformanceCounter(&end);
+        presentCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        MeasurePresentation(pendingDue, pendingTimed);
+        outputTextureFormat = pendingTextureFormat;
+        RepaintPending();
+    }
+
     void DestroySwapchain()
     {
+        swapPending = false;
         nativeSwapchain.Destroy();
         pl_swapchain_destroy(&swapchain);
         presentation.Reset(false);
@@ -2935,10 +2957,11 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
     return S_OK;
 }
 
-HRESULT PlaceboBackend::Present()
+HRESULT PlaceboBackend::Present(bool holdSwap)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
+    s.FinishSwap();
     s.ApplyMeasurementReset();
     const auto due = s.presentationDue;
     const bool timed = s.presentationTimed;
@@ -2957,6 +2980,15 @@ HRESULT PlaceboBackend::Present()
         return applied;
     if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
         return S_FALSE;
+    // Without Smooth Motion one picture per refresh (60 fps on 60 Hz) keeps a
+    // queue that once built up (start, seek) full forever, and with it a
+    // delay of several refreshes. Leave one out once the queue stayed deep.
+    else if (timed && !(s.mixing && s.settings.smoothMotion) && s.SkipForBacklog(0))
+    {
+        std::lock_guard drops(s.dropsLock);
+        s.drops.Skip();
+        return S_FALSE;
+    }
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
     const int hdrInput = 1 | (pl_color_space_is_hdr(&s.image.color) ? 2 : 0) |
                          (s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off ? 4 : 0);
@@ -3136,13 +3168,27 @@ HRESULT PlaceboBackend::Present()
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     s.ProbePresent();
 #endif
-    QueryPerformanceCounter(&begin);
-    pl_swapchain_swap_buffers(s.swapchain);
-    QueryPerformanceCounter(&end);
-    s.presentCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
-    s.MeasurePresentation(due, timed);
-    s.outputTextureFormat = textureFormat;
-    s.RepaintPending();
+    s.swapPending = true;
+    s.pendingDue = due;
+    s.pendingTimed = timed;
+    s.pendingTextureFormat = textureFormat;
+    if (holdSwap && timed)
+    {
+        // Start the GPU now; the picture waits for its moment fully rendered.
+        s.context->Flush();
+        return S_OK;
+    }
+    s.FinishSwap();
+    return S_OK;
+}
+
+HRESULT PlaceboBackend::Swap()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    if (!s.swapPending)
+        return S_FALSE;
+    s.FinishSwap();
     return S_OK;
 }
 
@@ -3240,7 +3286,8 @@ HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty)
 {
     auto& s = *state;
     std::unique_lock guard(s.lock, std::try_to_lock);
-    if (!guard.owns_lock())
+    // A rendered picture waits for its refresh; the next one comes anyway.
+    if (!guard.owns_lock() || s.swapPending)
         return HRESULT_FROM_WIN32(ERROR_BUSY);
     s.presentationTimed = false;
     if (blackWhenEmpty && !s.valid && s.nativeHdr.Active())

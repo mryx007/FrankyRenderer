@@ -153,7 +153,10 @@ class PlaceboBackend
                               pl_field first,
                               int64_t timestamp,
                               float duration);
-    HRESULT Present();
+    // holdSwap: render and start the GPU, but hand the picture to DXGI only
+    // at Swap (without Smooth Motion a frame renders ahead of its refresh).
+    HRESULT Present(bool holdSwap = false);
+    HRESULT Swap();
     void HoldForResize(bool hold);
     HRESULT TryPresent(bool blackWhenEmpty = false);
 #ifdef PLACEBO_TEST_PRESENT_PIXELS

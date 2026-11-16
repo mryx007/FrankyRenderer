@@ -159,6 +159,73 @@ class VsyncSlots
     }
 };
 
+// Without Smooth Motion every frame still belongs on one display refresh.
+// Left to its due time, a frame due right at a refresh boundary lands on one
+// side or the other by a millisecond of jitter: frames then alternate between
+// one refresh too few and one too many (5 and 7 instead of 6 on 144 Hz), a
+// visible judder. Keep each frame a whole number of refreshes after the
+// previous one and change that number only when the frame would otherwise
+// show more than a third of a refresh outside its band, like madVR.
+class FrameSlots
+{
+    static constexpr double Band = 0.3;
+    LONGLONG last = 0;
+    double lastPosition = 0, offset = 0; // offset: refresh minus due position
+    bool anchored = false;
+
+  public:
+    void Reset()
+    {
+        anchored = false;
+    }
+
+    // position: due refresh as a fractional refresh count; refreshes: the
+    // frame's duration in refreshes.
+    LONGLONG Assign(double position, double refreshes)
+    {
+        if (!std::isfinite(position) || !std::isfinite(refreshes) || refreshes <= 0)
+        {
+            anchored = false;
+            return static_cast<LONGLONG>(std::ceil(position));
+        }
+        const double advance = position - lastPosition;
+        if (anchored && advance > 0 && advance < refreshes * 2 + 2)
+        {
+            // Of the two whole steps around the duration, keep the one closest
+            // to the previous offset; switch only at the edge of the band.
+            const LONGLONG low = (std::max)(1LL, static_cast<LONGLONG>(std::floor(refreshes)));
+            const double lowOffset = double(last + low) - position, highOffset = lowOffset + 1;
+            LONGLONG step = std::abs(lowOffset - offset) <= std::abs(highOffset - offset) ? low : low + 1;
+            double next = step == low ? lowOffset : highOffset;
+            if (next < -Band)
+            {
+                ++step;
+                next += 1;
+            }
+            // A step of 0 leaves the frame out: the clock asks for more
+            // frames than the display has refreshes (60 fps on 59.973 Hz).
+            else if (next > 1 + Band && step > 0)
+            {
+                --step;
+                next -= 1;
+            }
+            if (next >= -1 && next <= 2)
+            {
+                last += step;
+                lastPosition = position;
+                offset = next;
+                return last;
+            }
+        }
+        // Start, seek, gap or a reading far off: the next refresh after the due time.
+        last = static_cast<LONGLONG>(std::ceil(position));
+        lastPosition = position;
+        offset = double(last) - position;
+        anchored = true;
+        return last;
+    }
+};
+
 // How many refreshes ahead refresh-locked ticks are presented (like madVR's
 // "present several frames in advance"). One keeps latency lowest; more lets
 // the display queue absorb render peaks. Automatic starts at one, adds a

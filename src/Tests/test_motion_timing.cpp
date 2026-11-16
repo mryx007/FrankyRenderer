@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "Renderer/MotionTiming.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -190,6 +191,70 @@ int main()
     Check(lead.Current() == 1, "automatic resumes where it was");
     puts("PASS present in advance: automatic adds a refresh after bursts of tight ticks, gives it back after a quiet "
          "minute, respects the frame latency limit and fixed values");
+    {
+        // 23.976 fps on 144.001 Hz with millisecond time stamps and jitter:
+        // due times near a refresh boundary. Every frame keeps 6 refreshes,
+        // one in about 7 s gets 7, never 5.
+        FrameSlots slots;
+        const double refreshes = 144.001 / (24000.0 / 1001);
+        unsigned seed = 1;
+        auto noise = [&]
+        {
+            seed = seed * 1103515245 + 12345;
+            return double((seed >> 8) % 2001) / 1000 - 1;
+        };
+        LONGLONG previous = 0;
+        int sevens = 0, others = 0;
+        for (int i = 0; i < 24 * 600; ++i)
+        {
+            const double ms = std::floor(i * 1001.0 / 24 + 0.5);
+            const LONGLONG slot = slots.Assign(1000.0 + ms * 0.144001 + 0.2 * noise(), refreshes);
+            if (i)
+            {
+                sevens += slot - previous == 7;
+                others += slot - previous != 6 && slot - previous != 7;
+            }
+            previous = slot;
+        }
+        Check(others == 0, "frames without Smooth Motion keep 6 or 7 refreshes");
+        Check(sevens >= 80 && sevens <= 90, "one extra refresh about every 6.9 s, no more");
+        FrameSlots pulldown;
+        previous = 0;
+        int twos = 0, threes = 0;
+        for (int i = 0; i < 2400; ++i)
+        {
+            const LONGLONG slot = pulldown.Assign(1000.0 + i * 2.5 + 0.1 * noise(), 2.5);
+            if (i)
+            {
+                twos += slot - previous == 2;
+                threes += slot - previous == 3;
+            }
+            previous = slot;
+        }
+        Check(twos + threes == 2399 && std::abs(twos - threes) <= 1, "3:2 cadence alternates 2 and 3 refreshes");
+        Check(pulldown.Assign(1000.0 + 50000.5, 2.5) == 51001, "a jump anchors on the next refresh after the due time");
+    }
+    {
+        FrameSlots fast;
+        const double advance = 59.973 / 60.0; // refreshes per chosen frame
+        LONGLONG previous = 0;
+        int zeros = 0, ones = 0, others = 0;
+        for (int i = 0; i < 60 * 600; ++i)
+        {
+            const LONGLONG slot = fast.Assign(1000.0 + i * advance, 1.0);
+            if (i)
+            {
+                zeros += slot == previous;
+                ones += slot == previous + 1;
+                others += slot != previous && slot != previous + 1;
+            }
+            previous = slot;
+        }
+        Check(others == 0, "a faster clock never skips a refresh");
+        Check(zeros >= 14 && zeros <= 18, "60 fps on 59.973 Hz leaves out one frame about every 37 s");
+    }
+    puts(
+        "PASS frames without Smooth Motion: 6 or 7 refreshes at 23.976 fps on 144 Hz despite jitter, 3:2 alternates, seeks anchor anew");
     puts(
         "PASS captured overlap, rounded film/50/59.94/60/120 fps, exact display grid, empty intervals, faster-source fallback, EOS and discontinuities");
 }

@@ -196,6 +196,12 @@ class Renderer final : public CBaseVideoRenderer,
     // Display-synchronous Smooth Motion; the streaming thread owns the slots,
     // state changes only request a fresh anchor.
     VsyncSlots vsyncSlots;
+    // Without Smooth Motion: the refresh of each frame, and the moment the
+    // sample DoRenderSample receives next is handed to DXGI.
+    FrameSlots frameSlots;
+    REFERENCE_TIME lockedStart = -1;
+    int64_t lockedPresentQpc = 0;
+    LONGLONG takenSlot = 0; // the refresh the last scheduled frame occupies
     std::atomic<bool> vsyncReanchor = true;
     // Without Smooth Motion, a video faster than the display shows one frame
     // per refresh: the stream time the next shown frame is due (-1: none yet).
@@ -325,6 +331,8 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<uint64_t> lastTimedPresent = 0;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    HRESULT ScheduleFrameOnRefresh(IMediaSample*, FieldSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    bool WaitForPresent(int64_t until);
     bool WaitForQpc(int64_t until, int64_t deadline);
     bool SkipForDisplay(IMediaSample* sample);
     void NewSegment(REFERENCE_TIME);

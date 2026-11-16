@@ -1698,12 +1698,16 @@ HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start,
     if (vsyncReanchor.exchange(false))
     {
         vsyncSlots.Reset();
+        frameSlots.Reset();
+        takenSlot = 0;
         presentLead.Restart(GetTickCount64());
     }
     REFERENCE_TIME wanted = 0, until = 0, clock = 0;
     int64_t syncQpc = 0;
     uint32_t syncRefresh = 0;
     double period = 0;
+    if (!field || !field->motion)
+        return ScheduleFrameOnRefresh(sample, field, start, stop, decided);
     // Without feedback (a repaint can interrupt DXGI statistics briefly) the
     // tick follows the reference clock; the slots continue once it returns.
     if (decided == E_FAIL || !field || !field->motion || m_State != State_Running ||
@@ -1805,6 +1809,110 @@ HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start,
     *start = target;
     *stop = target + static_cast<REFERENCE_TIME>(std::llround(period / perUnit));
     return target > streamNow ? S_FALSE : S_OK;
+}
+
+// Without Smooth Motion a frame used to render when its time came and reach
+// the screen whenever the GPU finished: a frame due near a refresh boundary
+// landed on either side of it by the GPU time of the moment. Now each frame
+// gets its refresh first, renders a whole frame duration ahead (right after
+// the previous one) and is handed to DXGI just after the refresh before it.
+// Nothing is estimated: only a render longer than a frame can still be late.
+HRESULT Renderer::ScheduleFrameOnRefresh(
+    IMediaSample* sample, FieldSample* field, REFERENCE_TIME* start, REFERENCE_TIME* stop, HRESULT decided)
+{
+    lockedStart = -1;
+    REFERENCE_TIME wanted = 0, until = 0, clock = 0;
+    int64_t syncQpc = 0;
+    uint32_t syncRefresh = 0;
+    double period = 0;
+    if (decided == E_FAIL || m_State != State_Running || !m_pClock || FAILED(sample->GetTime(&wanted, &until)) ||
+        until <= wanted || !backend.VsyncGrid(syncQpc, syncRefresh, period) || period <= 0)
+    {
+        frameSlots.Reset();
+        return decided;
+    }
+    LARGE_INTEGER before = {}, after = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&before);
+    if (FAILED(m_pClock->GetTime(&clock)))
+        return decided;
+    QueryPerformanceCounter(&after);
+    const double qpcNow = (double(before.QuadPart) + double(after.QuadPart)) / 2;
+    const double streamNow = double(clock - m_tStart), perUnit = frequency.QuadPart / 1e7;
+    // A video faster than the display has chosen one frame per refresh
+    // already (SkipForDisplay); each chosen frame stands for one refresh.
+    const double duration = double(until - wanted) * perUnit;
+    const double refreshes = (std::max)(duration / period, 1.0);
+    const double dueQpc = qpcNow + (double(wanted) - streamNow) * perUnit;
+    const double position = double(syncRefresh) + (dueQpc - double(syncQpc)) / period;
+    const LONGLONG slot = frameSlots.Assign(position, refreshes);
+    // Its refresh is taken: the clock delivers more frames than the display
+    // shows. Leave this one out instead of queueing it behind the others.
+    if (takenSlot && slot <= takenSlot && slot > takenSlot - 4)
+    {
+        ++displaySkips;
+        backend.CountSkippedFrame();
+        return E_FAIL;
+    }
+    // Hand it over just after the previous refresh: in a window the desktop
+    // compositor takes pictures some milliseconds before its refresh, so the
+    // earliest safe moment leaves it the most time.
+    const double presentQpc = double(syncQpc) + double(slot - 1 - LONGLONG(syncRefresh)) * period +
+                              (std::min)(frequency.QuadPart * 0.0015, period / 4);
+    // Already too late for its refresh. A frame of a video faster than the
+    // display competes with the next one for the same refresh: leave it out
+    // rather than queue it. Any other frame is shown as soon as possible.
+    if (presentQpc < qpcNow)
+    {
+        frameSlots.Reset();
+        if (duration < period * 0.95)
+        {
+            ++displaySkips;
+            backend.CountSkippedFrame();
+            return E_FAIL;
+        }
+        return decided;
+    }
+    takenSlot = slot;
+    if (field)
+    {
+        field->ahead = true;
+        field->presentQpc = static_cast<int64_t>(presentQpc);
+    }
+    else
+    {
+        lockedStart = wanted;
+        lockedPresentQpc = static_cast<int64_t>(presentQpc);
+    }
+    // Render one frame duration, at least one refresh and at most 100 ms,
+    // ahead of the present.
+    const double ahead = (std::min)((std::max)(duration, period), 0.1 * frequency.QuadPart);
+    const auto target = static_cast<REFERENCE_TIME>(std::llround(streamNow + (presentQpc - ahead - qpcNow) / perUnit));
+    *start = target;
+    *stop = (std::max)(target + 1, static_cast<REFERENCE_TIME>(until));
+    return target > streamNow ? S_FALSE : S_OK;
+}
+
+// Waits until a QPC moment; false when Stop or a flush releases the
+// streaming thread (the base class's thread signal) before it.
+bool Renderer::WaitForPresent(int64_t until)
+{
+    LARGE_INTEGER now = {}, frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&now);
+    if (until <= now.QuadPart || until - now.QuadPart > frequency.QuadPart / 5)
+        return true;
+    if (!refreshTimer)
+        refreshTimer =
+            CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    // A high-resolution timer is exact enough: the moment lies 1.5 ms after
+    // one refresh and several milliseconds before the next. No busy wait.
+    LARGE_INTEGER due = {};
+    due.QuadPart = -static_cast<LONGLONG>(double(until - now.QuadPart) * 1e7 / frequency.QuadPart);
+    if (!refreshTimer || !SetWaitableTimer(refreshTimer, &due, 0, nullptr, nullptr, FALSE))
+        return true;
+    HANDLE events[] = {m_ThreadSignal, refreshTimer};
+    return WaitForMultipleObjects(2, events, FALSE, 250) != WAIT_OBJECT_0;
 }
 
 void Renderer::OnReceiveFirstSample(IMediaSample* sample)
@@ -2055,7 +2163,22 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
               static_cast<long long>(start / 10000));
         return S_OK;
     }
-    if (SUCCEEDED(hr))
+    const bool frameLocked =
+        m_State == State_Running && (field ? field->ahead : lockedStart >= 0 && lockedStart == start);
+    const int64_t presentAt = field ? field->presentQpc : lockedPresentQpc;
+    lockedStart = -1;
+    if (SUCCEEDED(hr) && frameLocked)
+    {
+        // Rendered ahead; handed over at its moment. Stop or a flush hands it
+        // over at once: the next picture must never find it waiting.
+        hr = backend.Present(true);
+        if (SUCCEEDED(hr))
+        {
+            WaitForPresent(presentAt);
+            backend.Swap();
+        }
+    }
+    else if (SUCCEEDED(hr))
         hr = backend.Present();
     if (hr == S_OK && m_State == State_Running)
         lastTimedPresent = GetTickCount64();

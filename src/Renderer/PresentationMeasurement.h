@@ -231,7 +231,10 @@ class PresentationMeasurement
                 ++glitches;
                 anchored = false;
             }
-            else if (late < -1)
+            // One refresh off is a picture on the other side of a refresh
+            // boundary: plan the next pictures from it, so swinging back is
+            // not counted as two refreshes late.
+            else if (late != 0)
                 anchored = false;
         }
         if (clocked && (!assessed || late <= 1))
