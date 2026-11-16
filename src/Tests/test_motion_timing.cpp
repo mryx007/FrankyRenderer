@@ -191,6 +191,12 @@ int main()
     Check(lead.Current() == 1, "automatic resumes where it was");
     puts("PASS present in advance: automatic adds a refresh after bursts of tight ticks, gives it back after a quiet "
          "minute, respects the frame latency limit and fixed values");
+    Check(WholeMilliseconds(0, 15900, 1000000) == 15, "a wait of 15.9 ms takes out 15 ms, never more");
+    Check(WholeMilliseconds(0, 999, 1000000) == 0, "a wait under 1 ms takes out nothing");
+    Check(WholeMilliseconds(500, 400, 1000000) == 0 && WholeMilliseconds(0, 100, 0) == 0,
+          "no negative time and no division by zero");
+    Check(WholeMilliseconds(0, 41708000, 1000000000) == 41, "a whole frame of waiting at 23.976 fps");
+    puts("PASS deliberate waits leave the render time in whole milliseconds, rounded down");
     {
         // 23.976 fps on 144.001 Hz with millisecond time stamps and jitter:
         // due times near a refresh boundary. Every frame keeps 6 refreshes,

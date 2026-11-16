@@ -159,6 +159,16 @@ class VsyncSlots
     }
 };
 
+// Whole milliseconds between two performance counter readings, rounded down
+// and never negative: a deliberate wait taken out of DirectShow's render time
+// (which it measures in whole milliseconds) must never exceed the real wait.
+inline int WholeMilliseconds(int64_t begin, int64_t end, int64_t frequency)
+{
+    if (end <= begin || frequency <= 0)
+        return 0;
+    return static_cast<int>((end - begin) * 1000 / frequency);
+}
+
 // Without Smooth Motion every frame still belongs on one display refresh.
 // Left to its due time, a frame due right at a refresh boundary lands on one
 // side or the other by a millisecond of jitter: frames then alternate between

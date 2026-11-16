@@ -333,6 +333,10 @@ class Renderer final : public CBaseVideoRenderer,
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
     HRESULT ScheduleFrameOnRefresh(IMediaSample*, FieldSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
     bool WaitForPresent(int64_t until);
+    // Takes a deliberate wait that began at this performance counter reading
+    // out of the render time the base class measures for its drop and quality
+    // decisions. Upload, rendering and the handover stay in it.
+    void ExcludeWait(int64_t begin);
     bool WaitForQpc(int64_t until, int64_t deadline);
     bool SkipForDisplay(IMediaSample* sample);
     void NewSegment(REFERENCE_TIME);

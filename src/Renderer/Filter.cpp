@@ -1893,6 +1893,15 @@ HRESULT Renderer::ScheduleFrameOnRefresh(
     return target > streamNow ? S_FALSE : S_OK;
 }
 
+void Renderer::ExcludeWait(int64_t begin)
+{
+    LARGE_INTEGER end = {}, frequency = {};
+    QueryPerformanceCounter(&end);
+    QueryPerformanceFrequency(&frequency);
+    // OnRenderEnd takes timeGetTime() - m_tRenderStart as the render time.
+    m_tRenderStart += WholeMilliseconds(begin, end.QuadPart, frequency.QuadPart);
+}
+
 // Waits until a QPC moment; false when Stop or a flush releases the
 // streaming thread (the base class's thread signal) before it.
 bool Renderer::WaitForPresent(int64_t until)
@@ -2156,7 +2165,15 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
     // A refresh-locked tick that woke after its refresh would queue behind
     // the next ones; its refresh shows the previous picture anyway.
-    if (SUCCEEDED(hr) && field && field->refreshLocked && !WaitForQpc(field->presentQpc, field->deadlineQpc))
+    bool tickOnTime = true;
+    if (SUCCEEDED(hr) && field && field->refreshLocked)
+    {
+        LARGE_INTEGER waitBegin = {};
+        QueryPerformanceCounter(&waitBegin);
+        tickOnTime = WaitForQpc(field->presentQpc, field->deadlineQpc);
+        ExcludeWait(waitBegin.QuadPart);
+    }
+    if (!tickOnTime)
     {
         presentLead.Tight(GetTickCount64());
         Trace("Smooth Motion tick left out at stream %lld ms: woke after its refresh",
@@ -2174,7 +2191,10 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         hr = backend.Present(true);
         if (SUCCEEDED(hr))
         {
+            LARGE_INTEGER waitBegin = {};
+            QueryPerformanceCounter(&waitBegin);
             WaitForPresent(presentAt);
+            ExcludeWait(waitBegin.QuadPart);
             backend.Swap();
         }
     }
