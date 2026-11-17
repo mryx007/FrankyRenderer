@@ -127,4 +127,5 @@
 - Improved frame timing without Smooth Motion.
 - Fixed a slanted, broken picture with some software decoders when the video width is not a multiple of 16 (for example 854×480).
 - Added "Use Dolby Vision" (HDR): off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. On by default.
+- Fixed black bar detection cropping a dark part of the picture (for example a night sky) and making the picture jump.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
