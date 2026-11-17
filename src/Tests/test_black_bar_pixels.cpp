@@ -145,6 +145,45 @@ int main()
         Require(other.measured && rightBounds.left == 0 && rightBounds.right == 1920, "nor its right side");
     }
     {
+        // A film without bars whose top turns dark (a night sky growing and
+        // shrinking): one dark side is no bar, the picture must not move.
+        constexpr int width = 256, height = 128;
+        auto scene = [&](int dark)
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = dark; y < height; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.delay = 0;
+        BlackBarDetector detector;
+        uint64_t now = 0;
+        bool moved = false;
+        for (int dark : {0, 0, 0, 0, 12, 11, 10, 9, 9, 9, 9, 9, 10, 11, 11, 11, 11, 11, 0, 0, 0})
+            for (int i = 0; i < 4; ++i, now += 200)
+            {
+                const auto pixels = scene(dark);
+                detector.Observe(pixels.data(), width, height, width * 4, 3840, 1920, settings, now);
+                const auto bounds = detector.Bounds(3840, 1920);
+                moved |= detector.measured && (bounds.top != 0 || bounds.bottom != 1920);
+            }
+        Require(detector.measured && !moved, "a dark top without a bottom bar is never cropped");
+        // Real bars that differ by a line or two are still cropped.
+        BlackBarDetector letterbox;
+        for (int sample = 0; sample < 4; ++sample)
+        {
+            auto pixels = scene(16);
+            for (int y = height - 15; y < height; ++y)
+                std::fill_n(pixels.begin() + y * width * 4, width * 4, uint8_t(0));
+            letterbox.Observe(pixels.data(), width, height, width * 4, 3840, 1920, settings, sample * 200);
+        }
+        const auto bars = letterbox.Bounds(3840, 1920);
+        Require(letterbox.measured && bars.top > 0 && bars.bottom < 1920, "slightly uneven letterbox bars are cropped");
+    }
+    {
         // A flash or an object passing into a bar must not move the crop;
         // a real change of format and a subtitle that stays must.
         constexpr int width = 256, height = 144;
@@ -202,5 +241,5 @@ int main()
     }
     puts("PASS black bars: flashes under 0.6 s keep the crop, staying subtitles and format changes are followed");
     puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration; "
-         "end credits; dark picture sides are not cropped");
+         "end credits; dark picture sides and a dark top alone are not cropped");
 }

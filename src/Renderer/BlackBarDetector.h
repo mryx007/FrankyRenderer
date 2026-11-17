@@ -174,6 +174,14 @@ class BlackBarDetector
             {
                 top = edge(rows);
                 bottom = edge(rr);
+                // Letterbox bars are equally high above and below. A dark
+                // part of the picture on one side only (a night sky) is no
+                // bar: each side is cropped at most as far as the other,
+                // and not at all when the other side reaches the edge.
+                const int slack = std::max(2, h / 100);
+                const int t = top, b = bottom;
+                top = b ? std::min(t, b + slack) : 0;
+                bottom = t ? std::min(b, t + slack) : 0;
             }
             else
             {
