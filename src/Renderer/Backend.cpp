@@ -1827,16 +1827,6 @@ struct PlaceboBackend::State
         const bool playerRectangle = windowGeometry && !IsRectEmpty(&targetRect) && !autoZoom && rotation % 180 == 0;
         if (playerRectangle)
         {
-            // The player's rectangle, moved up or down within the output.
-            const float outputH = float(target.planes[0].texture->params.h);
-            if (settings.blackBars.position && target.crop.y0 >= 0 && target.crop.y1 <= outputH)
-            {
-                const float shift =
-                    SpaceAbove(target.crop.y0 + (outputH - target.crop.y1), settings.blackBars.position) -
-                    target.crop.y0;
-                target.crop.y0 += shift;
-                target.crop.y1 += shift;
-            }
         }
         else if ((width / height > aspect) != fill)
         {
@@ -1846,11 +1836,9 @@ struct PlaceboBackend::State
         }
         else
         {
-            const float free = height - width / aspect;
-            // A picture lower than the output: free space above and below it.
-            const float above = free > 0 ? SpaceAbove(free, settings.blackBars.position) : free * .5f;
-            target.crop.y0 += above;
-            target.crop.y1 -= free - above;
+            float pad = (height - width / aspect) * .5f;
+            target.crop.y0 += pad;
+            target.crop.y1 -= pad;
         }
 
         struct RestoreProcessed

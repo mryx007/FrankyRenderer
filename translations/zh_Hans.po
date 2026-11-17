@@ -805,21 +805,6 @@ msgstr "适应 (保留全部内容)"
 msgid "Fill (May Crop Content)"
 msgstr "填充 (可能裁剪内容)"
 
-msgid "Image Position"
-msgstr "画面位置"
-
-msgid "Where a picture lower than the output sits, for example on a scope screen."
-msgstr "画面低于输出区域时的位置，例如用于宽银幕幕布。"
-
-msgid "Center"
-msgstr "居中"
-
-msgid "Top"
-msgstr "顶部"
-
-msgid "Bottom"
-msgstr "底部"
-
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Black Threshold"

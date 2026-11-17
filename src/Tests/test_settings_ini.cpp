@@ -58,7 +58,6 @@ int wmain()
         original.blackBars.enabled = TRUE;
         original.blackBars.delay = 3.25f;
         original.blackBars.zoom = 1;
-        original.blackBars.position = 2;
         original.extras.values[0] = .12345679f;
         strcpy_s(original.colorMapping.values[MappingIndex("knee_adaptation")], "0.75");
         auto& scaler = original.scaling.filters[0];
@@ -79,14 +78,6 @@ int wmain()
         retired.insert(retired.find("[Renderer]\r\n") + 12, "statisticsInVideo=1\r\n");
         Require(SettingsIni::Serialize(SettingsIni::Parse(retired)) == text, "Removed setting blocked an import");
         Require(restored.statisticsTextScale == 150, "Statistics text size was lost");
-        Require(restored.blackBars.position == 2, "Image position was lost");
-        Require(SpaceAbove(100.f, 0) == 50.f && SpaceAbove(100.f, 1) == 0.f && SpaceAbove(100.f, 2) == 100.f,
-                "Image position splits the free height: center, top, bottom");
-        {
-            auto invalid = original;
-            invalid.blackBars.position = 3;
-            Require(FAILED(ValidateSettings(invalid)), "Invalid image position was accepted");
-        }
         Require(restored.presentAhead == 3, "Present in advance was lost");
         Require(restored.displayGammaCurve == 1 && restored.sdrGammaCurve == 235 && restored.displayContrast == 3000 &&
                     restored.displayPrimaries == 4,
