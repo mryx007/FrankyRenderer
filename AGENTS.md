@@ -40,6 +40,9 @@ approval.
   linearization policy, presentation transfer and primaries conversion, gamut
   mapping, tone mapping, inverse tone mapping, peak detection, HDR metadata
   precedence and policy, display encoding, final dither and presentation.
+- The HDR product requirement is correct operation inside Franky's HDR
+  framework, not pixel-identical reproduction of madVR's HDR presentation.
+  madVR Evidence remains the oracle for NGU source-domain behavior.
 - NGU is an ordinary native scaler peer. It consumes the shared
   `pl_frame`/hook input, performs only the source-domain work assigned to the
   NGU graph by target Evidence, and returns the texture with correct rectangle,
@@ -52,15 +55,18 @@ approval.
   (`PS_340/1200/1208/1012/1368`), select a tone mapper or display peak, choose
   the target transfer/primaries or HDR output mode, rewrite HDR metadata, or
   perform the final presentation conversion or dither.
-- Franky's shared HDR implementation may reproduce target-observed
-  presentation behavior from its own Evidence. That work belongs to the common
-  renderer, not to NGU and not to a second whole-frame pipeline.
+- Franky's shared HDR implementation may choose its own documented tone
+  mapping, gamut mapping, peak detection, metadata policy and output encoding
+  that keep HDR content correct. Those functions belong to the common renderer,
+  not to NGU and not to a second whole-frame pipeline.
 - Unknown ownership, hook placement, metadata mapping or stage selection fails
   closed. The existence of a general Franky HDR path does not authorize an
   unevidenced NGU color-domain or target row.
-- "Complete HDR" means both the Franky presentation path and the admitted NGU
-  source-domain handoffs are implemented and verified. It is never claimed from
-  an interface, a non-black frame, a capture, a fallback or a visual match.
+- "Complete HDR" for this project means NGU remains active and correct for
+  every declared HDR input through Franky's HDR framework: color and metadata
+  are preserved, Franky performs the presentation processing, and no NGU path
+  causes black/purple/blue output or double tone mapping. It is never claimed
+  from an interface, a non-black frame, a capture, a fallback or a visual match.
 
 ### Current NGU V1 release boundary
 
@@ -74,12 +80,14 @@ verified 720p/1080p paths use the same hook/input/output contract. The observed
 reduction after the NGU intermediate is owned by Franky's configured
 downscaler.
 
-At v1.5.1, the admitted HDR source domains are the target-observed
+At v1.6.0, the admitted HDR source domains are the target-observed
 limited-range P010 BT.2020/PQ 720p/1080p, BT.2020/HLG 1080p and BT.709/PQ
-1080p inputs. NGU uses the corresponding source-domain SuperChromaRes
-constants, stops at source-resolution `PS_4576`, and returns RGBA16 to
-`PL_HOOK_RGB`. Franky owns transfer handling, primaries conversion, tone
-mapping, peak metadata, display encoding and every later scaling stage. NGU
+1080p inputs, plus native-size 4K 4:2:0 P010/P016 through
+`PL_HOOK_CHROMA_INPUT`. The 720p/1080p paths use source-domain
+SuperChromaRes constants and stop at `PS_4576`. The 4K path upscales CbCr at
+source resolution while luma remains a shared-renderer input. Franky owns
+transfer handling, primaries conversion, tone mapping, peak metadata, display
+encoding and every later scaling stage. NGU
 does not own the madVR HDR presentation tail
 (`PS_340/1200/1208/1012/1368`). Unobserved source geometries, other HDR
 formats, transfer/primaries combinations, unadmitted Low/Medium/High rows,

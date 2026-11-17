@@ -248,6 +248,17 @@ int main(int argc, char** argv)
         Require(chroma4KPlan.chromaOnly4K && chroma4KPlan.noLuma && chroma4KPlan.outputHook &&
                     chroma4KPlan.outputWidth == 3840 && chroma4KPlan.outputHeight == 2160,
                 "canonical native 4K chroma-only plan");
+        planSource.lumaBits = 10;
+        planSource.chromaBits = 10;
+        planSource.color = pl_color_space_hdr10;
+        const auto hdr4KPlan = planner.PlanNativeVeryHigh(planSource, 3840, 2160);
+        Require(hdr4KPlan.hdr && hdr4KPlan.chromaOnly4K && hdr4KPlan.noLuma &&
+                    !hdr4KPlan.outputHook && hdr4KPlan.outputWidth == 3840 &&
+                    hdr4KPlan.outputHeight == 2160,
+                "canonical HDR 4K chroma-only plan");
+        planSource.color = pl_color_space_srgb;
+        planSource.lumaBits = 8;
+        planSource.chromaBits = 8;
         planSource.width = 1280;
         planSource.height = 720;
         planSource.chromaLayout = NguChromaLayout::SemiPlanar422;
@@ -447,10 +458,13 @@ int main(int argc, char** argv)
         VideoFrame native4kHdr = native4k;
         native4kHdr.format = PixelFormat::P010;
         native4kHdr.stride = 3840 * 2;
-        native4kHdr.color = pl_color_space_srgb;
-        native4kHdr.color.transfer = PL_COLOR_TRC_PQ;
-        native4kHdr.color.primaries = PL_COLOR_PRIM_BT_2020;
+        native4kHdr.color = pl_color_space_hdr10;
+        native4kHdr.color.hdr.min_luma = .005f;
+        native4kHdr.color.hdr.max_luma = 4000;
+        native4kHdr.color.hdr.max_cll = 1000;
+        native4kHdr.color.hdr.max_fall = 200;
         native4kHdr.matrix = PL_COLOR_SYSTEM_BT_2020_NC;
+        native4kHdr.levels = PL_COLOR_LEVELS_LIMITED;
         const size_t native4kHdrBytes = size_t(3840) * 2160 * 2 + size_t(1920) * 1080 * 4;
         std::vector<uint8_t> native4kHdrData(native4kHdrBytes);
         auto native4kHdrY = reinterpret_cast<uint16_t*>(native4kHdrData.data());
@@ -467,12 +481,44 @@ int main(int argc, char** argv)
         }
         Require(SUCCEEDED(backend.Upload(native4kHdr, native4kHdrData.data(), native4kHdrData.size())),
                 "NGU native 4K HDR upload");
+        bool native4kHdrHook = false;
+        pl_hook_stage native4kHdrHookStage = static_cast<pl_hook_stage>(0);
+        pl_rect2df native4kHdrHookRect = {};
+        pl_color_repr native4kHdrHookRepr = {};
+        pl_color_space native4kHdrHookColor = {};
+        pl_color_space native4kHdrHookInputColor = {};
+        int native4kHdrHookComponents = 0;
+        backend.SetNguHookProbeForTest(
+            [&](const pl_hook_params& params, const pl_hook_res& result)
+            {
+                native4kHdrHook = true;
+                native4kHdrHookStage = params.stage;
+                native4kHdrHookRect = result.rect;
+                native4kHdrHookRepr = result.repr;
+                native4kHdrHookColor = result.color;
+                native4kHdrHookInputColor = params.color;
+                native4kHdrHookComponents = result.components;
+            });
         std::vector<uint8_t> native4kHdrPixels;
         Require(SUCCEEDED(backend.RenderOffscreen(3840, 2160, native4kHdrPixels)),
-                "NGU native 4K HDR common-renderer fallback");
+                "NGU native 4K HDR render");
+        Require(native4kHdrHook && native4kHdrHookStage == PL_HOOK_CHROMA_INPUT &&
+                    native4kHdrHookRect.x1 == 3840.0f && native4kHdrHookRect.y1 == 2160.0f,
+                "NGU native 4K HDR executes the shared chroma hook");
+        Require(native4kHdrHookComponents == 2 && native4kHdrHookRepr.bits.sample_depth == 16 &&
+                    native4kHdrHookRepr.bits.color_depth == 16,
+                "NGU native 4K HDR chroma hook returns two 16-bit components");
+        Require(native4kHdrHookInputColor.transfer == native4kHdr.color.transfer &&
+                    native4kHdrHookInputColor.primaries == native4kHdr.color.primaries &&
+                    native4kHdrHookColor.transfer == native4kHdr.color.transfer &&
+                    native4kHdrHookColor.primaries == native4kHdr.color.primaries &&
+                    native4kHdrHookColor.hdr.max_luma == native4kHdr.color.hdr.max_luma &&
+                    native4kHdrHookColor.hdr.max_cll == native4kHdr.color.hdr.max_cll &&
+                    native4kHdrHookColor.hdr.max_fall == native4kHdr.color.hdr.max_fall,
+                "NGU native 4K HDR hook preserves source color and peak metadata");
         Require(std::any_of(native4kHdrPixels.begin(), native4kHdrPixels.end(),
                             [](uint8_t value) { return value != 0; }),
-                "NGU native 4K HDR fallback is not blue/black");
+                "NGU native 4K HDR output is not blue/black");
         uint64_t hdrRed = 0, hdrGreen = 0, hdrBlue = 0;
         for (size_t i = 0; i + 3 < native4kHdrPixels.size(); i += 4)
         {
@@ -480,8 +526,93 @@ int main(int argc, char** argv)
             hdrGreen += native4kHdrPixels[i + 1];
             hdrRed += native4kHdrPixels[i + 2];
         }
-        Require(hdrRed > 0 && hdrGreen > 0, "NGU native 4K HDR fallback is not a blue-only frame");
-        std::puts("NGU native 4K HDR without an observed plan falls back visibly");
+        Require(hdrRed > 0 && hdrGreen > 0, "NGU native 4K HDR output is not a blue-only frame");
+        std::vector<uint8_t> native4kHdrWindowPixels;
+        Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, native4kHdrWindowPixels)),
+                "NGU native 4K HDR window render");
+        Require(native4kHdrWindowPixels.size() == size_t(1920) * 1080 * 4,
+                "NGU native 4K HDR window output size");
+        Require(native4kHdrHook && native4kHdrHookStage == PL_HOOK_CHROMA_INPUT &&
+                    native4kHdrHookRect.x1 == 3840.0f && native4kHdrHookRect.y1 == 2160.0f,
+                "NGU native 4K HDR window uses the source-resolution chroma hook");
+        Require(std::any_of(native4kHdrWindowPixels.begin(), native4kHdrWindowPixels.end(),
+                            [](uint8_t value) { return value != 0; }),
+                "NGU native 4K HDR window output is not black");
+        uint64_t windowHdrRed = 0, windowHdrGreen = 0, windowHdrBlue = 0;
+        for (size_t i = 0; i + 3 < native4kHdrWindowPixels.size(); i += 4)
+        {
+            windowHdrBlue += native4kHdrWindowPixels[i];
+            windowHdrGreen += native4kHdrWindowPixels[i + 1];
+            windowHdrRed += native4kHdrWindowPixels[i + 2];
+        }
+        Require(windowHdrRed > 0 && windowHdrGreen > 0,
+                "NGU native 4K HDR window output is not a blue-only frame");
+
+        VideoFrame native4kP016Hdr = native4kHdr;
+        native4kP016Hdr.format = PixelFormat::P016;
+        std::vector<uint8_t> native4kP016HdrData(native4kHdrBytes);
+        auto native4kP016HdrY = reinterpret_cast<uint16_t*>(native4kP016HdrData.data());
+        for (int y = 0; y < 2160; ++y)
+            for (int x = 0; x < 3840; ++x)
+                native4kP016HdrY[size_t(y) * 3840 + x] =
+                    uint16_t((16 + (x * 219) / 3839) << 8);
+        auto native4kP016HdrUv = reinterpret_cast<uint16_t*>(
+            native4kP016HdrData.data() + size_t(3840) * 2160 * 2);
+        for (size_t i = 0; i < size_t(1920) * 1080; ++i)
+        {
+            native4kP016HdrUv[i * 2] = uint16_t(512 << 6);
+            native4kP016HdrUv[i * 2 + 1] = uint16_t(512 << 6);
+        }
+        bool native4kP016HdrHook = false;
+        pl_hook_stage native4kP016HdrHookStage = static_cast<pl_hook_stage>(0);
+        pl_color_space native4kP016HdrHookColor = {};
+        backend.SetNguHookProbeForTest(
+            [&](const pl_hook_params& params, const pl_hook_res& result)
+            {
+                native4kP016HdrHook = true;
+                native4kP016HdrHookStage = params.stage;
+                native4kP016HdrHookColor = result.color;
+            });
+        Require(SUCCEEDED(backend.Upload(
+                    native4kP016Hdr, native4kP016HdrData.data(), native4kP016HdrData.size())),
+                "NGU native 4K P016 HDR upload");
+        Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, native4kHdrWindowPixels)),
+                "NGU native 4K P016 HDR window render");
+        Require(native4kP016HdrHook && native4kP016HdrHookStage == PL_HOOK_CHROMA_INPUT &&
+                    native4kP016HdrHookColor.transfer == native4kP016Hdr.color.transfer &&
+                    native4kP016HdrHookColor.primaries == native4kP016Hdr.color.primaries,
+                "NGU native 4K P016 HDR uses the shared chroma hook with metadata");
+        auto render4KHdrWindowProfile = [&](const VideoFrame& frame, const char* label)
+        {
+            bool sawHook = false;
+            pl_hook_stage hookStage = static_cast<pl_hook_stage>(0);
+            pl_color_space hookColor = {};
+            backend.SetNguHookProbeForTest(
+                [&](const pl_hook_params& params, const pl_hook_res& result)
+                {
+                    sawHook = true;
+                    hookStage = params.stage;
+                    hookColor = result.color;
+                });
+            Require(SUCCEEDED(backend.Upload(frame, native4kHdrData.data(), native4kHdrData.size())),
+                    label);
+            std::vector<uint8_t> profilePixels;
+            Require(SUCCEEDED(backend.RenderOffscreen(1600, 900, profilePixels)), label);
+            Require(sawHook && hookStage == PL_HOOK_CHROMA_INPUT, label);
+            Require(hookColor.transfer == frame.color.transfer && hookColor.primaries == frame.color.primaries,
+                    label);
+            Require(std::any_of(profilePixels.begin(), profilePixels.end(), [](uint8_t value) { return value != 0; }),
+                    label);
+        };
+        VideoFrame native4kHlg = native4kHdr;
+        native4kHlg.color.transfer = PL_COLOR_TRC_HLG;
+        render4KHdrWindowProfile(native4kHlg, "NGU native 4K HLG window");
+        VideoFrame native4kBt709Pq = native4kHdr;
+        native4kBt709Pq.color.primaries = PL_COLOR_PRIM_BT_709;
+        native4kBt709Pq.matrix = PL_COLOR_SYSTEM_BT_709;
+        render4KHdrWindowProfile(native4kBt709Pq, "NGU native 4K BT.709/PQ window");
+        backend.SetNguHookProbeForTest({});
+        std::puts("NGU native 4K HDR PQ/HLG/BT.709-PQ and P016 use the shared chroma hook under Franky HDR");
 
         std::puts("NGU native 4K executes the all-quality chroma hook without a black frame");
         Require(SUCCEEDED(backend.SetSettings(settings)), "NGU backend settings");

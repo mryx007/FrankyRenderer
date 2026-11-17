@@ -56,10 +56,12 @@ static std::vector<BYTE> nguCapturedInput;
 static bool nguNv12Test = false;
 static bool nguWindowTest = false;
 static bool nguP010Test = false;
+static bool nguP016Test = false;
 static bool nguTransitionTest = false;
 static std::wstring nguNv12InputPath;
 static std::vector<BYTE> nguNv12Input;
 static std::vector<BYTE> nguP010Input;
+static std::vector<BYTE> nguP016Input;
 static std::wstring p010FixtureInputPath;
 static std::wstring p010FixtureOraclePath;
 static std::wstring p010FixtureOutputPath;
@@ -252,6 +254,8 @@ static DWORD FourCC()
         return MAKEFOURCC('P', '2', '1', '6');
     if (nguNv12Test)
         return MAKEFOURCC('N', 'V', '1', '2');
+    if (nguP016Test)
+        return MAKEFOURCC('P', '0', '1', '6');
     if (nguP010Test)
         return MAKEFOURCC('P', '0', '1', '0');
     if (nguTest && !hardware && !explicitP016)
@@ -269,6 +273,8 @@ static long SampleBytes()
         return static_cast<long>(nguNv12Input.size());
     if (nguP010Test)
         return static_cast<long>(nguP010Input.size());
+    if (nguP016Test)
+        return static_cast<long>(nguP016Input.size());
     if (nguTest && !hardware && !explicitP016)
         return nguSourceWidth * nguSourceHeight * 6;
     if (nguTest && !hardware && explicitP016)
@@ -858,8 +864,13 @@ class PatternStream final : public CSourceStream
         {
             nguSourceStage = 6;
             std::vector<BYTE> generated;
-            const BYTE* data = p010FixtureInput.data();
-            if (p010FixtureInput.empty())
+            const BYTE* data = nguP010Test ? nguP010Input.data()
+                               : nguP016Test ? nguP016Input.data()
+                                             : p010FixtureInput.data();
+            const bool hasFixture = nguP010Test ? !nguP010Input.empty()
+                                   : nguP016Test ? !nguP016Input.empty()
+                                                 : !p010FixtureInput.empty();
+            if (!data || !hasFixture)
             {
                 generated.resize(size_t(nguSourceWidth) * nguSourceHeight * 3);
                 auto yPlane = reinterpret_cast<uint16_t*>(generated.data());
@@ -1037,6 +1048,10 @@ class PatternStream final : public CSourceStream
         else if (nguP010Test)
         {
             std::memcpy(bytes, nguP010Input.data(), nguP010Input.size());
+        }
+        else if (nguP016Test)
+        {
+            std::memcpy(bytes, nguP016Input.data(), nguP016Input.size());
         }
         else if (nguTest && !hardware && !explicitP016)
         {
@@ -1430,6 +1445,15 @@ int wmain(int argc, wchar_t** argv)
             nguSourceHeight = 2160;
             nguP010Input = ReadFile(argv[++i], size_t(3840) * 2160 * 2 + size_t(1920) * 1080 * 4);
         }
+        if (wcscmp(argv[i], L"--ngu-4k-p016") == 0 && i + 1 < argc)
+        {
+            nguP016Test = true;
+            explicitP016 = true;
+            nguSourceWidth = 3840;
+            nguSourceHeight = 2160;
+            textureFormat = DXGI_FORMAT_P016;
+            nguP016Input = ReadFile(argv[++i], size_t(3840) * 2160 * 2 + size_t(1920) * 1080 * 4);
+        }
         if (wcscmp(argv[i], L"--p010-input") == 0 && i + 1 < argc)
             p010FixtureInputPath = argv[++i];
         if (wcscmp(argv[i], L"--p010-oracle") == 0 && i + 1 < argc)
@@ -1477,7 +1501,7 @@ int wmain(int argc, wchar_t** argv)
         }
     }
     if (nguTest && !hardware && !explicitP016 && !explicitP210 && !explicitP216 && !nguNv12Test &&
-        !nguP010Test &&
+        !nguP010Test && !nguP016Test &&
         (nguSourceWidth != 1280 || nguSourceHeight != 720))
     {
         puts("FAIL --ngu-1080 is a P010 GPU smoke; use --gpu");
@@ -1489,9 +1513,12 @@ int wmain(int argc, wchar_t** argv)
              "playback smoke and cannot use --ngu-root");
         return 1;
     }
-    if (nguHdrTest && (!nguTest || !hardware || p010FixtureInputPath.empty()))
+    if (nguHdrTest &&
+        (!nguTest || (!nguP016Test && !hardware) ||
+         (p010FixtureInputPath.empty() && !nguP010Test && !nguP016Test)))
     {
-        puts("FAIL --ngu-hdr requires --gpu --ngu --p010-input");
+        puts("FAIL --ngu-hdr requires --ngu and a P010/P016 fixture "
+             "(--gpu is required for P010)");
         return 1;
     }
     if (explicitP210 && explicitP216)
@@ -1527,9 +1554,9 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
     }
-    if (nguWindowTest && !nguNv12Test && !nguP010Test)
+    if (nguWindowTest && !nguNv12Test && !nguP010Test && !nguP016Test)
     {
-        puts("FAIL --ngu-window requires --ngu-4k-nv12 or --ngu-4k-p010");
+        puts("FAIL --ngu-window requires a 4K NV12, P010 or P016 fixture");
         return 1;
     }
     if (nguTransitionTest && !nguWindowTest)
@@ -1540,6 +1567,11 @@ int wmain(int argc, wchar_t** argv)
     if (nguP010Test && nguP010Input.empty())
     {
         puts("FAIL 4K P010 fixture must be 3840x2160 P010");
+        return 1;
+    }
+    if (nguP016Test && nguP016Input.empty())
+    {
+        puts("FAIL 4K P016 fixture must be 3840x2160 P016");
         return 1;
     }
     if (!p010FixtureInputPath.empty() || !p010FixtureOraclePath.empty())

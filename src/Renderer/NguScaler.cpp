@@ -5327,22 +5327,20 @@ NguTargetPlan NguScaler::PlanNativeVeryHigh(const NguSourceFrame& source, int ta
     plan.chromaBits = source.chromaBits;
     plan.fullRange = source.fullRange;
     plan.hdr = pl_color_space_is_hdr(&source.color);
+    plan.chromaOnly4K =
+        source.width == 3840 && source.height == 2160 && targetWidth <= 3840 && targetHeight <= 2160 &&
+        (source.chromaLayout == NguChromaLayout::SemiPlanar420 ||
+         source.chromaLayout == NguChromaLayout::Planar420);
     if (plan.hdr)
     {
-        // E-160 [observed]: both captured HDR NGU graphs stop at PS_4576
-        // with one output pixel per source pixel. Franky owns every scaling
-        // and HDR presentation operation after that boundary.
         plan.outputWidth = source.width;
         plan.outputHeight = source.height;
+        plan.noLuma = plan.chromaOnly4K;
         plan.outputHook = false;
         return plan;
     }
     const bool chromaOnly1080 =
         source.width == 1920 && source.height == 1080 && targetWidth == 1920 && targetHeight == 1080;
-    plan.chromaOnly4K =
-        source.width == 3840 && source.height == 2160 && targetWidth <= 3840 && targetHeight <= 2160 &&
-        (source.chromaLayout == NguChromaLayout::SemiPlanar420 ||
-         source.chromaLayout == NguChromaLayout::Planar420);
     plan.noLuma = chromaOnly1080 || plan.chromaOnly4K;
     plan.double720 = source.width == 1280 && source.height == 720 &&
                      ((targetWidth == 1920 && targetHeight == 1080) || (targetWidth == 2560 && targetHeight == 1440));
@@ -5374,7 +5372,7 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
         error_ = "NGU Low/Medium/High luma requires the verified 1280x720 SDR path";
         return false;
     }
-    if (hdr_)
+    if (hdr_ && !plan.chromaOnly4K)
     {
         // E-171 [observed]: these are the only target-captured HDR
         // source-domain profiles. All other transfer/primaries pairs fail
@@ -5412,17 +5410,24 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
         error_ = "ngu_sharp Low/Medium/High chroma requires the verified 1280x720 SDR NV12 path";
         return false;
     }
-    const bool hdrGeometry =
-        (source.width == 1280 && source.height == 720) || (source.width == 1920 && source.height == 1080);
+    const bool hdrGeometry = (source.width == 1280 && source.height == 720) ||
+                             (source.width == 1920 && source.height == 1080) || plan.chromaOnly4K;
     const bool matrixMatchesColorDomain =
         (colorDomain_ == ColorDomainProfile::PqBt2020 || colorDomain_ == ColorDomainProfile::HlgBt2020)
             ? (source.repr.sys == PL_COLOR_SYSTEM_BT_2020_NC || source.repr.sys == PL_COLOR_SYSTEM_BT_2020_C)
             : colorDomain_ == ColorDomainProfile::PqBt709 && source.repr.sys == PL_COLOR_SYSTEM_BT_709;
-    if (hdr_ && !(hdrGeometry && plan.outputWidth == source.width && plan.outputHeight == source.height &&
-                  source.chromaLayout == NguChromaLayout::SemiPlanar420 && source.lumaBits == 10 &&
-                  source.chromaBits == 10 && !source.fullRange && matrixMatchesColorDomain))
+    const bool hdrSourceHandoff =
+        !plan.chromaOnly4K && plan.outputWidth == source.width && plan.outputHeight == source.height &&
+        source.chromaLayout == NguChromaLayout::SemiPlanar420 && source.lumaBits == 10 &&
+        source.chromaBits == 10 && !source.fullRange && matrixMatchesColorDomain;
+    const bool hdr4KChroma =
+        plan.chromaOnly4K && source.chromaLayout == NguChromaLayout::SemiPlanar420 &&
+        (source.lumaBits == 10 || source.lumaBits == 16) && source.lumaBits == source.chromaBits &&
+        (source.repr.sys == PL_COLOR_SYSTEM_BT_2020_NC || source.repr.sys == PL_COLOR_SYSTEM_BT_2020_C ||
+         source.repr.sys == PL_COLOR_SYSTEM_BT_709 || source.repr.sys == PL_COLOR_SYSTEM_BT_601);
+    if (hdr_ && !(hdrGeometry && (hdrSourceHandoff || hdr4KChroma)))
     {
-        error_ = "ngu_sharp HDR requires an observed limited-range P010 720p or 1080p color domain";
+        error_ = "ngu_sharp HDR color domain or geometry is unsupported";
         return false;
     }
     switch (source.chromaLayout)
@@ -5442,6 +5447,8 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
             return false;
         if (hdr_)
         {
+            if (plan.chromaOnly4K)
+                return PrepareNativeChroma4K(gpu, source.chromaQuality);
             if (source.width == 1280 && source.height == 720)
                 return PrepareNativeNguFromPlanes(
                     gpu, 1280, 720, source.chromaQuality, nativeNgu720FromPlanes_, "HDR 720p", false);
@@ -5517,6 +5524,8 @@ bool NguScaler::RunNativeVeryHigh(const NguSourceFrame& source,
             error_ = "NGU canonical 4:2:0 planes are unavailable";
             return false;
         }
+        if (plan.chromaOnly4K)
+            return RunNativeChroma4K(source.chroma, source.luma, source.chromaQuality, finalOutput);
         if (plan.hdr)
         {
             if (source.width == 1280 && source.height == 720 && nativeNgu720FromPlanes_)
@@ -5532,8 +5541,6 @@ bool NguScaler::RunNativeVeryHigh(const NguSourceFrame& source,
             error_ = "NGU HDR chroma-only resource is unavailable";
             return false;
         }
-        if (plan.chromaOnly4K)
-            return RunNativeChroma4K(source.chroma, source.luma, source.chromaQuality, finalOutput);
         if (plan.noLuma)
             return RunNativeNgu1080ChromaOnlyFromPlanes(source.chroma, source.luma, finalOutput, highBitDepth);
         if (source.width == 1280 && source.height == 720)

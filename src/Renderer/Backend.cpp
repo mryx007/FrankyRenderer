@@ -1060,21 +1060,6 @@ struct PlaceboBackend::State
         }
         const bool sourceHdr =
             pl_color_space_is_hdr(&image.color) || pl_color_space_is_hdr(&description.color);
-        if (sourceHdr && (source.width >= 3840 || source.height >= 2160))
-        {
-            // The target-observed HDR NGU profiles stop at 720p/1080p. A 4K
-            // HDR source has no admitted native color-domain plan; keep the
-            // shared 4K frame visible instead of entering an unsupported hook.
-            nguHookActive = false;
-            nguHookAtOutput = false;
-            nguHookAtChroma = false;
-            nguCommonFallback = true;
-            nguHdrSource = false;
-            nguPlan = {};
-            error.clear();
-            TraceNgu("4K HDR source has no observed NGU plan; common renderer fallback");
-            return true;
-        }
         const bool qualityObserved =
             (source.width == 1280 && source.height == 720 &&
              targetWidth == 3840 && targetHeight == 2160 && !sourceHdr &&
@@ -1162,7 +1147,7 @@ struct PlaceboBackend::State
         // bypass the common RGB pass. HDR must stop before Franky's colour
         // management so the common renderer owns tone mapping, transfer,
         // primaries, peak metadata and output encoding.
-        nguHookAtChroma = !nguHdrSource && nguPlan.chromaOnly4K;
+        nguHookAtChroma = nguPlan.chromaOnly4K;
         nguHookAtOutput =
             !nguHookAtChroma && !nguHdrSource && ngu.PlanNativeVeryHigh(source, targetWidth, targetHeight).outputHook;
         if (nguHookAtChroma &&

@@ -44,6 +44,7 @@ HDR presentation pipeline: HDR/SDR policy, source/display range interpretation,
 presentation linearization, transfer and primaries conversion, gamut mapping,
 tone mapping, peak detection, metadata precedence and policy, output encoding,
 final presentation dither and presentation. NGU is not a second HDR renderer.
+Franky's HDR output is a product result and is not required to match madVR.
 
 FrankyRenderer, not NGU, owns HDR scaling, transfer handling, primaries
 conversion, tone mapping, peak metadata and output encoding. The NGU module
@@ -66,8 +67,9 @@ source-domain metadata so Franky performs the only HDR presentation pass.
 to NGU.
 
 Future work must be phrased and scoped as integrating NGU with Franky's HDR
-pipeline, never as implementing madVR's HDR pipeline in NGU. Any unobserved
-transfer, primaries, range, format or target relation fails closed.
+pipeline, never as implementing madVR's HDR pipeline in NGU. Unknown NGU
+source-domain arithmetic fails closed; Franky presentation choices are judged
+by product correctness rather than equality with madVR.
 
 E-160 establishes the corresponding A/B evidence: the NGU feature network and
 inputs are unchanged, while color-domain constants require the HDR profile.
@@ -112,8 +114,8 @@ The Backend accepts both decoder-copy RGBA16 packed chroma and the common
 CPU-plane `R16G16_UNORM` representation. HDR never runs the SDR luma
 network/FinalStep. Final HDR BMP equality against madVR is not an NGU gate
 because post-`PS_4576` HDR presentation intentionally belongs to Franky. This
-ownership boundary is not a claim that Franky's complete HDR presentation
-matrix is finished.
+ownership boundary is not a claim that every HDR input format or presentation
+mode has been admitted.
 E-100/E-160 show that the observed `PS_4576` ToRGB stage performs the captured
 BT.2020 matrix conversion without a subsequent transfer conversion; the hook
 therefore keeps the source PQ transfer and BT.2020 primaries on the RGBA16
@@ -479,7 +481,7 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native HDR chroma | BT.2020/PQ 720p/1080p and BT.2020/HLG plus BT.709/PQ 1080p are exact through source-resolution `PS_4576`; arbitrary HDR targets hand off to Franky | Unobserved HDR combinations; complete Franky-owned HDR presentation is tracked separately in `FRANKY_NGU_HDR_PLAN.md` |
+| Native HDR chroma | Existing 720p/1080p source-domain paths remain exact; 4K 4:2:0 P010/P016 now enters the shared chroma hook | Other HDR formats and enlarged targets remain explicit fallback/unsupported; Franky presentation is not a madVR-parity gate |
 | Native 1080p plane entry | packed UV + Y reaches the same-frame `PS_1352` target | Out-of-scope ratios |
 | Native product entry | P210/P216 1080p combined is `maximum=1`, `diff_gt_1_pixels=0` | Broader performance and format matrix |
 | High-bit 720p Double | P010 uses the distinct `PS_484/1412/6140/4280x3/1528/1672/4620x28/2672/908` graph. E-170 correlates P016 and matches `PS_4576` and pre-presentation `PS_908` exactly. | P010 and CPU-plane P016 admitted; hardware P016 remains unknown |
@@ -589,15 +591,14 @@ At this checkpoint, Low/Medium/High remained experimental. Later releases
 admitted the exact rows recorded in the current capability matrix; unlisted
 paths continue to fail closed.
 
-## Native-size fallback and settings placement (2026-11-15)
+## Native-size and settings placement (updated 2026-11-17)
 
-E-175 closes the player-facing 4K black-frame defect. If `ngu_sharp` is
-selected for a source geometry outside the observed 1280x720/1920x1080 NGU
-inputs and the presentation target does not enlarge that source, the native
-hook stays inactive and the original shared `pl_frame` goes through the common
-Franky renderer. The fallback restores the configured libplacebo scaling and
-dither parameters. This is not a 4K NGU graph and does not admit unsupported
-enlargement.
+E-175 originally kept unsupported native-size sources visible through the
+common Franky renderer. E-190 supersedes that fallback for native-size 4K
+4:2:0 P010/P016 HDR: those sources now execute NGU chroma through
+`PL_HOOK_CHROMA_INPUT`. Other unobserved formats, class-3 HDR, enlargement
+above 4K and unadmitted quality rows still use explicit fallback or reject the
+NGU request; they are not reported as active NGU.
 
 The same boundary keeps native NGU out of the libplacebo Custom Filter editor.
 It is a renderer peer, not a filter preset with a synthetic kernel/window
@@ -605,3 +606,22 @@ contract. E-005/E-017/E-021 show that target anti-ringing selection belongs to
 the NGU image-upscaling setting area. The exact strength-to-shader mapping is
 still unknown, so the common global Anti-Ringing control is neither moved into
 Custom Filters nor silently applied to native NGU.
+
+## NGU HDR interoperability (2026-11-17)
+
+Franky 1.6.0 removes the blanket 4K HDR → common-renderer fallback. Limited
+4:2:0 4K P010/P016 now uses `PL_HOOK_CHROMA_INPUT`: NGU expands CbCr at 4K
+source resolution, luma remains a shared renderer input, and Franky performs
+all HDR presentation processing.
+
+`test_ngu_backend` passes 4K PQ, HLG, BT.709/PQ and P016 HDR window/fullscreen
+paths, including source metadata preservation. A real `Sony_4K_HDR_Camp.mp4`
+P010 hardware-decoder test and a P016 CPU-plane test pass packaged DirectShow
+window, fullscreen transition, pause, flush, restart and reconnect checks. The
+source fixture is no longer replaced by the ordinary NGU smoke-test gradient.
+The packaged AX renders visible window and 4K images without the previous
+black/blue/purple failure; the real-file trace confirms active NGU, PQ/BT.2020
+and `PL_HOOK_CHROMA_INPUT`. PotPlayer loads the same packaged 1.6.0 AX.
+
+MadVR HDR presentation and final-frame equality are not gates for this
+integration. Existing exact NGU source-domain tests remain regressions.
