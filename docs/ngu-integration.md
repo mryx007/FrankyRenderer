@@ -4,6 +4,7 @@ Branch: `FrankyRenderer_NGU`
 
 > This document is the Franky-side implementation log and Evidence map. It is
 > not the active roadmap. Scope and work order are defined by
+> `E:\OpenMadVR\docs\FRANKY_NGU_HDR_PLAN.md`, with the V1 foundation in
 > `E:\OpenMadVR\docs\FRANKY_NGU_V1_PLAN.md`. Historical status paragraphs below
 > must not be treated as an active backlog. OpenMadVR is a capture/Evidence
 > corpus only; it is not a second renderer implementation target.
@@ -32,15 +33,17 @@ canonical semantics plus `NguTargetPlan`. The plan preserves 720 Double,
 1080 no-luma, class-3 output-hook behavior and arbitrary `PL_HOOK_RGB` window
 handoff.
 
-Low/Medium/High are not part of the current mainline. They begin only after all
-SDR VeryHigh, lifecycle and packaging objectives are complete.
+Low/Medium/High are implemented for the target-observed Sharp paths recorded in
+the capability matrix. They are not a claim of complete quality/geometry/HDR
+coverage; unlisted paths remain fail-closed.
 
-## HDR ownership boundary (2026-11-14)
+## HDR ownership boundary (2026-11-14; expanded 2026-11-17)
 
 This is an immutable interface rule. FrankyRenderer is the sole owner of the
-HDR presentation pipeline: HDR/SDR policy, linearization, transfer and
-primaries conversion, gamut mapping, tone mapping, peak detection, metadata
-propagation and output encoding. NGU is not a second HDR renderer.
+HDR presentation pipeline: HDR/SDR policy, source/display range interpretation,
+presentation linearization, transfer and primaries conversion, gamut mapping,
+tone mapping, peak detection, metadata precedence and policy, output encoding,
+final presentation dither and presentation. NGU is not a second HDR renderer.
 
 FrankyRenderer, not NGU, owns HDR scaling, transfer handling, primaries
 conversion, tone mapping, peak metadata and output encoding. The NGU module
@@ -48,15 +51,19 @@ uses the observed source-domain constants for the P010 1280x720/1920x1080
 BT.2020/PQ chroma and SuperChromaRes strength-3 core, stops at source-resolution
 `PS_4576`, and returns `R16G16B16A16_UNORM` at `PL_HOOK_RGB`. Those constants
 select the NGU arithmetic input domain; they are not a madVR HDR renderer.
-The target's `PS_340/1200/1208/1012/1368` HDR presentation tail is not part of
-this implementation.
+The target's `PS_340/1200/1208/1012/1368` HDR presentation tail is not owned by
+NGU. Franky's common HDR implementation may reproduce target-observed
+presentation behavior from its own Evidence; it must not expose that work as an
+NGU output contract or a second renderer.
 
 `PS_396`, `PS_4412` and `PS_4576` are NGU source-domain arithmetic stages
-recovered from target Evidence. NGU must not linearize or tone-map the image,
-change HDR peak metadata, or make a second transfer/primaries conversion. The
-hook returns the source PQ/BT.2020 metadata unchanged so Franky performs the
-only HDR processing pass. `PL_HOOK_RGB` defines the handoff position; it does
-not transfer HDR ownership to NGU.
+recovered from target Evidence. Target-assigned YCbCr-to-RGB, matrix and range
+operations in these stages are allowed. NGU must not linearize or tone-map for
+a display, choose display peak or output transfer/primaries, change HDR peak
+metadata, or make a second presentation conversion. The hook returns correct
+source-domain metadata so Franky performs the only HDR presentation pass.
+`PL_HOOK_RGB` defines the handoff position; it does not transfer HDR ownership
+to NGU.
 
 Future work must be phrased and scoped as integrating NGU with Franky's HDR
 pipeline, never as implementing madVR's HDR pipeline in NGU. Any unobserved
@@ -65,9 +72,10 @@ transfer, primaries, range, format or target relation fails closed.
 E-160 establishes the corresponding A/B evidence: the NGU feature network and
 inputs are unchanged, while color-domain constants require the HDR profile.
 E-171 adds the observed 1080p BT.2020/HLG and BT.709/PQ profiles, both exact
-through `PS_4576`. The admitted source contract remains limited-range P010 at
-720p/1080p, with only the observed BT.2020/PQ, BT.2020/HLG and BT.709/PQ
-combinations. Other transfers, primaries, ranges and geometries fail closed.
+through `PS_4576`. In v1.5.1, the admitted source contract is limited-range
+P010 at 720p/1080p, with only the observed BT.2020/PQ, BT.2020/HLG and
+BT.709/PQ combinations. Other transfers, primaries, ranges and geometries fail
+closed until the next-release HDR matrix supplies Evidence and gates.
 
 E-166/STEP-156 close the frame-metadata integration gap. `NguSourceFrame`
 takes its color from the current sample and uses the media-type description
@@ -103,7 +111,9 @@ following `PS_1368` remains presentation work and is handed to Franky through
 The Backend accepts both decoder-copy RGBA16 packed chroma and the common
 CPU-plane `R16G16_UNORM` representation. HDR never runs the SDR luma
 network/FinalStep. Final HDR BMP equality against madVR is not an NGU gate
-because post-`PS_4576` HDR presentation intentionally belongs to Franky.
+because post-`PS_4576` HDR presentation intentionally belongs to Franky. This
+ownership boundary is not a claim that Franky's complete HDR presentation
+matrix is finished.
 E-100/E-160 show that the observed `PS_4576` ToRGB stage performs the captured
 BT.2020 matrix conversion without a subsequent transfer conversion; the hook
 therefore keeps the source PQ transfer and BT.2020 primaries on the RGBA16
@@ -289,8 +299,8 @@ scheduling rather than target-visible arithmetic:
    to 4K path.
 5. Register `ngu_sharp` in settings/UI through the generic native-scaler
    resolution path only after the native path renders.
-6. Verify final image and DirectShow playback before enabling Low/Medium/High
-   beyond experimental status.
+6. Verify final image and DirectShow playback for each newly admitted
+   Low/Medium/High row.
 
 ## Initial acceptance
 
@@ -469,14 +479,14 @@ product integration, not another transport redesign:
 | VeryHigh 720p luma | All checked stages `0/0`; final `maximum=1`, `diff_gt_1_pixels=0`; this run `62.789 ms/frame` (prior recorded run `69.358 ms/frame`) | Real decoder input and broader performance matrix |
 | VeryHigh 1080p luma | Captured-input scheduler, Backend RGB48 and same-frame PS_1352 composition pass at `maximum=1`, no pixel above one | Real decoder input and production strength-3 source generation |
 | SuperChromaRes strength 3 | Captured-input scheduler is `0/0`; composed 720p path is `maximum=1`, `diff_gt_1_pixels=0`; this run `10.003 ms/frame` (prior recorded run `20.811 ms/frame`) | Produce the four inputs from the real chroma/decoder network |
-| Native HDR chroma | BT.2020/PQ 720p/1080p and BT.2020/HLG plus BT.709/PQ 1080p are exact through source-resolution `PS_4576`; arbitrary HDR targets hand off to Franky | Unobserved HDR combinations and target HDR presentation tail |
+| Native HDR chroma | BT.2020/PQ 720p/1080p and BT.2020/HLG plus BT.709/PQ 1080p are exact through source-resolution `PS_4576`; arbitrary HDR targets hand off to Franky | Unobserved HDR combinations; complete Franky-owned HDR presentation is tracked separately in `FRANKY_NGU_HDR_PLAN.md` |
 | Native 1080p plane entry | packed UV + Y reaches the same-frame `PS_1352` target | Out-of-scope ratios |
 | Native product entry | P210/P216 1080p combined is `maximum=1`, `diff_gt_1_pixels=0` | Broader performance and format matrix |
 | High-bit 720p Double | P010 uses the distinct `PS_484/1412/6140/4280x3/1528/1672/4620x28/2672/908` graph. E-170 correlates P016 and matches `PS_4576` and pre-presentation `PS_908` exactly. | P010 and CPU-plane P016 admitted; hardware P016 remains unknown |
 | I420 720p Double | I420/NV12 canonical product equality is exact | No format-specific NGU branch |
 | `ngu_sharp` peer | Generic resolver, RGB48/P010 and P210/P216 Backend gates pass | Upstream review and release packaging |
 | DirectShow | P210/P216 720p and 1080p pass pause/flush/restart with final max 1 | Broader player matrix |
-| Low/Medium/High | Explicitly not production claims | Keep experimental until their complete target graphs are recovered |
+| Low/Medium/High | Implemented for the exact rows listed in the OpenMadVR capability matrix | Expand only through Evidence; do not infer unlisted quality/geometry/HDR rows |
 
 The historical shortest path above is closed for the first VeryHigh slice by
 E-154 through E-157. No missing mapping may be replaced by a guessed fallback.
@@ -575,8 +585,9 @@ The Backend timing includes plane upload, the native graph and CPU readback:
 20.233 ms/frame for P210 and 19.148 ms/frame for P216. This is not presented as
 a GPU-only shader timing claim.
 
-Low/Medium/High remain experimental. Only the target-observed VeryHigh graphs
-are admitted; unsupported paths continue to fail closed.
+At this checkpoint, Low/Medium/High remained experimental. Later releases
+admitted the exact rows recorded in the current capability matrix; unlisted
+paths continue to fail closed.
 
 ## Native-size fallback and settings placement (2026-11-15)
 
