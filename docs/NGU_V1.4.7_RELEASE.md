@@ -4,6 +4,9 @@ Status: local release prepared 2026-11-17.
 
 Tag: annotated `v1.4.7`
 
+> Superseded by `1.4.9`, which retains the corrected 4K chroma order and keeps
+> machine-level PotPlayer registration synchronized with local packages.
+
 This release corrects the remaining blue cast on hardware-decoder 4K sources.
 
 ## Change

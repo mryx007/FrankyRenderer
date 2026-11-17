@@ -1,3 +1,8 @@
+- Stable 1.4.9: fixed the machine-package synchronization self-check in the
+  local auto-registration flow used by PotPlayer.
+- Local 1.4.8: local package registration now also synchronizes an existing
+  writable machine-level Franky installation, so PotPlayer and HKCU consumers
+  load the same latest build without a separate reinstall.
 - Stable 1.4.7: corrected the hardware-decoder 4K chroma adapter's Cb/Cr
   channel order, removing the remaining blue color cast on 4K sources while
   keeping 1080p behavior unchanged.

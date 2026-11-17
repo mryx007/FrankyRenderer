@@ -8,10 +8,19 @@ $taskFilterIds=@('{40F090C8-E82B-4CE9-931B-A34760E6D49E}')
 $taskComponents=@(@{file=$taskAx;ids=$taskIds})
 # Retire only the native installation's owned legacy DV filter.
 $taskManifest=Join-Path $taskRoot 'registration-backup\state.json'
+$script:machineSyncMessage=''
 function ShowSetupMessage([string]$text,[bool]$failed=$false) {
     if($MessageFile){Set-Content -LiteralPath $MessageFile -Value $text -Encoding UTF8}
     elseif($failed){Write-Host $text -ForegroundColor Red}
     else{Write-Output $text}
+}
+function FileSha256([string]$path) {
+    $stream=[IO.File]::OpenRead($path)
+    try {
+        $hash=[Security.Cryptography.SHA256]::Create()
+        try { return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-','') }
+        finally { $hash.Dispose() }
+    } finally { $stream.Dispose() }
 }
 function RegisteredPath([string]$id,[string]$hive='HKEY_LOCAL_MACHINE') {
     $key="Registry::$hive\SOFTWARE\Classes\CLSID\$id\InprocServer32"
@@ -46,6 +55,32 @@ function RegisterUserPackage {
         0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
     Set-ItemProperty -LiteralPath $category -Name FilterData -Value $filterData -Type Binary
+
+    # PotPlayer reads the machine registration directly. If that registration
+    # points at a writable development package, replace its files so HKCU and
+    # HKLM consumers run the same build without requiring another UAC prompt.
+    $machineAx=RegisteredPath $rendererId 'HKEY_LOCAL_MACHINE'
+    if($machineAx -and ![string]::Equals([IO.Path]::GetFullPath($machineAx),$taskAx,[StringComparison]::OrdinalIgnoreCase)){
+        $machineRoot=Split-Path -Parent ([IO.Path]::GetFullPath($machineAx))
+        try {
+            foreach($item in @(Get-ChildItem -LiteralPath $taskRoot -Force)){
+                if($item.Name -eq 'registration-backup'){continue}
+                if($item.PSIsContainer){
+                    $destination=Join-Path $machineRoot $item.Name
+                    $null=New-Item -ItemType Directory -Path $destination -Force
+                    Copy-Item -Path (Join-Path $item.FullName '*') -Destination $destination -Recurse -Force -ErrorAction Stop
+                } else {
+                    Copy-Item -LiteralPath $item.FullName -Destination $machineRoot -Force -ErrorAction Stop
+                }
+            }
+            if((FileSha256 $machineAx) -ne (FileSha256 $taskAx)){
+                throw 'machine AX hash does not match the current package'
+            }
+            $script:machineSyncMessage="Machine registration files synchronized: $machineRoot"
+        } catch {
+            $script:machineSyncMessage="Machine package synchronization failed: $($_.Exception.Message)"
+        }
+    }
 }
 function IsFrankyId([string]$id) {
     foreach($known in @($taskIds+$taskFilterIds)){
@@ -173,7 +208,9 @@ try {
     if($Action -eq 'RegisterUser') {
         foreach($component in $taskComponents){if(!(Test-Path -LiteralPath $component.file)){throw "Required file is missing: $($component.file)"}}
         RegisterUserPackage
-        ShowSetupMessage "FrankyRenderer registered for the current Windows user. Previous per-user registrations now point to this package."
+        $message="FrankyRenderer registered for the current Windows user. Previous per-user registrations now point to this package."
+        if($script:machineSyncMessage){$message += "`n" + $script:machineSyncMessage}
+        ShowSetupMessage $message
         exit 0
     }
     $taskIdentity=[Security.Principal.WindowsIdentity]::GetCurrent()
