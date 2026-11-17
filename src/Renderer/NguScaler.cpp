@@ -5420,11 +5420,36 @@ bool NguScaler::PrepareNativeVeryHigh(pl_gpu gpu, const NguSourceFrame& source, 
         !plan.chromaOnly4K && plan.outputWidth == source.width && plan.outputHeight == source.height &&
         source.chromaLayout == NguChromaLayout::SemiPlanar420 && source.lumaBits == 10 &&
         source.chromaBits == 10 && !source.fullRange && matrixMatchesColorDomain;
+    // PotPlayer can expose a 10-bit HEVC HDR stream as 8-bit NV12 while
+    // preserving PQ/BT.2020 metadata. The 4K path only scales the subsampled
+    // CbCr plane; luma and all HDR presentation work remain in Franky.
     const bool hdr4KChroma =
         plan.chromaOnly4K && source.chromaLayout == NguChromaLayout::SemiPlanar420 &&
-        (source.lumaBits == 10 || source.lumaBits == 16) && source.lumaBits == source.chromaBits &&
+        (source.lumaBits == 8 || source.lumaBits == 10 || source.lumaBits == 16) &&
+        source.lumaBits == source.chromaBits &&
         (source.repr.sys == PL_COLOR_SYSTEM_BT_2020_NC || source.repr.sys == PL_COLOR_SYSTEM_BT_2020_C ||
          source.repr.sys == PL_COLOR_SYSTEM_BT_709 || source.repr.sys == PL_COLOR_SYSTEM_BT_601);
+    {
+        char admissionTrace[256] = {};
+        std::snprintf(admissionTrace,
+                      sizeof(admissionTrace),
+                      "NGU HDR admission geometry=%dx%d target=%dx%d layout=%d bits=%d/%d "
+                      "sys=%d full=%d chromaOnly=%d handoff=%d 4k=%d",
+                      source.width,
+                      source.height,
+                      plan.outputWidth,
+                      plan.outputHeight,
+                      int(source.chromaLayout),
+                      source.lumaBits,
+                      source.chromaBits,
+                      int(source.repr.sys),
+                      source.fullRange ? 1 : 0,
+                      plan.chromaOnly4K ? 1 : 0,
+                      hdrSourceHandoff ? 1 : 0,
+                      hdr4KChroma ? 1 : 0);
+        if (std::getenv("FRANKY_NGU_TRACE"))
+            std::fprintf(stderr, "NGU_TRACE %s\n", admissionTrace);
+    }
     if (hdr_ && !(hdrGeometry && (hdrSourceHandoff || hdr4KChroma)))
     {
         error_ = "ngu_sharp HDR color domain or geometry is unsupported";

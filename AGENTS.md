@@ -80,10 +80,10 @@ verified 720p/1080p paths use the same hook/input/output contract. The observed
 reduction after the NGU intermediate is owned by Franky's configured
 downscaler.
 
-At v1.6.0, the admitted HDR source domains are the target-observed
+At v1.6.1, the admitted HDR source domains are the target-observed
 limited-range P010 BT.2020/PQ 720p/1080p, BT.2020/HLG 1080p and BT.709/PQ
-1080p inputs, plus native-size 4K 4:2:0 P010/P016 through
-`PL_HOOK_CHROMA_INPUT`. The 720p/1080p paths use source-domain
+1080p inputs, plus native-size 4K 4:2:0 P010/P016 and the 8-bit NV12 transport
+delivered by PotPlayer through `PL_HOOK_CHROMA_INPUT`. The 720p/1080p paths use source-domain
 SuperChromaRes constants and stop at `PS_4576`. The 4K path upscales CbCr at
 source resolution while luma remains a shared-renderer input. Franky owns
 transfer handling, primaries conversion, tone mapping, peak metadata, display

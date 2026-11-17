@@ -582,6 +582,37 @@ int main(int argc, char** argv)
                     native4kP016HdrHookColor.transfer == native4kP016Hdr.color.transfer &&
                     native4kP016HdrHookColor.primaries == native4kP016Hdr.color.primaries,
                 "NGU native 4K P016 HDR uses the shared chroma hook with metadata");
+        VideoFrame native4kNv12Hdr = native4kHdr;
+        native4kNv12Hdr.format = PixelFormat::NV12;
+        native4kNv12Hdr.stride = 3840;
+        const size_t native4kNv12HdrBytes = size_t(3840) * 2160 + size_t(1920) * 1080 * 2;
+        std::vector<uint8_t> native4kNv12HdrData(native4kNv12HdrBytes);
+        for (int y = 0; y < 2160; ++y)
+            for (int x = 0; x < 3840; ++x)
+                native4kNv12HdrData[size_t(y) * 3840 + x] =
+                    uint8_t(16 + (x * 219) / 3839);
+        std::fill(native4kNv12HdrData.begin() + size_t(3840) * 2160,
+                  native4kNv12HdrData.end(),
+                  uint8_t(128));
+        bool native4kNv12HdrHook = false;
+        pl_hook_stage native4kNv12HdrHookStage = static_cast<pl_hook_stage>(0);
+        pl_color_space native4kNv12HdrHookColor = {};
+        backend.SetNguHookProbeForTest(
+            [&](const pl_hook_params& params, const pl_hook_res& result)
+            {
+                native4kNv12HdrHook = true;
+                native4kNv12HdrHookStage = params.stage;
+                native4kNv12HdrHookColor = result.color;
+            });
+        Require(SUCCEEDED(backend.Upload(
+                    native4kNv12Hdr, native4kNv12HdrData.data(), native4kNv12HdrData.size())),
+                "NGU native 4K NV12 HDR upload");
+        Require(SUCCEEDED(backend.RenderOffscreen(1920, 1080, native4kHdrWindowPixels)),
+                "NGU native 4K NV12 HDR window render");
+        Require(native4kNv12HdrHook && native4kNv12HdrHookStage == PL_HOOK_CHROMA_INPUT &&
+                    native4kNv12HdrHookColor.transfer == native4kNv12Hdr.color.transfer &&
+                    native4kNv12HdrHookColor.primaries == native4kNv12Hdr.color.primaries,
+                "NGU native 4K NV12 HDR uses the shared chroma hook with metadata");
         auto render4KHdrWindowProfile = [&](const VideoFrame& frame, const char* label)
         {
             bool sawHook = false;

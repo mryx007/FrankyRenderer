@@ -1132,7 +1132,22 @@ struct PlaceboBackend::State
         }
         nguHookActive = false;
         if (!PrepareNgu(description.width, description.height, targetWidth, targetHeight))
-            return false;
+        {
+            char prepareTrace[320] = {};
+            std::snprintf(prepareTrace,
+                          sizeof(prepareTrace),
+                          "NGU prepare failed; using visible common-renderer fallback: %s",
+                          error.empty() ? "unknown error" : error.c_str());
+            TraceNgu(prepareTrace);
+            nguHookActive = false;
+            nguHookAtOutput = false;
+            nguHookAtChroma = false;
+            nguCommonFallback = true;
+            nguHdrSource = false;
+            nguPlan = {};
+            error.clear();
+            return true;
+        }
         sprintf_s(colorTrace,
                   "NGU plan probe hdr=%d output=%dx%d",
                   nguPlan.hdr ? 1 : 0,

@@ -621,7 +621,13 @@ window, fullscreen transition, pause, flush, restart and reconnect checks. The
 source fixture is no longer replaced by the ordinary NGU smoke-test gradient.
 The packaged AX renders visible window and 4K images without the previous
 black/blue/purple failure; the real-file trace confirms active NGU, PQ/BT.2020
-and `PL_HOOK_CHROMA_INPUT`. PotPlayer loads the same packaged 1.6.0 AX.
+and `PL_HOOK_CHROMA_INPUT`. PotPlayer loads the same packaged 1.6.0 AX; the
+1.6.1 hotfix below covers its 8-bit NV12 output.
+
+1.6.1 closes the remaining PotPlayer case: its decoder delivered the same HDR
+frame as 8-bit NV12. Franky now admits that 4K NV12 transport through the same
+chroma hook, preserves source metadata, and falls back visibly rather than
+blacking out when NGU preparation fails. See `NGU_V1.6.1_RELEASE.md`.
 
 MadVR HDR presentation and final-frame equality are not gates for this
 integration. Existing exact NGU source-domain tests remain regressions.
