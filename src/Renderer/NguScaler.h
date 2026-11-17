@@ -336,7 +336,8 @@ class NguScaler
                              int height,
                              bool chroma = false,
                              int chromaBits = 8,
-                             bool fullRange = false);
+                             bool fullRange = false,
+                             bool swapChroma = false);
     void ResetDitherPhase();
     bool RunNativeLumaFinalNextPhase(ID3D11ShaderResourceView* input,
                                      ID3D11ShaderResourceView* dither,

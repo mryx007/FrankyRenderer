@@ -1,3 +1,9 @@
+- Stable 1.5.1: keeps Cb,Cr source and final storage orders paired for CPU and
+  hardware decoder paths; PotPlayer S/W and MPC-BE hardware playback both match
+  the source colors.
+- Local 1.5.0: selects direct or swapped Cb,Cr source adaptation for CPU and
+  hardware decoder paths, fixing PotPlayer software decoding while preserving
+  MPC-BE hardware playback.
 - Stable 1.4.9: fixed the machine-package synchronization self-check in the
   local auto-registration flow used by PotPlayer.
 - Local 1.4.8: local package registration now also synchronizes an existing

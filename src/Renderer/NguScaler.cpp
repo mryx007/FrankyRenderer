@@ -6941,7 +6941,8 @@ bool NguScaler::RunNativeHookOutput(ID3D11ShaderResourceView* input,
                                     int height,
                                     bool chroma,
                                     int chromaBits,
-                                    bool fullRange)
+                                    bool fullRange,
+                                    bool swapChroma)
 {
     if (!nativeHookOutput_ || !input || !output || width <= 0 || height <= 0 ||
         (chroma && chromaBits != 8 && chromaBits != 10 && chromaBits != 16))
@@ -6952,7 +6953,8 @@ bool NguScaler::RunNativeHookOutput(ID3D11ShaderResourceView* input,
     ID3D11Buffer* constants = nullptr;
     if (chroma)
     {
-        float values[4] = {128.f / 255.f, 255.f / 224.f, fullRange ? 1.f : 0.f, 0.f};
+        float values[4] = {
+            128.f / 255.f, 255.f / 224.f, fullRange ? 1.f : 0.f, swapChroma ? 1.f : 0.f};
         if (chromaBits == 10)
         {
             values[0] = 512.f / 1023.f;

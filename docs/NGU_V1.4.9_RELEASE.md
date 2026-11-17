@@ -4,6 +4,9 @@ Status: local release prepared 2026-11-17.
 
 Tag: annotated `v1.4.9`
 
+> Superseded by `1.5.1`, which pairs source and final chroma storage order for
+> both CPU and hardware decoder paths.
+
 This release makes PotPlayer consume the same latest local package as MPC-BE.
 
 ## Change

@@ -114,7 +114,8 @@ struct PlaceboBackend::State
     ComPtr<ID3D11Texture2D> nguHookLumaTexture;
     ComPtr<ID3D11ShaderResourceView> nguHookLumaShaderView;
     pl_tex nguHookChromaPlane = nullptr;
-    pl_pass nguHookChromaCopyPass = nullptr;
+    pl_pass nguHookChromaCopyDirect = nullptr;
+    pl_pass nguHookChromaCopySwap = nullptr;
     bool nguHookChromaReady = false;
     ComPtr<ID3D11ShaderResourceView> nguSourceView;
     ComPtr<ID3D11Texture2D> nguCpuPlaneYTexture;
@@ -682,16 +683,20 @@ struct PlaceboBackend::State
                 return false;
             }
         }
-        if (!nguHookChromaCopyPass)
+        if (!nguHookChromaCopyDirect || !nguHookChromaCopySwap)
         {
-            pl_desc descriptor = {};
-            descriptor.name = "src";
-            descriptor.type = PL_DESC_SAMPLED_TEX;
             static const char* vertexShader =
                 "#version 450\n"
                 "layout(location=0) in vec2 position;\n"
                 "void main() { gl_Position = vec4(position, 0.0, 1.0); }\n";
-            static const char* fragmentShader =
+            static const char* directShader =
+                "#version 450\n"
+                "layout(binding=0) uniform sampler2D src;\n"
+                "layout(location=0) out vec4 color;\n"
+                "void main() {\n"
+                "    color = texture(src, gl_FragCoord.xy / vec2(textureSize(src, 0)));\n"
+                "}\n";
+            static const char* swapShader =
                 "#version 450\n"
                 "layout(binding=0) uniform sampler2D src;\n"
                 "layout(location=0) out vec4 color;\n"
@@ -699,29 +704,36 @@ struct PlaceboBackend::State
                 "    vec4 value = texture(src, gl_FragCoord.xy / vec2(textureSize(src, 0)));\n"
                 "    color = vec4(value.y, value.x, value.z, value.w);\n"
                 "}\n";
-            pl_pass_params pass = {};
-            pass.type = PL_PASS_RASTER;
-            pass.descriptors = &descriptor;
-            pass.num_descriptors = 1;
-            pass.glsl_shader = fragmentShader;
-            pass.vertex_shader = vertexShader;
-            pass.target_format = nguHookChromaPlane->params.format;
-            pass.vertex_type = PL_PRIM_TRIANGLE_LIST;
-            pass.vertex_stride = sizeof(float) * 2;
-            pl_vertex_attrib attrib = {};
-            attrib.name = "position";
-            attrib.fmt = pl_find_vertex_fmt(d3d->gpu, PL_FMT_FLOAT, 2);
-            attrib.location = 0;
-            attrib.offset = 0;
-            pass.vertex_attribs = &attrib;
-            pass.num_vertex_attribs = 1;
-            if (!attrib.fmt)
+            auto createPass = [&](const char* fragmentShader) -> pl_pass
             {
-                TraceNgu("chroma hook vertex format unavailable");
-                return false;
-            }
-            nguHookChromaCopyPass = pl_pass_create(d3d->gpu, &pass);
-            if (!nguHookChromaCopyPass)
+                pl_desc descriptor = {};
+                descriptor.name = "src";
+                descriptor.type = PL_DESC_SAMPLED_TEX;
+                pl_pass_params pass = {};
+                pass.type = PL_PASS_RASTER;
+                pass.descriptors = &descriptor;
+                pass.num_descriptors = 1;
+                pass.glsl_shader = fragmentShader;
+                pass.vertex_shader = vertexShader;
+                pass.target_format = nguHookChromaPlane->params.format;
+                pass.vertex_type = PL_PRIM_TRIANGLE_LIST;
+                pass.vertex_stride = sizeof(float) * 2;
+                pl_vertex_attrib attrib = {};
+                attrib.name = "position";
+                attrib.fmt = pl_find_vertex_fmt(d3d->gpu, PL_FMT_FLOAT, 2);
+                attrib.location = 0;
+                attrib.offset = 0;
+                pass.vertex_attribs = &attrib;
+                pass.num_vertex_attribs = 1;
+                if (!attrib.fmt)
+                    return nullptr;
+                return pl_pass_create(d3d->gpu, &pass);
+            };
+            if (!nguHookChromaCopyDirect)
+                nguHookChromaCopyDirect = createPass(directShader);
+            if (!nguHookChromaCopySwap)
+                nguHookChromaCopySwap = createPass(swapShader);
+            if (!nguHookChromaCopyDirect || !nguHookChromaCopySwap)
             {
                 TraceNgu("chroma hook copy pass creation failed");
                 return false;
@@ -765,6 +777,55 @@ struct PlaceboBackend::State
         }
         nguHookChromaReady = false;
         return true;
+    }
+
+    void TraceNguChromaHookSource()
+    {
+        if (!TraceNgu() || !d3d || !d3d->device || !context || !nguHookChromaTexture)
+            return;
+        static ULONGLONG lastTrace = 0;
+        const ULONGLONG now = GetTickCount64();
+        if (now - lastTrace < 5000)
+            return;
+        lastTrace = now;
+
+        D3D11_TEXTURE2D_DESC desc = {};
+        nguHookChromaTexture->GetDesc(&desc);
+        D3D11_TEXTURE2D_DESC stagingDesc = desc;
+        stagingDesc.Usage = D3D11_USAGE_STAGING;
+        stagingDesc.BindFlags = 0;
+        stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        ComPtr<ID3D11Texture2D> staging;
+        if (FAILED(d3d->device->CreateTexture2D(&stagingDesc, nullptr, &staging)))
+            return;
+        context->CopyResource(staging.Get(), nguHookChromaTexture.Get());
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (FAILED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+            return;
+        unsigned minCb = 255, maxCb = 0, minCr = 255, maxCr = 0;
+        for (int y = 0; y < 64; ++y)
+        {
+            const auto* row = static_cast<const uint8_t*>(mapped.pData) + size_t(y) * mapped.RowPitch;
+            for (int x = 0; x < 64; ++x)
+            {
+                const unsigned cb = row[size_t(x) * 4 + 2];
+                const unsigned cr = row[size_t(x) * 4 + 1];
+                minCb = std::min(minCb, cb);
+                maxCb = std::max(maxCb, cb);
+                minCr = std::min(minCr, cr);
+                maxCr = std::max(maxCr, cr);
+            }
+        }
+        context->Unmap(staging.Get(), 0);
+        char trace[160] = {};
+        sprintf_s(trace,
+                  "NGU hook source mode=%s Cb=%u/%u Cr=%u/%u",
+                  nguCpuPlanes ? "cpu-direct" : "decoder-swap",
+                  minCb,
+                  maxCb,
+                  minCr,
+                  maxCr);
+        TraceNgu(trace);
     }
 
     bool DescribeNguSource(NguSourceFrame& source) const
@@ -1212,8 +1273,11 @@ struct PlaceboBackend::State
         pl_hook_res result = {};
         result.failed = true;
         TraceNgu("NGU output hook entered");
+        pl_pass chromaCopyPass = self ? (self->nguCpuPlanes ? self->nguHookChromaCopyDirect
+                                                           : self->nguHookChromaCopySwap)
+                                      : nullptr;
         if (self && self->nguHookAtChroma && params && params->tex && self->nguHookChromaPlane &&
-            self->nguHookChromaCopyPass)
+            chromaCopyPass)
         {
             static const float vertices[] = {-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
             pl_desc_binding binding = {};
@@ -1221,14 +1285,16 @@ struct PlaceboBackend::State
             binding.address_mode = PL_TEX_ADDRESS_CLAMP;
             binding.sample_mode = PL_TEX_SAMPLE_NEAREST;
             pl_pass_run_params copy = {};
-            copy.pass = self->nguHookChromaCopyPass;
+            copy.pass = chromaCopyPass;
             copy.desc_bindings = &binding;
             copy.target = self->nguHookChromaPlane;
             copy.vertex_count = 3;
             copy.vertex_data = vertices;
             pl_pass_run(params->gpu, &copy);
             self->nguHookChromaReady = true;
-            TraceNgu("NGU chroma hook source copied through libplacebo");
+            TraceNgu(self->nguCpuPlanes ? "NGU chroma hook source copied direct"
+                                        : "NGU chroma hook source copied swapped");
+            self->TraceNguChromaHookSource();
         }
         else if (self)
             self->nguHookChromaReady = false;
@@ -1256,7 +1322,8 @@ struct PlaceboBackend::State
                                            self->nguOutputHeight,
                                            self->nguHookAtChroma,
                                            self->nguPlan.chromaBits,
-                                           self->nguPlan.fullRange))
+                                           self->nguPlan.fullRange,
+                                           !self->nguCpuPlanes))
         {
             if (self->error.empty())
                 self->error = self->ngu.LastError();
@@ -1496,8 +1563,10 @@ struct PlaceboBackend::State
             pl_tex_destroy(d3d->gpu, &nguHookOutputPlane);
         if (d3d && nguHookChromaPlane)
             pl_tex_destroy(d3d->gpu, &nguHookChromaPlane);
-        if (d3d && nguHookChromaCopyPass)
-            pl_pass_destroy(d3d->gpu, &nguHookChromaCopyPass);
+        if (d3d && nguHookChromaCopyDirect)
+            pl_pass_destroy(d3d->gpu, &nguHookChromaCopyDirect);
+        if (d3d && nguHookChromaCopySwap)
+            pl_pass_destroy(d3d->gpu, &nguHookChromaCopySwap);
         nguHookChromaShaderView.Reset();
         nguHookChromaTexture.Reset();
         nguHookLumaShaderView.Reset();

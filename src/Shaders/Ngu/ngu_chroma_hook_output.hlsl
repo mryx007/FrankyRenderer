@@ -26,9 +26,10 @@ float4 PSMain(VSOut input) : SV_Target0
 {
     const int2 pixel = int2(input.position.xy);
     const float4 value = SourceTex.Load(int3(pixel, 0));
-    // Convert the target's limited-range chroma codes to the full-range
-    // normalized plane representation consumed by the shared renderer.
-    const float2 cbcr = value.yx;
+    // Hardware decoder surfaces and CPU planes reach the NGU final texture in
+    // different storage order. Convert the selected Cb,Cr pair from the
+    // target's limited range to the shared renderer's full range.
+    const float2 cbcr = ChromaRange.w > 0.5 ? value.yx : value.xy;
     const float2 full = ChromaRange.z > 0.5
                             ? cbcr
                             : saturate((cbcr - ChromaRange.x) * ChromaRange.y + 0.5);
