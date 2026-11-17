@@ -55,6 +55,7 @@ struct RenderSettings
     TonalSettings tonal;
     UserShaderSettings userShaders;
     BlackBarSettings blackBars;
+    int imagePosition = 0; // 0=center, 1=bottom, 2=top
     RendererExtras extras;
     ColorMappingSettings colorMapping;
     float saturation = 1.f, contrast = 1.f, brightness = 0.f, gamma = 1.f;

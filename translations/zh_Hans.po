@@ -3961,3 +3961,18 @@ msgstr "画面最锐利。适用于独立显卡。"
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI 备份已导出。"
+
+msgid "Vertical Image Position"
+msgstr "垂直画面位置"
+
+msgid "Aligns the image to the top or bottom. With Protect Burned-in Subtitles, subtitles in the bars stay visible."
+msgstr "将画面对齐到顶部或底部。启用“保护内嵌字幕”时，黑边中的字幕保持可见。"
+
+msgid "Center"
+msgstr "居中"
+
+msgid "Bottom"
+msgstr "底部"
+
+msgid "Top"
+msgstr "顶部"

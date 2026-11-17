@@ -4332,3 +4332,18 @@ msgstr "Schärfstes Bild. Für dedizierte GPUs."
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI-Sicherung exportiert."
+
+msgid "Vertical Image Position"
+msgstr "Vertikale Bildposition"
+
+msgid "Aligns the image to the top or bottom. With Protect Burned-in Subtitles, subtitles in the bars stay visible."
+msgstr "Richtet das Bild oben oder unten aus. Mit „Eingebrannte Untertitel schützen“ bleiben Untertitel in den Balken sichtbar."
+
+msgid "Center"
+msgstr "Mitte"
+
+msgid "Bottom"
+msgstr "Unten"
+
+msgid "Top"
+msgstr "Oben"

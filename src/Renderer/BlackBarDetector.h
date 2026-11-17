@@ -74,6 +74,11 @@ class BlackBarDetector
         return measured ? active : RECT{0, 0, w, h};
     }
 
+    RECT ContentBounds(int w, int h) const
+    {
+        return haveBase ? base : RECT{0, 0, w, h};
+    }
+
     bool Observe(const uint8_t* pixels,
                  int w,
                  int h,
@@ -81,7 +86,8 @@ class BlackBarDetector
                  int sourceW,
                  int sourceH,
                  const BlackBarSettings& settings,
-                 uint64_t now)
+                 uint64_t now,
+                 bool immediateSubtitles = false)
     {
         ++samples;
         if (!pixels || w < 16 || h < 16 || sourceW < 16 || sourceH < 16 || pitch < size_t(w) * 4)
@@ -275,12 +281,19 @@ class BlackBarDetector
             const RECT seen = Union(base, visible);
             if (Near(seen, base, tolerance))
                 textSeen = 0;
+            else if (immediateSubtitles)
+            {
+                text = seen;
+                shown = true;
+            }
             else
                 shown = Persists(text, textSince, textSeen, seen, now);
         }
         if (shown)
         {
-            subtitleUntil = now + uint64_t(settings.delay * 1000.f);
+            // A composited subtitle strip follows visibility immediately. The
+            // stability delay applies only to changes of the movie crop.
+            subtitleUntil = immediateSubtitles ? now : now + uint64_t(settings.delay * 1000.f);
             subtitleBounds = Union(base, text);
             wanted = subtitleBounds;
         }

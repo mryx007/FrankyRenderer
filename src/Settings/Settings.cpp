@@ -107,6 +107,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(tonal),
         FIELD(userShaders),
         FIELD(blackBars),
+        FIELD(imagePosition),
         FIELD(extras),
         // Dependent pairs first together, then individually.
         GROUP(d.kneeMinimum = s.kneeMinimum; d.kneeMaximum = s.kneeMaximum),
@@ -437,6 +438,11 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         settings.maximumFramesInFlight = static_cast<int>(value);
     size = 4;
     value = 0;
+    if (key.Query(L"ImagePosition", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 2)
+        settings.imagePosition = static_cast<int>(value);
+    size = 4;
+    value = 0;
     if (key.Query(L"StatisticsTextScale", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value >= 50 && value <= 200)
         settings.statisticsTextScale = static_cast<int>(value);
@@ -542,7 +548,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (!ValidUserShaders(s.userShaders))
         return E_INVALIDARG;
-    if (!ValidBlackBars(s.blackBars))
+    if (!ValidBlackBars(s.blackBars) || s.imagePosition < 0 || s.imagePosition > 2)
         return E_INVALIDARG;
     if (!ValidExtras(s.extras))
         return E_INVALIDARG;
@@ -634,6 +640,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.tonal = s.tonal;
     out.userShaders = s.userShaders;
     out.blackBars = s.blackBars;
+    out.imagePosition = s.imagePosition;
     out.extras = s.extras;
     out.colorMapping = s.colorMapping;
     out.hdrMode = s.hdrMode;
@@ -779,6 +786,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"HdrTonalV1", REG_BINARY, &s.tonal, sizeof(s.tonal));
     save(L"UserShadersV4", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
     save(L"BlackBarsV1", REG_BINARY, &s.blackBars, sizeof(s.blackBars));
+    save(L"ImagePosition", REG_DWORD, &s.imagePosition, 4);
     save(L"RendererExtrasV1", REG_BINARY, &s.extras, sizeof(s.extras));
     save(L"ColorMappingV1", REG_BINARY, &s.colorMapping, sizeof(s.colorMapping));
     save(L"HDRMode", REG_DWORD, &s.hdrMode, 4);

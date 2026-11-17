@@ -92,6 +92,7 @@ struct PlaceboSettings
     // A .cube file in the video's folder replaces the 3D LUT for that video
     // (Settings/FolderLut.h); without one the LUT above applies.
     BOOL lutFromFolder = FALSE;
+    int imagePosition = 0; // 0=center (player position), 1=bottom, 2=top
 };
 
 // Preserve old backups while removing the automatic output mode and OS toggle.
@@ -115,7 +116,7 @@ struct PlaceboStatus
 
 // New IID because the settings structure grew; old clients must fail QI
 // rather than receive a larger structure into their smaller buffer.
-interface __declspec(uuid("322DB0D4-840D-4D31-AFA9-2BFCCA325A35")) IPlaceboSettings : public IUnknown
+interface __declspec(uuid("EC92B808-3418-45A7-A64B-727B759C7432")) IPlaceboSettings : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE GetSettings(PlaceboSettings*) = 0;
     virtual HRESULT STDMETHODCALLTYPE SetSettings(const PlaceboSettings*) = 0;

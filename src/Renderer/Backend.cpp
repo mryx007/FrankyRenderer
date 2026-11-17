@@ -2,6 +2,7 @@
 // libplacebo integration uses only its public API. No existing MPC pixel path.
 #include "Renderer/Backend.h"
 #include "Renderer/BlackBarAnalysis.h"
+#include "Renderer/ImagePosition.h"
 #include "Renderer/GpuPacked422.h"
 #include "Renderer/NativeHdrDisplay.h"
 #include "Renderer/NativeHdrSwapchain.h"
@@ -475,6 +476,7 @@ struct PlaceboBackend::State
     pl_log log = nullptr;
     pl_d3d11 d3d = nullptr;
     pl_renderer renderer = nullptr;
+    pl_renderer subtitleRenderer = nullptr;
     pl_swapchain swapchain = nullptr;
     pl_options options = nullptr;
     pl_tex planes[4] = {};
@@ -705,6 +707,7 @@ struct PlaceboBackend::State
         failedNativeMonitor = nullptr;
         pl_options_free(&options);
         pl_renderer_destroy(&renderer);
+        pl_renderer_destroy(&subtitleRenderer);
         pl_mpv_user_shader_destroy(&sharpenHook);
         sharpenCached = -1;
         for (int i = 0; i < ShaderCount; i++)
@@ -1043,7 +1046,10 @@ struct PlaceboBackend::State
                 rtx.Invalidate();
             if (memcmp(&previous.tonal, &settings.tonal, sizeof(settings.tonal)) && renderer)
                 pl_renderer_flush_cache(renderer);
-            if (memcmp(&oldBars, &settings.blackBars, sizeof(oldBars)))
+            // Timing and presentation changes keep the measured movie bounds.
+            // Throwing them away would briefly fit the encoded bars again.
+            if (oldBars.enabled != settings.blackBars.enabled || oldBars.threshold != settings.blackBars.threshold ||
+                oldBars.keepSubtitles != settings.blackBars.keepSubtitles)
                 blackBars.Reset();
             if (previous.outputFormat != settings.outputFormat)
             {
@@ -1430,7 +1436,7 @@ struct PlaceboBackend::State
                     value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
             }
         }
-        if (settings.blackBars.enabled)
+        if (settings.blackBars.enabled || settings.imagePosition)
         {
             const RECT r = blackBars.detector.Bounds(description.width, description.height);
             auto& value = row(L"Black bars");
@@ -1722,7 +1728,31 @@ struct PlaceboBackend::State
     bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
         RenderProbe::Scope probe(renderProbe, showStatistics.load());
-        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars, &probe);
+        auto analysisSettings = settings.blackBars;
+        analysisSettings.enabled = analysisSettings.enabled || settings.imagePosition != 0;
+        // Keep the movie geometry stable while the original subtitle bar is composited.
+        const bool relocateSubtitles =
+            (settings.imagePosition || (settings.blackBars.enabled && settings.blackBars.crop)) &&
+            settings.blackBars.keepSubtitles && rotation == 0;
+        pl_frame originalImage = image;
+        // The host's source rectangle may trim blank rows from the decoded
+        // frame. The caption bar still needs the original bottom padding.
+        originalImage.crop.y0 = 0;
+        originalImage.crop.y1 = float(description.height);
+        blackBars.Analyze(d3d,
+                          context.Get(),
+                          image,
+                          description.width,
+                          description.height,
+                          analysisSettings,
+                          &probe,
+                          relocateSubtitles);
+        const RECT contentBounds = blackBars.failed
+                                       ? RECT{0, 0, description.width, description.height}
+                                       : blackBars.detector.ContentBounds(description.width, description.height);
+        const RECT visibleBounds = blackBars.failed ? RECT{0, 0, description.width, description.height}
+                                                    : blackBars.detector.Bounds(description.width, description.height);
+        const RECT pictureBounds = relocateSubtitles ? contentBounds : visibleBounds;
         probe.Next(RenderProbe::Setup);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
         bool cropBars = autoZoom && blackBars.detector.measured;
@@ -1763,7 +1793,7 @@ struct PlaceboBackend::State
 
         if (cropBars)
         {
-            const RECT r = blackBars.detector.Bounds(description.width, description.height);
+            const RECT r = pictureBounds;
             auto crop = [&](pl_frame& f)
             {
                 f.crop.x0 = std::max(f.crop.x0, float(r.left));
@@ -1832,7 +1862,8 @@ struct PlaceboBackend::State
         if (autoZoom)
             target.crop = {0, 0, float(target.planes[0].texture->params.w), float(target.planes[0].texture->params.h)};
         float width = target.crop.x1 - target.crop.x0, height = target.crop.y1 - target.crop.y0;
-        const bool fill = autoZoom && settings.blackBars.zoom == 1 && !blackBars.detector.subtitleProtection;
+        const bool fill =
+            autoZoom && settings.blackBars.zoom == 1 && (relocateSubtitles || !blackBars.detector.subtitleProtection);
         // MPC-HC and MPC-BE compute the video rectangle themselves, with the
         // aspect ratio, an override, stretching and zoom, like for MPC Video
         // Renderer; draw exactly into it. The renderer fits the picture itself
@@ -1855,6 +1886,32 @@ struct PlaceboBackend::State
             target.crop.y0 += pad;
             target.crop.y1 -= pad;
         }
+
+        if (settings.imagePosition)
+            AlignImageVertically(target.crop,
+                                 image.crop,
+                                 pictureBounds,
+                                 rotation,
+                                 settings.imagePosition,
+                                 float(target.planes[0].texture->params.h));
+        pl_rect2df sourceBars[2] = {}, destinationBars[2] = {};
+        int subtitleBarCount = 0;
+        if (relocateSubtitles && blackBars.detector.subtitleProtection)
+            for (bool top : {true, false})
+            {
+                const bool textInBar =
+                    top ? visibleBounds.top < contentBounds.top : visibleBounds.bottom > contentBounds.bottom;
+                if (textInBar && HiddenSubtitleBar(originalImage.crop,
+                                                   image.crop,
+                                                   target.crop,
+                                                   contentBounds,
+                                                   float(target.planes[0].texture->params.h),
+                                                   sourceBars[subtitleBarCount],
+                                                   destinationBars[subtitleBarCount],
+                                                   top))
+                    ++subtitleBarCount;
+            }
+        const bool drawSubtitleBar = subtitleBarCount != 0;
 
         struct RestoreProcessed
         {
@@ -2189,7 +2246,7 @@ struct PlaceboBackend::State
                           static_cast<LONG>(target.crop.y0),
                           static_cast<LONG>(target.crop.x1),
                           static_cast<LONG>(target.crop.y1)};
-            if (autoZoom)
+            if (autoZoom || settings.imagePosition)
             {
                 video.left = std::max<LONG>(0, video.left);
                 video.top = std::max<LONG>(0, video.top);
@@ -2286,6 +2343,41 @@ struct PlaceboBackend::State
             }
         }
         probe.Next(RenderProbe::Draw);
+        // Movie first, original embedded subtitle pixels second, host subtitles
+        // and diagnostics last. No decoding, OCR or CPU readback of the bar.
+        pl_frame overlayTarget = target;
+        if (drawSubtitleBar)
+            target.num_overlays = 0;
+        auto finish = [&](bool ok)
+        {
+            if (!ok || !drawSubtitleBar)
+                return ok;
+            if (!subtitleRenderer)
+                subtitleRenderer = pl_renderer_create(nullptr, d3d->gpu);
+            if (!subtitleRenderer)
+                return false;
+            pl_render_params barParams = params;
+            barParams.border = PL_CLEAR_SKIP;
+            barParams.peak_detect_params = nullptr;
+            barParams.hooks = nullptr;
+            barParams.num_hooks = 0;
+            barParams.deband_params = nullptr;
+            for (int index = 0; index < subtitleBarCount; ++index)
+            {
+                pl_frame bar = originalImage, barTarget = target;
+                bar.crop = sourceBars[index];
+                if (flip)
+                    std::swap(bar.crop.x0, bar.crop.x1);
+                bar.rotation = PL_ROTATION_0;
+                bar.overlays = nullptr;
+                bar.num_overlays = 0;
+                barTarget.crop = destinationBars[index];
+                if (!pl_render_image(subtitleRenderer, &bar, &barTarget, &barParams))
+                    return false;
+            }
+            return !overlayTarget.num_overlays ||
+                   pl_render_image(subtitleRenderer, nullptr, &overlayTarget, &barParams);
+        };
         pl_frame shown = image;
         pl_frame gammaFrames[16];
         if (sdrGammaCurve)
@@ -2344,9 +2436,9 @@ struct PlaceboBackend::State
                     mix.timestamps = kept;
                 }
             }
-            return renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); });
+            return finish(renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); }));
         }
-        return renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); });
+        return finish(renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); }));
     }
 };
 
@@ -2590,7 +2682,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         !range(settings.brightness, -1, 1) || !range(settings.gamma, 0, 100) ||
         !range(settings.hue, -3.141593f, 3.141593f) || !range(settings.temperature, -1.143f, 5.286f))
         return E_INVALIDARG;
-    if (!ValidBlackBars(settings.blackBars))
+    if (!ValidBlackBars(settings.blackBars) || settings.imagePosition < 0 || settings.imagePosition > 2)
         return E_INVALIDARG;
     if (!range(settings.sharpenStrength, 0, 2))
         return E_INVALIDARG;

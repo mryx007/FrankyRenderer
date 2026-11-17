@@ -657,6 +657,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"Black Bars & Zoom",
                        L"Detect bars in decoded video pixels and adjust the active image.");
         auto& c = card(p, L"Detection & Zoom");
+        c.controls.push_back(
+            D2DChoice(s, L"Vertical Image Position", &s.imagePosition, {{0, L"Center"}, {1, L"Bottom"}, {2, L"Top"}}));
         c.controls.push_back(D2DBool(s, L"Detect Hardcoded Black Bars", &s.blackBars.enabled));
         c.controls.push_back(D2DBool(s, L"Crop Black Bars", &s.blackBars.crop));
         c.controls.push_back(D2DBool(s,

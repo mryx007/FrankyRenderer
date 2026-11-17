@@ -59,7 +59,8 @@ class BlackBarAnalysis
                  int sourceW,
                  int sourceH,
                  const BlackBarSettings& settings,
-                 RenderProbe::Scope* probe = nullptr)
+                 RenderProbe::Scope* probe = nullptr,
+                 bool immediateSubtitles = false)
     {
         if (!settings.enabled)
         {
@@ -94,8 +95,15 @@ class BlackBarAnalysis
             }
             if (probe)
                 probe->Next(RenderProbe::BarsScan);
-            if (detector.Observe(
-                    static_cast<const uint8_t*>(mapped.pData), width, height, mapped.RowPitch, sw, sh, settings, now))
+            if (detector.Observe(static_cast<const uint8_t*>(mapped.pData),
+                                 width,
+                                 height,
+                                 mapped.RowPitch,
+                                 sw,
+                                 sh,
+                                 settings,
+                                 now,
+                                 immediateSubtitles))
                 ++generation;
             if (probe)
                 probe->Next(RenderProbe::BarsMap);
