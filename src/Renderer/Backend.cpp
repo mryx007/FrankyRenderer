@@ -696,7 +696,8 @@ struct PlaceboBackend::State
                 "layout(binding=0) uniform sampler2D src;\n"
                 "layout(location=0) out vec4 color;\n"
                 "void main() {\n"
-                "    color = texture(src, gl_FragCoord.xy / vec2(textureSize(src, 0)));\n"
+                "    vec4 value = texture(src, gl_FragCoord.xy / vec2(textureSize(src, 0)));\n"
+                "    color = vec4(value.y, value.x, value.z, value.w);\n"
                 "}\n";
             pl_pass_params pass = {};
             pass.type = PL_PASS_RASTER;

@@ -1,3 +1,6 @@
+- Stable 1.4.7: corrected the hardware-decoder 4K chroma adapter's Cb/Cr
+  channel order, removing the remaining blue color cast on 4K sources while
+  keeping 1080p behavior unchanged.
 - Stable 1.4.6: `Ctrl+J` now ends with the running renderer version, and local
   packages automatically register the new AX for the current Windows user so
   the latest test build replaces the previous package without a separate

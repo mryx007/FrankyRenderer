@@ -4,6 +4,9 @@ Status: local release prepared 2026-11-17.
 
 Tag: annotated `v1.4.6`
 
+> Superseded by `1.4.7`, which corrects the remaining 4K-source Cb/Cr channel
+> order in the hardware-decoder chroma adapter.
+
 This release keeps the 1.4.5 hardware-decoder NGU chroma fix and adds local
 test-package automation.
 
