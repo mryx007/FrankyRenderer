@@ -1921,12 +1921,6 @@ msgstr "高亮超出色域"
 msgid "RTX Video HDR"
 msgstr "RTX 视频 HDR"
 
-msgid "Use Dolby Vision"
-msgstr "使用杜比视界"
-
-msgid "Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."
-msgstr "关闭时将杜比视界配置文件 7 和 8 作为 HDR10 或 HLG 播放。配置文件 5 始终使用杜比视界。"
-
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
 "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "
@@ -1934,6 +1928,19 @@ msgid ""
 msgstr ""
 "由 NVIDIA 驱动通过 AI 将 SDR 转为 HDR。需要 Windows HDR、RTX 显卡并在 NVIDIA "
 "App 中开启 RTX Video HDR。"
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use Dolby Vision"
+msgstr "使用杜比视界"
+
+#. Setting description (HDR > HDR Output > Use Dolby Vision)
+msgid ""
+"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always "
+"uses Dolby Vision."
+msgstr ""
+"关闭时将杜比视界配置文件 7 和 8 作为 HDR10 或 HLG 播放。配置文件 5 始终使用杜"
+"比视界。"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
