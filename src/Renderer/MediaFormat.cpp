@@ -507,7 +507,7 @@ bool ApplyHdr10PlusSideData(const std::vector<BYTE>& data, VideoFrame& frame)
     return MapDynamicHdr(in, frame.color.hdr);
 }
 
-HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame)
+HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame, bool dolbyVision)
 {
     // Dynamic data belongs to this sample only, never to the next scene.
     std::fill(std::begin(frame.color.hdr.scene_max), std::end(frame.color.hdr.scene_max), 0.f);
@@ -582,6 +582,8 @@ HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame)
     data = nullptr;
     size = 0;
     bool extensions = true;
+    if (!dolbyVision)
+        return status;
     status.doviResult = side->GetSideData(IID_MediaSideDataDOVIMetadataV2, &data, &size);
     if (FAILED(status.doviResult))
     {

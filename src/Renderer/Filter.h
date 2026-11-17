@@ -191,6 +191,9 @@ class Renderer final : public CBaseVideoRenderer,
     bool buffering = false, smoothBuffering = false;
     QueuedVideoFrame followingQueued;
     std::atomic<bool> smoothEnabled = false;
+    // Use Dolby Vision on Profile 7 and 8 (Profile 5 always does).
+    std::atomic<bool> dolbyVisionPreferred = true;
+    bool KeepDolbyVision(const VideoFrame& base) const;
     std::atomic<double> motionPeriod = 0;
     std::atomic<bool> refreshDirty = true;
     // Display-synchronous Smooth Motion; the streaming thread owns the slots,

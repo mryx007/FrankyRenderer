@@ -736,6 +736,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             L"RTX Video HDR",
             &s.rtxHdr,
             L"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."));
+        c.controls.push_back(
+            D2DBool(s,
+                    L"Use Dolby Vision",
+                    &s.useDolbyVision,
+                    L"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));

@@ -104,4 +104,17 @@ int main()
         Require(SUCCEEDED(ParseFormat(type, format)) && format.frame.stride == 2564, "RGB24 rows round to DWORDs");
     }
     puts("PASS row pitch is biWidth; spare room in biSizeImage does not change it");
+    {
+        VideoFrame pq, hlg, ipt;
+        pq.color.transfer = PL_COLOR_TRC_PQ;
+        hlg.color.transfer = PL_COLOR_TRC_HLG;
+        ipt.color.transfer = PL_COLOR_TRC_UNKNOWN;
+        Require(!KeepsDolbyVision(pq, false, 8) && !KeepsDolbyVision(hlg, false, 8) && !KeepsDolbyVision(pq, false, 7),
+                "off: Profile 7 and 8 play their HDR10 or HLG base layer");
+        Require(!KeepsDolbyVision(pq, false, 0), "off: an HDR10 base layer of unknown profile is used as HDR10");
+        Require(KeepsDolbyVision(pq, false, 5) && KeepsDolbyVision(ipt, false, 0),
+                "Profile 5 always keeps Dolby Vision");
+        Require(KeepsDolbyVision(pq, true, 8) && KeepsDolbyVision(hlg, true, 8), "on: Dolby Vision is used");
+    }
+    puts("PASS Use Dolby Vision: off leaves Profile 7 and 8 as HDR10 or HLG, Profile 5 keeps Dolby Vision");
 }

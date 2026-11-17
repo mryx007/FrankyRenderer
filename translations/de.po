@@ -2078,6 +2078,12 @@ msgstr "Farben außerhalb des Farbumfangs hervorheben"
 msgid "RTX Video HDR"
 msgstr "RTX Video HDR"
 
+msgid "Use Dolby Vision"
+msgstr "Dolby Vision verwenden"
+
+msgid "Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."
+msgstr "Aus spielt Dolby Vision Profil 7 und 8 als HDR10 oder HLG ab. Profil 5 nutzt immer Dolby Vision."
+
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
 "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "

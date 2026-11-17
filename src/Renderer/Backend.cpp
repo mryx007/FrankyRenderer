@@ -1303,8 +1303,23 @@ struct PlaceboBackend::State
             // Dolby Vision status lines "Name: value" become rows; the
             // processing state is yellow unless active.
             std::wostringstream dv;
-            AppendDolbyVisionStatus(
-                dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
+            // Dolby Vision switched off: the picture plays as its HDR10 or HLG
+            // base layer, and the file's profile is named, without colour.
+            if (description.dvSource.present && !image.repr.dovi && !settings.useDolbyVision &&
+                pl_color_transfer_is_hdr(description.color.transfer))
+            {
+                const bool plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
+                row(L"Format") << (description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
+                                   : plus                                         ? L"HDR10+"
+                                                                                  : L"HDR10");
+                auto& off = row(L"Dolby Vision");
+                off << L"off";
+                if (description.dvSource.profile > 0)
+                    off << dot << L"Profile " << description.dvSource.profile;
+            }
+            else
+                AppendDolbyVisionStatus(
+                    dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
             std::wistringstream lines(dv.str());
             for (std::wstring line; std::getline(lines, line);)
             {

@@ -1783,6 +1783,15 @@ msgstr ""
 msgid "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."
 msgstr ""
 
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use Dolby Vision"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > Use Dolby Vision)
+msgid "Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."
+msgstr ""
+
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"

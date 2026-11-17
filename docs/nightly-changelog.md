@@ -126,4 +126,5 @@
 - Added a Clock row to the Ctrl+J statistics, like madVR: how far the audio clock deviates and how often a frame repeats or drops because of it.
 - Improved frame timing without Smooth Motion.
 - Fixed a slanted, broken picture with some software decoders when the video width is not a multiple of 16 (for example 854×480).
+- Added "Use Dolby Vision" (HDR): off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. On by default.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

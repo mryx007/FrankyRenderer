@@ -68,9 +68,9 @@ static HRESULT DescribeDolbyVision(IDvLayerSample* sample, VideoFrame& frame)
 }
 
 // Fills only what the decoder left out; decoder metadata always takes precedence.
-static void ApplyFileMetadata(const FileMetadata& metadata, VideoFrame& frame)
+static void ApplyFileMetadata(const FileMetadata& metadata, VideoFrame& frame, bool dolbyVision)
 {
-    if (!frame.dovi && !metadata.dovi.empty())
+    if (dolbyVision && !frame.dovi && !metadata.dovi.empty())
         ApplyDoviSideData(metadata.dovi, frame);
     auto& hdr = frame.color.hdr;
     if (!frame.dovi && !metadata.hdr10Plus.empty() && !(hdr.scene_avg > 0))
@@ -1388,7 +1388,8 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         current = format;
     }
     ComPtr<IMediaSample> reconstructed;
-    if (dv.ShouldProcess())
+    // Dolby Vision left out: no enhancement layer either, only the base layer.
+    if (dv.ShouldProcess() && KeepDolbyVision(current.frame))
     {
         ComPtr<IPin> upstream;
         m_pInputPin->ConnectedTo(&upstream);
@@ -1522,10 +1523,11 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         }
         else
         {
-            ReadHdrSideData(sample, input.frame);
+            const bool dolbyVision = KeepDolbyVision(input.frame);
+            ReadHdrSideData(sample, input.frame, dolbyVision);
             FileMetadata fromFile;
             if (LookupFileMetadata(sample, pl_color_transfer_is_hdr(input.frame.color.transfer), fromFile))
-                ApplyFileMetadata(fromFile, input.frame);
+                ApplyFileMetadata(fromFile, input.frame, dolbyVision);
         }
         const auto source = dv.SourceInfo();
         if (source.present)
@@ -2017,7 +2019,8 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
             return hr;
     }
 
-    auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame);
+    const bool dolbyVision = KeepDolbyVision(frame);
+    auto side = (field || layered) ? HdrSideDataStatus{} : ReadHdrSideData(sample, frame, dolbyVision);
     if (!field && !layered)
     {
         REFERENCE_TIME at = 0, until = 0;
@@ -2026,7 +2029,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
             std::lock_guard guard(fileMetadataLock);
             const auto found = fileMetadata.find(at);
             if (found != fileMetadata.end())
-                ApplyFileMetadata(found->second, frame);
+                ApplyFileMetadata(found->second, frame, dolbyVision);
         }
     }
     if (!field)
@@ -3279,9 +3282,17 @@ HRESULT Renderer::UpdateDisplayProfile(bool refresh)
     return S_OK;
 }
 
+bool Renderer::KeepDolbyVision(const VideoFrame& base) const
+{
+    return KeepsDolbyVision(base, dolbyVisionPreferred, dv.SourceInfo().profile);
+}
+
 void Renderer::UpdateMotionSettings()
 {
     const auto effective = Effective(settings);
+    // Switching Dolby Vision starts its timeline over (enhancement layer).
+    if (dolbyVisionPreferred.exchange(!!effective.useDolbyVision) != !!effective.useDolbyVision)
+        dv.ResetTimeline();
     // Switching Smooth Motion restarts the clock statistics.
     if (smoothEnabled.exchange(!!effective.smoothMotion) != !!effective.smoothMotion)
         backend.ResetClockMeasurement();

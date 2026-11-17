@@ -72,6 +72,9 @@ struct PlaceboSettings
     wchar_t displayProfile[65] = {}; // Editing context; never included in INI values.
     BOOL rtxSuperResolution = FALSE;
     BOOL rtxHdr = FALSE; // RTX Video HDR for SDR sources with Windows HDR on
+    // Dolby Vision Profile 7 and 8 with an HDR10 or HLG base layer: off plays
+    // the base layer as HDR10 or HLG. Profile 5 always uses Dolby Vision.
+    BOOL useDolbyVision = TRUE;
     BOOL imageAnalysis = FALSE;
     // Ctrl+J statistics text size in percent of the automatic size (50-200).
     int statisticsTextScale = 100;
