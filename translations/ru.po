@@ -749,6 +749,32 @@ msgstr ""
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
+msgid "Vertical Image Position"
+msgstr ""
+
+#. Setting description (Processing > Detection & Zoom > Vertical Image Position)
+msgid ""
+"Aligns the image to the top or bottom. With Protect Burned-in Subtitles, "
+"subtitles in the bars stay visible."
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Center"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Bottom"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Top"
+msgstr ""
+
+#. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
 msgstr ""
 
