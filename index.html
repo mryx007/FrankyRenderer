@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Volltextsuche im deutschen und englischen FrankyRenderer-Wiki.">
+  <title>Wiki durchsuchen · FrankyRenderer</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" id="wiki-link" href="https://github.com/mryx007/FrankyRenderer/wiki/DE-Home">FrankyRenderer Wiki</a>
+      <a id="switch-language" href="?lang=en" lang="en">English</a>
+    </div>
+  </header>
+  <main class="container">
+    <h1 id="heading">Wiki durchsuchen</h1>
+    <form id="search" role="search">
+      <label class="sr-only" id="query-label" for="query">Suchbegriff</label>
+      <input id="query" type="search" autocomplete="off" placeholder="z. B. Debanding oder Dolby Vision" required>
+      <button id="submit" type="submit">Suchen</button>
+    </form>
+    <p id="status" role="status"></p>
+    <button id="retry" class="retry" type="button" hidden>Erneut laden</button>
+    <ul id="results" class="results" aria-labelledby="heading"></ul>
+    <noscript><p>Die Wiki-Suche benötigt JavaScript. The wiki search requires JavaScript.</p></noscript>
+  </main>
+</body>
+</html>

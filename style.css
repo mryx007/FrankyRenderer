@@ -1,0 +1,83 @@
+:root {
+  color-scheme: light dark;
+  --background: #f8f8fc;
+  --surface: #fff;
+  --text: #212033;
+  --muted: #5e5d71;
+  --border: #d8d7e4;
+  --accent: #5032a6;
+  --button: #5032a6;
+  --button-text: #fff;
+  font: 100%/1.55 system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #161520;
+    --surface: #211f2d;
+    --text: #f4f1ff;
+    --muted: #c1bcd1;
+    --border: #454157;
+    --accent: #cbb9ff;
+    --button: #cbb9ff;
+    --button-text: #251745;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--text); }
+a { color: var(--accent); text-underline-offset: .2em; }
+a:focus-visible, button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.container { width: min(100% - 2rem, 47rem); margin-inline: auto; }
+.topbar { border-bottom: 1px solid var(--border); background: var(--surface); }
+.topbar-inner {
+  min-height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.brand { font-weight: 700; color: var(--text); }
+main { padding-block: clamp(2rem, 6vw, 4rem); }
+h1 { margin: 0 0 1.15rem; font-size: clamp(1.8rem, 6vw, 2.75rem); line-height: 1.15; }
+form { display: flex; gap: .55rem; }
+input, button { font: inherit; border-radius: .55rem; }
+input {
+  flex: 1;
+  min-width: 0;
+  padding: .7rem .8rem;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+}
+input::placeholder { color: var(--muted); opacity: 1; }
+button {
+  border: 1px solid transparent;
+  padding: .65rem .9rem;
+  background: var(--button);
+  color: var(--button-text);
+  font-weight: 650;
+  cursor: pointer;
+}
+button:hover { filter: brightness(.92); }
+.retry { background: var(--surface); border-color: var(--border); color: var(--accent); }
+#status { min-height: 1.55em; margin: .9rem 0; color: var(--muted); }
+.results { padding: 0; margin: 0; list-style: none; }
+.results li { padding-block: .85rem; border-bottom: 1px solid var(--border); }
+.results a { font-size: 1.08rem; font-weight: 700; }
+.results p { margin: .2rem 0 0; overflow-wrap: anywhere; }
+.results .meta { font-size: .875rem; color: var(--muted); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
