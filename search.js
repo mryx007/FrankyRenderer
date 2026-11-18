@@ -1,6 +1,7 @@
 export const wikiUrl = 'https://github.com/mryx007/FrankyRenderer/wiki/';
 const sourceUrl = 'https://raw.githubusercontent.com/wiki/mryx007/FrankyRenderer/';
 const anchorPattern = /<a id="([\p{L}\p{N}_-]+)"><\/a>/gu;
+const sources = new Map();
 
 export function pagesFromSidebar(markdown) {
   const pages = new Map();
@@ -22,6 +23,13 @@ function plain(text) {
     .replace(/(^|\s)[-+*]\s+/, '$1')
     .replace(/[*`]|__/g, '')
     .replace(/\s+/g, ' ').trim();
+}
+
+export function headingSlug(title, slugs) {
+  const slug = title.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
+  const duplicate = slugs.get(slug) ?? 0;
+  slugs.set(slug, duplicate + 1);
+  return duplicate ? `${slug}-${duplicate}` : slug;
 }
 
 export function indexPage(page, markdown) {
@@ -46,10 +54,8 @@ export function indexPage(page, markdown) {
 
     if (heading) {
       const title = plain(heading[1]);
-      const slug = title.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
-      const duplicate = slugs.get(slug) ?? 0;
-      slugs.set(slug, duplicate + 1);
-      section = add({ title, anchor: anchors.at(-1) || pendingAnchor || (duplicate ? `${slug}-${duplicate}` : slug), lines: [] });
+      const slug = headingSlug(title, slugs);
+      section = add({ title, anchor: anchors.at(-1) || pendingAnchor || slug, lines: [] });
       current = section;
       pendingAnchor = '';
     } else if (!bare && anchors.length) {
@@ -80,10 +86,26 @@ async function readSource(id) {
   return response.text();
 }
 
-export async function loadWiki() {
-  const pages = pagesFromSidebar(await readSource('_Sidebar'));
+export function readPage(id) {
+  if (!/^[\w-]+$/.test(id)) throw new Error('Invalid wiki page identifier');
+  if (!sources.has(id)) {
+    sources.set(id, readSource(id).catch(error => {
+      sources.delete(id);
+      throw error;
+    }));
+  }
+  return sources.get(id);
+}
+
+export async function loadPages() {
+  const pages = pagesFromSidebar(await readPage('_Sidebar'));
   if (!pages.length) throw new Error('The wiki sidebar contains no pages');
-  const results = await Promise.allSettled(pages.map(async page => indexPage(page, await readSource(page.id))));
+  return pages;
+}
+
+export async function loadWiki(pages) {
+  const list = pages ?? await loadPages();
+  const results = await Promise.allSettled(list.map(async page => indexPage(page, await readPage(page.id))));
   const records = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
   if (!records.length) throw new Error('No wiki pages could be read');
   return { records, incomplete: results.some(result => result.status === 'rejected') };
