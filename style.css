@@ -145,11 +145,10 @@ kbd { white-space: nowrap; margin-left: auto; color: var(--muted); padding: .05r
   text-decoration: none;
   line-height: 1.45;
 }
-.nav-group a { display: flex; gap: .56rem; align-items: baseline; }
-.nav-group a::before { content: ""; flex: 0 0 .32rem; height: .32rem; border-radius: 50%; background: var(--line-strong); }
+.nav-group h2 { font-size: .83rem; letter-spacing: .075em; }
+.nav-group a { font-size: 1.0625rem; padding-block: .36rem; }
 .nav-group a:hover, .section-panel a:hover { background: var(--subtle); color: var(--text); }
 .nav-group a[aria-current] { color: var(--accent-strong); background: var(--accent-tint); font-weight: 750; }
-.nav-group a[aria-current]::before { background: var(--accent); }
 .section-panel { border-left: 1px solid var(--line); padding-left: .75rem; }
 .section-panel a { font-size: .8rem; }
 .section-panel li li a { padding-inline-start: 1.2rem; }
