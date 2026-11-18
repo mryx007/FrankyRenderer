@@ -6,6 +6,7 @@
 
 **On this page**
 
+- [Everyday examples](#hdr-color-mapping-examples)
 - [HDR Output](#hdr-color-mapping-hdr-output)
   - [Which tone mapping function should I choose?](#choosing-a-tone-mapping-function)
 - [HDR Peak Detection](#hdr-color-mapping-hdr-peak-detection)
@@ -20,6 +21,26 @@
 - [Midtones](#hdr-color-mapping-midtones)
 - [Highlights](#hdr-color-mapping-highlights)
 - [Tone Controls](#hdr-color-mapping-tone-controls)
+
+<a id="hdr-color-mapping-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| HDR movie on a normal monitor without HDR. | [HDR Mode](#hdr-color-mapping-hdr-output-hdr-mode) **Tone Map HDR to SDR**. | Faces should look natural and bright windows should keep detail. |
+| When converting to SDR, faces look too dark. | Compare [Tone Mapping Function](#hdr-color-mapping-hdr-output-tone-mapping-function) **BT.2446A** with **Auto (Metadata)**. | Compare the same paused scene. |
+| HDR TV with good built-in tone mapping, such as an OLED TV. | [HDR Mode](#hdr-color-mapping-hdr-output-hdr-mode) **Passthrough HDR to Display**. | The TV adapts the brightness itself. |
+| HDR monitor without its own tone mapping: bright clouds and lamps blow out. | **Tone Map HDR to Display Peak**, [HDR Target Peak](#hdr-color-mapping-hdr-output-hdr-target-peak-0-auto) 0 or the monitor's value, such as 400. | Clouds should show structure. |
+| Windows HDR should only be on while watching movies. | [Switch Windows HDR](#hdr-color-mapping-hdr-output-switch-windows-hdr) **Turn On** or **Turn On in Fullscreen**. | After playback, Windows returns to its previous state. |
+| Normal videos should glow more on the HDR display (NVIDIA RTX). | [RTX Video HDR](#hdr-color-mapping-hdr-output-rtx-video-hdr) **On**. | Windows HDR and RTX Video HDR in the NVIDIA app must be on. |
+| Normal videos look too dark while Windows HDR is on. | Raise [SDR Target Brightness](#hdr-color-mapping-hdr-output-sdr-target-brightness-nits), for example from 203 to 250. | White should look bright, not glaring. |
+| A night scene with a single bright lamp looks too dark overall. | Lower [Percentile](#hdr-color-mapping-hdr-peak-detection-percentile) slightly, for example to 99.99. | Only applies when FrankyRenderer does the tone mapping. |
+| Brightness visibly pumps at scene changes. | Raise [Smoothing Period](#hdr-color-mapping-hdr-peak-detection-smoothing-period). | Adaptation becomes calmer but slower. |
+| Dark HDR scenes are too gloomy, the rest looks right. | Under [Shadows](#hdr-color-mapping-shadows), set **Exposure** to around +0.3. | Black should not turn gray. |
+| A Dolby Vision movie (profile 7 or 8) looks different than expected. | Turn [Use Dolby Vision](#hdr-color-mapping-hdr-output-use-dolby-vision) **Off** to compare. | The HDR10 or HLG base layer then plays. |
 
 <a id="hdr-color-mapping-hdr-output"></a>
 

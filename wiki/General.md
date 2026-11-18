@@ -6,12 +6,29 @@ Output, image analysis, background, display modes and menu appearance.
 
 **On this page**
 
+- [Everyday examples](#general-examples)
 - [Output](#general-output)
 - [Image Analysis](#general-image-analysis)
 - [Background & Transparency](#general-background-transparency)
 - [Display Mode](#general-display-mode)
 - [Diagnostics](#general-diagnostics)
 - [Appearance](#general-themes)
+
+<a id="general-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| On the TV, black looks gray and the whole picture looks flat. | Set [RGB Output Levels](#general-output-rgb-output-levels) to the other value, such as **TV Levels (16–235)** instead of **PC Levels (0–255)**. | Night skies and dark clothing should be deep black and still show detail. |
+| Shadows disappear completely and bright clouds look blown out. | Check [RGB Output Levels](#general-output-rgb-output-levels) as well. | Display, GPU driver and FrankyRenderer must use the same range. |
+| Movies judder during camera pans on a 60 Hz TV. | [Switch Display Mode in Fullscreen](#general-display-mode-switch-display-mode-in-fullscreen) **On**, [Allowed Modes](#general-display-mode-allowed-modes) `23, 24, 50, 59, 60`. | Ctrl+J shows the new refresh rate. A 23.976 fps movie then plays at 23.976 Hz. |
+| After the switch, the first seconds are missing because the TV is still black. | Set [Pause After Switching](#general-display-mode-pause-after-switching-seconds) to 3 to 5 seconds. | Playback should start only once the picture is back. |
+| From the couch, the Ctrl+J statistics are too small. | Set [Statistics Text Size](#general-image-analysis-statistics-text-size) to 150. | 100 is the automatic size. |
+| You want to see whether highlights or shadows are clipped. | [Image Analysis](#general-image-analysis-image-analysis) **On**, for example with the histogram or false color. | Turn it off again for normal viewing. |
+| Something goes wrong and you want to report it. | [Diagnostic Log](#general-diagnostics-diagnostic-log) **On**, restart the player, reproduce the problem, then [Save Report](#general-diagnostics-save-report). | The report is saved to the desktop. |
 
 <a id="general-output"></a>
 

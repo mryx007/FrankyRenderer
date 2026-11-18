@@ -8,8 +8,26 @@ Passe den Bildausschnitt an und halte eingebrannte Untertitel sichtbar.
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#black-bars-zoom-examples)
 - [Erkennung und Zoom](#black-bars-zoom-detection-zoom)
 - [Erkennung bei wechselnden Bildformaten](#black-bars-zoom-detection-and-changing-aspect-ratios)
+
+<a id="black-bars-zoom-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Kinofilm im Breitbild (2,39:1) auf einem 16:9-Fernseher. | [Zoommodus](#black-bars-zoom-detection-zoom-zoom-mode) **Einpassen**. | Oben und unten bleiben Balken, dafür fehlt nichts vom Bild. |
+| Du willst den ganzen Bildschirm ohne Balken füllen. | [Zoommodus](#black-bars-zoom-detection-zoom-zoom-mode) **Ausfüllen**. | Links und rechts geht Bild verloren, etwa Personen am Rand. |
+| 21:9-Monitor oder Breitbild-Leinwand: Der Film hat eingebrannte Balken und erscheint klein in der Mitte. | [Im Video enthaltene schwarze Balken erkennen](#black-bars-zoom-detection-zoom-detect-hardcoded-black-bars) und [Schwarze Balken abschneiden](#black-bars-zoom-detection-zoom-crop-black-bars) **Ein**. | Der Film füllt danach die ganze Breite. |
+| Untertitel stehen im unteren Balken und verschwinden nach dem Abschneiden. | [Eingebrannte Untertitel schützen](#black-bars-zoom-detection-zoom-protect-burned-in-subtitles) **Ein**. | Separate Untertitelspuren zeigt der Player selbst an. |
+| Du willst unten einen großen Balken für Untertitel statt zwei kleiner Balken. | [Vertikale Bildposition](#black-bars-zoom-detection-zoom-vertical-image-position) **Oben**. | Das Bild rückt an den oberen Rand. |
+| Dunkle Nachtszenen werden fälschlich abgeschnitten. | [Schwarzschwelle](#black-bars-zoom-detection-zoom-black-threshold) senken, etwa von 2 auf 1. | Sehr dunkle Bildteile sollen sichtbar bleiben. |
+| Dunkelgraue Balken werden nicht erkannt. | [Schwarzschwelle](#black-bars-zoom-detection-zoom-black-threshold) erhöhen, etwa auf 4. | Zu hoch hält dunkle Bildteile für Balken. |
+| Filme mit wechselndem Format, etwa IMAX-Szenen, springen ständig im Zoom. | [Erkennungsstabilisierung](#black-bars-zoom-detection-zoom-detection-stability-seconds) erhöhen, etwa auf 5 Sekunden. | Länger wirkt ruhiger, reagiert aber später auf einen echten Formatwechsel. |
 
 <a id="black-bars-zoom-detection-zoom"></a>
 

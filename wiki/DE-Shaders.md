@@ -6,6 +6,7 @@ Mitgelieferte und eigene Shader sowie ihre Reihenfolge.
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#shaders-examples)
 - [Shaderkette](#shaders-chain-controls)
 - [AMD CAS](#shaders-amd-cas)
 - [FineDehalo](#shaders-finedehalo)
@@ -32,6 +33,26 @@ Mitgelieferte und eigene Shader sowie ihre Reihenfolge.
 - [RAVU Zoom R3](#shaders-ravu-zoom-r3)
 - [RAVU Zoom AR R3](#shaders-ravu-zoom-ar-r3)
 - [Shaderliste und eigene Dateien](#shaders-shader-list-and-custom-files)
+
+<a id="shaders-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Alte Anime-DVD auf einem großen Bildschirm. | [Anime4K CNN 2x M](#shaders-anime4k-cnn-2x-m) oder [ArtCNN C4F16](#shaders-artcnn-c4f16). | Linien sollen klar sein. Prüfe die Renderzeit mit Strg+J. |
+| Alte Realfilm-DVD oder 720p-Datei auf einem 4K-Fernseher. | [FSRCNNX 2x](#shaders-fsrcnnx-2x) oder [RAVU Zoom AR R2](#shaders-ravu-zoom-ar-r2). | Haare und Stoffe sollen feiner wirken, ohne künstliche Säume. |
+| Handyvideo vom Abend rauscht stark. | [NLMeans](#shaders-nlmeans). | Feine Texturen und Filmkorn sollen erhalten bleiben. |
+| In dunklen Flächen tanzen bunte Flecken. | [Chroma Denoise](#shaders-chroma-denoise). | Kleine farbige Details dürfen nicht verwischen. |
+| Streaming-Datei mit Stufen in dunklen Verläufen. | [hdeband](#shaders-hdeband) oder [neo-f3kdb](#shaders-neo-f3kdb). | Alternativ zuerst [Debanding](DE-Processing.md#processing-debanding) unter Verarbeitung testen. |
+| Alte Filmabtastung mit hellen Rändern um dunkle Objekte. | [FineDehalo](#shaders-finedehalo). | Gewollte Konturen sollen erhalten bleiben. |
+| Das Bild wirkt leicht weich. | [AMD CAS](#shaders-amd-cas) mit geringer Stärke. | Zu viel betont Rauschen und Säume. |
+| Das Bild wirkt flau und dunstig. | [Clarity](#shaders-clarity). | Zu viel lässt Gesichter hart wirken. |
+| 4K-Video auf einem 1080p-Laptop. | [SSimDownscaler](#shaders-ssimdownscaler) mit **mitchell** als Verkleinerungsfilter. | Feine Muster sollen beim Schwenk nicht flimmern. |
+| Rote Schrift oder rote Kleidung hat unscharfe Farbränder. | [KrigBilateral](#shaders-krigbilateral) oder [CfL Prediction](#shaders-cfl-prediction). | Farbkanten sollen sauber an den Konturen liegen. |
+| Du willst schnell vergleichen, was die Shader bringen. | [Alle Shader deaktivieren](#shaders-chain-controls-disable-all-shaders), am besten per [Tastenkürzel](DE-Shortcuts.md). | Reihenfolge und Werte bleiben gespeichert. |
 
 <a id="shaders-chain-controls"></a>
 

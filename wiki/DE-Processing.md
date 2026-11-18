@@ -6,10 +6,27 @@
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#processing-examples)
 - [Debanding](#processing-debanding)
 - [Adaptives Nachschärfen](#processing-adaptive-sharpen)
 - [Deinterlacing](#processing-deinterlacing)
 - [Dithering](#processing-dithering)
+
+<a id="processing-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Im blauen Himmel oder beim Sonnenuntergang siehst du Ringe statt eines weichen Verlaufs. | [Debanding](#processing-debanding-debanding) **Ein**, Standardwerte lassen. | Bleiben Haut, Haare und Filmkorn erhalten? |
+| Bei Streaming-Dateien sind dunkle Szenen fleckig und stufig. | Debanding **Ein**, [Durchläufe](#processing-debanding-iterations) um 1 erhöhen. | Zu viel lässt dunkle Flächen glatt wie Wachs wirken. |
+| Alte DVD oder TV-Aufnahme: Bei Bewegung zeigen Kanten Zacken wie ein Kamm. | Deinterlacing [Algorithmus](#processing-deinterlacing-algorithm) **Bwdif**. | Laufschrift und Bewegungen sollen glatt aussehen. |
+| Nach dem Deinterlacing zittern Bewegungen vor und zurück. | [Halbbildreihenfolge](#processing-deinterlacing-field-order) auf die andere Reihenfolge stellen. | Nur ändern, wenn **Automatisch** sichtbar falsch liegt. |
+| Das Bild wirkt auf dem großen Fernseher etwas weich. | [Kanten und Details verstärken](#processing-adaptive-sharpen-enhance-edges-and-details) **Ein**, [Stärke](#processing-adaptive-sharpen-strength) etwa 0,3. | Helle Säume um Schrift oder mehr Rauschen bedeuten: zu viel. |
+| Ein körniger alter Film rauscht nach dem Schärfen stärker. | Stärke senken oder Schärfen **Aus**. | Filmkorn ist gewollt und soll nicht hervortreten. |
+| In dunklen Flächen flimmert ein feines Muster. | [Dithermuster bei jedem Bild ändern](#processing-dithering-change-dither-for-every-frame) **Aus**. | Das Muster steht dann still. |
 
 <a id="processing-debanding"></a>
 

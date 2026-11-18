@@ -2,6 +2,20 @@
 
 [Startseite](DE-Home.md) · [Menü bedienen](DE-Using-the-menu.md) · [Fehlerbehebung](DE-Troubleshooting.md)
 
+<a id="troubleshooting-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Das Video ruckelt und unter Strg+J steigen die Drops. | **Qualität** auf **Schnell** oder Shader ausschalten. | **Render** sollte unter dem Zeitbudget pro Bild liegen. |
+| Schwarz ist grau, Farben wirken flau. | [Ausgabebereich für RGB](DE-General.md#general-output-rgb-output-levels) prüfen. | Bildschirm und Treiber müssen denselben Bereich verwenden. |
+| Ein HDR-Film wirkt blass und grau. | [Modus für HDR](DE-HDR-and-Color-Mapping.md#hdr-color-mapping-hdr-output-hdr-mode) und Windows HDR prüfen. | Strg+J zeigt den aktiven HDR-Pfad. |
+| RTX VSR bleibt ohne Wirkung, Strg+J zeigt **Image: native size**. | Nichts ändern. | Das Video hat bereits die Größe des Bildschirms. |
+| Nach einem Sprung im Video bleibt das Bild schwarz. | Denselben Sprung ohne vorgeschaltete Filter testen. | So siehst du, ob der Renderer oder ein Filter die Ursache ist. |
+
 ## Verarbeitung mit Strg+J prüfen
 
 Die Anzeige gliedert sich in Display, Video, Verarbeitung und Leistung. Prüfe Auflösung, Pixelformat, HDR-Metadaten, Profil, verwendete GPU und den Übertragungsweg. Je nach Ausgabe erscheinen das Quellgamma und das Gamma für die Anzeige.

@@ -45,6 +45,10 @@ Use the **actual video area**. A small window on a 4K screen can still shrink th
 | 4K → 1080p reduction | **mitchell** against **lanczos** | Watch roof tiles and railings during motion. Leave **Skip Downscale Anti-Aliasing** set to **Off**. |
 | Deliberately pixelated artwork or old game recordings | **nearest** or **oversample** | Whether you want hard pixel blocks or slightly blended block boundaries. |
 | Chroma quality comparison on an ordinary 4:2:0 movie | **auto**, then **ewa_lanczos** | Colored edges and fine red/blue detail. **bilinear** is a useful low-cost comparison. |
+| Old 720p file on an NVIDIA RTX card | [RTX Video Super Resolution](#scaling-rtx-video-super-resolution-rtx-video-super-resolution) **On** | Super Resolution must also be on in the NVIDIA app. Ctrl+J shows whether VSR is running. |
+| 24 fps movie judders during pans on a 60 Hz monitor | [Enable Smooth Motion](#scaling-filters-enable-smooth-motion) **On** | Do pans look more even? Do double outlines bother you? |
+| Double outlines with Smooth Motion | [Frame Mixer](#scaling-filters-frame-mixer) **oversample** against **auto** | Do moving faces and text stay sharp? |
+| Bright halos around white subtitles or end credits | Raise [Global Anti-Ringing](#scaling-filters-global-anti-ringing) | Do edges become too soft? |
 
 <a id="approximate-gpu-cost"></a>
 

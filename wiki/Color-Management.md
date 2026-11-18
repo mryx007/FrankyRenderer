@@ -6,9 +6,25 @@
 
 **On this page**
 
+- [Everyday examples](#color-management-examples)
 - [ICC Profile](#color-management-icc-profile)
 - [3D LUT](#color-management-3d-lut)
 - [Display](#color-management-display)
+
+<a id="color-management-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| You calibrated your monitor with a meter, for example with DisplayCAL. | Choose the [ICC Profile File](#color-management-icc-profile-icc-profile-file) and set [Enable ICC Profile](#color-management-icc-profile-enable-icc-profile) **On**. | Do not apply the same correction again with a 3D LUT or in the GPU driver. |
+| Wide-gamut monitor: faces look red and grass glows neon green. | Set [Display Gamut](#color-management-display-display-gamut) to match, for example **P3-D65**. | Only in the monitor's native mode, not in its sRGB mode. |
+| The TV is set to gamma 2.4 for a dark room. | [Display Gamma](#color-management-display-display-gamma) **2.40**. | The value must match the TV's setting. |
+| OLED TV with Display Gamma **BT.1886**. | [Display Contrast](#color-management-display-display-contrast) **0**. | 0 stands for infinite contrast. |
+| The monitor uses gamma 2.2, but movies should look like on a 2.4 display. | [Display Gamma](#color-management-display-display-gamma) **2.20**, [SDR Gamma Processing](#color-management-display-sdr-gamma-processing) **2.40**. | Dark scenes become slightly richer. |
+| A movie should play with its own color LUT. | [LUT from Video Folder](#color-management-3d-lut-lut-from-video-folder) **On**, put **Movie.cube** next to **Movie.mkv**. | [Enable 3D LUT](#color-management-3d-lut-enable-3d-lut) must be on. |
 
 <a id="color-management-icc-profile"></a>
 

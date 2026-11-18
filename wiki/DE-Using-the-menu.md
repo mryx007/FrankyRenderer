@@ -2,6 +2,19 @@
 
 [Startseite](DE-Home.md) · [Menü bedienen](DE-Using-the-menu.md) · [Fehlerbehebung](DE-Troubleshooting.md)
 
+<a id="using-the-menu-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Du suchst eine Einstellung, weißt aber nicht, wo sie steht. | Strg+F drücken und ein Wort tippen, etwa **Balken** oder **Gamma**. | Leere die Suche, um zurück zur Seite zu kommen. |
+| Du hast zu viel verstellt und das Bild sieht seltsam aus. | Runder Pfeil neben der Einstellung oder **Seite zurücksetzen**. | **Alles zurücksetzen** betrifft die ganze Anzeige. |
+| Du willst nichts selbst einstellen, aber mehr Qualität. | Neben **Qualität** auf **Hohe Qualität** wechseln. | Ruckelt es, zurück auf **Standard**. |
+| Du willst eine Änderung erst ausprobieren. | Einstellung ändern, im laufenden Video prüfen, dann **OK** oder **Abbrechen**. | **Abbrechen** stellt den vorherigen Stand wieder her. |
+
 ## Einstellungen finden und ändern
 
 Die Seitenleiste führt zu **Allgemein, Verarbeitung, Skalierung, Farbe, HDR, Shader, Profile und Tastenkürzel**. Schwarze Balken und Zoom stehen unter **Verarbeitung**. Unter **Farbe** findest du Bildregler und Kalibrierung. Die Regler für Schatten, Mitteltöne und Lichter stehen unter **HDR**.

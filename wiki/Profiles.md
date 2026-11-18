@@ -2,6 +2,20 @@
 
 [Home](Home.md) · [Using the menu](Using-the-menu.md) · [Troubleshooting](Troubleshooting.md)
 
+<a id="profiles-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| You want a different upscaler for anime than for movies. | A folder profile for the anime folder that overrides the upscaler or shaders. | Ctrl+J shows which profile is active. |
+| Old DVD rips need deinterlacing and debanding, new movies do not. | A folder profile for the DVD folder with **Bwdif** and **Debanding**. | All other values still come from the default profile. |
+| A PC monitor and a TV are connected to the same PC. | On **Profiles**, set up each display on its own, such as **TV Levels (16–235)** and display mode switching for the TV. | **Same Settings on All Displays** must be off for this. |
+| The laptop cannot handle the desktop PC's settings. | Choose **Quality** **Fast** on the laptop. | Check with Ctrl+J whether the drops disappear. |
+| You are moving to a new PC. | **Export** on the old PC, **Import** on the new one. | Bring ICC profiles, LUTs and your own shaders separately. |
+
 ## Default settings and display selection
 
 Default is the normal settings baseline for the chosen display. Select the display on the Profiles page; selecting it does not move the player to that screen. Rename changes its friendly name, not its physical identity.

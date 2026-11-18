@@ -2,6 +2,20 @@
 
 [Startseite](DE-Home.md) · [Menü bedienen](DE-Using-the-menu.md) · [Fehlerbehebung](DE-Troubleshooting.md)
 
+<a id="profiles-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Für Anime willst du einen anderen Hochskalierer als für Filme. | Ordnerprofil für den Anime-Ordner, darin Hochskalierer oder Shader überschreiben. | Strg+J zeigt, welches Profil gerade gilt. |
+| Alte DVD-Rips brauchen Deinterlacing und Debanding, neue Filme nicht. | Ordnerprofil für den DVD-Ordner mit **Bwdif** und **Debanding**. | Alle anderen Werte kommen weiter aus dem Standardprofil. |
+| PC-Monitor und Fernseher hängen am selben PC. | Auf **Profile** jede Anzeige einzeln einstellen, etwa beim Fernseher **Begrenzt (TV, 16-235)** und den Wechsel des Anzeigemodus. | **Gleiche Einstellungen auf allen Displays** muss dafür aus sein. |
+| Der Laptop schafft die Einstellungen des Desktop-PCs nicht. | Auf dem Laptop **Qualität** **Schnell** wählen. | Prüfe mit Strg+J, ob die Drops verschwinden. |
+| Du ziehst auf einen neuen PC um. | Auf dem alten PC **Exportieren**, auf dem neuen **Importieren**. | ICC-Profile, LUTs und eigene Shader separat mitnehmen. |
+
 ## Standardprofil und Anzeigen
 
 Wähle auf der Seite **Profile** die Anzeige, deren Standardwerte du bearbeiten willst. Die Wiedergabe bleibt auf ihrem Bildschirm. Du kannst den Anzeigen einen eigenen Namen geben.

@@ -6,6 +6,7 @@ Bundled and custom shaders and the order they run in.
 
 **On this page**
 
+- [Everyday examples](#shaders-examples)
 - [Chain Controls](#shaders-chain-controls)
 - [AMD CAS](#shaders-amd-cas)
 - [FineDehalo](#shaders-finedehalo)
@@ -32,6 +33,26 @@ Bundled and custom shaders and the order they run in.
 - [RAVU Zoom R3](#shaders-ravu-zoom-r3)
 - [RAVU Zoom AR R3](#shaders-ravu-zoom-ar-r3)
 - [Shader list and custom files](#shaders-shader-list-and-custom-files)
+
+<a id="shaders-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| Old anime DVD on a large screen. | [Anime4K CNN 2x M](#shaders-anime4k-cnn-2x-m) or [ArtCNN C4F16](#shaders-artcnn-c4f16). | Lines should be clean. Check the render time with Ctrl+J. |
+| Old live-action DVD or 720p file on a 4K TV. | [FSRCNNX 2x](#shaders-fsrcnnx-2x) or [RAVU Zoom AR R2](#shaders-ravu-zoom-ar-r2). | Hair and fabric should look finer without artificial halos. |
+| A phone video shot in the evening is very noisy. | [NLMeans](#shaders-nlmeans). | Fine textures and film grain should remain. |
+| Colored blotches dance in dark areas. | [Chroma Denoise](#shaders-chroma-denoise). | Small colored details must not smear. |
+| Streaming file with steps in dark gradients. | [hdeband](#shaders-hdeband) or [neo-f3kdb](#shaders-neo-f3kdb). | Alternatively, try [Debanding](Processing.md#processing-debanding) under Processing first. |
+| Old film scan with bright outlines around dark objects. | [FineDehalo](#shaders-finedehalo). | Intended outlines should stay. |
+| The picture looks slightly soft. | [AMD CAS](#shaders-amd-cas) at low strength. | Too much emphasizes noise and halos. |
+| The picture looks flat and hazy. | [Clarity](#shaders-clarity). | Too much makes faces look harsh. |
+| 4K video on a 1080p laptop. | [SSimDownscaler](#shaders-ssimdownscaler) with **mitchell** as the downscaler. | Fine patterns should not flicker during pans. |
+| Red text or red clothing has blurry color edges. | [KrigBilateral](#shaders-krigbilateral) or [CfL Prediction](#shaders-cfl-prediction). | Color edges should line up with the outlines. |
+| You want to compare quickly what the shaders do. | [Disable All Shaders](#shaders-chain-controls-disable-all-shaders), ideally with a [shortcut](Shortcuts.md). | Order and values stay saved. |
 
 <a id="shaders-chain-controls"></a>
 

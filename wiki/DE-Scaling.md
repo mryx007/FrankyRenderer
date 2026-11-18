@@ -45,6 +45,10 @@ Entscheidend ist die Größe des **Videobilds**. Ein kleines Fenster auf einem 4
 | 4K auf 1080p verkleinern | **mitchell** gegen **lanczos** | Flimmern Ziegel oder Gitter in Bewegung? Lass „Kantenglättung beim Herunterskalieren überspringen“ auf **Aus**. |
 | Pixelgrafik oder alte Spielaufnahmen | **nearest** oder **oversample** | Sollen Pixelkanten hart bleiben oder etwas weicher werden? |
 | Farbkanten bei 4:2:0 | **auto**, dann **ewa_lanczos** | Sieht rote oder blaue Schrift sauberer aus? **bilinear** braucht weniger GPU-Leistung. |
+| Alte 720p-Datei auf einer NVIDIA-RTX-Karte | [RTX Video Super Resolution](#scaling-rtx-video-super-resolution-rtx-video-super-resolution) **Ein** | Super Resolution muss auch in der NVIDIA-App aktiv sein. Strg+J zeigt, ob VSR läuft. |
+| Kinofilm mit 24 fps ruckelt bei Schwenks auf einem 60-Hz-Monitor | [Smooth Motion aktivieren](#scaling-filters-enable-smooth-motion) **Ein** | Laufen Schwenks gleichmäßiger? Stören Doppelkonturen? |
+| Doppelkonturen mit Smooth Motion | [Bildmischer](#scaling-filters-frame-mixer) **oversample** gegen **auto** | Bleiben bewegte Gesichter und Schrift scharf? |
+| Helle Säume um weiße Untertitel oder den Abspann | [Globale Unterdrückung von Ringing](#scaling-filters-global-anti-ringing) erhöhen | Werden Kanten dabei zu weich? |
 
 <a id="approximate-gpu-cost"></a>
 

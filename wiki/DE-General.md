@@ -6,12 +6,29 @@ Ausgabe, Bildanalyse, Hintergrund, Anzeigemodus und Darstellung des Menüs.
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#general-examples)
 - [Ausgabe](#general-output)
 - [Bildanalyse](#general-image-analysis)
 - [Hintergrund und Transparenz](#general-background-transparency)
 - [Anzeigemodus](#general-display-mode)
 - [Diagnose](#general-diagnostics)
 - [Darstellung](#general-themes)
+
+<a id="general-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Am Fernseher wirkt Schwarz grau und das ganze Bild flau. | [Ausgabebereich für RGB](#general-output-rgb-output-levels) auf den anderen Wert stellen, etwa **Begrenzt (TV, 16-235)** statt **Voll (PC, 0-255)**. | Nachthimmel und dunkle Kleidung sollen satt schwarz sein und trotzdem Details zeigen. |
+| Schatten versinken komplett, helle Wolken wirken ausgefressen. | Ebenfalls [Ausgabebereich für RGB](#general-output-rgb-output-levels) prüfen. | Bildschirm, Grafiktreiber und FrankyRenderer müssen denselben Bereich verwenden. |
+| Kinofilme ruckeln bei Kameraschwenks am 60-Hz-Fernseher. | [Anzeigemodus im Vollbild wechseln](#general-display-mode-switch-display-mode-in-fullscreen) **Ein**, [Zulässige Modi](#general-display-mode-allowed-modes) `23, 24, 50, 59, 60`. | Strg+J zeigt die neue Bildwiederholrate. Ein 23,976-fps-Film läuft dann mit 23,976 Hz. |
+| Nach dem Umschalten fehlen die ersten Sekunden, weil der Fernseher noch schwarz ist. | [Pause nach dem Wechsel](#general-display-mode-pause-after-switching-seconds) auf 3 bis 5 Sekunden. | Die Wiedergabe soll erst starten, wenn das Bild wieder da ist. |
+| Vom Sofa aus ist die Strg+J-Statistik zu klein. | [Textgröße der Statistik](#general-image-analysis-statistics-text-size) auf 150. | 100 ist die automatische Größe. |
+| Du willst sehen, ob Lichter oder Schatten abgeschnitten werden. | [Bildanalyse](#general-image-analysis-image-analysis) **Ein**, etwa mit Histogramm oder Falschfarben. | Für normales Schauen wieder ausschalten. |
+| Ein Fehler tritt auf und du willst ihn melden. | [Diagnoseprotokoll](#general-diagnostics-diagnostic-log) **Ein**, Player neu starten, Fehler nachstellen, dann [Bericht speichern](#general-diagnostics-save-report). | Der Bericht liegt danach auf dem Desktop. |
 
 <a id="general-output"></a>
 

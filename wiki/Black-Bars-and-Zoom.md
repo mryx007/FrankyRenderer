@@ -8,8 +8,26 @@ Adjust the crop and keep burned-in subtitles visible.
 
 **On this page**
 
+- [Everyday examples](#black-bars-zoom-examples)
 - [Detection & Zoom](#black-bars-zoom-detection-zoom)
 - [Detection and changing aspect ratios](#black-bars-zoom-detection-and-changing-aspect-ratios)
+
+<a id="black-bars-zoom-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| Widescreen movie (2.39:1) on a 16:9 TV. | [Zoom Mode](#black-bars-zoom-detection-zoom-zoom-mode) **Fit**. | Bars remain at the top and bottom, but nothing is cut off. |
+| You want to fill the whole screen without bars. | [Zoom Mode](#black-bars-zoom-detection-zoom-zoom-mode) **Fill**. | The left and right edges are lost, such as people at the edge. |
+| 21:9 monitor or wide projection screen: the movie has bars inside the video and appears small in the middle. | [Detect Hardcoded Black Bars](#black-bars-zoom-detection-zoom-detect-hardcoded-black-bars) and [Crop Black Bars](#black-bars-zoom-detection-zoom-crop-black-bars) **On**. | The movie then fills the full width. |
+| Subtitles sit in the bottom bar and disappear after cropping. | [Protect Burned-in Subtitles](#black-bars-zoom-detection-zoom-protect-burned-in-subtitles) **On**. | Separate subtitle tracks are drawn by the player. |
+| You want one large bar at the bottom for subtitles instead of two small bars. | [Vertical Image Position](#black-bars-zoom-detection-zoom-vertical-image-position) **Top**. | The picture moves to the top edge. |
+| Dark night scenes are cropped by mistake. | Lower [Black Threshold](#black-bars-zoom-detection-zoom-black-threshold), for example from 2 to 1. | Very dark picture areas should stay visible. |
+| Dark gray bars are not detected. | Raise [Black Threshold](#black-bars-zoom-detection-zoom-black-threshold), for example to 4. | Too high treats dark picture areas as bars. |
+| Movies with changing formats, such as IMAX scenes, keep jumping in zoom. | Raise [Detection Stability](#black-bars-zoom-detection-zoom-detection-stability-seconds), for example to 5 seconds. | Longer looks calmer but reacts later to a real format change. |
 
 <a id="black-bars-zoom-detection-zoom"></a>
 

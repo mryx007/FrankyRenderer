@@ -2,6 +2,20 @@
 
 [Home](Home.md) · [Using the menu](Using-the-menu.md) · [Troubleshooting](Troubleshooting.md)
 
+<a id="troubleshooting-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing. Change one setting at a time and compare the same scene.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| The video stutters and the drops in Ctrl+J keep rising. | Set **Quality** to **Fast** or turn shaders off. | **Render** should stay below the time budget per frame. |
+| Black is gray and colors look flat. | Check [RGB Output Levels](General.md#general-output-rgb-output-levels). | Display and driver must use the same range. |
+| An HDR movie looks pale and gray. | Check [HDR Mode](HDR-and-Color-Mapping.md#hdr-color-mapping-hdr-output-hdr-mode) and Windows HDR. | Ctrl+J shows the active HDR path. |
+| RTX VSR has no effect and Ctrl+J shows **Image: native size**. | Change nothing. | The video already has the size of the screen. |
+| The picture stays black after seeking. | Test the same seek without upstream filters. | This shows whether the renderer or a filter is the cause. |
+
 ## Check the active path with Ctrl+J
 
 Statistics are grouped into Display, Video, Processing and Performance. Check the actual source pixel format, dimensions, HDR metadata, active profile and transfer path before comparing settings. The overlay also identifies the renderer's GPU and shows the source gamma and output gamma where applicable.

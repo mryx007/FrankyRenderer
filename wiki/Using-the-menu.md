@@ -2,6 +2,19 @@
 
 [Home](Home.md) · [Using the menu](Using-the-menu.md) · [Troubleshooting](Troubleshooting.md)
 
+<a id="using-the-menu-examples"></a>
+
+## Everyday examples
+
+Examples from everyday viewing.
+
+| Situation | Setting | What to check |
+| --- | --- | --- |
+| You are looking for a setting but do not know where it is. | Press Ctrl+F and type a word, such as **bars** or **gamma**. | Clear the search to return to the page. |
+| You changed too much and the picture looks odd. | The round arrow next to the setting, or **Reset Page**. | **Reset All** affects the whole display. |
+| You do not want to tune anything yourself, but want more quality. | Switch **Quality** to **High Quality**. | If playback stutters, go back to **Default**. |
+| You want to try a change first. | Change the setting, check it in the running video, then **OK** or **Cancel**. | **Cancel** restores the previous state. |
+
 ## Finding settings in the current menu
 
 The sidebar has **General, Processing, Scaling, Color, HDR, Shaders, Profiles and Shortcuts**. The old separate Black Bars / Zoom category is now under Processing. Color combines Picture Controls and Calibration; HDR's zone adjustments are under Tone Controls. Existing Wiki page URLs are retained for those topics.

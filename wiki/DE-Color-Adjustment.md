@@ -6,7 +6,24 @@
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#color-adjustment-examples)
 - [Bildeinstellungen](#color-adjustment-picture-controls)
+
+<a id="color-adjustment-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Tagsüber im hellen Wohnzimmer wirkt der Film zu dunkel. | [Gamma](#color-adjustment-picture-controls-gamma) leicht erhöhen, etwa auf 1,1. | Hellt die Mitteltöne auf, Schwarz bleibt schwarz. Besser als die Helligkeit. |
+| Gesichter wirken zu dunkel, Schwarz und Weiß passen aber. | [Gamma](#color-adjustment-picture-controls-gamma) zwischen 1,05 und 1,15. | Hellere Szenen dürfen nicht flau werden. |
+| Abends wirkt das Bild kühl und bläulich. | [Farbtemperatur](#color-adjustment-picture-controls-temperature-k) etwa 5500 K. | Weiß wird wärmer. 6500 K ist neutral. |
+| Ein alter Film hat blasse Farben. | [Sättigung](#color-adjustment-picture-controls-saturation) etwa 1,1. | Hauttöne dürfen nicht orange werden. |
+| Schwarz bleibt leicht grau, obwohl der RGB-Bereich stimmt. | [Helligkeit](#color-adjustment-picture-controls-brightness) leicht senken, etwa auf -0,02. | Details in dunkler Kleidung sollen erhalten bleiben. |
+| Hauttöne haben einen Grün- oder Magentastich. | [Farbton](#color-adjustment-picture-controls-hue-degrees) in kleinen Schritten, etwa ±2 Grad. | Prüfe danach auch Himmel und Gras. |
+| Du willst schnell mit dem Original vergleichen. | [Farbanpassung aktivieren](#color-adjustment-picture-controls-enable-color-adjustment) **Aus** und wieder **Ein**. | Mit einem [Tastenkürzel](DE-Shortcuts.md) geht das während der Wiedergabe. |
 
 <a id="color-adjustment-picture-controls"></a>
 

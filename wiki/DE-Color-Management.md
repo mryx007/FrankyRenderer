@@ -6,9 +6,25 @@
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#color-management-examples)
 - [ICC-Profil](#color-management-icc-profile)
 - [3D-LUT](#color-management-3d-lut)
 - [Bildschirm](#color-management-display)
+
+<a id="color-management-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| Du hast deinen Monitor mit einem Messgerät kalibriert, etwa mit DisplayCAL. | [ICC-Profildatei](#color-management-icc-profile-icc-profile-file) wählen und [ICC-Profil aktivieren](#color-management-icc-profile-enable-icc-profile) **Ein**. | Dieselbe Korrektur nicht zusätzlich per 3D-LUT oder im Grafiktreiber. |
+| Monitor mit großem Farbraum: Gesichter wirken rot, Rasen leuchtet neongrün. | [Display-Farbraum](#color-management-display-display-gamut) passend einstellen, etwa **P3-D65**. | Nur im nativen Modus des Monitors, nicht im sRGB-Modus. |
+| Der Fernseher ist für den dunklen Raum auf Gamma 2.4 eingestellt. | [Display-Gamma](#color-management-display-display-gamma) **2.40**. | Der Wert muss zur Einstellung des Fernsehers passen. |
+| OLED-Fernseher mit Display-Gamma **BT.1886**. | [Display-Kontrast](#color-management-display-display-contrast) **0**. | 0 steht für unendlichen Kontrast. |
+| Der Monitor arbeitet mit Gamma 2.2, Filme sollen wie auf einem 2.4-Bildschirm wirken. | [Display-Gamma](#color-management-display-display-gamma) **2.20**, [SDR-Gamma-Verarbeitung](#color-management-display-sdr-gamma-processing) **2.40**. | Dunkle Szenen werden etwas satter. |
+| Ein Film soll mit einer eigenen Farb-LUT laufen. | [LUT aus dem Videoordner](#color-management-3d-lut-lut-from-video-folder) **Ein**, **Film.cube** neben **Film.mkv** legen. | [3D-LUT aktivieren](#color-management-3d-lut-enable-3d-lut) muss eingeschaltet sein. |
 
 <a id="color-management-icc-profile"></a>
 

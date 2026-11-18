@@ -6,6 +6,7 @@
 
 **Auf dieser Seite**
 
+- [Typische Situationen](#hdr-color-mapping-examples)
 - [Ausgabe von HDR](#hdr-color-mapping-hdr-output)
   - [Welche Tone-Mapping-Funktion soll ich wählen?](#choosing-a-tone-mapping-function)
 - [Erkennung der Spitzenhelligkeit für HDR](#hdr-color-mapping-hdr-peak-detection)
@@ -20,6 +21,26 @@
 - [Mitteltöne](#hdr-color-mapping-midtones)
 - [Lichter](#hdr-color-mapping-highlights)
 - [Tonwertregler](#hdr-color-mapping-tone-controls)
+
+<a id="hdr-color-mapping-examples"></a>
+
+## Typische Situationen
+
+Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche dieselbe Szene.
+
+| Situation | Einstellung | Worauf achten? |
+| --- | --- | --- |
+| HDR-Film auf einem normalen Monitor ohne HDR. | [Modus für HDR](#hdr-color-mapping-hdr-output-hdr-mode) **HDR in SDR umrechnen**. | Gesichter sollen natürlich wirken, helle Fenster Zeichnung behalten. |
+| Bei der Umrechnung in SDR wirken Gesichter zu dunkel. | [Funktion für Tone Mapping](#hdr-color-mapping-hdr-output-tone-mapping-function) **BT.2446A** mit **Automatisch (Metadaten)** vergleichen. | Vergleiche dieselbe angehaltene Szene. |
+| HDR-Fernseher mit gutem eigenem Tone Mapping, etwa ein OLED-TV. | [Modus für HDR](#hdr-color-mapping-hdr-output-hdr-mode) **HDR an den Bildschirm weitergeben**. | Der Fernseher passt die Helligkeit selbst an. |
+| HDR-Monitor ohne eigenes Tone Mapping: Helle Wolken und Lampen fressen aus. | **HDR an die Spitzenhelligkeit des Bildschirms anpassen**, [Zielspitzenhelligkeit](#hdr-color-mapping-hdr-output-hdr-target-peak-0-auto) 0 oder der Wert des Monitors, etwa 400. | Wolken sollen Struktur zeigen. |
+| Windows HDR soll nur beim Filmschauen eingeschaltet sein. | [Windows-HDR umschalten](#hdr-color-mapping-hdr-output-switch-windows-hdr) **Einschalten** oder **Im Vollbild einschalten**. | Nach der Wiedergabe kehrt Windows zum vorherigen Zustand zurück. |
+| Normale Videos sollen auf dem HDR-Bildschirm kräftiger leuchten (NVIDIA RTX). | [RTX Video HDR](#hdr-color-mapping-hdr-output-rtx-video-hdr) **Ein**. | Windows HDR und RTX Video HDR in der NVIDIA-App müssen an sein. |
+| Normale Videos wirken bei eingeschaltetem Windows HDR zu dunkel. | [Zielhelligkeit für SDR](#hdr-color-mapping-hdr-output-sdr-target-brightness-nits) erhöhen, etwa von 203 auf 250. | Weiß soll hell, aber nicht grell wirken. |
+| Eine Nachtszene mit einer einzelnen hellen Lampe wirkt insgesamt zu dunkel. | [Perzentil](#hdr-color-mapping-hdr-peak-detection-percentile) etwas senken, etwa auf 99,99. | Gilt nur, wenn FrankyRenderer das Tone Mapping übernimmt. |
+| Die Helligkeit pumpt bei Szenenwechseln sichtbar. | [Glättungszeitraum](#hdr-color-mapping-hdr-peak-detection-smoothing-period) erhöhen. | Die Anpassung wird ruhiger, aber langsamer. |
+| Dunkle HDR-Szenen sind zu finster, der Rest passt. | Unter [Tiefen](#hdr-color-mapping-shadows) die **Belichtung** etwa auf +0,3. | Schwarz soll nicht grau werden. |
+| Ein Dolby-Vision-Film (Profil 7 oder 8) sieht anders aus als erwartet. | [Dolby Vision verwenden](#hdr-color-mapping-hdr-output-use-dolby-vision) zum Vergleich **Aus**. | Dann läuft die HDR10- oder HLG-Basisschicht. |
 
 <a id="hdr-color-mapping-hdr-output"></a>
 
