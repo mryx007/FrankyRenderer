@@ -1,5 +1,5 @@
 import MarkdownIt from './vendor/markdown-it-15.0.3.min.mjs';
-import { headingSlug, wikiUrl } from './search.js?v=3';
+import { headingSlug, wikiUrl } from './search.js?v=4';
 
 const markdown = new MarkdownIt({ html: true });
 const expectedTag = /<\/?(?:details|summary)>|<a id="([\p{L}\p{N}_-]+)">|<\/a>/gu;

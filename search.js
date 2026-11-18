@@ -130,6 +130,7 @@ export function findResults(records, query, language) {
   const terms = phrase.split(' ');
   const matches = [];
   for (const record of records) {
+    if (record.page.language !== language) continue;
     const title = normalized(record.title);
     const page = normalized(record.page.title);
     const lines = record.lines.map(normalized);
@@ -147,7 +148,7 @@ export function findResults(records, query, language) {
     const score = (title === phrase || title.startsWith(`${phrase} — `) ? 25 : title.includes(phrase) ? 14 : 0)
       + (page === phrase ? (record.anchor ? 2 : 12) : 0)
       + terms.filter(term => title.includes(term)).length * 3
-      + best + (record.page.language === language ? 1 : 0);
+      + best;
     matches.push({ ...record, excerpt: excerpt(record.lines[index], terms), score });
   }
   matches.sort((a, b) => b.score - a.score);

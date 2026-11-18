@@ -1,5 +1,5 @@
-import { findResults, loadPages, loadWiki, readPage, wikiUrl } from './search.js?v=3';
-import { renderMarkdown, resolveWikiLink } from './markdown.js?v=3';
+import { findResults, loadPages, loadWiki, readPage, wikiUrl } from './search.js?v=4';
+import { renderMarkdown, resolveWikiLink } from './markdown.js?v=4';
 
 const translations = {
   de: {
