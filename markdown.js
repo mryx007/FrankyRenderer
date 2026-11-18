@@ -1,5 +1,5 @@
 import MarkdownIt from './vendor/markdown-it-15.0.3.min.mjs';
-import { headingSlug, wikiUrl } from './search.js?v=4';
+import { headingSlug, wikiUrl } from './search.js?v=5';
 
 const markdown = new MarkdownIt({ html: true });
 const expectedTag = /<\/?(?:details|summary)>|<a id="([\p{L}\p{N}_-]+)">|<\/a>/gu;
@@ -38,7 +38,7 @@ export function renderMarkdown(source) {
 export function resolveWikiLink(href, pageId, knownPages) {
   const local = href.startsWith(wikiUrl) ? href.slice(wikiUrl.length) : href;
   const [name, encoded] = local.split('#', 2);
-  const target = name || pageId;
+  const target = name.replace(/\.md$/, '') || pageId;
   if (!knownPages.has(target)) return null;
   let anchor = '';
   try { anchor = decodeURIComponent(encoded || ''); } catch { return null; }

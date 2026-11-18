@@ -1,5 +1,5 @@
-import { findResults, loadPages, loadWiki, readPage, wikiUrl } from './search.js?v=4';
-import { renderMarkdown, resolveWikiLink } from './markdown.js?v=4';
+import { findResults, loadPages, loadWiki, readPage } from './search.js?v=5';
+import { renderMarkdown, resolveWikiLink } from './markdown.js?v=5';
 
 const translations = {
   de: {
@@ -207,7 +207,7 @@ function renderChapter(page, source) {
   }
 
   const sourceLink = element('a', translations[page.language].source);
-  sourceLink.href = wikiUrl + page.id;
+  sourceLink.href = `https://github.com/mryx007/FrankyRenderer/blob/gh-pages/wiki/${page.id}.md`;
   const footer = element('p', '', 'article-source');
   footer.append(sourceLink);
   article.replaceChildren(doc.content, footer);

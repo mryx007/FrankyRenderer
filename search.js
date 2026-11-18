@@ -1,5 +1,5 @@
 export const wikiUrl = 'https://github.com/mryx007/FrankyRenderer/wiki/';
-const sourceUrl = 'https://raw.githubusercontent.com/wiki/mryx007/FrankyRenderer/';
+const sourceUrl = new URL('./wiki/', import.meta.url);
 const anchorPattern = /<a id="([\p{L}\p{N}_-]+)"><\/a>/gu;
 const sources = new Map();
 
@@ -8,8 +8,7 @@ export function pagesFromSidebar(markdown) {
   for (const line of markdown.split(/\r?\n/)) {
     if (!line.startsWith('- ')) continue;
     for (const [, title, href] of line.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)) {
-      if (!href.startsWith(wikiUrl)) continue;
-      const id = href.slice(wikiUrl.length);
+      const id = href.startsWith(wikiUrl) ? href.slice(wikiUrl.length) : href.endsWith('.md') ? href.slice(0, -3) : '';
       if (!/^[\w-]+$/.test(id)) continue;
       pages.set(id, { id, title, language: id.startsWith('DE-') ? 'de' : 'en' });
     }
@@ -81,7 +80,7 @@ export function indexPage(page, markdown) {
 }
 
 async function readSource(id) {
-  const response = await fetch(`${sourceUrl}${id}.md`, { signal: AbortSignal.timeout(12000) });
+  const response = await fetch(new URL(`${id}.md`, sourceUrl), { signal: AbortSignal.timeout(12000) });
   if (!response.ok) throw new Error(`Wiki source ${id} returned ${response.status}`);
   return response.text();
 }
