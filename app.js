@@ -4,8 +4,8 @@ import { renderMarkdown, resolveWikiLink } from './markdown.js?v=3';
 const translations = {
   de: {
     home: 'Startseite', chapters: 'Kapitel', sections: 'Auf dieser Seite', menu: 'Kapitel öffnen',
-    skip: 'Zum Inhalt', language: 'Sprache', search: 'Wiki durchsuchen', close: 'Suche schließen',
-    shortcut: 'Strg K', query: 'Suchbegriff', example: 'z. B. Debanding oder Dolby Vision',
+    skip: 'Zum Inhalt', language: 'Sprache', search: 'Wiki durchsuchen', submit: 'Suchen',
+    searchResults: 'Suchergebnisse', returnToChapter: 'Zurück zum Kapitel',
     loading: 'Wiki wird geladen …', noMatches: 'Keine Treffer gefunden.',
     loadError: 'Das Wiki konnte nicht geladen werden.', pageError: 'Dieses Kapitel konnte nicht geladen werden.',
     missing: 'Dieses Kapitel gibt es nicht.', incomplete: 'Einige Wiki-Seiten konnten nicht geladen werden.',
@@ -17,8 +17,8 @@ const translations = {
   },
   en: {
     home: 'Home', chapters: 'Chapters', sections: 'On this page', menu: 'Open chapters',
-    skip: 'Skip to content', language: 'Language', search: 'Search the wiki', close: 'Close search',
-    shortcut: 'Ctrl K', query: 'Search term', example: 'e.g. Debanding or Dolby Vision',
+    skip: 'Skip to content', language: 'Language', search: 'Search the wiki', submit: 'Search',
+    searchResults: 'Search results', returnToChapter: 'Back to chapter',
     loading: 'Loading the wiki…', noMatches: 'No results found.',
     loadError: 'Could not load the wiki.', pageError: 'Could not load this chapter.',
     missing: 'This chapter does not exist.', incomplete: 'Some wiki pages could not be loaded.',
@@ -44,7 +44,7 @@ const chapters = byId('chapters');
 const sections = byId('sections');
 const sectionPanel = byId('section-panel');
 const menu = byId('menu');
-const dialog = byId('search-dialog');
+const searchView = byId('search-view');
 const query = byId('query');
 const results = byId('results');
 const status = byId('status');
@@ -108,12 +108,11 @@ function setLanguage() {
   menu.setAttribute('aria-label', locale.menu);
   chapters.setAttribute('aria-label', locale.chapters);
   sections.setAttribute('aria-label', locale.sections);
-  byId('search-caption').textContent = locale.search;
-  byId('search-heading').textContent = locale.search;
-  byId('close-search').setAttribute('aria-label', locale.close);
-  byId('shortcut').textContent = locale.shortcut;
-  byId('query-label').textContent = locale.query;
-  query.placeholder = locale.example;
+  byId('search-heading').textContent = locale.searchResults;
+  byId('submit-search').textContent = locale.submit;
+  byId('return-to-chapter').textContent = locale.returnToChapter;
+  byId('query-label').textContent = locale.search;
+  query.placeholder = locale.search;
   retry.textContent = locale.retry;
   more.textContent = locale.more;
 
@@ -304,16 +303,11 @@ async function showRoute(focus = false) {
 }
 
 function showResults() {
-  if (!index) return;
+  const term = history.state?.wikiSearch;
+  if (!index || !term) return;
   const locale = translations[active.language];
-  const term = query.value.trim();
   results.replaceChildren();
-  more.hidden = true;
   const warning = index.incomplete ? locale.incomplete : '';
-  if (!term) {
-    status.textContent = warning;
-    return;
-  }
   const matches = findResults(index.records, term, active.language);
   const shown = matches.slice(0, limit);
   more.hidden = shown.length === matches.length;
@@ -349,9 +343,14 @@ async function prepareSearch() {
   }
 }
 
-function openSearch() {
-  if (!dialog.open) dialog.showModal();
-  query.focus();
+function syncSearchView() {
+  const term = history.state?.wikiSearch;
+  searchView.hidden = !term;
+  layout.classList.toggle('searching', Boolean(term));
+  byId('skip').href = term ? '#search-view' : '#article';
+  if (!term) return;
+  query.value = term;
+  limit = pageSize;
   if (!index) prepareSearch();
   else showResults();
 }
@@ -366,30 +365,33 @@ document.addEventListener('click', event => {
   if (!link || event.defaultPrevented || event.button !== 0 || event.altKey || event.ctrlKey || event.shiftKey || event.metaKey) return;
   event.preventDefault();
   toggleMenu(false);
-  if (dialog.open) dialog.close();
-  if (link.href !== location.href) history.pushState(null, '', link.href);
+  if (link.href !== location.href || history.state?.wikiSearch) history.pushState(null, '', link.href);
+  syncSearchView();
   showRoute(true);
 });
 window.addEventListener('popstate', () => {
-  if (dialog.open) dialog.close();
   showRoute();
+  syncSearchView();
 });
 menu.addEventListener('click', () => toggleMenu(menu.getAttribute('aria-expanded') !== 'true'));
-byId('open-search').addEventListener('click', openSearch);
-byId('close-search').addEventListener('click', () => dialog.close());
+byId('return-to-chapter').addEventListener('click', () => history.back());
 document.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    openSearch();
+    toggleMenu(false);
+    query.focus();
   } else if (event.key === 'Escape') toggleMenu(false);
-});
-query.addEventListener('input', () => {
-  limit = pageSize;
-  showResults();
 });
 byId('search').addEventListener('submit', event => {
   event.preventDefault();
-  showResults();
+  const term = query.value.trim();
+  if (!term) return;
+  if (history.state?.wikiSearch) history.replaceState({ wikiSearch: term }, '');
+  else history.pushState({ wikiSearch: term }, '');
+  toggleMenu(false);
+  syncSearchView();
+  window.scrollTo(0, 0);
+  searchView.focus({ preventScroll: true });
 });
 retry.addEventListener('click', prepareSearch);
 more.addEventListener('click', () => {
@@ -411,4 +413,5 @@ async function init() {
 }
 
 init();
-if (new URLSearchParams(location.search).has('search')) openSearch();
+syncSearchView();
+if (!history.state?.wikiSearch && new URLSearchParams(location.search).has('search')) query.focus();

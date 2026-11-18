@@ -9,8 +9,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://raw.githubusercontent.com; img-src 'self' https:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <title>FrankyRenderer Wiki</title>
-  <link rel="stylesheet" href="style.css?v=5">
-  <script type="module" src="app.js?v=4"></script>
+  <link rel="stylesheet" href="style.css?v=6">
+  <script type="module" src="app.js?v=5"></script>
 </head>
 <body>
   <a id="skip" class="skip" href="#article">Zum Inhalt</a>
@@ -24,9 +24,11 @@
         <span>FrankyRenderer <small>Wiki</small></span>
       </a>
       <div class="header-controls">
-        <button id="open-search" class="search-trigger" type="button" aria-haspopup="dialog">
-          <span class="search-icon" aria-hidden="true"></span><span id="search-caption">Wiki durchsuchen</span><kbd id="shortcut">Strg K</kbd>
-        </button>
+        <form id="search" role="search">
+          <label class="sr-only" id="query-label" for="query">Wiki durchsuchen</label>
+          <input id="query" type="search" autocomplete="off" placeholder="Wiki durchsuchen" required>
+          <button id="submit-search" type="submit">Suchen</button>
+        </form>
         <div class="language" id="language" aria-label="Sprache">
           <a id="lang-de" href="./" lang="de" aria-label="Deutsch" aria-current="true" data-route>DE</a>
           <a id="lang-en" href="?lang=en" lang="en" aria-label="English" data-route>EN</a>
@@ -42,29 +44,21 @@
     <main id="content" aria-busy="true">
       <div id="breadcrumb" class="breadcrumb" hidden></div>
       <article id="article" tabindex="-1"><p class="loading">Wiki wird geladen …</p></article>
+      <section id="search-view" class="search-view" aria-labelledby="search-heading" tabindex="-1" hidden>
+        <div class="search-view-header">
+          <h1 id="search-heading">Suchergebnisse</h1>
+          <button id="return-to-chapter" class="secondary-button" type="button">Zurück zum Kapitel</button>
+        </div>
+        <p id="status" role="status"></p>
+        <button id="retry" class="secondary-button" type="button" hidden>Erneut laden</button>
+        <ul id="results" class="results" aria-labelledby="search-heading"></ul>
+        <button id="more" class="secondary-button more" type="button" hidden>Mehr Treffer anzeigen</button>
+      </section>
     </main>
     <aside id="section-panel" class="section-panel" hidden>
       <nav id="sections" aria-label="Auf dieser Seite"></nav>
     </aside>
   </div>
-
-  <dialog id="search-dialog" aria-labelledby="search-heading">
-    <div class="dialog-header">
-      <h2 id="search-heading">Wiki durchsuchen</h2>
-      <button id="close-search" class="icon-button close-button" type="button" aria-label="Suche schließen">×</button>
-    </div>
-    <form id="search" role="search">
-      <label class="sr-only" id="query-label" for="query">Suchbegriff</label>
-      <span class="search-icon" aria-hidden="true"></span>
-      <input id="query" type="search" autocomplete="off" placeholder="z. B. Debanding oder Dolby Vision" autofocus>
-    </form>
-    <div class="dialog-results">
-      <p id="status" role="status"></p>
-      <button id="retry" class="secondary-button" type="button" hidden>Erneut laden</button>
-      <ul id="results" class="results" aria-labelledby="search-heading"></ul>
-      <button id="more" class="secondary-button more" type="button" hidden>Mehr Treffer anzeigen</button>
-    </div>
-  </dialog>
 
   <noscript><p class="no-script"><a href="https://github.com/mryx007/FrankyRenderer/wiki/DE-Home">Zum GitHub-Wiki</a> · <a href="https://github.com/mryx007/FrankyRenderer/wiki">Open the GitHub wiki</a></p></noscript>
 </body>
