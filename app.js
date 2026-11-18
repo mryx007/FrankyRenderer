@@ -34,13 +34,6 @@ const groups = [
   ['Processing', 'Black-Bars-and-Zoom', 'Scaling', 'Color-Adjustment', 'Color-Management', 'HDR-and-Color-Mapping', 'Shaders'],
   ['Profiles', 'Shortcuts', 'Troubleshooting', 'Sources'],
 ];
-const colors = {
-  Home: 'violet', 'Using-the-menu': 'blue', General: 'violet', Processing: 'teal',
-  'Black-Bars-and-Zoom': 'rose', Scaling: 'blue', 'Color-Adjustment': 'amber', 'Color-Management': 'green',
-  'HDR-and-Color-Mapping': 'violet', Shaders: 'rose', Profiles: 'blue', Shortcuts: 'amber',
-  Troubleshooting: 'teal', Sources: 'green',
-};
-
 const byId = id => document.getElementById(id);
 const appPath = new URL('./', location.href).pathname;
 const article = byId('article');
@@ -149,7 +142,6 @@ function buildNavigation() {
       if (!page) continue;
       const item = element('li');
       const link = routeLink(page.title, page.id);
-      link.dataset.color = colors[slug] || 'violet';
       if (page.id === active.id) link.setAttribute('aria-current', 'page');
       item.append(link);
       list.append(item);
@@ -182,8 +174,6 @@ function convertHome(doc, page) {
     const link = name?.querySelector('a[data-route]');
     if (!link || !description) continue;
     const tile = element('div', '', 'card');
-    const url = new URL(link.href, location.href);
-    tile.dataset.color = colors[url.searchParams.get('page')] || 'violet';
     link.className = 'card-title';
     const copy = element('p');
     copy.append(...description.childNodes);
