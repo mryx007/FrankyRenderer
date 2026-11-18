@@ -6,13 +6,13 @@ const labels = {
     heading: 'Wiki durchsuchen', query: 'Suchbegriff', example: 'z. B. Debanding oder Dolby Vision',
     submit: 'Suchen', loading: 'Wiki wird geladen …', noMatches: 'Keine Treffer gefunden.',
     error: 'Das Wiki konnte nicht geladen werden.', incomplete: 'Einige Wiki-Seiten konnten nicht geladen werden.',
-    retry: 'Erneut laden', count: (shown, total) => shown < total ? `${shown} von ${total} Treffern` : `${total} Treffer`,
+    retry: 'Erneut laden', more: 'Mehr Treffer anzeigen', count: (shown, total) => shown < total ? `${shown} von ${total} Treffern` : `${total} Treffer`,
   },
   en: {
     heading: 'Search the wiki', query: 'Search term', example: 'e.g. Debanding or Dolby Vision',
     submit: 'Search', loading: 'Loading the wiki…', noMatches: 'No results found.',
     error: 'Could not load the wiki.', incomplete: 'Some wiki pages could not be loaded.',
-    retry: 'Try again', count: (shown, total) => shown < total ? `${shown} of ${total} results` : `${total} ${total === 1 ? 'result' : 'results'}`,
+    retry: 'Try again', more: 'Show more results', count: (shown, total) => shown < total ? `${shown} of ${total} results` : `${total} ${total === 1 ? 'result' : 'results'}`,
   },
 }[language];
 
@@ -21,7 +21,10 @@ const query = byId('query');
 const status = byId('status');
 const results = byId('results');
 const retry = byId('retry');
+const more = byId('more');
 const switchLanguage = byId('switch-language');
+const pageSize = 12;
+let limit = pageSize;
 let index;
 
 document.documentElement.lang = language;
@@ -31,6 +34,7 @@ byId('query-label').textContent = labels.query;
 query.placeholder = labels.example;
 byId('submit').textContent = labels.submit;
 retry.textContent = labels.retry;
+if (more) more.textContent = labels.more;
 if (language === 'en') {
   byId('wiki-link').href = `${wikiUrl}Home`;
   switchLanguage.href = './';
@@ -41,6 +45,7 @@ if (language === 'en') {
 function showResults() {
   if (!index) return;
   results.replaceChildren();
+  if (more) more.hidden = true;
   const term = query.value.trim();
   const warning = index.incomplete ? labels.incomplete : '';
   if (!term) {
@@ -48,7 +53,8 @@ function showResults() {
     return;
   }
   const matches = findResults(index.records, term, language);
-  const shown = matches.slice(0, 12);
+  const shown = matches.slice(0, limit);
+  if (more) more.hidden = shown.length === matches.length;
   const summary = shown.length ? labels.count(shown.length, matches.length) : labels.noMatches;
   status.textContent = [summary, warning].filter(Boolean).join(' ');
   for (const record of shown) {
@@ -80,10 +86,19 @@ async function load() {
   }
 }
 
-query.addEventListener('input', showResults);
+query.addEventListener('input', () => {
+  limit = pageSize;
+  showResults();
+});
 byId('search').addEventListener('submit', event => {
   event.preventDefault();
   showResults();
 });
 retry.addEventListener('click', load);
+more?.addEventListener('click', () => {
+  const previousLimit = limit;
+  limit += pageSize;
+  showResults();
+  results.children[previousLimit]?.querySelector('a')?.focus();
+});
 load();

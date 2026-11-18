@@ -64,7 +64,8 @@ button {
   cursor: pointer;
 }
 button:hover { filter: brightness(.92); }
-.retry { background: var(--surface); border-color: var(--border); color: var(--accent); }
+.retry, .more { background: var(--surface); border-color: var(--border); color: var(--accent); }
+.more { margin-top: 1rem; }
 #status { min-height: 1.55em; margin: .9rem 0; color: var(--muted); }
 .results { padding: 0; margin: 0; list-style: none; }
 .results li { padding-block: .85rem; border-bottom: 1px solid var(--border); }
