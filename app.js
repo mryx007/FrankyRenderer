@@ -199,6 +199,9 @@ function renderChapter(page, source) {
 
   for (const table of doc.content.querySelectorAll('table')) {
     const wrapper = element('div', '', 'table-wrap');
+    if (['Einstellung', 'Setting'].includes(table.tHead?.rows[0]?.cells[0]?.textContent.trim())) {
+      table.classList.add('settings-table');
+    }
     table.replaceWith(wrapper);
     wrapper.append(table);
   }

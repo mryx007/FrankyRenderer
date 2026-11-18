@@ -177,6 +177,7 @@ article :is(th, td) { padding: .55rem .68rem; border-bottom: 1px solid var(--lin
 article th { background: var(--subtle); }
 article tr:last-child td { border-bottom: 0; }
 article td:first-child { min-width: 8rem; }
+article .settings-table :is(th, td):first-child { width: 33%; }
 article .article-source { padding-top: 1.1rem; font-size: .85rem; margin-top: 1.5rem; border-top: 1px solid var(--line); color: var(--muted); }
 .loading { color: var(--muted); }
 
