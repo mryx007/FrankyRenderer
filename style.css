@@ -173,7 +173,16 @@ article summary { font-weight: 650; cursor: pointer; }
 article details[open] summary { color: var(--accent-strong); }
 .table-wrap { overflow-x: auto; margin: .85rem 0 1.15rem; border: 1px solid var(--line); border-radius: .58rem; background: var(--surface); }
 article table { width: 100%; border-collapse: collapse; text-align: left; font-size: .925rem; }
-article :is(th, td) { padding: .55rem .68rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+article :is(th, td) {
+  padding: .55rem .68rem;
+  border-bottom: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
+  vertical-align: top;
+  font-weight: 400;
+}
+article :is(th, td):last-child { border-inline-end: 0; }
+article :is(th, td:first-child) { font-weight: 700; }
+article :is(th, td) strong { font-weight: inherit; }
 article th { background: var(--subtle); }
 article tr:last-child td { border-bottom: 0; }
 article td:first-child { min-width: 8rem; }
