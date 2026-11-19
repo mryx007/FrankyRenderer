@@ -911,15 +911,6 @@ msgstr ""
 "Maximale Helligkeit erkannter Balken als Prozentsatz des decodierten "
 "Weißwerts in SDR."
 
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr "Erkennungsstabilisierung (Sekunden)"
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
-
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
@@ -4344,6 +4335,12 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#~ msgid "Detection Stability (seconds)"
+#~ msgstr "Erkennungsstabilisierung (Sekunden)"
+
+#~ msgid "Time required for a new detected bar layout to become stable."
+#~ msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
 
 #~ msgid "Statistics in Video Area"
 #~ msgstr "Statistik im Bildbereich"

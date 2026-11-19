@@ -915,16 +915,6 @@ msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 "Luminosité maximale des bandes détectées, en pourcentage du blanc SDR décodé."
 
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr "Stabilité de détection (secondes)"
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr ""
-"Temps nécessaire pour stabiliser une nouvelle disposition de bandes détectée."
-
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
@@ -4054,6 +4044,14 @@ msgstr ""
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr ""
+
+#~ msgid "Detection Stability (seconds)"
+#~ msgstr "Stabilité de détection (secondes)"
+
+#~ msgid "Time required for a new detected bar layout to become stable."
+#~ msgstr ""
+#~ "Temps nécessaire pour stabiliser une nouvelle disposition de bandes "
+#~ "détectée."
 
 #~ msgid "Themes"
 #~ msgstr "Thèmes"
