@@ -68,6 +68,13 @@ int main()
               MotionCadenceSupported(166667, 1e7 / 60),
           "valid rounded interval without a display tick does not trigger fallback");
     Check(!MotionCadenceSupported(83333, 1e7 / 60), "120 fps on 60 Hz keeps ordinary delivery");
+    Check(MotionUsesOriginalFrame(417083, 0, 420000, 1e7 / 23.976) &&
+              MotionUsesOriginalFrame(417083, 420000, 830000, 1e7 / 23.976),
+          "rounded 23.976 fps timestamps keep original pictures at 23.976 Hz");
+    Check(!MotionUsesOriginalFrame(417083, 0, 420000, 1e7 / 24) &&
+              !MotionUsesOriginalFrame(417083, 0, 420000, 1e7 / 120) &&
+              !MotionUsesOriginalFrame(417083, 0, 830000, 1e7 / 23.976),
+          "mismatched rates and irregular intervals do not take the one-picture path");
     Check(!MotionCadenceSupported(0, 1e7 / 60) && !MotionCadenceSupported(166667, 0),
           "unknown source or display cadence keeps ordinary delivery");
     Check(!MotionIntervalValid(10, 10, 1e7 / 60) && !MotionIntervalValid(10, 9, 1e7 / 60) &&

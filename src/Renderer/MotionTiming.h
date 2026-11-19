@@ -101,6 +101,14 @@ inline bool MotionIntervalValid(LONGLONG start, LONGLONG stop, double period)
            period <= 500000;
 }
 
+// Matching cadences need one original picture per refresh. Allow timestamp
+// rounding while keeping different rates and variable intervals in the mixer.
+inline bool MotionUsesOriginalFrame(LONGLONG nominalDuration, LONGLONG start, LONGLONG stop, double period)
+{
+    return MotionIntervalValid(start, stop, period) && std::abs(nominalDuration - period) < period * .0005 &&
+           std::abs(double(stop) - double(start) - period) <= 10000;
+}
+
 // Display-synchronous Smooth Motion: every tick is bound to one display
 // refresh (absolute DXGI refresh count) and at most one tick per refresh is
 // presented, scheduled one refresh ahead of it. The reference clock and the

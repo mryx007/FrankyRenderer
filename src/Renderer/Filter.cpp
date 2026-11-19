@@ -1235,7 +1235,12 @@ HRESULT Renderer::DeliverMotion(const QueuedVideoFrame& frame,
         const double period = motionPeriod.load();
         const bool scheduled =
             MotionCadenceSupported(frame.nominalDuration / count, period) && MotionIntervalValid(start, stop, period);
-        const auto ticks = scheduled ? MotionTicks(start, stop, period) : std::vector<MotionTick>{};
+        const bool original = MotionUsesOriginalFrame(frame.nominalDuration / count, start, stop, period);
+        std::vector<MotionTick> ticks;
+        if (original)
+            ticks.push_back({start, stop, 0, 1});
+        else if (scheduled)
+            ticks = MotionTicks(start, stop, period);
         if (!scheduled)
         {
             // Unknown cadence, faster source, or invalid timestamps: ordinary delivery.
@@ -1263,7 +1268,9 @@ HRESULT Renderer::DeliverMotion(const QueuedVideoFrame& frame,
                     frame, past, future, which, after, tick.start, tick.stop, tick.position, tick.duration, afterNext));
                 if (!output)
                     return E_OUTOFMEMORY;
-                static_cast<FieldSample*>(output.Get())->temporal = temporal;
+                auto* motion = static_cast<FieldSample*>(output.Get());
+                motion->mixFrames = !original;
+                motion->temporal = temporal;
                 HRESULT hr = CBaseVideoRenderer::Receive(output.Get());
                 if (FAILED(hr))
                     return hr;
@@ -2092,8 +2099,8 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
     bool hardware = false;
     if (field)
     {
-        hr = field->motion
-                 ? backend.SelectMix(field->frame.id,
+        const bool mix = field->motion && field->mixFrames;
+        hr = mix ? backend.SelectMix(field->frame.id,
                                      field->previous,
                                      field->next,
                                      field->field,

@@ -28,6 +28,7 @@ class FieldSample final : public IMediaSample
     uint64_t previous = 0, next = 0;
     pl_field field;
     bool motion = false, surplus = false, refreshLocked = false;
+    bool mixFrames = true;
     bool ahead = false; // without Smooth Motion: rendered ahead, handed over at presentQpc
     int64_t presentQpc = 0, deadlineQpc = 0;
     int lead = 0;

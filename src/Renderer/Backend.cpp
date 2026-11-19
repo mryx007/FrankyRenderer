@@ -256,6 +256,7 @@ struct PlaceboBackend::State
     GpuMeasurement renderGpu;
     uint64_t traceGpuCount = 0, traceSummary = 0, traceFrames = 0;
     double traceCpuMax = 0, traceGpuMax = 0;
+    uint64_t traceMixedFrames = 0;
 
     // Opt-in diagnostics: render peaks and presentation queue every 10 s.
     void TraceRender(uint64_t now)
@@ -263,6 +264,8 @@ struct PlaceboBackend::State
         if (!TraceEnabled())
             return;
         ++traceFrames;
+        if (mixing && settings.smoothMotion)
+            ++traceMixedFrames;
         traceCpuMax = std::max(traceCpuMax, renderCpu.last);
         if (renderGpu.duration.count != traceGpuCount)
         {
@@ -273,21 +276,27 @@ struct PlaceboBackend::State
             traceSummary = now;
         if (now - traceSummary < 10000)
             return;
-        Trace("Render summary %llu frames, peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
-              "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue",
-              static_cast<unsigned long long>(traceFrames),
-              traceCpuMax,
-              traceGpuMax,
-              presentCpu.Maximum(now),
-              static_cast<unsigned long long>(traceQueued[0]),
-              static_cast<unsigned long long>(traceQueued[1]),
-              static_cast<unsigned long long>(traceQueued[2]),
-              static_cast<unsigned long long>(traceQueued[3]),
-              static_cast<unsigned long long>(driftSkips),
-              static_cast<unsigned long long>(backlog.skipped));
+        Trace(
+            "Render summary %llu frames (%llu with frame mixing), peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
+            "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue, "
+            "display %.6f Hz nominal / %.6f Hz measured",
+            static_cast<unsigned long long>(traceFrames),
+            static_cast<unsigned long long>(traceMixedFrames),
+            traceCpuMax,
+            traceGpuMax,
+            presentCpu.Maximum(now),
+            static_cast<unsigned long long>(traceQueued[0]),
+            static_cast<unsigned long long>(traceQueued[1]),
+            static_cast<unsigned long long>(traceQueued[2]),
+            static_cast<unsigned long long>(traceQueued[3]),
+            static_cast<unsigned long long>(driftSkips),
+            static_cast<unsigned long long>(backlog.skipped),
+            measuredPeriod > 0 ? 1e7 / measuredPeriod : 0.0,
+            refreshFit.Span() >= 10 ? refreshFit.Hz() : 0.0);
         std::fill(std::begin(traceQueued), std::end(traceQueued), 0);
         traceSummary = now;
         traceFrames = 0;
+        traceMixedFrames = 0;
         traceCpuMax = traceGpuMax = 0;
     }
 
@@ -3085,12 +3094,13 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
-    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
+    const bool motionScheduled = lead > 0 || (s.mixing && s.settings.smoothMotion);
+    if (timed && motionScheduled && s.SkipForBacklog(lead))
         return S_FALSE;
     // Without Smooth Motion one picture per refresh (60 fps on 60 Hz) keeps a
     // queue that once built up (start, seek) full forever, and with it a
     // delay of several refreshes. Leave one out once the queue stayed deep.
-    else if (timed && !(s.mixing && s.settings.smoothMotion) && s.SkipForBacklog(0))
+    else if (timed && !motionScheduled && s.SkipForBacklog(0))
     {
         std::lock_guard drops(s.dropsLock);
         s.drops.Skip();
