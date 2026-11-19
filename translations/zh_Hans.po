@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-15 10:02+0000\n"
-"Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-19 05:51+0000\n"
+"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -79,7 +79,7 @@ msgstr "RGB 输出级别"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr "匹配显示器和 GPU 驱动使用的 RGB 范围。"
+msgstr "匹配显示器和显卡驱动使用的 RGB 范围。"
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
