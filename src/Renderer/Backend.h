@@ -216,7 +216,8 @@ class PlaceboBackend
     void SetSourceCodec(const std::string& codec);
     // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
     void SetContentProfile(const std::wstring& label);
-    void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
+    // fps: the file's frame rate; rate: the player's playback rate.
+    void SetStatisticsInput(double fps, double rate, bool directGpu, int dropped = -1);
     // refreshLead: Smooth Motion scheduled this present on its own display
     // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
     void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);

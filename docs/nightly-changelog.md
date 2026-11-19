@@ -130,4 +130,5 @@
 - Added "Vertical Image Position" (Black Bars & Zoom): center, bottom or top; subtitles in cropped bars stay visible.
 - Fixed Smooth Motion stutter when the frame rate matches the display refresh rate.
 - Fixed stutter after the automatic display mode change.
+- Fixed display mode, Smooth Motion and Ctrl+J ignoring the player's playback speed ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

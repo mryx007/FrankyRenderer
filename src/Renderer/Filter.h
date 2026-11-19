@@ -295,6 +295,13 @@ class Renderer final : public CBaseVideoRenderer,
     // The source's frame duration. frameDuration follows the presented samples,
     // which Smooth Motion delivers at the display rate.
     std::atomic<REFERENCE_TIME> contentDuration = 0;
+    // Playback rate from the last NewSegment; a changed rate re-checks the
+    // display mode and logs the next sample durations.
+    std::atomic<double> playbackRate = 1.;
+    PlaybackClockRate clockRateDetector;
+    std::atomic<bool> resetClockRateDetector = true;
+    std::atomic<double> clockPlaybackRate = 1.;
+    std::atomic<int> rateTraceFrames = 0;
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
     bool CheckDisplayMode(ModePause* paused = nullptr);
@@ -332,6 +339,7 @@ class Renderer final : public CBaseVideoRenderer,
     // Tick of the last scheduled frame presented while running. A repaint
     // during active playback is left to the next scheduled frame.
     std::atomic<uint64_t> lastTimedPresent = 0;
+    BOOL ScheduleSample(IMediaSample*) override;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
     HRESULT ScheduleFrameOnRefresh(IMediaSample*, FieldSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
@@ -342,7 +350,7 @@ class Renderer final : public CBaseVideoRenderer,
     void ExcludeWait(int64_t begin);
     bool WaitForQpc(int64_t until, int64_t deadline);
     bool SkipForDisplay(IMediaSample* sample);
-    void NewSegment(REFERENCE_TIME);
+    void NewSegment(REFERENCE_TIME, double rate);
     void ToggleStatistics();
     // Runs a keyboard shortcut (Shortcuts::Action) on the window thread.
     void RunShortcut(int action);

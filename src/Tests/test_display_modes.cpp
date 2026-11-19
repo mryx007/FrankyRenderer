@@ -65,6 +65,13 @@ int main()
         // A 25 fps AvgTimePerFrame of 400000 and a 23.976 one of 417083 or 417084.
         Check(Pick(tv, 1e7 / 417083) == 0 && Pick(tv, 1e7 / 417084) == 0, "rounded 23.976 durations");
         Check(Pick(tv, 1e7 / 400000) == 2, "rounded 25 fps duration");
+        // Playback rate (#43): the mode follows the rate the display receives.
+        const auto played = [](double duration, double rate) { return 1e7 / (duration / rate); };
+        Check(Pick(L"2160p23, 2160p59, 2160p60", played(417083, 1.25)) == 1, "23.976 fps at 1.25x -> 2160p59");
+        Check(Pick(L"23", played(417083, 1.4)) == -1 && Pick(L"23", played(417083, 1.0)) == 0,
+              "clock-driven speed change at 1.4x restores the desktop mode, then normal speed selects 23 again");
+        Check(Pick(tv, played(417083, 1.5)) == -1, "23.976 fps at 1.5x has no mode: desktop mode returns");
+        Check(Pick(tv, played(400000, 2)) == 2, "25 fps at 2x -> 2160p50");
         puts("PASS display mode list parsing and selection");
         return 0;
     }

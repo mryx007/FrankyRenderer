@@ -75,6 +75,28 @@ int main()
               !MotionUsesOriginalFrame(417083, 0, 420000, 1e7 / 120) &&
               !MotionUsesOriginalFrame(417083, 0, 830000, 1e7 / 23.976),
           "mismatched rates and irregular intervals do not take the one-picture path");
+    // Playback rate (#43): the cadence that reaches the display decides.
+    Check(PlaybackRate(1.5) == 1.5 && PlaybackRate(0) == 1 && PlaybackRate(-1) == 1 &&
+              PlaybackRate(std::nan("")) == 1 && PlaybackRate(1000) == 1 &&
+              PlaybackRate(MaxPlaybackRate) == MaxPlaybackRate && PlaybackRate(20) == 1,
+          "only a sensible forward playback rate counts");
+    Check(PlayedDuration(417083, 1.25) == 333666 && PlayedDuration(417083, 1) == 417083 && PlayedDuration(0, 2) == 0 &&
+              PlayedDuration(417083, -1) == 417083,
+          "23.976 fps at 1.25x is 29.97 fps");
+    Check(MotionCadenceSupported(PlayedDuration(166667, 1), 1e7 / 60) &&
+              !MotionCadenceSupported(PlayedDuration(166667, 1.5), 1e7 / 60),
+          "60 fps at 1.5x on 60 Hz keeps ordinary delivery");
+    Check(MotionCadenceSupported(PlayedDuration(417083, 2), 1e7 / 60), "23.976 fps at 2x still mixes on 60 Hz");
+    PlaybackClockRate clockRate;
+    Check(clockRate.Observe(0, 0) == 0 && clockRate.Observe(.75, .75) == 0 && clockRate.Observe(1.5, 1.5) == 1,
+          "the unmodified reference clock has rate 1x");
+    Check(clockRate.Observe(2.25, 2.549) == 0 && clockRate.Observe(3, 3.6) == 1.4,
+          "a 1.4x reference clock is detected independently of NewSegment");
+    Check(clockRate.Observe(3.75, 4.35) == 0 && clockRate.Observe(4.5, 5.098) == 1,
+          "returning to normal speed restores rate 1x in the presence of clock noise");
+    Check(clockRate.Observe(5.25, 6.148) == 0 && clockRate.Observe(10, 12.798) == 0 &&
+              clockRate.Observe(10.75, 13.848) == 0 && clockRate.Observe(11.5, 14.898) == 1.4,
+          "a long pause discards the pending rate estimate");
     Check(!MotionCadenceSupported(0, 1e7 / 60) && !MotionCadenceSupported(166667, 0),
           "unknown source or display cadence keeps ordinary delivery");
     Check(!MotionIntervalValid(10, 10, 1e7 / 60) && !MotionIntervalValid(10, 9, 1e7 / 60) &&

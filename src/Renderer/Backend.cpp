@@ -242,7 +242,8 @@ struct PlaceboBackend::State
     // picture with its progressive output; the statistics report this one.
     pl_field statisticsField = PL_FIELD_NONE;
     std::string sourceCodec;
-    double statisticsFps = 0;
+    // statisticsFps is the rate the display receives (file rate × playback rate).
+    double statisticsFps = 0, statisticsFileFps = 0, statisticsRate = 1;
     bool statisticsDirect = false;
     int statisticsDropped = -1;
     std::wstring statisticsText;
@@ -1263,6 +1264,9 @@ struct PlaceboBackend::State
         if (statisticsFps > 0 || period > 0)
         {
             auto& value = row(L"Timing");
+            if (statisticsFps > 0 && statisticsRate != 1)
+                value << std::setprecision(3) << statisticsFileFps << L" fps × " << std::setprecision(2)
+                      << statisticsRate << L" = ";
             if (statisticsFps > 0)
                 value << std::setprecision(3) << statisticsFps << L" fps (" << std::setprecision(2)
                       << 1000 / statisticsFps << L" ms)";
@@ -3667,11 +3671,13 @@ void PlaceboBackend::SetSourceCodec(const std::string& codec)
     }
 }
 
-void PlaceboBackend::SetStatisticsInput(double fps, bool direct, int dropped)
+void PlaceboBackend::SetStatisticsInput(double fps, double rate, bool direct, int dropped)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
-    s.statisticsFps = fps;
+    s.statisticsRate = PlaybackRate(rate);
+    s.statisticsFileFps = fps;
+    s.statisticsFps = fps * s.statisticsRate;
     s.statisticsDirect = direct;
     s.statisticsDropped = dropped;
     std::lock_guard dropGuard(s.dropsLock);

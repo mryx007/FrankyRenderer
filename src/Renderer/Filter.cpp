@@ -359,7 +359,7 @@ STDMETHODIMP DecoderPin::NewSegment(REFERENCE_TIME start, REFERENCE_TIME stop, d
     CAutoLock receive(&owner->receiveLock);
     if (owner->dv.Active() && rate != 1.0)
         return E_INVALIDARG;
-    owner->NewSegment(start);
+    owner->NewSegment(start, rate);
     return CRendererInputPin::NewSegment(start, stop, rate);
 }
 
@@ -1236,7 +1236,7 @@ HRESULT Renderer::DeliverMotion(const QueuedVideoFrame& frame,
         auto start = parity ? middle : frame.start, stop = fields && !parity ? middle : frame.stop;
         const auto which = fields ? (parity ? pl_field_other(frame.first) : frame.first) : PL_FIELD_NONE;
         const auto after = fields ? (parity ? frame.first : pl_field_other(frame.first)) : PL_FIELD_NONE;
-        const double period = motionPeriod.load();
+        const double period = motionPeriod.load() * clockPlaybackRate.load();
         const bool scheduled =
             MotionCadenceSupported(frame.nominalDuration / count, period) && MotionIntervalValid(start, stop, period);
         const bool original = MotionUsesOriginalFrame(frame.nominalDuration / count, start, stop, period);
@@ -1545,7 +1545,8 @@ HRESULT Renderer::Receive(IMediaSample* sample)
             input.frame.dvSource = source;
         input.start = start;
         input.stop = stop;
-        input.nominalDuration = current.averageDuration;
+        // Smooth Motion decides from the cadence that reaches the display.
+        input.nominalDuration = PlayedDuration(current.averageDuration, playbackRate.load());
         input.first = fields ? (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM) : PL_FIELD_NONE;
         HRESULT hr;
         ComPtr<IMediaSampleD3D11> gpu;
@@ -1605,6 +1606,24 @@ HRESULT Renderer::Receive(IMediaSample* sample)
     if (smooth)
         return DeliverQueuedMotion();
     return output.id ? DeliverFields(output, past.id, future) : S_OK;
+}
+
+BOOL Renderer::ScheduleSample(IMediaSample* sample)
+{
+    const int skipsBefore = displaySkips;
+    const BOOL scheduled = CBaseVideoRenderer::ScheduleSample(sample);
+    if (!scheduled && sample && displaySkips == skipsBefore && TraceEnabled())
+    {
+        REFERENCE_TIME start = 0, stop = 0, now = 0;
+        if (SUCCEEDED(sample->GetTime(&start, &stop)) && m_pClock && SUCCEEDED(m_pClock->GetTime(&now)))
+            Trace("Frame not scheduled: tick=%llu stream=%.3f ms late=%.3f ms duration=%.3f ms render estimate=%.3f ms",
+                  static_cast<unsigned long long>(GetTickCount64()),
+                  start / 10000.0,
+                  (now - m_tStart - start) / 10000.0,
+                  (stop - start) / 10000.0,
+                  m_trRenderAvg / 10000.0);
+    }
+    return scheduled;
 }
 
 HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* start, REFERENCE_TIME* stop)
@@ -1683,7 +1702,8 @@ bool Renderer::SkipForDisplay(IMediaSample* sample)
     }
     LARGE_INTEGER frequency = {};
     QueryPerformanceFrequency(&frequency);
-    const double refresh = period * 1e7 / frequency.QuadPart, duration = double(end - begin), at = double(begin);
+    const double refresh = period * 1e7 * clockPlaybackRate.load() / frequency.QuadPart;
+    const double duration = double(end - begin), at = double(begin);
     displayRefresh = refresh;
     if (duration > refresh * 0.95)
     {
@@ -1733,7 +1753,8 @@ HRESULT Renderer::ScheduleOnRefresh(IMediaSample* sample, REFERENCE_TIME* start,
         return decided;
     QueryPerformanceCounter(&after);
     const double qpcNow = (double(before.QuadPart) + double(after.QuadPart)) / 2;
-    const double streamNow = double(clock - m_tStart), perUnit = frequency.QuadPart / 1e7;
+    const double streamNow = double(clock - m_tStart);
+    const double perUnit = frequency.QuadPart / (1e7 * clockPlaybackRate.load());
     // The refresh this tick belongs on, from its own time stamp.
     const double dueQpc = qpcNow + (double(wanted) - streamNow) * perUnit;
     LONGLONG slot = 0;
@@ -1851,7 +1872,8 @@ HRESULT Renderer::ScheduleFrameOnRefresh(
         return decided;
     QueryPerformanceCounter(&after);
     const double qpcNow = (double(before.QuadPart) + double(after.QuadPart)) / 2;
-    const double streamNow = double(clock - m_tStart), perUnit = frequency.QuadPart / 1e7;
+    const double streamNow = double(clock - m_tStart);
+    const double perUnit = frequency.QuadPart / (1e7 * clockPlaybackRate.load());
     // A video faster than the display has chosen one frame per refresh
     // already (SkipForDisplay); each chosen frame stands for one refresh.
     const double duration = double(until - wanted) * perUnit;
@@ -2098,6 +2120,13 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         frameStart = start + segment;
         frameStop = stop + segment;
         frameDuration = stop - start;
+        // Shows whether the player shortens the time stamps at its rate.
+        if (rateTraceFrames > 0 && rateTraceFrames-- > 0)
+            Trace("Playback rate %.3f: sample start=%lld duration=%lld, file duration=%lld",
+                  playbackRate.load(),
+                  static_cast<long long>(start),
+                  static_cast<long long>(stop - start),
+                  static_cast<long long>(contentDuration.load()));
     }
     ComPtr<IMediaSampleD3D11> gpuSample;
     bool hardware = false;
@@ -2148,6 +2177,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
             hr = backend.Upload(frame, bytes, actual > 0 ? actual : sample->GetSize());
     }
     int64_t dueQpc = 0;
+    double clockRate = clockPlaybackRate.load();
     if (m_State == State_Running && m_pClock && stop > start)
     {
         REFERENCE_TIME clock = 0;
@@ -2158,12 +2188,29 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
             QueryPerformanceCounter(&after);
             QueryPerformanceFrequency(&frequency);
             // A slow clock call (the audio renderer busy) gives an inexact pair.
+            const auto readingAt = (before.QuadPart + after.QuadPart) / 2;
             if (after.QuadPart - before.QuadPart < frequency.QuadPart / 2000)
-                backend.ObserveClock((before.QuadPart + after.QuadPart) / 2, clock);
+            {
+                if (resetClockRateDetector.exchange(false))
+                    clockRateDetector.Reset();
+                const double measured = clockRateDetector.Observe(double(readingAt) / frequency.QuadPart, clock / 1e7);
+                if (measured > 0 && std::abs(measured - clockRate) >= .005)
+                {
+                    clockRate = measured;
+                    clockPlaybackRate = measured;
+                    displayDue = -1;
+                    vsyncReanchor = true;
+                    backend.ResetPresentationMeasurement();
+                    backend.ResetClockMeasurement();
+                    Trace("Playback clock rate %.4fx (NewSegment %.4fx)", measured, playbackRate.load());
+                    // Like NewSegment: stepping through rates switches the mode once.
+                    RequestModeCheck(2000);
+                }
+                backend.ObserveClock(readingAt, std::llround(double(clock) / clockRate));
+            }
             const auto delta = static_cast<REFERENCE_TIME>(m_tStart) + start - clock;
             if (std::abs(static_cast<double>(delta)) < 60e7)
-                dueQpc = (before.QuadPart + after.QuadPart) / 2 +
-                         static_cast<int64_t>(double(delta) * frequency.QuadPart / 1e7);
+                dueQpc = readingAt + static_cast<int64_t>(double(delta) * frequency.QuadPart / (1e7 * clockRate));
         }
     }
     if (sample->IsDiscontinuity() == S_OK)
@@ -2171,12 +2218,17 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         backend.ResetPresentationMeasurement();
         backend.ResetClockMeasurement();
     }
-    backend.SetPresentationTiming(
-        dueQpc, m_State == State_Running, start, field && field->refreshLocked ? field->lead : 0);
+    backend.SetPresentationTiming(dueQpc,
+                                  m_State == State_Running,
+                                  std::llround(double(start) / clockRate),
+                                  field && field->refreshLocked ? field->lead : 0);
     int dropped = 0;
     get_FramesDroppedInRenderer(&dropped);
     dropped = std::max(0, dropped - displaySkips); // skipped frames are counted apart
-    backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0, hardware, dropped);
+    backend.SetStatisticsInput(format.averageDuration > 0 ? 1e7 / format.averageDuration : 0,
+                               playbackRate.load() * clockRate,
+                               hardware,
+                               dropped);
     // A refresh-locked tick that woke after its refresh would queue behind
     // the next ones; its refresh shows the previous picture anyway.
     bool tickOnTime = true;
@@ -2512,10 +2564,20 @@ void Renderer::Repaint(const char* source)
         Trace("Repaint not presented result=%08lX", static_cast<unsigned long>(result));
 }
 
-void Renderer::NewSegment(REFERENCE_TIME start)
+void Renderer::NewSegment(REFERENCE_TIME start, double rate)
 {
     dv.ResetTimeline();
     dv.Resume();
+    resetClockRateDetector = true;
+    const double played = PlaybackRate(rate), earlier = playbackRate.exchange(played);
+    Trace("NewSegment start=%lld rate=%.3f", static_cast<long long>(start), rate);
+    if (played != earlier)
+    {
+        // Wait until the player settles: stepping 1.1, 1.2, 1.3 must not
+        // switch the display mode three times.
+        rateTraceFrames = 3;
+        RequestModeCheck(2000);
+    }
     CAutoLock guard(&m_RendererLock);
     segment = start;
     ResetFields();
@@ -2548,6 +2610,8 @@ STDMETHODIMP Renderer::Stop()
     {
         windowState = State_Stopped;
         lastTimedPresent = 0;
+        clockPlaybackRate = 1.;
+        resetClockRateDetector = true;
         backend.RestartPresentationAfterPause(0);
     }
     {
@@ -2572,9 +2636,10 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     const bool external = ExternalStateChange();
     backend.ResetPresentationMeasurement();
     vsyncReanchor = true;
+    resetClockRateDetector = true;
     if (windowState.load() == State_Paused && lastTimedPresent.load() && window && window->WindowExists())
     {
-        auto duration = contentDuration.load();
+        auto duration = PlayedDuration(contentDuration.load(), playbackRate.load() * clockPlaybackRate.load());
         if (deinterlacingActive)
             duration /= 2;
         if (duration >= 1e7 / 30)
@@ -3117,7 +3182,8 @@ bool Renderer::CheckDisplayMode(ModePause* paused)
     if (!paused)
         CheckWindowsHdr(config, monitor.szDevice, fullscreen);
     const auto state = windowState.load();
-    const auto duration = contentDuration.load();
+    // The rate the display receives: the file's frame rate at the playback rate.
+    const auto duration = PlayedDuration(contentDuration.load(), playbackRate.load() * clockPlaybackRate.load());
     double rate = duration > 0 ? 1e7 / double(duration) : 0;
     if (deinterlacingActive)
         rate *= 2;

@@ -87,6 +87,72 @@ inline LONGLONG MotionIntervalEnd(LONGLONG start, LONGLONG stop, LONGLONG nextSt
     return stop > start && MotionTimelineContinuous(start, stop, nextStart, nominalDuration) ? nextStart : stop;
 }
 
+// Playback rates the renderer follows, from NewSegment or the measured clock.
+constexpr double MinPlaybackRate = .05, MaxPlaybackRate = 16;
+
+// The playback rate a player reports with NewSegment (1.5 = 50 % faster).
+// Reverse, zero or absurd rates count as normal speed.
+inline double PlaybackRate(double rate)
+{
+    return std::isfinite(rate) && rate >= MinPlaybackRate && rate <= MaxPlaybackRate ? rate : 1.;
+}
+
+// A frame duration of the file as it reaches the display at that rate: at
+// 1.25x a 23.976 fps film delivers 29.97 frames per second.
+inline LONGLONG PlayedDuration(LONGLONG duration, double rate)
+{
+    return duration > 0 ? static_cast<LONGLONG>(std::llround(double(duration) / PlaybackRate(rate))) : duration;
+}
+
+// Some players change the slope of the graph clock without a NewSegment.
+// Confirm across two windows so a clock jump or jitter cannot switch modes.
+class PlaybackClockRate
+{
+    double real = 0, clock = 0, candidate = 0;
+    bool anchored = false;
+
+  public:
+    void Reset()
+    {
+        anchored = false;
+        candidate = 0;
+    }
+
+    double Observe(double now, double value)
+    {
+        const double elapsed = now - real;
+        if (!anchored || elapsed < 0 || elapsed > 2)
+        {
+            anchored = true;
+            real = now;
+            clock = value;
+            candidate = 0;
+            return 0;
+        }
+        if (elapsed < .75)
+            return 0;
+        const double rate = (value - clock) / elapsed;
+        real = now;
+        clock = value;
+        if (!std::isfinite(rate) || rate < MinPlaybackRate || rate > MaxPlaybackRate)
+        {
+            candidate = 0;
+            return 0;
+        }
+        if (!candidate || std::abs(rate - candidate) > .01)
+        {
+            candidate = rate;
+            return 0;
+        }
+        const double average = (rate + candidate) / 2;
+        candidate = rate;
+        if (std::abs(average - 1) < .005)
+            return 1;
+        const double rounded = std::round(average * 100) / 100;
+        return std::abs(average - rounded) <= .003 ? rounded : average;
+    }
+};
+
 // Decide from the stream's nominal cadence, not each rounded PTS interval.
 // A valid interval may contain no display tick; that is not a delivery failure.
 inline bool MotionCadenceSupported(LONGLONG nominalDuration, double period)
