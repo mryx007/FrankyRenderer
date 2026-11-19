@@ -840,15 +840,6 @@ msgstr "黑色阈值"
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr "检测到的最大黑边亮度，以解码后 SDR 白色的百分比表示。"
 
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr "检测稳定性 (秒)"
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr "新检测到的黑边布局达到稳定所需的时间。"
-
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
@@ -3973,6 +3964,12 @@ msgstr "高质量"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "画面最锐利。适用于独立显卡。"
+
+#~ msgid "Detection Stability (seconds)"
+#~ msgstr "检测稳定性 (秒)"
+
+#~ msgid "Time required for a new detected bar layout to become stable."
+#~ msgstr "新检测到的黑边布局达到稳定所需的时间。"
 
 #~ msgid "Statistics in Video Area"
 #~ msgstr "在视频区域内显示统计信息"
