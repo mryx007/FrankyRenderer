@@ -221,6 +221,7 @@ class PlaceboBackend
     // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
     void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
+    void RestartPresentationAfterPause(double displayPeriod);
     // Ctrl+J from zero: lost pictures, DXGI counters, averages and peaks.
     void ResetStatistics();
     // Last observed vsync (QPC, absolute refresh count) and refresh period in

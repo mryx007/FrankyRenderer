@@ -129,4 +129,5 @@
 - Added "Use Dolby Vision" (HDR): off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. On by default.
 - Added "Vertical Image Position" (Black Bars & Zoom): center, bottom or top; subtitles in cropped bars stay visible.
 - Fixed Smooth Motion stutter when the frame rate matches the display refresh rate.
+- Fixed stutter after the automatic display mode change.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

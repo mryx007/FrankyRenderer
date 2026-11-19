@@ -342,6 +342,7 @@ struct PlaceboBackend::State
     bool presentationTimed = false;
     int presentationLead = 0;
     ULONGLONG periodUpdated = 0;
+    std::atomic<double> resumeDisplayPeriod = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
     // Statistics "Clock": the reference clock and the display against real time.
@@ -434,8 +435,15 @@ struct PlaceboBackend::State
         QueryPerformanceCounter(&begin);
         pl_swapchain_swap_buffers(swapchain);
         QueryPerformanceCounter(&end);
-        presentCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
+        const auto tick = GetTickCount64();
+        const double presentMs = 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart;
+        presentCpu.Add(tick, presentMs);
         MeasurePresentation(pendingDue, pendingTimed);
+        if (pendingTimed && measuredPeriod > 0 && presentMs > 1.5 * measuredPeriod / 10000.0)
+            Trace("Slow presentation: tick=%llu took %.3f ms, refresh interval %.3f ms",
+                  static_cast<unsigned long long>(tick),
+                  presentMs,
+                  measuredPeriod / 10000.0);
         outputTextureFormat = pendingTextureFormat;
         RepaintPending();
     }
@@ -3094,6 +3102,15 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
+    const auto resumePeriod = timed ? s.resumeDisplayPeriod.exchange(0) : 0;
+    if (resumePeriod > 0 && s.swapchain)
+    {
+        // At one frame per refresh there is no spare scanout slot to drain
+        // a backed-up queue. Start the resumed stream on a fresh swapchain.
+        Trace("Restarting the presentation queue after pause at %.6f Hz", 1e7 / resumePeriod);
+        s.DestroySwapchain();
+        s.context->Flush();
+    }
     const bool motionScheduled = lead > 0 || (s.mixing && s.settings.smoothMotion);
     if (timed && motionScheduled && s.SkipForBacklog(lead))
         return S_FALSE;
@@ -3698,7 +3715,7 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
     LARGE_INTEGER now = {}, frequency = {};
     QueryPerformanceCounter(&now);
     QueryPerformanceFrequency(&frequency);
-    if (!s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
+    if (s.resumeDisplayPeriod.load() > 0 || !s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
         now.QuadPart - s.lastSyncQpc > frequency.QuadPart / 2)
         return false;
     qpc = s.lastSyncQpc;
@@ -3710,6 +3727,11 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)
 {
     state->measurementReset.fetch_or(counters ? 2u : 1u);
+}
+
+void PlaceboBackend::RestartPresentationAfterPause(double displayPeriod)
+{
+    state->resumeDisplayPeriod = displayPeriod;
 }
 
 void PlaceboBackend::ResetStatistics()

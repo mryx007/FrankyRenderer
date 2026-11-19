@@ -27,6 +27,7 @@ using Microsoft::WRL::ComPtr;
 namespace
 {
 constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
+constexpr UINT ApplyPausedDisplayModeMessage = WM_APP + 0x4b5;
 constexpr UINT_PTR ModeTimer = 0x46524d44;
 constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
 }
@@ -36,6 +37,7 @@ constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
 struct ModePause
 {
     std::atomic<bool> cancelled = false;
+    std::atomic<bool> awaitingSwitch = false;
     std::atomic<DWORD> thread = 0;
     HANDLE wake = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 
@@ -647,6 +649,8 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         SetTimer(hwnd, ModeTimer, static_cast<UINT>(w), nullptr);
         return 0;
     }
+    if (msg == ApplyPausedDisplayModeMessage)
+        return owner->CheckDisplayMode(reinterpret_cast<ModePause*>(w));
     if (msg == WM_TIMER && w == ModeTimer)
     {
         KillTimer(hwnd, ModeTimer);
@@ -2110,7 +2114,7 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
                                      field->duration,
                                      field->afterNext)
                  : backend.SelectField(field->frame.id, field->previous, field->next, field->field, field->frame.first);
-        if (SUCCEEDED(hr) && field->motion && field->temporal && motionRadius > 0)
+        if (SUCCEEDED(hr) && mix && field->temporal && motionRadius > 0)
             hr = backend.SelectTemporalMix(*field->temporal,
                                            field->frame.id,
                                            field->previous,
@@ -2541,7 +2545,11 @@ STDMETHODIMP Renderer::Stop()
     ClearFileMetadata();
     HRESULT hr = CBaseVideoRenderer::Stop();
     if (SUCCEEDED(hr))
+    {
         windowState = State_Stopped;
+        lastTimedPresent = 0;
+        backend.RestartPresentationAfterPause(0);
+    }
     {
         CAutoLock receive(&receiveLock);
         dv.ResetTimeline();
@@ -2564,6 +2572,20 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
     const bool external = ExternalStateChange();
     backend.ResetPresentationMeasurement();
     vsyncReanchor = true;
+    if (windowState.load() == State_Paused && lastTimedPresent.load() && window && window->WindowExists())
+    {
+        auto duration = contentDuration.load();
+        if (deinterlacingActive)
+            duration /= 2;
+        if (duration >= 1e7 / 30)
+        {
+            // Resume may follow the automatic fullscreen mode change. The
+            // swapchain's last measurement can still describe the old mode.
+            const double period = MonitorPeriod(window->GetWindowHWND());
+            if (period >= 1e7 / 30 && std::abs(double(duration) / period - 1) < 0.02)
+                backend.RestartPresentationAfterPause(period);
+        }
+    }
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
@@ -3063,20 +3085,27 @@ std::wstring Renderer::GraphFilters()
 
 // Runs on the window thread without renderer locks: a mode change notifies
 // every top-level window synchronously, including the player's.
-void Renderer::CheckDisplayMode()
+bool Renderer::CheckDisplayMode(ModePause* paused)
 {
     if (!window || !window->WindowExists())
-        return;
+        return false;
     ModeConfig config;
     {
         std::lock_guard lock(modeLock);
+        if (paused)
+        {
+            if (modePause.get() != paused || paused->cancelled || windowState.load() != State_Paused)
+                return false;
+        }
+        else if (modePause && modePause->awaitingSwitch && !modePause->cancelled)
+            return false;
         config = modeConfig;
     }
     const HWND video = window->GetWindowHWND(), root = GetAncestor(video, GA_ROOT);
     MONITORINFOEXW monitor = {};
     monitor.cbSize = sizeof(monitor);
     if (!GetMonitorInfoW(MonitorFromWindow(video, MONITOR_DEFAULTTONEAREST), &monitor))
-        return;
+        return false;
     RECT bounds = {};
     const bool visible = root && IsWindowVisible(video) && !IsIconic(root) && GetWindowRect(root, &bounds);
     const bool covers = visible && bounds.left <= monitor.rcMonitor.left && bounds.top <= monitor.rcMonitor.top &&
@@ -3085,7 +3114,8 @@ void Renderer::CheckDisplayMode()
     // After a resolution change the player may keep its fullscreen window at
     // the previous size; that window is still fullscreen.
     const bool fullscreen = covers || (visible && sameDisplay && EqualRect(&bounds, &modeWindow));
-    CheckWindowsHdr(config, monitor.szDevice, fullscreen);
+    if (!paused)
+        CheckWindowsHdr(config, monitor.szDevice, fullscreen);
     const auto state = windowState.load();
     const auto duration = contentDuration.load();
     double rate = duration > 0 ? 1e7 / double(duration) : 0;
@@ -3093,34 +3123,47 @@ void Renderer::CheckDisplayMode()
         rate *= 2;
     const int chosen =
         config.enabled && fullscreen && state != State_Stopped ? DisplayModes::Choose(config.modes, rate) : -1;
+    const auto delay = static_cast<DWORD>(config.delay * 1000 + .5f);
+    const bool pauseFirst = config.enabled && fullscreen && state == State_Running && delay;
     if (chosen < 0)
     {
-        if (modeSwitcher.Active())
+        if (!modeSwitcher.Active())
+            return false;
+        if (pauseFirst)
         {
-            Trace("Display mode restored: enabled=%d fullscreen=%d state=%d rate=%.3f",
-                  config.enabled,
-                  fullscreen,
-                  int(state),
-                  rate);
-            modeSwitcher.Restore();
-            refreshDirty = true;
+            PausePlayback(delay, video);
+            return false;
         }
-        return;
+        Trace("Display mode restored: enabled=%d fullscreen=%d state=%d rate=%.3f",
+              config.enabled,
+              fullscreen,
+              int(state),
+              rate);
+        modeSwitcher.Restore();
+        refreshDirty = true;
+        return true;
     }
     const auto& mode = config.modes[chosen];
     if (sameDisplay && modeSwitcher.Current() == mode)
-        return;
+        return false;
     if (!modeSwitcher.Active() && DisplayModes::Switcher::Matches(monitor.szDevice, mode))
-        return;
+        return false;
+    if (pauseFirst)
+    {
+        PausePlayback(delay, video);
+        return false;
+    }
     if (!modeSwitcher.Switch(monitor.szDevice, mode))
     {
         Trace("Display mode %ls not available on %ls", DisplayModes::Name(mode).c_str(), monitor.szDevice);
-        return;
+        return false;
     }
     modeWindow = bounds;
     refreshDirty = true;
     Trace("Display mode %ls on %ls for %.3f fps", DisplayModes::Name(mode).c_str(), monitor.szDevice, rate);
-    HoldForDisplayChange(config.delay);
+    if (!paused)
+        HoldForDisplayChange(config.delay);
+    return true;
 }
 
 void Renderer::CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen)
@@ -3165,7 +3208,7 @@ void Renderer::HoldForDisplayChange(float delay)
 
 // The pause runs on its own thread: the graph manager may be waiting on the
 // window thread (window placement) while holding the lock this call needs.
-void Renderer::PausePlayback(DWORD milliseconds)
+void Renderer::PausePlayback(DWORD milliseconds, HWND switchWindow)
 {
     ComPtr<IMediaControl> graphControl;
     if (!m_pGraph || FAILED(m_pGraph->QueryInterface(IID_PPV_ARGS(&graphControl))))
@@ -3173,6 +3216,7 @@ void Renderer::PausePlayback(DWORD milliseconds)
     auto pause = std::make_shared<ModePause>();
     if (!pause->wake)
         return;
+    pause->awaitingSwitch = switchWindow != nullptr;
 
     struct Work
     {
@@ -3180,6 +3224,7 @@ void Renderer::PausePlayback(DWORD milliseconds)
         ComPtr<IMediaControl> control;
         DWORD milliseconds;
         HMODULE module;
+        HWND switchWindow;
     };
 
     HMODULE module = nullptr;
@@ -3187,7 +3232,7 @@ void Renderer::PausePlayback(DWORD milliseconds)
     if (!GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&ModeCheckMessage), &module))
         return;
-    auto* work = new (std::nothrow) Work{pause, graphControl, milliseconds, module};
+    auto* work = new (std::nothrow) Work{pause, graphControl, milliseconds, module, switchWindow};
     if (!work)
     {
         FreeLibrary(module);
@@ -3207,11 +3252,29 @@ void Renderer::PausePlayback(DWORD milliseconds)
         work->pause->thread = GetCurrentThreadId();
         if (!work->pause->cancelled)
         {
-            Trace("Playback paused for %lu ms after the display mode change", work->milliseconds);
-            if (SUCCEEDED(work->control->Pause()) &&
-                WaitForSingleObject(work->pause->wake, work->milliseconds) == WAIT_TIMEOUT && !work->pause->cancelled)
-                work->control->Run();
+            if (work->switchWindow)
+                Trace("Pausing playback before the display mode change");
+            else
+                Trace("Playback paused for %lu ms after the display mode change", work->milliseconds);
+            if (SUCCEEDED(work->control->Pause()) && !work->pause->cancelled)
+            {
+                // The window thread rechecks the requested mode and applies it
+                // while the graph is paused. Start the settling delay after that.
+                const bool changed = !work->switchWindow || SendMessageW(work->switchWindow,
+                                                                         ApplyPausedDisplayModeMessage,
+                                                                         reinterpret_cast<WPARAM>(work->pause.get()),
+                                                                         0) != 0;
+                if (work->switchWindow && changed)
+                    Trace("Display mode applied while paused; waiting %lu ms before resuming", work->milliseconds);
+                if ((!changed || WaitForSingleObject(work->pause->wake, work->milliseconds) == WAIT_TIMEOUT) &&
+                    !work->pause->cancelled)
+                {
+                    work->pause->awaitingSwitch = false;
+                    work->control->Run();
+                }
+            }
         }
+        work->pause->awaitingSwitch = false;
         work->pause->thread = 0;
         work.reset();
         if (SUCCEEDED(com))

@@ -297,11 +297,11 @@ class Renderer final : public CBaseVideoRenderer,
     std::atomic<REFERENCE_TIME> contentDuration = 0;
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
-    void CheckDisplayMode();
+    bool CheckDisplayMode(ModePause* paused = nullptr);
     std::wstring GraphFilters();
     void CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen);
     void HoldForDisplayChange(float delay);
-    void PausePlayback(DWORD milliseconds);
+    void PausePlayback(DWORD milliseconds, HWND switchWindow = nullptr);
     bool ExternalStateChange();
 
   public:
