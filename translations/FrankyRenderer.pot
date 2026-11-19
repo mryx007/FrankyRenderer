@@ -779,15 +779,6 @@ msgstr ""
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr ""
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr ""
-
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )

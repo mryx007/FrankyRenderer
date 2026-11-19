@@ -1760,23 +1760,19 @@ struct PlaceboBackend::State
         // frame. The caption bar still needs the original bottom padding.
         originalImage.crop.y0 = 0;
         originalImage.crop.y1 = float(description.height);
-        blackBars.Analyze(d3d,
-                          context.Get(),
-                          image,
-                          description.width,
-                          description.height,
-                          analysisSettings,
-                          &probe,
-                          relocateSubtitles);
+        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, analysisSettings, &probe);
         const RECT contentBounds = blackBars.failed
                                        ? RECT{0, 0, description.width, description.height}
                                        : blackBars.detector.ContentBounds(description.width, description.height);
         const RECT visibleBounds = blackBars.failed ? RECT{0, 0, description.width, description.height}
                                                     : blackBars.detector.Bounds(description.width, description.height);
-        const RECT pictureBounds = relocateSubtitles ? contentBounds : visibleBounds;
+        const RECT pictureBounds = contentBounds;
         probe.Next(RenderProbe::Setup);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
-        bool cropBars = autoZoom && blackBars.detector.measured;
+        // Text in a bar is shown over the cropped picture. Without that (a
+        // rotated picture) protected subtitles keep the bars.
+        bool cropBars =
+            autoZoom && blackBars.detector.measured && (relocateSubtitles || !settings.blackBars.keepSubtitles);
 
         // Apply only temporary crops: stored frames and decoder references keep
         // their original geometry. Every temporal sample uses identical bounds.

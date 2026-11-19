@@ -131,4 +131,6 @@
 - Fixed Smooth Motion stutter when the frame rate matches the display refresh rate.
 - Fixed stutter after the automatic display mode change.
 - Fixed display mode, Smooth Motion and Ctrl+J ignoring the player's playback speed ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
+- Changed black bar detection: the crop is measured once and afterwards only grows (IMAX scenes); dark scenes no longer change it. "Detection Stability" was removed.
+- Fixed an empty black bar briefly appearing at the top with burned-in subtitles.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

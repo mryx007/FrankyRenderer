@@ -668,7 +668,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DChoice(
             s, L"Zoom Mode", &s.blackBars.zoom, {{0, L"Fit (Keep All Content)"}, {1, L"Fill (May Crop Content)"}}));
         c.controls.push_back(D2DNumber(s, L"Black Threshold", &s.blackBars.threshold, 0, 10, .01f));
-        c.controls.push_back(D2DNumber(s, L"Detection Stability (seconds)", &s.blackBars.delay, 0, 10, .01f));
     }
     {
         auto& p = page(L"Color Adjustment",

@@ -10,33 +10,22 @@
 // isolated bright border bands are treated as possible embedded text/logos.
 class BlackBarDetector
 {
-    // A larger picture or text in a bar counts only once it stayed this long
-    // over consecutive samples: a flash or an object passing the edge must
-    // not make the picture jump.
+    // The crop is measured once and then kept: it may only grow when more
+    // picture appears (IMAX scenes, a first measurement that was too tight).
+    // Dark scenes that look like bars never make it tighter afterwards.
+    // Growth and text in a bar count only once they stayed PersistMs.
     static constexpr uint64_t PersistMs = 600;
-    RECT active = {}, base = {}, candidate = {}, subtitleBounds = {}, grow = {}, text = {};
-    uint64_t since = 0, subtitleUntil = 0, growSince = 0, textSince = 0;
-    unsigned confirmations = 0, growSeen = 0, textSeen = 0;
-    bool haveBase = false;
+    // Shortly after the first measurement a stable different crop may still
+    // replace it (a bright logo in a bar at the start); afterwards it only grows.
+    static constexpr uint64_t StableMs = 2000, CorrectionMs = 30000;
+    RECT crop = {}, candidate = {}, grow = {}, text = {};
+    uint64_t since = 0, growSince = 0, lastGood = 0, settled = 0;
+    unsigned confirmations = 0, growSeen = 0;
 
     static RECT Union(const RECT& a, const RECT& b)
     {
         return {
             std::min(a.left, b.left), std::min(a.top, b.top), std::max(a.right, b.right), std::max(a.bottom, b.bottom)};
-    }
-
-    // Seen in consecutive samples for PersistMs; collects their union in area.
-    static bool Persists(RECT& area, uint64_t& first, unsigned& seen, const RECT& now, uint64_t at)
-    {
-        if (!seen)
-        {
-            area = now;
-            first = at;
-        }
-        else
-            area = Union(area, now);
-        ++seen;
-        return seen >= 2 && at - first >= PersistMs;
     }
 
     static bool Near(const RECT& a, const RECT& b, int t = 2)
@@ -52,31 +41,32 @@ class BlackBarDetector
 
     void Reset()
     {
-        active = base = candidate = subtitleBounds = grow = text = {};
-        since = subtitleUntil = growSince = textSince = 0;
-        confirmations = growSeen = textSeen = 0;
-        measured = haveBase = subtitleProtection = false;
+        crop = candidate = grow = text = {};
+        since = growSince = lastGood = settled = 0;
+        confirmations = growSeen = 0;
+        measured = subtitleProtection = false;
         samples = 0;
     }
 
-    // A seek invalidates observations in flight, not the known stream geometry.
-    // Preserve the displayed crop; reconsider candidates from the new position.
+    // A seek keeps the crop; only observations in flight are dropped.
     void Discontinuity()
     {
         candidate = {};
         since = 0;
-        confirmations = growSeen = textSeen = 0;
-        subtitleUntil = 0;
+        confirmations = growSeen = 0;
+        subtitleProtection = false;
     }
 
+    // The crop, extended over a bar while it shows text.
     RECT Bounds(int w, int h) const
     {
-        return measured ? active : RECT{0, 0, w, h};
+        return !measured ? RECT{0, 0, w, h} : subtitleProtection ? text : crop;
     }
 
+    // The movie picture without the bars.
     RECT ContentBounds(int w, int h) const
     {
-        return haveBase ? base : RECT{0, 0, w, h};
+        return measured ? crop : RECT{0, 0, w, h};
     }
 
     bool Observe(const uint8_t* pixels,
@@ -86,8 +76,7 @@ class BlackBarDetector
                  int sourceW,
                  int sourceH,
                  const BlackBarSettings& settings,
-                 uint64_t now,
-                 bool immediateSubtitles = false)
+                 uint64_t now)
     {
         ++samples;
         if (!pixels || w < 16 || h < 16 || sourceW < 16 || sourceH < 16 || pitch < size_t(w) * 4)
@@ -142,7 +131,7 @@ class BlackBarDetector
         if (bright < std::max(16, w * h / 100))
         {
             report("too little picture", RECT{});
-            confirmations = growSeen = textSeen = 0;
+            confirmations = growSeen = 0;
             return false;
         }
         // Skip short isolated bands only when separated by black space from
@@ -208,7 +197,7 @@ class BlackBarDetector
             next.bottom - next.top < sourceH / 3)
         {
             report("implausible bounds", next);
-            confirmations = growSeen = textSeen = 0;
+            confirmations = growSeen = 0;
             return false;
         }
         // Sparse title cards and small illuminated objects do not establish
@@ -220,7 +209,7 @@ class BlackBarDetector
             *std::max_element(cols.begin(), cols.end()) < contentH * .65)
         {
             report("sparse picture", next);
-            confirmations = growSeen = textSeen = 0;
+            confirmations = growSeen = 0;
             return false;
         }
         // A picture fills its bounds; text on black (end credits, title cards)
@@ -238,11 +227,12 @@ class BlackBarDetector
             if (lit < area * .4)
             {
                 report("low fill", next);
-                confirmations = growSeen = textSeen = 0;
+                confirmations = growSeen = 0;
                 return false;
             }
         }
-        const RECT old = Bounds(sourceW, sourceH);
+        const RECT old = Bounds(sourceW, sourceH), oldCrop = crop;
+        const bool wasMeasured = measured;
         if (!Near(candidate, next, tolerance))
         {
             candidate = next;
@@ -251,62 +241,66 @@ class BlackBarDetector
         }
         else
             ++confirmations;
-        if (haveBase)
+        if (!measured)
         {
-            // More picture than the crop shows: follow it only when it stays.
-            const RECT expanded = Union(base, next);
-            if (Near(base, expanded, tolerance))
-                growSeen = 0;
-            else if (Persists(grow, growSince, growSeen, expanded, now))
+            if (confirmations < 3)
             {
-                base = Union(base, grow);
-                growSeen = 0;
+                lastGood = now;
+                report("waiting for confirmation", next);
+                return false;
             }
+            crop = candidate;
+            measured = true;
+            settled = 0;
         }
-        if (confirmations >= 3 && (!haveBase || now - since >= uint64_t(settings.delay * 1000.f)))
+        else
         {
-            base = candidate;
-            haveBase = true;
-        }
-        if (!haveBase)
-        {
-            report("waiting for confirmation", next);
-            return false;
-        }
-        RECT wanted = base;
-        bool shown = false;
-        if (settings.keepSubtitles)
-        {
-            // Text in a bar is a subtitle once it stays; a flash is not.
-            const RECT seen = Union(base, visible);
-            if (Near(seen, base, tolerance))
-                textSeen = 0;
-            else if (immediateSubtitles)
+            // Playback time since the first measurement; pauses do not count.
+            settled += std::min<uint64_t>(now - lastGood, 1000);
+            if (settled < CorrectionMs && confirmations >= 3 && now - since >= StableMs &&
+                !Near(crop, candidate, tolerance))
             {
-                text = seen;
-                shown = true;
+                crop = candidate;
+                growSeen = 0;
             }
             else
-                shown = Persists(text, textSince, textSeen, seen, now);
+            {
+                // More picture than the crop shows: follow it once it stays.
+                const RECT expanded = Union(crop, next);
+                if (Near(crop, expanded, tolerance))
+                    growSeen = 0;
+                else
+                {
+                    if (!growSeen)
+                    {
+                        grow = expanded;
+                        growSince = now;
+                    }
+                    else
+                        grow = Union(grow, expanded);
+                    if (++growSeen >= 2 && now - growSince >= PersistMs)
+                    {
+                        crop = grow;
+                        growSeen = 0;
+                    }
+                }
+            }
         }
-        if (shown)
-        {
-            // A composited subtitle strip follows visibility immediately. The
-            // stability delay applies only to changes of the movie crop.
-            subtitleUntil = immediateSubtitles ? now : now + uint64_t(settings.delay * 1000.f);
-            subtitleBounds = Union(base, text);
-            wanted = subtitleBounds;
-        }
-        else if (now < subtitleUntil)
-            wanted = subtitleBounds;
-        subtitleProtection = shown || now < subtitleUntil;
-        report(subtitleProtection ? "subtitle protection" : "bars", wanted);
-        if (!measured || !Near(old, wanted, tolerance))
-        {
-            active = wanted;
-            measured = true;
-            return true;
-        }
-        return false;
+        lastGood = now;
+        // Text in a bar never changes the crop; the bar is shown over it.
+        // Light reaching only a few rows into a bar is compression noise at
+        // the picture edge, not text. Each bar is decided on its own.
+        const int reach = std::max(tolerance, sourceH / 50);
+        RECT seen = crop;
+        if (settings.keepSubtitles && crop.top - visible.top > reach)
+            seen.top = visible.top;
+        if (settings.keepSubtitles && visible.bottom - crop.bottom > reach)
+            seen.bottom = visible.bottom;
+        const bool shown = seen.top != crop.top || seen.bottom != crop.bottom;
+        if (shown && (!subtitleProtection || !Near(text, seen, tolerance)))
+            text = seen;
+        subtitleProtection = shown;
+        report(subtitleProtection ? "subtitle protection" : "bars", Bounds(sourceW, sourceH));
+        return !wasMeasured || !Near(old, Bounds(sourceW, sourceH), tolerance) || !Near(oldCrop, crop, tolerance);
     }
 };

@@ -52,7 +52,6 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
         {L"Crop Black Bars", L"Remove detected bars from the active image before fitting or zooming it."},
         {L"Zoom Mode", L"Fit keeps all active content. Fill covers the output and can crop image content."},
         {L"Black Threshold", L"Maximum detected bar brightness, as a percentage of decoded SDR white."},
-        {L"Detection Stability (seconds)", L"Time required for a new detected bar layout to become stable."},
         {L"Enable Color Adjustment",
          L"Enable the picture controls in this section. Neutral values preserve the original image."},
         {L"Brightness", L"Offset the picture's brightness. 0 preserves the original level."},
