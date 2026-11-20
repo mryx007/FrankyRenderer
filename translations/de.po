@@ -3716,9 +3716,9 @@ msgid "Different settings for videos from chosen folders."
 msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
-msgstr "Standard"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "Haupt"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
@@ -3852,7 +3852,8 @@ msgstr ""
 
 #. Setting description (Profiles > New Profile > New Profile)
 msgid "Adds a profile with neutral settings in its own tab."
-msgstr "Legt ein Profil mit neutralen Einstellungen in einem eigenen Reiter an."
+msgstr ""
+"Legt ein Profil mit neutralen Einstellungen in einem eigenen Reiter an."
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
@@ -4323,6 +4324,10 @@ msgstr "Schnell"
 msgid "For weak integrated GPUs."
 msgstr "Für leistungsschwache integrierte GPUs."
 
+#. Quality preset (header)
+msgid "Default"
+msgstr "Standard"
+
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
 msgstr "Ausgewogen. Für die meisten PCs geeignet."
@@ -4356,7 +4361,3 @@ msgstr "Schärfstes Bild. Für dedizierte GPUs."
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI-Sicherung exportiert."
-
-#. Menu text; keep %d and %s placeholders
-msgid "Main"
-msgstr "Haupt"
