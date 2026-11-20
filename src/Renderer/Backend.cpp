@@ -35,6 +35,7 @@
 #include "Renderer/DisplayBitDepth.h"
 #include <libplacebo/shaders/custom.h>
 #include <libplacebo/shaders/sampling.h>
+#include <libplacebo/shaders/dithering.h>
 #include <libplacebo/dispatch.h>
 #include <charconv>
 #include "Renderer/Trace.h"
@@ -109,6 +110,7 @@ struct PlaceboBackend::State
     // this texture, then converted as Windows converts that output.
     pl_tex floatStage = nullptr;
     pl_dispatch floatDispatch = nullptr;
+    pl_shader_obj floatDither = nullptr;
     char floatBody[1024] = {};
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
@@ -495,6 +497,8 @@ struct PlaceboBackend::State
     std::atomic<int> outputLevels = 0, outputDitherDepth = 0;
     // Auto chose an 8-bit output because the display receives 8 bits.
     std::atomic<bool> autoEightBit = false;
+    // Bits per colour Windows sends to the display (0 = unknown).
+    int displayBits = 0;
     std::recursive_mutex lock;
     std::mutex settingsLock;
     std::optional<RenderSettings> pendingSettings;
@@ -737,6 +741,7 @@ struct PlaceboBackend::State
         pl_options_free(&options);
         if (d3d)
             pl_tex_destroy(d3d->gpu, &floatStage);
+        pl_shader_obj_destroy(&floatDither);
         pl_dispatch_destroy(&floatDispatch);
         pl_renderer_destroy(&renderer);
         pl_renderer_destroy(&subtitleRenderer);
@@ -1712,7 +1717,7 @@ struct PlaceboBackend::State
     // integer signal, as sRGB times gain (Windows' SDR white / 80); HDR10 as PQ
     // BT.2020 to linear BT.709 nits / 80, colours outside BT.709 kept as
     // negative values.
-    bool ConvertFloatStage(pl_tex output, bool hdr10, float gain)
+    bool ConvertFloatStage(pl_tex output, bool hdr10, float gain, int ditherBits)
     {
         if (!floatDispatch)
             floatDispatch = pl_dispatch_create(log, d3d->gpu);
@@ -1753,6 +1758,10 @@ struct PlaceboBackend::State
             pl_dispatch_abort(floatDispatch, &sh);
             return false;
         }
+        // Dither the integer-like signal to the depth the display receives,
+        // with the chosen method (error diffusion falls back to blue noise).
+        if (ditherBits && options && options->params.dither_params)
+            pl_shader_dither(sh, ditherBits, &floatDither, options->params.dither_params);
         pl_custom_shader custom = {};
         custom.description = "16-bit float output";
         custom.input = custom.output = PL_SHADER_SIG_COLOR;
@@ -3263,6 +3272,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
         // dither to it here, rather than let the driver cut 10 bits down.
         const auto display = DisplayBitDepth::Read(MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST));
         s.autoEightBit = s.settings.outputFormat == 0 && !display.hdr && display.bits > 0 && display.bits < 10;
+        s.displayBits = display.bits;
         params.disable_10bit_sdr = s.settings.outputFormat == 1 || s.autoEightBit;
         params.color_bits = s.settings.outputFormat == 3 ? 16 : s.settings.outputFormat == 2 ? 10 : 0;
         s.swapchain = pl_d3d11_create_swapchain(s.d3d, &params);
@@ -3327,6 +3337,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     // brightness (with Windows HDR off: white 1.0), HDR10 as PQ BT.2020.
     pl_tex swapTexture = nullptr;
     float floatGain = 1;
+    int floatDitherBits = 0;
     if (target.color.transfer == PL_COLOR_TRC_SCRGB)
     {
         const auto& planeTex = target.planes[0].texture->params;
@@ -3355,6 +3366,13 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
             }
             if (!hdr && s.HdrActive())
                 floatGain = (s.SdrWhite() > 0 ? s.SdrWhite() : PL_COLOR_SDR_WHITE) / 80.f;
+            // Windows rounds the float picture to what the display receives,
+            // without dithering: the conversion pass dithers to that depth
+            // (Dither Target Bit Depth Auto, else its setting), in the signal
+            // the display gets.
+            floatDitherBits = s.settings.displayDepth ? s.settings.displayDepth : s.displayBits;
+            if (floatDitherBits < 4 || floatDitherBits >= 16)
+                floatDitherBits = 0;
         }
     }
     if (!hdr)
@@ -3416,7 +3434,12 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     QueryPerformanceCounter(&begin);
     bool rendered = s.Render(target, hdr);
     if (rendered && swapTexture)
-        rendered = s.ConvertFloatStage(swapTexture, hdr, floatGain);
+    {
+        rendered = s.ConvertFloatStage(swapTexture, hdr, floatGain, floatDitherBits);
+        // Ctrl+J: the depth the conversion dithered to.
+        if (floatDitherBits && s.options && s.options->params.dither_params)
+            s.outputDitherDepth = floatDitherBits;
+    }
     s.sdrGammaCurve = 0;
     s.outputGamma = 1;
     QueryPerformanceCounter(&end);

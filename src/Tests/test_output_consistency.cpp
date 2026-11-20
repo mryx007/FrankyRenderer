@@ -17,6 +17,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 using Microsoft::WRL::ComPtr;
@@ -79,6 +80,8 @@ struct Output
     // What the display shows: relative to SDR white (HDR on: nits); with
     // Windows HDR on as CIE XYZ, since PQ outputs use BT.2020 and scRGB BT.709.
     std::array<Rgb, PatchCount> light;
+    // Lowest and highest green sample per patch, as stored in the output.
+    std::array<double, PatchCount> lowGreen{}, highGreen{};
 };
 
 struct Case
@@ -86,6 +89,7 @@ struct Case
     std::string name;
     bool hdrSource = false;
     int hdrMode = 2;
+    bool dither = false; // the default Blue Noise dithering instead of none
     RenderSettings settings;
 };
 
@@ -127,7 +131,7 @@ Output Render(const Case& test, int outputFormat)
     s.autoHdr = false;
     s.peakDetect = false;
     s.colorAdjustment = false;
-    s.ditherMethod = 3;
+    s.ditherMethod = test.dither ? 0 : 3; // off: exact values to compare
     if (FAILED(b.SetSettings(s)) || FAILED(b.SetWindow(g_window)))
         return out;
     VideoFrame f;
@@ -178,6 +182,8 @@ Output Render(const Case& test, int outputFormat)
             for (int p = 0; p < PatchCount; ++p)
             {
                 double sum[3] = {};
+                out.lowGreen[p] = 1e9;
+                out.highGreen[p] = -1e9;
                 int n = 0;
                 for (UINT row = d.Height / 4; row < d.Height * 3 / 4; ++row)
                 {
@@ -203,6 +209,8 @@ Output Render(const Case& test, int outputFormat)
                         }
                         for (int i = 0; i < 3; ++i)
                             sum[i] += v[i];
+                        out.lowGreen[p] = std::min(out.lowGreen[p], v[1]);
+                        out.highGreen[p] = std::max(out.highGreen[p], v[1]);
                         ++n;
                     }
                 }
@@ -425,6 +433,46 @@ int main()
             if (expected && bits == 8)
                 failures += Compare(sdr, "8-bit", Render(sdr, 1), "Auto", automatic);
         }
+    }
+    // 16-bit float with Dither Target Bit Depth Auto dithers to the depth the
+    // display receives: a 50 % grey (between two codes) mixes the two
+    // neighbouring codes once Windows encodes it, instead of one value.
+    for (int bits : {8, 10})
+    {
+        Case sdr;
+        sdr.name = "SDR";
+        SetEnvironmentVariableW(L"PLACEBO_TEST_DISPLAY_BITS", bits == 8 ? L"8" : L"10");
+        sdr.dither = true;
+        const auto fp16 = Render(sdr, 3);
+        SetEnvironmentVariableW(L"PLACEBO_TEST_DISPLAY_BITS", nullptr);
+        if (!fp16.ok || fp16.hdrOn)
+        {
+            printf("SKIP 16-bit dithering on a %d-bit display        needs Windows HDR off\n", bits);
+            ++skipped;
+            continue;
+        }
+        // Every grey lands on whole codes of that depth, and greys between
+        // two codes mix both (a grey already on a code has nothing to dither).
+        const double scale = bits == 8 ? 255 : 1023;
+        bool onCodes = true;
+        int mixedPatches = 0;
+        for (int p = 0; p < PatchCount; ++p)
+        {
+            if (strncmp(Patches[p].name, "grey", 4))
+                continue;
+            const double low = SrgbEncode(fp16.lowGreen[p]) * scale, high = SrgbEncode(fp16.highGreen[p]) * scale;
+            // Half floats keep about a quarter code at 10 bits; Windows rounds to the nearest code.
+            const double slack = bits == 8 ? .05 : .3;
+            onCodes = onCodes && std::abs(low - std::round(low)) < slack && std::abs(high - std::round(high)) < slack;
+            mixedPatches += std::round(high) - std::round(low) == 1;
+        }
+        const bool mixed = mixedPatches > 0;
+        printf("%s 16-bit dithering on a %d-bit display: greys on whole codes %s, %d grey(s) mixing two codes\n",
+               onCodes && mixed ? "PASS" : "FAIL",
+               bits,
+               onCodes ? "yes" : "no",
+               mixedPatches);
+        failures += onCodes && mixed ? 0 : 1;
     }
     DestroyWindow(g_window);
     printf(
