@@ -11,7 +11,7 @@ inline const wchar_t* D2DSettingHelp(std::wstring_view name)
 
     static constexpr Entry entries[] = {
         {L"Output Texture Format",
-         L"Precision of the final output texture. Auto follows the renderer's output selection."},
+         L"Precision of the final output texture. Auto: 8-bit when the display receives 8 bits, otherwise 10-bit."},
         {L"RGB Output Levels", L"Match the RGB range used by the display and GPU driver."},
         {L"Dither Target Bit Depth", L"Dither to the actual output precision; Auto follows the output texture."},
         {L"Debanding", L"Reduce visible steps in smooth gradients. Excessive settings can remove fine detail."},
