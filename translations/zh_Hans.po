@@ -3359,9 +3359,9 @@ msgid "Different settings for videos from chosen folders."
 msgstr "为所选文件夹中的视频使用不同的设置。"
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
-msgstr "默认值"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "主配置"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
@@ -3953,6 +3953,10 @@ msgstr "快速"
 msgid "For weak integrated GPUs."
 msgstr "适用于性能较弱的集成显卡。"
 
+#. Quality preset (header)
+msgid "Default"
+msgstr "默认值"
+
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
 msgstr "均衡。适合大多数电脑。"
@@ -3984,7 +3988,3 @@ msgstr "画面最锐利。适用于独立显卡。"
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI 备份已导出。"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Main"
-msgstr "主配置"

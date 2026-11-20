@@ -3327,8 +3327,8 @@ msgid "Different settings for videos from chosen folders."
 msgstr ""
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
 msgstr ""
 
 #. Tab (Profiles)
@@ -3455,7 +3455,7 @@ msgid ""
 msgstr ""
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
+msgid "Adds a profile with neutral settings in its own tab."
 msgstr ""
 
 #. Button (Profiles > New Profile > New Profile)
@@ -3714,11 +3714,11 @@ msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
+msgid "The profile has neutral settings again."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
@@ -3917,6 +3917,10 @@ msgstr ""
 
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
+msgstr ""
+
+#. Quality preset (header)
+msgid "Default"
 msgstr ""
 
 #. Quality preset description (header)
