@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-19 05:51+0000\n"
-"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-20 23:53+0000\n"
+"Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -877,7 +877,7 @@ msgstr "放大视频时重建图像细节。\"自定义\"将复制所选滤镜�
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Use the renderer's default filter."
-msgstr "使用渲染器的默认滤镜。"
+msgstr "使用渲染器的默认滤镜"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 msgid "No filter, only use basic GPU texture sampling"
@@ -887,7 +887,7 @@ msgstr "不使用滤镜，仅使用基础 GPU 纹理采样"
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Configure a custom filter using the controls below."
-msgstr "使用下方控件配置自定义滤镜。"
+msgstr "使用下方控件配置自定义滤镜"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
