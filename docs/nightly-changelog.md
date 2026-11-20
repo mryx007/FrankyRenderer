@@ -131,4 +131,5 @@
 - Fixed stutter with Smooth Motion at a matching frame rate and after the display mode change.
 - Fixed the player's playback speed being ignored ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
 - Changed: black bars are detected once and then only grow.
+- Fixed frame stepping (Ctrl+Right / Ctrl+Left) in MPC-HC and MPC-BE.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

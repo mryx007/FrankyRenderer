@@ -1050,6 +1050,9 @@ STDMETHODIMP Renderer::NonDelegatingQueryInterface(REFIID id, void** out)
         return GetInterface(static_cast<IPlaceboDiagnostics*>(this), out);
     if (id == __uuidof(IExFilterConfig))
         return GetInterface(static_cast<IExFilterConfig*>(this), out);
+    // The graph's IVideoFrameStep asks the renderer through this (frame stepping).
+    if (id == IID_IKsPropertySet)
+        return GetInterface(static_cast<IKsPropertySet*>(this), out);
     // Some hosts negotiate against the filter object instead of its input pin.
     // Both return the same decoder configuration and share its device lifetime.
     if (id == __uuidof(ID3D11DecoderConfiguration) || id == __uuidof(ID3D11DecoderTextureConfiguration))
@@ -1635,6 +1638,14 @@ HRESULT Renderer::ShouldDrawSampleNow(IMediaSample* sample, REFERENCE_TIME* star
     //
     // A video faster than the display chooses its frames first, so the
     // frames between them count as skipped, not as late drops.
+    // A step is complete and the graph is about to pause: the next picture
+    // waits; Pause cancels its wait and Run schedules it again.
+    if (stepHeld && m_State == State_Running)
+    {
+        *start += 10000000;
+        *stop = std::max(*stop, *start + 1);
+        return S_FALSE;
+    }
     ComPtr<IMediaSample> fieldInterface;
     sample->QueryInterface(IID_InternalFieldSample, reinterpret_cast<void**>(fieldInterface.GetAddressOf()));
     const auto field = fieldInterface ? static_cast<FieldSample*>(fieldInterface.Get()) : nullptr;
@@ -1964,6 +1975,9 @@ void Renderer::OnReceiveFirstSample(IMediaSample* sample)
     // The base renderer holds a paused sample until Run or the next flush.
     // Present its preview before that wait, including after a paused seek.
     SetPreviewed(nullptr);
+    // After a frame step the stepped frame stays; this one shows on Run.
+    if (stepHeld)
+        return;
     const HRESULT hr = DoRenderSample(sample);
     if (FAILED(hr))
         Trace("Paused preview failed result=%08lX", static_cast<unsigned long>(hr));
@@ -2268,6 +2282,8 @@ HRESULT Renderer::DoRenderSample(IMediaSample* sample)
         hr = backend.Present();
     if (hr == S_OK && m_State == State_Running)
         lastTimedPresent = GetTickCount64();
+    if (hr == S_OK)
+        CountStep(field, m_State == State_Running);
     if (TraceEnabled())
     {
         // Opt-in diagnostics: name the moment a drop, repeat or glitch appears.
@@ -2585,6 +2601,7 @@ void Renderer::NewSegment(REFERENCE_TIME start, double rate)
 
 HRESULT Renderer::BeginFlush()
 {
+    stepHeld = false;
     SetPreviewed(nullptr);
     ClearFileMetadata();
     return CBaseVideoRenderer::BeginFlush();
@@ -2603,6 +2620,8 @@ STDMETHODIMP Renderer::Stop()
     if (ExternalStateChange())
         modeHoldUntil = 0;
     dv.Cancel();
+    stepRemaining = 0;
+    stepHeld = false;
     SetPreviewed(nullptr);
     ClearFileMetadata();
     HRESULT hr = CBaseVideoRenderer::Stop();
@@ -2651,6 +2670,8 @@ STDMETHODIMP Renderer::Run(REFERENCE_TIME start)
                 backend.RestartPresentationAfterPause(period);
         }
     }
+    // The picture held after a frame step is due now (playing or the next step).
+    stepHeld = false;
     HRESULT hr = CBaseVideoRenderer::Run(start);
     Trace("Renderer base run returned result=%08lX", static_cast<unsigned long>(hr));
     if (SUCCEEDED(hr))
@@ -2690,6 +2711,68 @@ STDMETHODIMP Renderer::Pause()
         window->DoShowWindow(SW_SHOWNOACTIVATE);
     RequestModeCheck();
     return hr;
+}
+
+// A picture was presented. While stepping, each new source frame shown while
+// running counts once: both fields of a frame and all its Smooth Motion ticks
+// share one frame.
+void Renderer::CountStep(const FieldSample* field, bool running)
+{
+    const bool newFrame = !field || field->frame.id != stepFrame;
+    if (field)
+        stepFrame = field->frame.id;
+    if (!running || !newFrame || stepRemaining.load() <= 0)
+        return;
+    if (--stepRemaining == 0)
+    {
+        stepHeld = true;
+        Trace("Frame step complete");
+        NotifyEvent(EC_STEP_COMPLETE, FALSE, 0);
+    }
+}
+
+STDMETHODIMP Renderer::Set(REFGUID set, DWORD id, LPVOID, DWORD, LPVOID data, DWORD bytes)
+{
+    if (set != AM_KSPROPSETID_FrameStep)
+        return E_PROP_SET_UNSUPPORTED;
+    switch (id)
+    {
+    case AM_PROPERTY_FRAMESTEP_STEP:
+    {
+        if (!data || bytes < sizeof(AM_FRAMESTEP_STEP))
+            return E_INVALIDARG;
+        const auto frames = static_cast<const AM_FRAMESTEP_STEP*>(data)->dwFramesToStep;
+        if (!frames || frames > 0x7fffffff)
+            return E_INVALIDARG;
+        Trace("Frame step requested: %lu", static_cast<unsigned long>(frames));
+        stepRemaining = static_cast<long>(frames);
+        return S_OK;
+    }
+    case AM_PROPERTY_FRAMESTEP_CANCEL:
+        stepRemaining = 0;
+        return S_OK;
+    case AM_PROPERTY_FRAMESTEP_CANSTEP:
+    case AM_PROPERTY_FRAMESTEP_CANSTEPMULTIPLE:
+        return S_OK;
+    }
+    return E_PROP_ID_UNSUPPORTED;
+}
+
+STDMETHODIMP Renderer::Get(REFGUID set, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*)
+{
+    return set == AM_KSPROPSETID_FrameStep ? E_PROP_ID_UNSUPPORTED : E_PROP_SET_UNSUPPORTED;
+}
+
+STDMETHODIMP Renderer::QuerySupported(REFGUID set, DWORD id, DWORD* support)
+{
+    if (!support)
+        return E_POINTER;
+    if (set != AM_KSPROPSETID_FrameStep)
+        return E_PROP_SET_UNSUPPORTED;
+    if (id < AM_PROPERTY_FRAMESTEP_STEP || id > AM_PROPERTY_FRAMESTEP_CANSTEPMULTIPLE)
+        return E_PROP_ID_UNSUPPORTED;
+    *support = KSPROPERTY_SUPPORT_SET;
+    return S_OK;
 }
 
 HRESULT Renderer::OnStartStreaming()
@@ -3694,6 +3777,12 @@ STDMETHODIMP Renderer::Flt_GetInt64(LPCSTR field, __int64* value)
     if (!strcmp(field, "placeboShaderCacheObjects"))
     {
         *value = backend.CacheObjects();
+        return S_OK;
+    }
+    // Stream start of the picture on screen (tests of frame stepping).
+    if (!strcmp(field, "placeboFrameStart"))
+    {
+        *value = frameStart.load();
         return S_OK;
     }
     Trace("Host Flt_GetInt64 %s", field);

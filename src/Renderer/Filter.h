@@ -134,6 +134,7 @@ class Renderer final : public CBaseVideoRenderer,
                        public ISubRenderConsumer2,
                        public IPlaceboSettings,
                        public IPlaceboDiagnostics,
+                       public IKsPropertySet,
                        public CExFilterConfigImpl
 {
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
@@ -210,6 +211,14 @@ class Renderer final : public CBaseVideoRenderer,
     // per refresh: the stream time the next shown frame is due (-1: none yet).
     double displayDue = -1, displayRefresh = 0; // 100 ns units
     int displaySkips = 0;                       // in the current drop counter epoch
+    // Frame stepping (the graph's IVideoFrameStep, Ctrl+Right in MPC-HC/BE):
+    // source frames still to show. After the last one the renderer reports
+    // EC_STEP_COMPLETE and holds the next picture until Run, Stop or a flush,
+    // so the pause that follows keeps the stepped frame on screen.
+    std::atomic<long> stepRemaining = 0;
+    std::atomic<bool> stepHeld = false;
+    uint64_t stepFrame = 0; // the source frame last presented (fields and ticks share it)
+    void CountStep(const FieldSample* field, bool running);
     uint64_t surplusTicks = 0;
     unsigned lateTicks = 0;
     HANDLE refreshTimer = nullptr;
@@ -368,6 +377,10 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Pause() override;
     HRESULT OnStartStreaming() override;
     STDMETHODIMP GetPages(CAUUID*) override;
+    // IKsPropertySet: AM_KSPROPSETID_FrameStep only.
+    STDMETHODIMP Set(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD) override;
+    STDMETHODIMP Get(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*) override;
+    STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*) override;
     STDMETHODIMP SetCallback11(ISubRender11Callback*) override;
     // ISubRenderConsumer2 (SubRenderIntf.h)
     STDMETHODIMP GetBool(LPCSTR, bool*) override;
