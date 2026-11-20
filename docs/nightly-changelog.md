@@ -132,5 +132,5 @@
 - Fixed the player's playback speed being ignored ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
 - Changed: black bars are detected once and then only grow.
 - Fixed frame stepping (Ctrl+Right / Ctrl+Left) in MPC-HC and MPC-BE.
-- Changed: a new profile starts with built-in settings; "Default" is now called "Main" ([#45](https://github.com/mryx007/FrankyRenderer/issues/45)).
+- Changed: a new profile takes no settings from Main and starts fresh with the built-in settings; "Default" is now called "Main" ([#45](https://github.com/mryx007/FrankyRenderer/issues/45)). Existing profiles stay as they are. If you have a profile called "Main", rename it before updating.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
