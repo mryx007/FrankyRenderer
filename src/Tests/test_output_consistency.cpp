@@ -389,6 +389,43 @@ int main()
             failures += Compare(test, "10-bit", ten, "8-bit", eight);
         failures += Compare(test, "10-bit", ten, "16-bit", sixteen);
     }
+
+    // Auto follows the bits Windows sends to the display (SDR only): on an
+    // 8-bit display it renders and dithers 8-bit, otherwise it keeps 10-bit.
+    {
+        Case sdr;
+        sdr.name = "SDR";
+        for (int bits : {8, 10})
+        {
+            SetEnvironmentVariableW(L"PLACEBO_TEST_DISPLAY_BITS", bits == 8 ? L"8" : L"10");
+            const auto automatic = Render(sdr, 0);
+            SetEnvironmentVariableW(L"PLACEBO_TEST_DISPLAY_BITS", nullptr);
+            if (!automatic.ok)
+            {
+                printf("FAIL Auto on a %d-bit display: could not render\n", bits);
+                ++failures;
+                continue;
+            }
+            if (automatic.hdrOn)
+            {
+                printf("SKIP Auto on a %d-bit display                   needs Windows HDR off\n", bits);
+                ++skipped;
+                continue;
+            }
+            const bool eightBit =
+                automatic.format == DXGI_FORMAT_R8G8B8A8_UNORM || automatic.format == DXGI_FORMAT_B8G8R8A8_UNORM;
+            const bool expected = bits == 8 ? eightBit : automatic.format == DXGI_FORMAT_R10G10B10A2_UNORM;
+            printf("%s Auto on a %d-bit display picks a %s output\n",
+                   expected ? "PASS" : "FAIL",
+                   bits,
+                   eightBit                                            ? "8-bit"
+                   : automatic.format == DXGI_FORMAT_R10G10B10A2_UNORM ? "10-bit"
+                                                                       : "other");
+            failures += expected ? 0 : 1;
+            if (expected && bits == 8)
+                failures += Compare(sdr, "8-bit", Render(sdr, 1), "Auto", automatic);
+        }
+    }
     DestroyWindow(g_window);
     printf(
         "%s output consistency: %d difference(s), %d case(s) skipped\n", failures ? "FAIL" : "PASS", failures, skipped);

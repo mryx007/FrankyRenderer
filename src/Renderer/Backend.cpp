@@ -32,6 +32,7 @@
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
 #include "Renderer/SdrWhiteLevel.h"
+#include "Renderer/DisplayBitDepth.h"
 #include <libplacebo/shaders/custom.h>
 #include <libplacebo/shaders/sampling.h>
 #include <libplacebo/dispatch.h>
@@ -492,6 +493,8 @@ struct PlaceboBackend::State
     float actualTarget = 0;
     std::atomic<int> outputTextureFormat = 0;
     std::atomic<int> outputLevels = 0, outputDitherDepth = 0;
+    // Auto chose an 8-bit output because the display receives 8 bits.
+    std::atomic<bool> autoEightBit = false;
     std::recursive_mutex lock;
     std::mutex settingsLock;
     std::optional<RenderSettings> pendingSettings;
@@ -1258,6 +1261,8 @@ struct PlaceboBackend::State
                 value << outputDitherDepth.load() << L" bit";
             else
                 value << L"auto / float";
+            if (autoEightBit)
+                value << dot << L"8 bit display";
         }
         row(L"Window") << (window && IsZoomed(GetAncestor(window, GA_ROOT)) ? L"D3D11 maximized"
                                                                             : L"D3D11 windowed / borderless");
@@ -3253,7 +3258,12 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     {
         pl_d3d11_swapchain_params params = {};
         params.window = s.window;
-        params.disable_10bit_sdr = s.settings.outputFormat == 1;
+        // Auto: libplacebo would pick a 10-bit output whenever the GPU can.
+        // When the driver sends the display 8 bits in SDR, render 8-bit and
+        // dither to it here, rather than let the driver cut 10 bits down.
+        const auto display = DisplayBitDepth::Read(MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST));
+        s.autoEightBit = s.settings.outputFormat == 0 && !display.hdr && display.bits > 0 && display.bits < 10;
+        params.disable_10bit_sdr = s.settings.outputFormat == 1 || s.autoEightBit;
         params.color_bits = s.settings.outputFormat == 3 ? 16 : s.settings.outputFormat == 2 ? 10 : 0;
         s.swapchain = pl_d3d11_create_swapchain(s.d3d, &params);
         if (!s.swapchain)
