@@ -25,6 +25,10 @@ def package_release(output, channel="stable", build_id=None):
     name = f"FrankyRenderer-{version}-x64"
     stage = output / name
     main(stage)
+    # The settings window shows a build label; a stable package shows the version alone.
+    test_label = re.compile(rb"T\x00e\x00s\x00t\x00 \x00[0-9]\x00")
+    if channel == "stable" and test_label.search((stage / "FrankyRenderer.ax").read_bytes()):
+        raise ValueError("FrankyRenderer.ax was built as a test build; build it with FRANKY_CHANNEL=stable")
     if channel == "nightly":
         instructions = stage / "INSTALL.txt"
         with instructions.open("a", encoding="utf-8") as stream:
