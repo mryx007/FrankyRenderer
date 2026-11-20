@@ -319,8 +319,18 @@ int main()
     wc.hInstance = GetModuleHandleW(nullptr);
     wc.lpszClassName = L"FrankyOutputConsistencyTest";
     RegisterClassW(&wc);
-    g_window = CreateWindowExW(
-        0, wc.lpszClassName, L"Output consistency", WS_POPUP, 0, 0, Width, Height, nullptr, nullptr, wc.hInstance, nullptr);
+    g_window = CreateWindowExW(0,
+                               wc.lpszClassName,
+                               L"Output consistency",
+                               WS_POPUP,
+                               0,
+                               0,
+                               Width,
+                               Height,
+                               nullptr,
+                               nullptr,
+                               wc.hInstance,
+                               nullptr);
     if (!g_window)
         return 1;
 
@@ -380,6 +390,7 @@ int main()
         failures += Compare(test, "10-bit", ten, "16-bit", sixteen);
     }
     DestroyWindow(g_window);
-    printf("%s output consistency: %d difference(s), %d case(s) skipped\n", failures ? "FAIL" : "PASS", failures, skipped);
+    printf(
+        "%s output consistency: %d difference(s), %d case(s) skipped\n", failures ? "FAIL" : "PASS", failures, skipped);
     return failures ? 1 : 0;
 }
