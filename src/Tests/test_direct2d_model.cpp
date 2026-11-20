@@ -781,6 +781,49 @@ int wmain()
                 host->SelectProfile(ContentProfiles::DefaultName);
                 Require(host->m_editing.empty() && s.saturation == normal, "Default shows the normal settings");
                 Require(ContentProfiles::Preview(L"") == ContentProfiles::DefaultName, "video previews the choice");
+                // #45: a new profile starts with built-in values and keeps them
+                // when Main changes; its reset arrow returns to the built-in value.
+                {
+                    auto control = [&](const wchar_t* id) -> D2DControl*
+                    {
+                        for (auto& page : host->m_pages)
+                            for (auto& card : page.cards)
+                                for (auto& c : card.controls)
+                                    if (c.id == id)
+                                        return &c;
+                        return nullptr;
+                    };
+                    const PlaceboSettings fresh;
+                    s.brightness = .5f;
+                    host->Changed();
+                    host->Preview();
+                    Require(host->m_base.brightness == .5f, "Main keeps its brightness");
+                    ProfilePage::Create();
+                    host->Changed();
+                    const auto created = host->m_editing;
+                    Require(!created.empty() && s.brightness == fresh.brightness,
+                            "a new profile starts with the built-in brightness");
+                    host->SelectProfile(ContentProfiles::DefaultName);
+                    host->ResetControl(*control(L"Brightness"));
+                    host->Changed();
+                    host->Preview();
+                    Require(host->m_base.brightness == fresh.brightness, "reset in Main returns to built-in");
+                    s.brightness = .3f;
+                    host->Changed();
+                    host->Preview();
+                    host->SelectProfile(created);
+                    Require(s.brightness == fresh.brightness, "Main's later change does not reach the new profile");
+                    s.brightness = .2f;
+                    host->Changed();
+                    host->Preview();
+                    host->ResetControl(*control(L"Brightness"));
+                    host->Changed();
+                    host->Preview();
+                    Require(s.brightness == fresh.brightness, "reset in a profile returns to the built-in value");
+                    host->SelectProfile(ContentProfiles::DefaultName);
+                    Require(s.brightness == .3f, "Main keeps its own value");
+                    puts("PASS new profile starts neutral and stays apart from Main (#45)");
+                }
                 SetEnvironmentVariableW(L"APPDATA", appData);
                 std::filesystem::remove_all(folder);
             }

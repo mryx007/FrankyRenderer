@@ -1499,7 +1499,7 @@ struct PlaceboBackend::State
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
         }
-        row(L"Profile") << (contentProfile.empty() ? L"Default" : contentProfile);
+        row(L"Profile") << (contentProfile.empty() ? L"Main" : contentProfile);
         // Which 3D LUT applies: the configured one or the one from the video's folder.
         if (settings.lutEnabled && colors && colors->lut)
             row(L"3D LUT") << std::filesystem::path(settings.lutPath).filename().wstring();

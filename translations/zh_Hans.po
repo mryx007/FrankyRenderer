@@ -3489,8 +3489,8 @@ msgid ""
 msgstr "为所选文件夹中的视频提供单独的设置，例如为动画使用不同的缩放。"
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr "在单独的标签页中添加一个空配置文件。"
+msgid "Adds a profile with neutral settings in its own tab."
+msgstr "在单独的标签页中添加一个使用中性设置的配置文件。"
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
@@ -3748,12 +3748,12 @@ msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr "菜单现在显示“%s”。所有页面上的更改都会保存到此配置文件。"
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr "删除配置文件“%s”的所有设置？之后它将与默认值相同。"
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
+msgstr "将配置文件“%s”的所有设置重置为中性值？"
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr "配置文件已恢复为与默认值相同。"
+msgid "The profile has neutral settings again."
+msgstr "配置文件已恢复为中性设置。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
@@ -3984,3 +3984,7 @@ msgstr "画面最锐利。适用于独立显卡。"
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI 备份已导出。"
+
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "主配置"

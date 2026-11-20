@@ -3851,8 +3851,8 @@ msgstr ""
 "Skalierung für Anime."
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr "Legt ein leeres Profil in einem eigenen Reiter an."
+msgid "Adds a profile with neutral settings in its own tab."
+msgstr "Legt ein Profil mit neutralen Einstellungen in einem eigenen Reiter an."
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
@@ -4113,13 +4113,12 @@ msgstr ""
 "Das Menü zeigt jetzt „%s“. Änderungen auf allen Seiten gehen ins Profil."
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr ""
-"Alle Einstellungen des Profils „%s“ entfernen? Es entspricht dann Standard."
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
+msgstr "Alle Einstellungen des Profils „%s“ auf neutrale Werte zurücksetzen?"
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr "Das Profil entspricht wieder Standard."
+msgid "The profile has neutral settings again."
+msgstr "Das Profil hat wieder neutrale Einstellungen."
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
@@ -4357,3 +4356,7 @@ msgstr "Schärfstes Bild. Für dedizierte GPUs."
 
 #~ msgid "INI backup exported."
 #~ msgstr "INI-Sicherung exportiert."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "Haupt"

@@ -2440,7 +2440,7 @@ void Renderer::RunShortcut(int index)
     }
     else if (action == Action::Profile)
     {
-        // By folder -> Default -> each profile -> by folder, for this file only.
+        // By folder -> Main -> each profile -> by folder, for this file only.
         const auto profiles = ContentProfiles::Load();
         std::vector<std::wstring> order{L"", ContentProfiles::DefaultName};
         for (const auto& profile : profiles)
@@ -2454,7 +2454,7 @@ void Renderer::RunShortcut(int index)
             current = settings;
         }
         backend.SetSettings(BackendSettings(Effective(current)));
-        const auto shown = contentProfile.name.empty() ? Tr(L"Default") : contentProfile.name;
+        const auto shown = contentProfile.name.empty() ? Tr(L"Main") : contentProfile.name;
         message = Tr(L"Profile") + L": " + (forcedProfile.empty() ? Tr(L"Automatic") + L" (" + shown + L")" : shown);
     }
     else
@@ -3542,11 +3542,11 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
         preview = forcedProfile;
     const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
     auto next = match ? *match : ContentProfiles::Profile{};
-    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) +
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Main")) +
                                                      (forced ? L" (shortcut)" : L" (menu preview)")
                               : match                                    ? next.name
-                              : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
-                                                                         : L"Default");
+                              : !profiles.empty() && contentPath.empty() ? L"Main (file path unknown)"
+                                                                         : L"Main");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
         return false;
     contentProfile = std::move(next);
