@@ -35,6 +35,19 @@ struct OutputGammaHook
                   double(exponent),
                   offset,
                   scale);
+        return Sign();
+    }
+
+    // Linear output (16-bit float): moves black to 0 and scales the light,
+    // e.g. SDR white to Windows' SDR content brightness.
+    const pl_hook* PrepareLevels(float black, float gain)
+    {
+        sprintf_s(body, "color.rgb = (color.rgb - vec3(%.9f)) * %.9f;\n", double(black), double(gain));
+        return Sign();
+    }
+
+    const pl_hook* Sign()
+    {
         uint64_t signature = 0x4f55544741ULL;
         for (const char* c = body; *c; ++c)
             signature = (signature ^ uint8_t(*c)) * 0x100000001b3ULL;

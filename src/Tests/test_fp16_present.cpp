@@ -1,8 +1,10 @@
 // SDR video on a 16-bit float swapchain. The swapchain is scRGB (linear,
 // 1.0 = 80 nits). With Windows HDR off, the desktop shows scRGB 1.0 as the
 // display's white, so SDR white must be written as 1.0; with Windows HDR on,
-// SDR white is written at 203 nits (scRGB 203 / 80).
+// SDR white is written at Windows' SDR content brightness, as Windows shows
+// an integer SDR output (scRGB white / 80).
 #include "Renderer/Backend.h"
+#include "Renderer/SdrWhiteLevel.h"
 #include <DirectXPackedVector.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -65,6 +67,7 @@ int main()
             data[y * 64 + x] = x < 32 ? 235 : 16;
     Check(SUCCEEDED(b.Upload(f, data.data(), data.size())), "SDR source");
     bool advancedColor = false;
+    float windowsWhite = 0;
     float white = -1, black = -1;
     DXGI_FORMAT presented = DXGI_FORMAT_UNKNOWN;
     b.SetPresentProbeForTest(
@@ -106,12 +109,15 @@ int main()
                 ComPtr<IDXGIOutput6> output6;
                 DXGI_OUTPUT_DESC1 desc = {};
                 if (SUCCEEDED(output.As(&output6)) && SUCCEEDED(output6->GetDesc1(&desc)) && desc.Monitor == monitor)
+                {
                     advancedColor = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    windowsWhite = SdrWhiteLevel::Nits(desc.DeviceName);
+                }
             }
         });
     Check(SUCCEEDED(b.Present()), "present");
     Check(presented == DXGI_FORMAT_R16G16B16A16_FLOAT, "16-bit float swapchain");
-    const float expected = advancedColor ? 203.f / 80.f : 1.f;
+    const float expected = !advancedColor ? 1.f : (windowsWhite > 0 ? windowsWhite : 203.f) / 80.f;
     printf("Windows HDR %s: SDR white %.4f (expected %.4f), black %.4f\n",
            advancedColor ? "on" : "off",
            white,

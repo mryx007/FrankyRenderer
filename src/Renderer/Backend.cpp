@@ -31,6 +31,7 @@
 #include "Renderer/RenderOptions.h"
 #include "Renderer/TonalHook.h"
 #include "Renderer/OutputGammaHook.h"
+#include "Renderer/SdrWhiteLevel.h"
 #include <libplacebo/shaders/custom.h>
 #include <charconv>
 #include "Renderer/Trace.h"
@@ -98,9 +99,11 @@ struct PlaceboBackend::State
     // x100 the SDR picture should have on the display (0 = off). Output
     // gamma: power raising the encoded output to a pure-power display gamma
     // between libplacebo's fixed curves (1 = none).
+    // Output black and gain: black removed from and light scale of a linear
+    // 16-bit float output (0 and 1 = none).
     int sdrGammaCurve = 0;
-    float outputGamma = 1;
-    OutputGammaHook outputGammaHook;
+    float outputGamma = 1, outputBlack = 0, outputGain = 1;
+    OutputGammaHook outputGammaHook, outputGainHook;
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
@@ -1662,7 +1665,7 @@ struct PlaceboBackend::State
     ULONGLONG outputQueried = 0;
     HMONITOR outputMonitor = nullptr;
     bool outputHdr = false;
-    float outputPeak = 0;
+    float outputPeak = 0, outputSdrWhite = 0;
     // Set when Windows HDR was switched: read again on the next frame.
     std::atomic<bool> outputStale = false;
 
@@ -1675,7 +1678,7 @@ struct PlaceboBackend::State
         outputQueried = now;
         outputMonitor = monitor;
         outputHdr = false;
-        outputPeak = 0;
+        outputPeak = outputSdrWhite = 0;
         ComPtr<IDXGIOutput> output;
         ComPtr<IDXGIOutput6> output6;
         // unwrap returns an owned reference. Retaining it prevents replacement
@@ -1688,6 +1691,16 @@ struct PlaceboBackend::State
             return;
         outputHdr = true;
         outputPeak = std::isfinite(desc.MaxLuminance) && desc.MaxLuminance >= 80 ? desc.MaxLuminance : 0;
+        outputSdrWhite = SdrWhiteLevel::Nits(desc.DeviceName);
+    }
+
+    // How bright Windows shows SDR white in HDR mode, in nits; 0 if unknown.
+    float SdrWhite()
+    {
+        if (!swapchain)
+            return 0;
+        QueryOutput();
+        return outputSdrWhite;
     }
 
     float DisplayPeak()
@@ -2117,6 +2130,8 @@ struct PlaceboBackend::State
         // the display.
         if (outputGamma != 1 && !target.lut)
             hooks[count++] = outputGammaHook.Prepare(outputGamma, target.repr);
+        if ((outputGain != 1 || outputBlack != 0) && !target.lut)
+            hooks[count++] = outputGainHook.PrepareLevels(outputBlack, outputGain);
         const pl_hook* analysisHooks[2] = {};
         int analysisCount = 0;
         if (settings.imageAnalysis)
@@ -2421,6 +2436,8 @@ struct PlaceboBackend::State
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
                     (uint64_t(sdrGammaCurve) * 0xbf58476d1ce4e5b9ULL) ^
                     (uint64_t(outputGamma * 1e6f) * 0x2545f4914f6cdd1dULL) ^
+                    (uint64_t(outputGain * 1e6f) * 0x9fb21c651e98df25ULL) ^
+                    (uint64_t(outputBlack * 1e9f) * 0xc2b2ae3d27d4eb4fULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -3230,6 +3247,29 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
         target.color.transfer = PL_COLOR_TRC_LINEAR;
     if (!hdr)
         target.color.hdr.max_luma = s.SdrTargetNits();
+    // SDR on a linear 16-bit float output, made to look like an integer
+    // output: libplacebo leaves black at its SDR black point (1/1000 of white)
+    // where an integer output shows the display's black, and with Windows HDR
+    // on (scRGB, 1.0 = 80 nits) it puts SDR white at the target peak, while
+    // Windows shows integer SDR at its SDR content brightness.
+    if (!hdr && (target.color.transfer == PL_COLOR_TRC_SCRGB || target.color.transfer == PL_COLOR_TRC_LINEAR))
+    {
+        float black = 0, peak = 0;
+        pl_nominal_luma_params luma = {};
+        luma.color = &target.color;
+        luma.scaling = PL_HDR_NITS;
+        luma.out_min = &black;
+        luma.out_max = &peak;
+        pl_color_space_nominal_luma_ex(&luma);
+        const bool scrgb = target.color.transfer == PL_COLOR_TRC_SCRGB;
+        const float unit = scrgb ? 80.f : peak; // nits of the value 1.0
+        const float white = scrgb && s.SdrWhite() > 0 ? s.SdrWhite() : peak;
+        if (peak > black && black >= 0 && unit > 0)
+        {
+            s.outputBlack = black / unit;
+            s.outputGain = white / (peak - black);
+        }
+    }
     // Display gamma: HDR tone mapped to SDR is encoded for how the display
     // decodes. SDR only changes with gamma processing, which converts it from
     // the desired gamma to the display gamma; otherwise it stays as before.
@@ -3288,6 +3328,8 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     const bool rendered = s.Render(target, hdr);
     s.sdrGammaCurve = 0;
     s.outputGamma = 1;
+    s.outputBlack = 0;
+    s.outputGain = 1;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)
