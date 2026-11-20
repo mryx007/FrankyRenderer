@@ -285,11 +285,7 @@ inline void LoadMenuLanguage()
     wchar_t value[32] = {};
     DWORD size = sizeof(value);
     const std::wstring language =
-        RegGetValueW(
-            HKEY_CURRENT_USER, MenuAppearanceKey().c_str(), L"Language", RRF_RT_REG_SZ, nullptr, value, &size) ==
-                ERROR_SUCCESS
-            ? value
-            : L"";
+        SettingsStore::Get(MenuAppearanceKey(), L"Language", REG_SZ, value, &size) == ERROR_SUCCESS ? value : L"";
     if (language != g_menuLanguage)
     {
         g_menuLanguage = language;
@@ -304,10 +300,6 @@ inline void SetMenuLanguage(const std::wstring& language)
         return;
     g_menuLanguage = language;
     ++g_menuLanguageVersion;
-    RegSetKeyValueW(HKEY_CURRENT_USER,
-                    MenuAppearanceKey().c_str(),
-                    L"Language",
-                    REG_SZ,
-                    language.c_str(),
-                    DWORD((language.size() + 1) * sizeof(wchar_t)));
+    SettingsStore::Put(
+        MenuAppearanceKey(), L"Language", REG_SZ, language.c_str(), DWORD((language.size() + 1) * sizeof(wchar_t)));
 }

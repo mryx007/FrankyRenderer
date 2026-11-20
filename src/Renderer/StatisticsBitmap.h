@@ -23,7 +23,8 @@ class StatisticsBitmap
     pl_tex texture = nullptr; // the one shown
     int next = 0;
     std::wstring requested;
-    int width = 0, height = 0, lastViewWidth = 0, lastViewHeight = 0, requestedWidth = 0, requestedHeight = 0;
+    int width = 0, height = 0, lastViewWidth = 0, lastViewHeight = 0, requestedWidth = 0, requestedHeight = 0,
+        requestedTextScale = 0;
 
   public:
     ~StatisticsBitmap()
@@ -42,10 +43,15 @@ class StatisticsBitmap
         next = 0;
         gpu = nullptr;
         requested.clear();
-        width = height = lastViewWidth = lastViewHeight = requestedWidth = requestedHeight = 0;
+        width = height = lastViewWidth = lastViewHeight = requestedWidth = requestedHeight = requestedTextScale = 0;
     }
 
-    bool Update(pl_gpu nextGpu, const std::wstring& text, int viewWidth, int viewHeight, HWND window = nullptr)
+    bool Update(pl_gpu nextGpu,
+                const std::wstring& text,
+                int viewWidth,
+                int viewHeight,
+                HWND window = nullptr,
+                int textScale = 100)
     {
         if (gpu != nextGpu)
             Reset();
@@ -84,13 +90,15 @@ class StatisticsBitmap
                 lastViewWidth = lastViewHeight = 0;
             }
         }
-        if (text != requested || viewWidth != requestedWidth || viewHeight != requestedHeight)
+        if (text != requested || viewWidth != requestedWidth || viewHeight != requestedHeight ||
+            textScale != requestedTextScale)
         {
-            if (rasterizer.Submit(text, viewWidth, viewHeight, window))
+            if (rasterizer.Submit(text, viewWidth, viewHeight, window, textScale))
             {
                 requested = text;
                 requestedWidth = viewWidth;
                 requestedHeight = viewHeight;
+                requestedTextScale = textScale;
             }
         }
         return texture && lastViewWidth == viewWidth && lastViewHeight == viewHeight;

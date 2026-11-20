@@ -1,6 +1,9 @@
 #pragma once
 #include "Settings/Settings.h"
 #include "Settings/SettingsIni.h"
+#include "Settings/SettingsStore.h"
+#include <algorithm>
+#include <mutex>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -68,43 +71,149 @@ inline void CopyQualitySettings(const PlaceboSettings& from, PlaceboSettings& to
     to.contrastRecovery = from.contrastRecovery;
 }
 
-// Own values a preset replaced, kept for the Custom entry: one INI file per
-// display or profile in %APPDATA%\FrankyRenderer\CustomQuality.
-inline std::filesystem::path CustomQualityPath(const std::wstring& key)
+// Own values a preset replaced, kept for the Custom entry per display or
+// profile in the settings file: [Settings\CustomQuality\<key>], only the
+// settings CopyQualitySettings takes over, as "Section.key" lines.
+inline std::wstring CustomQualityPath(const std::wstring& key)
 {
-    wchar_t appData[MAX_PATH] = {};
-    const DWORD length = GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
-    if (key.empty() || !length || length >= MAX_PATH)
-        return {};
-    return std::filesystem::path(appData) / L"FrankyRenderer" / L"CustomQuality" / (key + L".ini");
+    return SettingsStore::Root() + L"\\CustomQuality\\" + key;
+}
+
+inline bool QualityEntry(const std::string& section, const std::string& key)
+{
+    static const char* const renderer[] = {"deband",
+                                           "debandIterations",
+                                           "debandThreshold",
+                                           "debandRadius",
+                                           "debandGrain",
+                                           "ditherMethod",
+                                           "ditherTemporal",
+                                           "peakDetect",
+                                           "peakPercentile",
+                                           "contrastRecovery"};
+    if (section == "Renderer")
+        return std::any_of(std::begin(renderer), std::end(renderer), [&](const char* name) { return key == name; });
+    return section == "Scaling" || (section.starts_with("Scaling.") && section != "Scaling.frame_mixer");
+}
+
+inline bool StoreCustomQuality(const std::wstring& key, const PlaceboSettings& s)
+{
+    if (key.empty())
+        return false;
+    PlaceboSettings quality;
+    CopyQualitySettings(s, quality);
+    SettingsIni::Entries entries;
+    SettingsIni::Visit(quality,
+                       [&](const std::string& section, const std::string& name, auto& value)
+                       {
+                           if (QualityEntry(section, name))
+                               entries[{section, name}] = SettingsIni::Encode(value);
+                       });
+    const auto text = SettingsIni::JoinEntries(entries);
+    SettingsStore::Node node;
+    node.values[L"Overrides"] = {REG_BINARY, std::vector<BYTE>(text.begin(), text.end())};
+    return SettingsStore::ReplaceSubtree(CustomQualityPath(key), node) == ERROR_SUCCESS;
+}
+
+// Files of earlier versions in %APPDATA%\FrankyRenderer\CustomQuality are
+// taken over once, then removed.
+inline void MoveOldCustomQuality()
+{
+    static std::once_flag once;
+    std::call_once(once,
+                   []
+                   {
+                       const auto folder = SettingsStore::Folder();
+                       const auto directory = folder.empty() ? L"" : folder + L"\\CustomQuality";
+                       std::error_code error;
+                       if (directory.empty() || !std::filesystem::is_directory(directory, error))
+                           return;
+                       std::vector<std::filesystem::path> moved;
+                       for (const auto& entry : std::filesystem::directory_iterator(directory, error))
+                       {
+                           std::error_code itemError;
+                           if (!entry.is_regular_file(itemError) || _wcsicmp(entry.path().extension().c_str(), L".ini"))
+                               continue;
+                           try
+                           {
+                               std::ifstream file(entry.path(), std::ios::binary);
+                               // Entries this version no longer knows are skipped.
+                               auto entries = SettingsIni::ReadEntries(std::string(
+                                   (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()));
+                               PlaceboSettings saved;
+                               SettingsIni::Visit(saved,
+                                                  [&](const std::string& section, const std::string& name, auto& value)
+                                                  {
+                                                      const auto found = entries.find({section, name});
+                                                      if (found == entries.end())
+                                                          return;
+                                                      try
+                                                      {
+                                                          SettingsIni::Decode(found->second, value);
+                                                      }
+                                                      catch (const std::exception&)
+                                                      {
+                                                      }
+                                                  });
+                               const auto key = entry.path().stem().wstring();
+                               if (!SettingsStore::Exists(CustomQualityPath(key)) && !StoreCustomQuality(key, saved))
+                                   continue;
+                           }
+                           catch (const std::exception&)
+                           {
+                               continue; // a broken file stays where it is
+                           }
+                           moved.push_back(entry.path());
+                       }
+                       if (!SettingsStore::Flush())
+                           return;
+                       for (const auto& path : moved)
+                           std::filesystem::remove(path, error);
+                       std::filesystem::remove(directory, error); // only when empty
+                   });
 }
 
 inline bool SaveCustomQuality(const std::wstring& key, const PlaceboSettings& s)
 {
-    const auto path = CustomQualityPath(key);
-    if (path.empty())
-        return false;
-    std::error_code error;
-    std::filesystem::create_directories(path.parent_path(), error);
-    std::wstring message;
-    return SUCCEEDED(SettingsIni::ExportText(path.c_str(), SettingsIni::Serialize(s), message));
+    MoveOldCustomQuality();
+    return StoreCustomQuality(key, s);
 }
 
+// The default settings with the kept quality values; false when none are kept.
 inline bool LoadCustomQuality(const std::wstring& key, PlaceboSettings& out)
 {
-    const auto path = CustomQualityPath(key);
-    std::ifstream file(path, std::ios::binary);
-    if (path.empty() || !file)
+    MoveOldCustomQuality();
+    if (key.empty())
         return false;
+    SettingsStore::Key stored;
+    if (SettingsStore::Open(CustomQualityPath(key), stored) != ERROR_SUCCESS)
+        return false;
+    DWORD type = 0, size = 0;
+    if (stored.Query(L"Overrides", &type, nullptr, &size) != ERROR_SUCCESS || type != REG_BINARY)
+        return false;
+    std::string text(size, '\0');
+    if (stored.Query(L"Overrides", &type, text.data(), &size) != ERROR_SUCCESS)
+        return false;
+    text.resize(size);
+    const auto entries = SettingsIni::SplitEntries(text);
+    PlaceboSettings result;
     try
     {
-        out = SettingsIni::Parse(std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()));
-        return true;
+        SettingsIni::Visit(result,
+                           [&](const std::string& section, const std::string& name, auto& value)
+                           {
+                               if (const auto found = entries.find({section, name}); found != entries.end())
+                                   SettingsIni::Decode(found->second, value);
+                           });
     }
     catch (const std::exception&)
     {
         return false;
     }
+    if (FAILED(ValidateSettings(result)))
+        return false;
+    out = result;
+    return true;
 }
 
 // PlaceboSettings::measuredQuality records where the values came from and

@@ -231,7 +231,10 @@ class PresentationMeasurement
                 ++glitches;
                 anchored = false;
             }
-            else if (late < -1)
+            // One refresh off is a picture on the other side of a refresh
+            // boundary: plan the next pictures from it, so swinging back is
+            // not counted as two refreshes late.
+            else if (late != 0)
                 anchored = false;
         }
         if (clocked && (!assessed || late <= 1))
@@ -288,13 +291,15 @@ class PresentBacklog
 
 // DirectShow restarts its raw drop counter at OnStartStreaming. Accumulate
 // increments across those source epochs instead of losing the previous total.
+// Frames left out on purpose because the video is faster than the display
+// (120 fps on 60 Hz) are counted apart as skipped; they are no fault.
 class DropMeasurement
 {
     int previous = 0;
     bool seen = false;
 
   public:
-    uint64_t total = 0;
+    uint64_t total = 0, skipped = 0;
 
     void RestartSource()
     {
@@ -303,9 +308,10 @@ class DropMeasurement
 
     void Reset()
     {
-        total = 0;
+        total = skipped = 0;
     }
 
+    // value: the renderer's drop counter without the skipped frames.
     void Observe(int value)
     {
         if (value < 0)
@@ -313,6 +319,11 @@ class DropMeasurement
         total += !seen || value < previous ? static_cast<uint64_t>(value) : static_cast<uint64_t>(value - previous);
         previous = value;
         seen = true;
+    }
+
+    void Skip()
+    {
+        ++skipped;
     }
 };
 

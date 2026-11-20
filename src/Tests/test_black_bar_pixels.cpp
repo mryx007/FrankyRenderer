@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Renderer/BlackBarDetector.h"
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -55,7 +56,6 @@ int main()
                 pixels[(y * width + x) * 4 + 3] = 255;
         BlackBarSettings settings;
         settings.enabled = TRUE;
-        settings.delay = 0;
         BlackBarDetector detector;
         detector.Observe(pixels.data(), width, height, width * 4, 640, 480, settings, 0);
         Require(!detector.measured, "alpha does not turn a black picture into content");
@@ -97,7 +97,6 @@ int main()
         };
         BlackBarSettings settings;
         settings.enabled = TRUE;
-        settings.delay = 0;
         BlackBarDetector detector;
         const auto text = credits();
         for (int sample = 0; sample < 6; ++sample)
@@ -125,7 +124,6 @@ int main()
                 pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
         BlackBarSettings settings;
         settings.enabled = TRUE;
-        settings.delay = 0;
         BlackBarDetector detector;
         for (int sample = 0; sample < 6; ++sample)
             detector.Observe(pixels.data(), width, height, width * 4, 1920, 1080, settings, sample * 200);
@@ -143,6 +141,177 @@ int main()
         const auto rightBounds = other.Bounds(1920, 1080);
         Require(other.measured && rightBounds.left == 0 && rightBounds.right == 1920, "nor its right side");
     }
+    {
+        // A film without bars whose top turns dark (a night sky growing and
+        // shrinking): one dark side is no bar, the picture must not move.
+        constexpr int width = 256, height = 128;
+        auto scene = [&](int dark)
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = dark; y < height; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        BlackBarDetector detector;
+        uint64_t now = 0;
+        bool moved = false;
+        for (int dark : {0, 0, 0, 0, 12, 11, 10, 9, 9, 9, 9, 9, 10, 11, 11, 11, 11, 11, 0, 0, 0})
+            for (int i = 0; i < 4; ++i, now += 200)
+            {
+                const auto pixels = scene(dark);
+                detector.Observe(pixels.data(), width, height, width * 4, 3840, 1920, settings, now);
+                const auto bounds = detector.Bounds(3840, 1920);
+                moved |= detector.measured && (bounds.top != 0 || bounds.bottom != 1920);
+            }
+        Require(detector.measured && !moved, "a dark top without a bottom bar is never cropped");
+        // Real bars that differ by a line or two are still cropped.
+        BlackBarDetector letterbox;
+        for (int sample = 0; sample < 4; ++sample)
+        {
+            auto pixels = scene(16);
+            for (int y = height - 15; y < height; ++y)
+                std::fill_n(pixels.begin() + y * width * 4, width * 4, uint8_t(0));
+            letterbox.Observe(pixels.data(), width, height, width * 4, 3840, 1920, settings, sample * 200);
+        }
+        const auto bars = letterbox.Bounds(3840, 1920);
+        Require(letterbox.measured && bars.top > 0 && bars.bottom < 1920, "slightly uneven letterbox bars are cropped");
+    }
+    {
+        // A flash or an object passing into a bar must not move the crop;
+        // a real change of format and a subtitle that stays must.
+        constexpr int width = 256, height = 144;
+        auto film = [&](int top, int bottom, bool flash, bool caption)
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = top; y < height - bottom; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            if (flash)
+                for (int y = 4; y < 16; ++y)
+                    for (int x = 90; x < 160; ++x)
+                        pixels[(y * width + x) * 4] = 255;
+            if (caption)
+                for (int y = height - 12; y < height - 6; ++y)
+                    for (int x = 70; x < 186; ++x)
+                        if (x % 5 < 3)
+                            pixels[(y * width + x) * 4 + 1] = 230;
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.keepSubtitles = TRUE;
+        BlackBarDetector detector;
+        const auto plain = film(18, 18, false, false), flashed = film(18, 18, true, false),
+                   captioned = film(18, 18, false, true), full = film(0, 0, false, false);
+        uint64_t now = 0;
+        auto show = [&](const std::vector<uint8_t>& pixels, int samples, uint64_t step)
+        {
+            for (int i = 0; i < samples; ++i, now += step)
+                detector.Observe(pixels.data(), width, height, width * 4, 1920, 1080, settings, now);
+        };
+        show(plain, 20, 200);
+        const auto crop = detector.Bounds(1920, 1080);
+        Require(detector.measured && crop.top > 0 && crop.bottom < 1080, "letterbox crop established");
+        auto same = [&](const RECT& a) { return std::memcmp(&a, &crop, sizeof(RECT)) == 0; };
+        show(flashed, 1, 200);
+        show(plain, 20, 200);
+        Require(same(detector.Bounds(1920, 1080)), "a flash in one sample keeps the crop");
+        show(flashed, 2, 200);
+        show(plain, 20, 200);
+        Require(same(detector.Bounds(1920, 1080)), "a flash under 0.6 s keeps the crop");
+        show(captioned, 1, 200);
+        Require(detector.subtitleProtection && detector.Bounds(1920, 1080).bottom > crop.bottom &&
+                    same(detector.ContentBounds(1920, 1080)),
+                "a subtitle shows its bar at once and leaves the crop alone");
+        show(captioned, 4, 200);
+        Require(detector.subtitleProtection && detector.Bounds(1920, 1080).bottom > crop.bottom,
+                "a subtitle that stays keeps its bar shown");
+        // Compression noise a few rows into the top bar is no text, and a
+        // subtitle in the bottom bar does not open the top one.
+        auto noisy = [&](std::vector<uint8_t> pixels)
+        {
+            for (int y = 16; y < 18; ++y)
+                for (int x = 0; x < width; x += 3)
+                    pixels[(y * width + x) * 4] = 30;
+            return pixels;
+        };
+        show(noisy(captioned), 1, 200);
+        Require(detector.subtitleProtection && detector.Bounds(1920, 1080).top == crop.top &&
+                    detector.Bounds(1920, 1080).bottom > crop.bottom,
+                "edge noise in the top bar does not open it beside a bottom subtitle");
+        show(plain, 2, 200);
+        show(noisy(plain), 1, 200);
+        Require(!detector.subtitleProtection && same(detector.Bounds(1920, 1080)), "edge noise alone shows no bar");
+        show(plain, 30, 200);
+        Require(same(detector.Bounds(1920, 1080)) && !detector.subtitleProtection, "and the crop returns after it");
+        show(full, 6, 200);
+        const auto opened = detector.Bounds(1920, 1080);
+        Require(opened.top == 0 && opened.bottom == 1080, "a real change to full height is followed");
+    }
+    {
+        // Measured once, then kept: after the first 30 s a dark scene never
+        // makes the crop tighter, more picture (IMAX) makes it larger, and it
+        // stays larger when the bars return. A seek keeps the crop.
+        constexpr int width = 256, height = 144;
+        auto film = [&](int bars)
+        {
+            std::vector<uint8_t> pixels(width * height * 4, 0);
+            for (int y = bars; y < height - bars; ++y)
+                for (int x = 0; x < width; ++x)
+                    pixels[(y * width + x) * 4] = uint8_t(60 + (x + y) % 120);
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        BlackBarDetector detector;
+        uint64_t now = 0;
+        auto show = [&](const std::vector<uint8_t>& pixels, int samples, uint64_t step = 200)
+        {
+            for (int i = 0; i < samples; ++i, now += step)
+                detector.Observe(pixels.data(), width, height, width * 4, 3840, 2160, settings, now);
+        };
+        auto equal = [](const RECT& a, const RECT& b) { return std::memcmp(&a, &b, sizeof(RECT)) == 0; };
+        const auto loose = film(10), scope = film(18), dark = film(30), imax = film(0);
+        show(loose, 3);
+        const auto first = detector.ContentBounds(3840, 2160);
+        Require(detector.measured && first.top > 0, "first crop after three matching samples");
+        show(scope, 15);
+        const auto corrected = detector.ContentBounds(3840, 2160);
+        Require(corrected.top > first.top && corrected.bottom < first.bottom,
+                "within the first 30 s a stable tighter crop replaces a loose first measurement");
+        show(scope, 150);
+        show(dark, 100);
+        Require(equal(detector.ContentBounds(3840, 2160), corrected),
+                "after 30 s a dark scene never tightens the crop");
+        // A long pause does not count as playback time for the 30 s.
+        BlackBarDetector paused;
+        paused.Observe(loose.data(), width, height, width * 4, 3840, 2160, settings, 0);
+        paused.Observe(loose.data(), width, height, width * 4, 3840, 2160, settings, 200);
+        paused.Observe(loose.data(), width, height, width * 4, 3840, 2160, settings, 400);
+        for (uint64_t at = 600000; at < 603000; at += 200)
+            paused.Observe(scope.data(), width, height, width * 4, 3840, 2160, settings, at);
+        Require(paused.ContentBounds(3840, 2160).top > first.top, "a pause does not end the correction window");
+        detector.Discontinuity();
+        show(dark, 30);
+        Require(equal(detector.ContentBounds(3840, 2160), corrected), "a seek keeps the crop");
+        show(imax, 2);
+        Require(equal(detector.ContentBounds(3840, 2160), corrected), "more picture under 0.6 s keeps the crop");
+        show(scope, 5);
+        show(imax, 5);
+        const auto opened = detector.ContentBounds(3840, 2160);
+        Require(opened.top == 0 && opened.bottom == 2160, "an IMAX scene opens the crop");
+        show(scope, 100);
+        Require(equal(detector.ContentBounds(3840, 2160), opened), "and the crop stays open when the bars return");
+        detector.Reset();
+        show(scope, 3);
+        Require(equal(detector.ContentBounds(3840, 2160), corrected), "a new file measures again");
+    }
+    puts("PASS black bars: measured once, a stable correction only in the first 30 s of playback, dark scenes never "
+         "tighten, IMAX opens and stays open, seeks keep the crop, subtitles show their bar without moving the crop, "
+         "edge noise is no text");
     puts("PASS exact scalar/SSE2 equivalence across thresholds, sizes, pitches and alpha; detector integration; "
-         "end credits; dark picture sides are not cropped");
+         "end credits; dark picture sides and a dark top alone are not cropped");
 }

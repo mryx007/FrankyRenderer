@@ -2,56 +2,60 @@
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
 #include "Renderer/DisplayModes.h"
+#include "Settings/SettingsFileFields.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <mutex>
+
+// Settings.ini shows the binary settings blocks field by field.
+static const bool g_fileFields = (SettingsFileFields::Register(), true);
 
 static std::wstring Key(const std::wstring& display = {})
 {
     return display.empty() ? DisplayProfiles::Root() : DisplayProfiles::Key(display);
 }
 
-static void Float(HKEY key, const wchar_t* name, float& value)
+static void Float(const SettingsStore::Key& key, const wchar_t* name, float& value)
 {
     DWORD type = 0, bytes = sizeof(value);
     float saved;
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(&saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_BINARY && bytes == sizeof(saved) && std::isfinite(saved))
+    if (key.Query(name, &type, reinterpret_cast<BYTE*>(&saved), &bytes) == ERROR_SUCCESS && type == REG_BINARY &&
+        bytes == sizeof(saved) && std::isfinite(saved))
         value = saved;
 }
 
-static void Bool(HKEY key, const wchar_t* name, BOOL& value)
+static void Bool(const SettingsStore::Key& key, const wchar_t* name, BOOL& value)
 {
     DWORD type = 0, bytes = sizeof(DWORD), saved;
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(&saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_DWORD && bytes == sizeof(saved))
+    if (key.Query(name, &type, reinterpret_cast<BYTE*>(&saved), &bytes) == ERROR_SUCCESS && type == REG_DWORD &&
+        bytes == sizeof(saved))
         value = !!saved;
 }
 
-template <size_t N> static void String(HKEY key, const wchar_t* name, wchar_t (&value)[N])
+template <size_t N> static void String(const SettingsStore::Key& key, const wchar_t* name, wchar_t (&value)[N])
 {
     DWORD type = 0, bytes = sizeof(value);
     wchar_t saved[N] = {};
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_SZ && bytes <= sizeof(saved) && saved[N - 1] == 0)
+    if (key.Query(name, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS && type == REG_SZ &&
+        bytes <= sizeof(saved) && saved[N - 1] == 0)
         wcscpy_s(value, saved);
 }
 
-static void Path(HKEY key, const wchar_t* name, wchar_t (&value)[1024])
+static void Path(const SettingsStore::Key& key, const wchar_t* name, wchar_t (&value)[1024])
 {
     DWORD type = 0, bytes = sizeof(value);
     wchar_t saved[1024] = {};
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS &&
-        type == REG_SZ && bytes <= sizeof(saved) && saved[1023] == 0)
+    if (key.Query(name, &type, reinterpret_cast<BYTE*>(saved), &bytes) == ERROR_SUCCESS && type == REG_SZ &&
+        bytes <= sizeof(saved) && saved[1023] == 0)
         wcscpy_s(value, saved);
 }
 
-static void LoadScaling(HKEY key, PlaceboSettings& settings)
+static void LoadScaling(const SettingsStore::Key& key, PlaceboSettings& settings)
 {
     DWORD type = 0, bytes = sizeof(ScalingSettings);
     ScalingSettings saved;
-    const LONG result = RegQueryValueExW(key, L"ScalingV1", nullptr, &type, reinterpret_cast<BYTE*>(&saved), &bytes);
+    const LONG result = key.Query(L"ScalingV1", &type, reinterpret_cast<BYTE*>(&saved), &bytes);
     if (result != ERROR_FILE_NOT_FOUND)
     {
         if (result == ERROR_SUCCESS && type == REG_BINARY && bytes == sizeof(saved) && ValidScaling(saved))
@@ -66,9 +70,9 @@ static void LoadScaling(HKEY key, PlaceboSettings& settings)
             out[i] = static_cast<char>(value[i]);
         out[i] = 0;
     };
-    if (RegQueryValueExW(key, L"Upscaler", nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+    if (key.Query(L"Upscaler", nullptr, nullptr, nullptr) == ERROR_SUCCESS)
         name(settings.upscaler, settings.scaling.filters[0].filter);
-    if (RegQueryValueExW(key, L"Downscaler", nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+    if (key.Query(L"Downscaler", nullptr, nullptr, nullptr) == ERROR_SUCCESS)
         name(settings.downscaler, settings.scaling.filters[1].filter);
     if (settings.chromaScaler)
         strcpy_s(settings.scaling.filters[2].filter, ScalerChoices[settings.chromaScaler - 1].name);
@@ -103,6 +107,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(tonal),
         FIELD(userShaders),
         FIELD(blackBars),
+        FIELD(imagePosition),
         FIELD(extras),
         // Dependent pairs first together, then individually.
         GROUP(d.kneeMinimum = s.kneeMinimum; d.kneeMaximum = s.kneeMaximum),
@@ -176,8 +181,9 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(motionThreshold),
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
+        FIELD(useDolbyVision),
         FIELD(imageAnalysis),
-        FIELD(statisticsInVideo),
+        FIELD(statisticsTextScale),
         FIELD(displayModeSwitch),
         COPY_TEXT(displayModes),
         FIELD(displayModeDelay),
@@ -206,13 +212,13 @@ PlaceboSettings LoadSettings(const std::wstring& display)
             return settings;
         wcscpy_s(settings.displayProfile, display.c_str());
     }
-    HKEY key;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, Key(display).c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
+    SettingsStore::Key key;
+    if (SettingsStore::Open(Key(display), key) != ERROR_SUCCESS)
         return settings;
     {
         DWORD t = 0, n = sizeof(UserShaderSettings);
         UserShaderSettings saved;
-        const auto result = RegQueryValueExW(key, L"UserShadersV4", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n);
+        const auto result = key.Query(L"UserShadersV4", &t, reinterpret_cast<BYTE*>(&saved), &n);
 
         // V3 held the built-in shaders only; custom slots start disabled.
         struct V3Shaders
@@ -222,10 +228,9 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         } v3;
 
         DWORD v3Size = sizeof(v3);
-        const auto resultV3 =
-            result == ERROR_FILE_NOT_FOUND
-                ? RegQueryValueExW(key, L"UserShadersV3", nullptr, &t, reinterpret_cast<BYTE*>(&v3), &v3Size)
-                : result;
+        const auto resultV3 = result == ERROR_FILE_NOT_FOUND
+                                  ? key.Query(L"UserShadersV3", &t, reinterpret_cast<BYTE*>(&v3), &v3Size)
+                                  : result;
 
         // V2 held the first 21 shaders; the added ones start disabled.
         struct V2Shaders
@@ -247,8 +252,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
                 settings.userShaders = migrated;
         }
         else if (result == ERROR_FILE_NOT_FOUND &&
-                 RegQueryValueExW(key, L"UserShadersV2", nullptr, &t, reinterpret_cast<BYTE*>(&v2), &v2Size) ==
-                     ERROR_SUCCESS)
+                 key.Query(L"UserShadersV2", &t, reinterpret_cast<BYTE*>(&v2), &v2Size) == ERROR_SUCCESS)
         {
             UserShaderSettings migrated;
             std::copy(std::begin(v2.shaders), std::end(v2.shaders), migrated.shaders);
@@ -270,8 +274,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
             constexpr int legacyCount = 21; // V1 shaders after dropping index 0
 
             n = sizeof(old);
-            if (RegQueryValueExW(key, L"UserShadersV1", nullptr, &t, reinterpret_cast<BYTE*>(&old), &n) ==
-                    ERROR_SUCCESS &&
+            if (key.Query(L"UserShadersV1", &t, reinterpret_cast<BYTE*>(&old), &n) == ERROR_SUCCESS &&
                 t == REG_BINARY && n == sizeof(old))
             {
                 UserShaderSettings migrated;
@@ -300,31 +303,29 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     {
         DWORD t = 0, n = sizeof(TonalSettings);
         TonalSettings saved;
-        if (RegQueryValueExW(key, L"HdrTonalV1", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n) == ERROR_SUCCESS &&
-            t == REG_BINARY && n == sizeof(saved) && ValidTonal(saved))
+        if (key.Query(L"HdrTonalV1", &t, reinterpret_cast<BYTE*>(&saved), &n) == ERROR_SUCCESS && t == REG_BINARY &&
+            n == sizeof(saved) && ValidTonal(saved))
             settings.tonal = saved;
     }
     {
         DWORD t = 0, n = sizeof(ColorMappingSettings);
         ColorMappingSettings saved;
-        if (RegQueryValueExW(key, L"ColorMappingV1", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n) ==
-                ERROR_SUCCESS &&
-            t == REG_BINARY && n == sizeof(saved) && ValidMappingOverrides(saved))
+        if (key.Query(L"ColorMappingV1", &t, reinterpret_cast<BYTE*>(&saved), &n) == ERROR_SUCCESS && t == REG_BINARY &&
+            n == sizeof(saved) && ValidMappingOverrides(saved))
             settings.colorMapping = saved;
     }
     {
         DWORD type = 0, size = sizeof(RendererExtras);
         RendererExtras saved;
-        if (RegQueryValueExW(key, L"RendererExtrasV1", nullptr, &type, reinterpret_cast<BYTE*>(&saved), &size) ==
-                ERROR_SUCCESS &&
+        if (key.Query(L"RendererExtrasV1", &type, reinterpret_cast<BYTE*>(&saved), &size) == ERROR_SUCCESS &&
             type == REG_BINARY && size == sizeof(saved) && ValidExtras(saved))
             settings.extras = saved;
     }
     {
         DWORD t = 0, n = sizeof(BlackBarSettings);
         BlackBarSettings saved;
-        if (RegQueryValueExW(key, L"BlackBarsV1", nullptr, &t, reinterpret_cast<BYTE*>(&saved), &n) == ERROR_SUCCESS &&
-            t == REG_BINARY && n == sizeof(saved) && ValidBlackBars(saved))
+        if (key.Query(L"BlackBarsV1", &t, reinterpret_cast<BYTE*>(&saved), &n) == ERROR_SUCCESS && t == REG_BINARY &&
+            n == sizeof(saved) && ValidBlackBars(saved))
             settings.blackBars = saved;
     }
     Float(key, L"Hue", settings.hue);
@@ -346,15 +347,14 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"AdaptiveSharpen", settings.adaptiveSharpen);
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
     Bool(key, L"RtxHdr", settings.rtxHdr);
+    Bool(key, L"UseDolbyVision", settings.useDolbyVision);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
-    Bool(key, L"StatisticsInVideo", settings.statisticsInVideo);
     Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
     String(key, L"DisplayModes", settings.displayModes);
     Float(key, L"DisplayModeDelay", settings.displayModeDelay);
     {
         DWORD toggle = 0, type = 0, bytes = 4;
-        if (RegQueryValueExW(key, L"WindowsHdrToggle", nullptr, &type, reinterpret_cast<BYTE*>(&toggle), &bytes) ==
-                ERROR_SUCCESS &&
+        if (key.Query(L"WindowsHdrToggle", &type, reinterpret_cast<BYTE*>(&toggle), &bytes) == ERROR_SUCCESS &&
             type == REG_DWORD && bytes == 4 && toggle <= 4)
             settings.windowsHdrToggle = static_cast<int>(toggle);
     }
@@ -385,8 +385,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Path(key, L"LUTPath", settings.lutPath);
     {
         DWORD saved = 0, type = 0, bytes = 4;
-        if (RegQueryValueExW(key, L"Deband", nullptr, &type, reinterpret_cast<BYTE*>(&saved), &bytes) ==
-                ERROR_SUCCESS &&
+        if (key.Query(L"Deband", &type, reinterpret_cast<BYTE*>(&saved), &bytes) == ERROR_SUCCESS &&
             type == REG_DWORD && bytes == 4 && (saved <= 1 || saved == 0xffffffff))
             settings.deband = saved == 0xffffffff ? FALSE : static_cast<BOOL>(saved);
     }
@@ -397,63 +396,64 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     String(key, L"Downscaler", settings.downscaler);
     {
         DWORD mode = 0, type = 0, bytes = 4;
-        const auto result = RegQueryValueExW(key, L"HDRMode", nullptr, &type, reinterpret_cast<BYTE*>(&mode), &bytes);
+        const auto result = key.Query(L"HDRMode", &type, reinterpret_cast<BYTE*>(&mode), &bytes);
         if (result == ERROR_SUCCESS && type == REG_DWORD && bytes == 4 && mode <= 3)
             settings.hdrMode = static_cast<int>(mode);
         else if (result == ERROR_FILE_NOT_FOUND)
             settings.hdrMode = settings.hdrPassthrough ? 1 : 2;
     }
     DWORD type = 0, size = 4, value = 1;
-    if (RegQueryValueExW(key, L"Deinterlacing", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"Deinterlacing", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 2)
         settings.deinterlacing = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"FieldOverride", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"FieldOverride", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 2)
         settings.fieldOverride = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"ToneMapping", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"ToneMapping", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(ToneChoices))
         settings.toneMapping = static_cast<int>(value);
     size = 4;
     value = 1;
-    if (RegQueryValueExW(key, L"DebandIterations", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DebandIterations", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && (value <= 16 || value == 0xffffffff))
         settings.debandIterations = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DitherMethod", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DitherMethod", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(DitherChoices))
         settings.ditherMethod = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"ChromaScaler", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"ChromaScaler", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= std::size(ScalerChoices))
         settings.chromaScaler = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"MaximumFramesInFlight", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"MaximumFramesInFlight", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 16)
         settings.maximumFramesInFlight = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"PresentAhead", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"ImagePosition", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value <= 2)
+        settings.imagePosition = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (key.Query(L"StatisticsTextScale", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && value >= 50 && value <= 200)
+        settings.statisticsTextScale = static_cast<int>(value);
+    size = 4;
+    value = 0;
+    if (key.Query(L"PresentAhead", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 4)
         settings.presentAhead = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DisplayGammaCurve", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DisplayGammaCurve", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && (value <= 1 || ValidGammaCurve(static_cast<int>(value))))
         settings.displayGammaCurve = static_cast<int>(value);
     else
@@ -462,27 +462,23 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         static constexpr int Legacy[] = {0, 220, 240, 260, 1};
         size = 4;
         value = 0;
-        if (RegQueryValueExW(key, L"DisplayGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-                ERROR_SUCCESS &&
+        if (key.Query(L"DisplayGamma", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
             type == REG_DWORD && size == 4 && value < std::size(Legacy))
             settings.displayGammaCurve = Legacy[value];
     }
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DisplayContrast", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DisplayContrast", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 1000000)
         settings.displayContrast = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DisplayPrimaries", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DisplayPrimaries", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 5)
         settings.displayPrimaries = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"SdrGammaCurve", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"SdrGammaCurve", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && (value == 0 || ValidGammaCurve(static_cast<int>(value))))
         settings.sdrGammaCurve = static_cast<int>(value);
     else
@@ -491,56 +487,48 @@ PlaceboSettings LoadSettings(const std::wstring& display)
         static constexpr int Legacy[] = {0, 180, 200, 220, 240, 260, 280};
         size = 4;
         value = 0;
-        if (RegQueryValueExW(key, L"SdrGamma", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-                ERROR_SUCCESS &&
+        if (key.Query(L"SdrGamma", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
             type == REG_DWORD && size == 4 && value < std::size(Legacy))
             settings.sdrGammaCurve = Legacy[value];
     }
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"OutputFormat", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"OutputFormat", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(OutputChoices))
         settings.outputFormat = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"GamutMapping", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"GamutMapping", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(GamutChoices))
         settings.gamutMapping = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"OutputLevels", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"OutputLevels", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 2)
         settings.outputLevels = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"DisplayDepth", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"DisplayDepth", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4)
         for (int depth : DisplayDepths)
             if (value == static_cast<DWORD>(depth))
                 settings.displayDepth = depth;
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"MeasuredQuality", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"MeasuredQuality", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value <= 258)
         settings.measuredQuality = static_cast<int>(value);
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"QualityStamp", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-            ERROR_SUCCESS &&
+    if (key.Query(L"QualityStamp", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4)
         settings.qualityStamp = value;
     size = 4;
     value = 0;
-    if (RegQueryValueExW(key, L"ICCIntent", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
-        type == REG_DWORD && size == 4 && value <= 1)
+    if (key.Query(L"ICCIntent", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS && type == REG_DWORD &&
+        size == 4 && value <= 1)
         settings.iccIntent = static_cast<int>(value);
     LoadScaling(key, settings);
-    RegCloseKey(key);
     // An incomplete saved color path must not reset unrelated choices (AutoHDR).
     if (settings.iccEnabled && !settings.iccPath[0])
         settings.iccEnabled = FALSE;
@@ -560,7 +548,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if (!ValidUserShaders(s.userShaders))
         return E_INVALIDARG;
-    if (!ValidBlackBars(s.blackBars))
+    if (!ValidBlackBars(s.blackBars) || s.imagePosition < 0 || s.imagePosition > 2)
         return E_INVALIDARG;
     if (!ValidExtras(s.extras))
         return E_INVALIDARG;
@@ -578,10 +566,12 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         (s.sdrGammaCurve != 0 && !ValidGammaCurve(s.sdrGammaCurve)) || s.displayContrast < 0 ||
         s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
         return E_INVALIDARG;
-    if ((s.imageAnalysis != FALSE && s.imageAnalysis != TRUE) ||
-        (s.statisticsInVideo != FALSE && s.statisticsInVideo != TRUE))
+    if ((s.imageAnalysis != FALSE && s.imageAnalysis != TRUE) || s.statisticsTextScale < 50 ||
+        s.statisticsTextScale > 200)
         return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE) || (s.rtxHdr != FALSE && s.rtxHdr != TRUE))
+        return E_INVALIDARG;
+    if (s.useDolbyVision != FALSE && s.useDolbyVision != TRUE)
         return E_INVALIDARG;
     std::vector<DisplayModes::Mode> modes;
     if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
@@ -650,6 +640,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.tonal = s.tonal;
     out.userShaders = s.userShaders;
     out.blackBars = s.blackBars;
+    out.imagePosition = s.imagePosition;
     out.extras = s.extras;
     out.colorMapping = s.colorMapping;
     out.hdrMode = s.hdrMode;
@@ -677,8 +668,9 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.adaptiveSharpen = !!s.adaptiveSharpen;
     out.rtxSuperResolution = !!s.rtxSuperResolution;
     out.rtxHdr = !!s.rtxHdr;
+    out.useDolbyVision = !!s.useDolbyVision;
     out.imageAnalysis = !!s.imageAnalysis;
-    out.statisticsInVideo = !!s.statisticsInVideo;
+    out.statisticsTextScale = s.statisticsTextScale;
     out.sharpenStrength = s.sharpenStrength;
     out.peakDetect = !!s.peakDetect;
     out.allowDelayedPeak = !!s.allowDelayedPeak;
@@ -743,7 +735,7 @@ struct WrittenSettings
 {
     PlaceboSettings values;
     ULONGLONG at = 0;
-    unsigned deleted = 0;
+    unsigned deleted = 0, generation = 0;
 };
 
 std::mutex writtenLock;
@@ -755,6 +747,10 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     HRESULT valid = ValidateSettings(s);
     if (FAILED(valid))
         return valid;
+    // One write of the settings file; taken before writtenLock, as everywhere.
+    SettingsStore::Batch batch;
+    // A settings file changed or deleted outside this process.
+    const auto generation = SettingsStore::Sync();
     std::lock_guard writing(writtenLock);
     const auto now = GetTickCount64();
     // By registry key, not profile name: the same profile under another
@@ -763,9 +759,10 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     auto entry = std::find_if(written.begin(), written.end(), [&](const auto& w) { return w.first == path; });
     const PlaceboSettings* before = nullptr;
     if (entry != written.end() && now - entry->second.at < 2000 &&
-        entry->second.deleted == DisplayProfiles::KeysDeleted.load())
+        entry->second.deleted == DisplayProfiles::KeysDeleted.load() && entry->second.generation == generation)
         before = &entry->second.values;
-    HKEY key = nullptr;
+    SettingsStore::Key key;
+    bool opened = false;
     LONG result = ERROR_SUCCESS;
     auto save = [&](const wchar_t* name, DWORD type, const void* data, DWORD bytes)
     {
@@ -778,15 +775,18 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
             if (!memcmp(reinterpret_cast<const BYTE*>(before) + offset, data, bytes))
                 return;
         }
-        if (!key)
-            result =
-                RegCreateKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
+        if (!opened)
+        {
+            result = SettingsStore::Create(path, key);
+            opened = !result;
+        }
         if (!result)
-            result = RegSetValueExW(key, name, 0, type, static_cast<const BYTE*>(data), bytes);
+            result = key.Set(name, type, data, bytes);
     };
     save(L"HdrTonalV1", REG_BINARY, &s.tonal, sizeof(s.tonal));
     save(L"UserShadersV4", REG_BINARY, &s.userShaders, sizeof(s.userShaders));
     save(L"BlackBarsV1", REG_BINARY, &s.blackBars, sizeof(s.blackBars));
+    save(L"ImagePosition", REG_DWORD, &s.imagePosition, 4);
     save(L"RendererExtrasV1", REG_BINARY, &s.extras, sizeof(s.extras));
     save(L"ColorMappingV1", REG_BINARY, &s.colorMapping, sizeof(s.colorMapping));
     save(L"HDRMode", REG_DWORD, &s.hdrMode, 4);
@@ -807,8 +807,9 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"AdaptiveSharpen", REG_DWORD, &s.adaptiveSharpen, 4);
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
     save(L"RtxHdr", REG_DWORD, &s.rtxHdr, 4);
+    save(L"UseDolbyVision", REG_DWORD, &s.useDolbyVision, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
-    save(L"StatisticsInVideo", REG_DWORD, &s.statisticsInVideo, 4);
+    save(L"StatisticsTextScale", REG_DWORD, &s.statisticsTextScale, 4);
     save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
     save(L"DisplayModes", REG_SZ, s.displayModes, static_cast<DWORD>((wcslen(s.displayModes) + 1) * 2));
     save(L"DisplayModeDelay", REG_BINARY, &s.displayModeDelay, 4);
@@ -866,8 +867,6 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"ClippingProtection", REG_DWORD, &s.clippingProtection, 4);
     save(L"Upscaler", REG_SZ, s.upscaler, static_cast<DWORD>((wcslen(s.upscaler) + 1) * 2));
     save(L"Downscaler", REG_SZ, s.downscaler, static_cast<DWORD>((wcslen(s.downscaler) + 1) * 2));
-    if (key)
-        RegCloseKey(key);
     if (result)
     {
         if (entry != written.end())
@@ -887,6 +886,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     {
         entry->second.at = now;
         entry->second.deleted = DisplayProfiles::KeysDeleted.load();
+        entry->second.generation = generation;
     }
     return S_OK;
 }
@@ -905,6 +905,7 @@ static PlaceboSettings LinkedCopy(const PlaceboSettings& s, const std::wstring& 
 
 HRESULT SaveSettings(const PlaceboSettings& s)
 {
+    SettingsStore::Batch batch;
     auto hr = WriteSettings(s);
     if (FAILED(hr) || !s.displayProfile[0] || !DisplayProfiles::Linked())
         return hr;
@@ -944,21 +945,16 @@ HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& device
 {
     if (devices.empty())
         return S_FALSE;
+    SettingsStore::Batch batch;
     DWORD version = 0, bytes = sizeof(version);
-    RegGetValueW(HKEY_CURRENT_USER,
-                 DisplayProfiles::Root().c_str(),
-                 L"DisplayProfilesVersion",
-                 RRF_RT_REG_DWORD,
-                 nullptr,
-                 &version,
-                 &bytes);
+    SettingsStore::Get(DisplayProfiles::Root(), L"DisplayProfilesVersion", REG_DWORD, &version, &bytes);
     for (const auto& device : devices)
     {
         if (!DisplayProfiles::ValidId(device.id))
             return E_INVALIDARG;
-        HKEY key = nullptr;
+        SettingsStore::Key key;
         const auto path = DisplayProfiles::Key(device.id);
-        if (RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+        if (SettingsStore::Open(path, key) != ERROR_SUCCESS)
         {
             // Preserve the existing setup once, then use factory defaults for
             // genuinely new displays. Never copy another display's edits.
@@ -974,34 +970,19 @@ HRESULT EnsureDisplayProfiles(const std::vector<DisplayProfiles::Device>& device
             auto hr = WriteSettings(initial);
             if (FAILED(hr))
                 return hr;
-            const auto result = RegOpenKeyExW(HKEY_CURRENT_USER, path.c_str(), 0, KEY_SET_VALUE, &key);
+            const auto result = SettingsStore::Open(path, key);
             if (result != ERROR_SUCCESS)
                 return HRESULT_FROM_WIN32(result);
         }
         auto write = [&](const wchar_t* name, const std::wstring& value)
-        {
-            return RegSetValueExW(key,
-                                  name,
-                                  0,
-                                  REG_SZ,
-                                  reinterpret_cast<const BYTE*>(value.c_str()),
-                                  DWORD((value.size() + 1) * sizeof(wchar_t)));
-        };
+        { return key.Set(name, REG_SZ, value.c_str(), DWORD((value.size() + 1) * sizeof(wchar_t))); };
         auto result = write(L"DeviceName", device.name);
         if (result == ERROR_SUCCESS)
             result = write(L"DeviceIdentity", device.identity);
-        RegCloseKey(key);
         if (result != ERROR_SUCCESS)
             return HRESULT_FROM_WIN32(result);
     }
-    HKEY root;
-    auto result = RegCreateKeyExW(
-        HKEY_CURRENT_USER, DisplayProfiles::Root().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &root, nullptr);
-    if (result != ERROR_SUCCESS)
-        return HRESULT_FROM_WIN32(result);
     version = 1;
-    result = RegSetValueExW(
-        root, L"DisplayProfilesVersion", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&version), sizeof(version));
-    RegCloseKey(root);
-    return HRESULT_FROM_WIN32(result);
+    return HRESULT_FROM_WIN32(
+        SettingsStore::Put(DisplayProfiles::Root(), L"DisplayProfilesVersion", REG_DWORD, &version, sizeof(version)));
 }

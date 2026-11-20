@@ -67,6 +67,24 @@ int main()
     }
     puts("PASS ordinary 23.976/24/25/30/50/59.94/60/120 fps cadence");
 
+    {
+        // Without Smooth Motion a picture may sit up to a third of a refresh
+        // on either side of its rounded refresh; drifting from one side to the
+        // other is two refreshes in total but never a missed refresh.
+        PresentationMeasurement swing;
+        swing.Period(period);
+        for (uint32_t id = 1; id <= 300; ++id)
+        {
+            const int64_t timeline = static_cast<int64_t>(std::llround(id * 6.006 * period));
+            const int side = id <= 100 ? -1 : id <= 200 ? 0 : 1;
+            const auto refresh = static_cast<uint32_t>(std::llround(double(timeline) / period) + 100 + side);
+            swing.Submit(id, epoch + timeline, true, timeline);
+            swing.Observe(id, refresh, true, true, epoch + (refresh - 100) * period);
+        }
+        Require(swing.glitches == 0 && swing.repeatedRefreshes == 0, "a slow swing across a refresh is not counted");
+    }
+    puts("PASS a picture moving across its refresh boundary is not counted as two refreshes late");
+
     PresentationMeasurement stall;
     stall.Period(period);
     for (uint32_t id = 1; id <= 1000; ++id)
@@ -89,6 +107,19 @@ int main()
     drops.Observe(2);
     Require(drops.total == 16, "real scheduler drops remain independent of display timing");
     puts("PASS independent real drop counts preserved");
+
+    // Frames skipped because the video is faster than the display are counted
+    // apart; the drop counter the renderer passes on already leaves them out.
+    {
+        DropMeasurement fast;
+        for (int frame = 0; frame < 1000; ++frame)
+            fast.Skip();
+        fast.Observe(3);
+        Require(fast.skipped == 1000 && fast.total == 3, "skipped frames are no drops");
+        fast.Reset();
+        Require(fast.total == 0 && fast.skipped == 0, "reset clears skipped frames");
+    }
+    puts("PASS skipped frames of a faster video counted apart from real drops");
 
     unsigned combinations = 0, injectedStalls = 0;
     constexpr double frequency = 10000000.;

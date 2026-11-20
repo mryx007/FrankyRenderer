@@ -134,6 +134,7 @@ class Renderer final : public CBaseVideoRenderer,
                        public ISubRenderConsumer2,
                        public IPlaceboSettings,
                        public IPlaceboDiagnostics,
+                       public IKsPropertySet,
                        public CExFilterConfigImpl
 {
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
@@ -191,12 +192,33 @@ class Renderer final : public CBaseVideoRenderer,
     bool buffering = false, smoothBuffering = false;
     QueuedVideoFrame followingQueued;
     std::atomic<bool> smoothEnabled = false;
+    // Use Dolby Vision on Profile 7 and 8 (Profile 5 always does).
+    std::atomic<bool> dolbyVisionPreferred = true;
+    bool KeepDolbyVision(const VideoFrame& base) const;
     std::atomic<double> motionPeriod = 0;
     std::atomic<bool> refreshDirty = true;
     // Display-synchronous Smooth Motion; the streaming thread owns the slots,
     // state changes only request a fresh anchor.
     VsyncSlots vsyncSlots;
+    // Without Smooth Motion: the refresh of each frame, and the moment the
+    // sample DoRenderSample receives next is handed to DXGI.
+    FrameSlots frameSlots;
+    REFERENCE_TIME lockedStart = -1;
+    int64_t lockedPresentQpc = 0;
+    LONGLONG takenSlot = 0; // the refresh the last scheduled frame occupies
     std::atomic<bool> vsyncReanchor = true;
+    // Without Smooth Motion, a video faster than the display shows one frame
+    // per refresh: the stream time the next shown frame is due (-1: none yet).
+    double displayDue = -1, displayRefresh = 0; // 100 ns units
+    int displaySkips = 0;                       // in the current drop counter epoch
+    // Frame stepping (the graph's IVideoFrameStep, Ctrl+Right in MPC-HC/BE):
+    // source frames still to show. After the last one the renderer reports
+    // EC_STEP_COMPLETE and holds the next picture until Run, Stop or a flush,
+    // so the pause that follows keeps the stepped frame on screen.
+    std::atomic<long> stepRemaining = 0;
+    std::atomic<bool> stepHeld = false;
+    uint64_t stepFrame = 0; // the source frame last presented (fields and ticks share it)
+    void CountStep(const FieldSample* field, bool running);
     uint64_t surplusTicks = 0;
     unsigned lateTicks = 0;
     HANDLE refreshTimer = nullptr;
@@ -282,13 +304,20 @@ class Renderer final : public CBaseVideoRenderer,
     // The source's frame duration. frameDuration follows the presented samples,
     // which Smooth Motion delivers at the display rate.
     std::atomic<REFERENCE_TIME> contentDuration = 0;
+    // Playback rate from the last NewSegment; a changed rate re-checks the
+    // display mode and logs the next sample durations.
+    std::atomic<double> playbackRate = 1.;
+    PlaybackClockRate clockRateDetector;
+    std::atomic<bool> resetClockRateDetector = true;
+    std::atomic<double> clockPlaybackRate = 1.;
+    std::atomic<int> rateTraceFrames = 0;
     void PublishDisplayModes();
     void RequestModeCheck(UINT delay = 250);
-    void CheckDisplayMode();
+    bool CheckDisplayMode(ModePause* paused = nullptr);
     std::wstring GraphFilters();
     void CheckWindowsHdr(const ModeConfig& config, const wchar_t* device, bool fullscreen);
     void HoldForDisplayChange(float delay);
-    void PausePlayback(DWORD milliseconds);
+    void PausePlayback(DWORD milliseconds, HWND switchWindow = nullptr);
     bool ExternalStateChange();
 
   public:
@@ -319,10 +348,18 @@ class Renderer final : public CBaseVideoRenderer,
     // Tick of the last scheduled frame presented while running. A repaint
     // during active playback is left to the next scheduled frame.
     std::atomic<uint64_t> lastTimedPresent = 0;
+    BOOL ScheduleSample(IMediaSample*) override;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    HRESULT ScheduleFrameOnRefresh(IMediaSample*, FieldSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);
+    bool WaitForPresent(int64_t until);
+    // Takes a deliberate wait that began at this performance counter reading
+    // out of the render time the base class measures for its drop and quality
+    // decisions. Upload, rendering and the handover stay in it.
+    void ExcludeWait(int64_t begin);
     bool WaitForQpc(int64_t until, int64_t deadline);
-    void NewSegment(REFERENCE_TIME);
+    bool SkipForDisplay(IMediaSample* sample);
+    void NewSegment(REFERENCE_TIME, double rate);
     void ToggleStatistics();
     // Runs a keyboard shortcut (Shortcuts::Action) on the window thread.
     void RunShortcut(int action);
@@ -340,6 +377,10 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Pause() override;
     HRESULT OnStartStreaming() override;
     STDMETHODIMP GetPages(CAUUID*) override;
+    // IKsPropertySet: AM_KSPROPSETID_FrameStep only.
+    STDMETHODIMP Set(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD) override;
+    STDMETHODIMP Get(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*) override;
+    STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*) override;
     STDMETHODIMP SetCallback11(ISubRender11Callback*) override;
     // ISubRenderConsumer2 (SubRenderIntf.h)
     STDMETHODIMP GetBool(LPCSTR, bool*) override;

@@ -108,7 +108,30 @@ class ShaderCache
         if (!Environment(L"PLACEBO_RENDERER_TEST_ROOT").empty())
             return {};
         auto local = Environment(L"LOCALAPPDATA");
-        return local.empty() ? std::filesystem::path{} : std::filesystem::path(local) / L"PlaceboRenderer" / L"Cache";
+        if (local.empty())
+            return {};
+        const auto directory = std::filesystem::path(local) / L"FrankyRenderer" / L"Cache";
+        MoveEarlierCache(std::filesystem::path(local) / L"PlaceboRenderer", directory);
+        return directory;
+    }
+
+    // Earlier versions kept the cache under %LOCALAPPDATA%\PlaceboRenderer\Cache.
+    // Move it once, so an update does not compile every shader again.
+    static void MoveEarlierCache(const std::filesystem::path& earlier, const std::filesystem::path& directory)
+    {
+        std::error_code error;
+        const auto old = earlier / L"Cache" / L"shader-cache-v1.bin";
+        if (!std::filesystem::exists(old, error))
+            return;
+        std::filesystem::create_directories(directory, error);
+        const auto now = directory / L"shader-cache-v1.bin";
+        if (!std::filesystem::exists(now, error))
+            MoveFileExW(old.c_str(), now.c_str(), MOVEFILE_COPY_ALLOWED);
+        else
+            DeleteFileW(old.c_str());
+        // Only empty folders go; anything else someone put there stays.
+        RemoveDirectoryW((earlier / L"Cache").c_str());
+        RemoveDirectoryW(earlier.c_str());
     }
 
     void Load()

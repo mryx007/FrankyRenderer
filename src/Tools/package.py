@@ -72,36 +72,12 @@ def main(out=OUT, source=SOURCE):
         (out / old).unlink(missing_ok=True)
     verify_runtime(out)
 
-    for name in ("Install.cmd", "Uninstall.cmd"):
+    for name in ("Install.cmd", "Uninstall.cmd", "Import Settings.cmd", "Backup Settings.cmd"):
         shutil.copy2(ROOT / "Tools" / name, out / name)
-    setup = (ROOT / "Tools/setup.ps1").read_text(encoding="utf-8-sig")
-    (out / "setup.ps1").write_text(setup, encoding="utf-8-sig")
-    (out / "INSTALL.txt").write_text(
-        f"FrankyRenderer 1.2.1 - Windows x64\n\n"
-        "Extract this package to a permanent folder and close all video players.\n"
-        "Run Install.cmd. Administrator approval may be requested.\n"
-        "Run Uninstall.cmd before moving or removing the installed folder.\n"
-        "No additional DV filter needs to be added in the player.\n"
-        "Remove any previously configured Franky DV Filter from the player's preferred filters.\n\n"
-        "Select FrankyRenderer in the player\'s video renderer settings.\n"
-        "Requires PotPlayer 261030 Beta 64-bit or newer with native FrankyRenderer support,\n"
-        "or MPC-BE with native FrankyRenderer support.\n"
-        "PotPlayer beta: https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe\n"
-        "Renderer CLSID: {B864E92A-1BDF-4DA1-9004-CBF467DF239A}\n"
-        "The original MPC Video Renderer may remain installed.\n\n"
-        "Dolby Vision Profile 7 FEL/MEL is detected and processed automatically.\n"
-        "Existing splitters and base-layer video decoders remain in use.\n"
-        "Supported: local progressive UHD 3840x2160 Profile 7 files; FEL enhancement 1920x1080.\n"
-        "The decoder must deliver 10-bit P010 or native D3D11 surfaces.\n"
-        "SDR/HDR10 and other Dolby Vision profiles retain their existing renderer path.\n"
-        "The renderer reads the same local file for enhancement data. Network streams are not supported.\n\n"
-        "Existing installations with the same identity must be uninstalled first;\n"
-        "the installer refuses to overwrite another installation.\n\n"
-        "Tested on Windows 11 x64. Windows 10 x64 is expected to work but is untested.\n"
-        "Keep all runtime DLLs and shaders beside FrankyRenderer.ax.\n"
-        "See LICENSE, THIRD_PARTY.md and licenses for notices.\n"
-        "Source: https://github.com/mryx007/FrankyRenderer\n", encoding="utf-8",
-    )
+    # The earlier PowerShell installer, when a stage is reused.
+    (out / "setup.ps1").unlink(missing_ok=True)
+    shutil.rmtree(out / "registration-backup", ignore_errors=True)
+    shutil.copy2(ROOT / "Tools/INSTALL.txt", out / "INSTALL.txt")
     # The other files in Shaders are compiled into the renderer when it is built.
     shutil.rmtree(out / "shaders", ignore_errors=True)
     for folder in ("PlayKit", "Custom"):
@@ -145,7 +121,6 @@ def main(out=OUT, source=SOURCE):
         str(p.relative_to(out)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in out.rglob("*")
         if p.is_file()
-        and "registration-backup" not in p.parts
         and p.name != "build-manifest.json"
     }
     (out / "build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

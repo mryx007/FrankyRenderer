@@ -101,8 +101,6 @@ static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
                                                L"None saved yet.",
                                                L"Display",
                                                L"Rename",
-                                               L"Import",
-                                               L"Export",
                                                L"Reset Page",
                                                L"Reset Shader",
                                                L"Input",
@@ -125,8 +123,9 @@ static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
                                                L"Select a 3D LUT file first.",
                                                L"Value or combination is outside the supported range.",
                                                L"Could not open the INI file dialog.",
-                                               L"All display profiles exported.",
-                                               L"INI backup exported.",
+                                               L"All settings exported.",
+                                               L"All settings imported.",
+                                               L"Replace all settings with the ones in this file?",
                                                L"All display profiles imported.",
                                                L"INI imported. Select Save to keep it.",
                                                L"INI settings imported.",
@@ -280,8 +279,6 @@ struct HitRegion
         ResetBtn,
         ResetAllBtn,
         ApplyBtn,
-        ImportBtn,
-        ExportBtn,
         DisplayProfile,
         QualityPresetBtn,
         ProfileSelectBtn,
@@ -786,6 +783,8 @@ class Direct2DHostWindow
             if (m_preview)
                 m_preview(m_base);
         }
+        // Slider changes of the last moments are still waiting for the file.
+        SettingsStore::Flush();
         if (m_measureThread.joinable())
         {
             m_measurement->cancel = true;
@@ -1351,31 +1350,11 @@ void Direct2DHostWindow::Render()
             navY += 30.0f;
         }
 
-        // 4. Sidebar Bottom Action Buttons
-        float btnY = size.height - 48.0f;
-        const float transferY = btnY;
-        for (int i = 0; i < 2; ++i)
-        {
-            const float buttonWidth = (sidebarW - 40.f) / 2.f;
-            const float left = i ? sidebarW / 2.f + 4.f : 16.f;
-            const auto rect = D2D1::RectF(left, transferY, left + buttonWidth, transferY + 34.f);
-            m_pRenderTarget->FillRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushInputBg.Get());
-            m_pRenderTarget->DrawRoundedRectangle(D2D1::RoundedRect(rect, 6, 6), m_brushBorderCard.Get(), 1.f);
-            auto text = rect;
-            text.top += 8;
-            m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            const auto transferLabel = Tr(i ? L"Export" : L"Import");
-            m_pRenderTarget->DrawText(
-                transferLabel.c_str(), UINT32(transferLabel.size()), m_fmtNav.Get(), text, m_brushTextMain.Get());
-            m_fmtNav->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-            HitRegion hit;
-            hit.type = i ? HitRegion::ExportBtn : HitRegion::ImportBtn;
-            hit.rect = rect;
-            m_hitRegions.push_back(hit);
-        }
+        // 4. Status at the bottom of the sidebar (import and export are on
+        // the Profiles page).
         if (!m_error.empty())
         {
-            const float statusBottom = transferY - 8.f;
+            const float statusBottom = size.height - 16.f;
             const auto r = D2D1::RectF(16, statusBottom - 57.f, sidebarW - 16, statusBottom);
             const auto status = Tr(m_error);
             m_pRenderTarget->DrawText(status.c_str(),
@@ -2921,7 +2900,7 @@ void Direct2DHostWindow::TransferIni(bool importing)
     EndEdit();
     if (m_pending)
         Preview();
-    wchar_t path[32768] = L"FrankyRenderer.ini";
+    wchar_t path[32768] = L"Settings.ini";
     OPENFILENAMEW dialog = {sizeof(dialog)};
     dialog.hwndOwner = m_hwnd;
     dialog.lpstrFile = path;
@@ -2946,18 +2925,40 @@ void Direct2DHostWindow::TransferIni(bool importing)
     {
         if (!importing)
         {
-            if (m_displayProfiles)
+            // An export is the settings file itself (Settings.ini).
+            if (SUCCEEDED(SettingsIni::ExportText(path, SettingsStore::Text(), m_error)))
+                m_error = L"All settings exported.";
+        }
+        else if (const auto text = SettingsBackup::ReadFile(path); SettingsStore::IsSettingsText(text))
+        {
+            if (MessageBoxW(m_hwnd,
+                            Tr(L"Replace all settings with the ones in this file?").c_str(),
+                            Tr(L"Import Settings").c_str(),
+                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES ||
+                !*alive)
+                return;
+            if (!SettingsStore::ReplaceAll(text))
+                throw std::runtime_error("Could not apply INI settings. Check external ICC and LUT files.");
+            // The menu, its theme and shortcuts, and the playing video follow.
+            LoadMenuAppearance();
+            LoadMenuLanguage();
+            ++g_menuPaletteVersion;
+            Shortcuts::g_cachedAt = Shortcuts::g_customAt = 0;
+            ++ProfilePage::g_version;
+            const std::wstring selected = m_pSettings->displayProfile;
+            m_devices = DisplayProfiles::All();
+            if (DisplayProfiles::ValidId(selected))
             {
-                const auto text = SettingsBackup::Serialize(SettingsBackup::Capture(m_base));
-                if (SUCCEEDED(SettingsIni::ExportText(path, text, m_error)))
-                    m_error = L"All display profiles exported.";
+                const auto imported = LoadSettings(selected);
+                if (m_preview)
+                    m_preview(imported);
+                AdoptDisplayProfile(selected);
             }
-            else if (SUCCEEDED(SettingsIni::Export(path, m_base, m_error)))
-                m_error = L"INI backup exported.";
+            InitPages();
+            m_error = L"All settings imported.";
         }
         else
         {
-            const auto text = SettingsBackup::ReadFile(path);
             const auto entries = SettingsIni::ReadEntries(text, 16 * 1024 * 1024, 131072);
             const auto version = entries.find({"FrankyRenderer", "FormatVersion"});
             HRESULT hr;
@@ -2990,6 +2991,9 @@ void Direct2DHostWindow::TransferIni(bool importing)
         const std::string message = ex.what();
         m_error.assign(message.begin(), message.end());
     }
+    // The sidebar holding m_error is usually closed.
+    if (!m_error.empty())
+        ShowToast(Tr(m_error));
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
@@ -3452,6 +3456,13 @@ void Direct2DHostWindow::ResetControl(D2DControl& c)
 // shown were replaced and the change needs no further handling.
 bool Direct2DHostWindow::HandleProfileRequests()
 {
+    if (ProfilePage::g_requestTransfer)
+    {
+        const bool importing = ProfilePage::g_requestTransfer == 1;
+        ProfilePage::g_requestTransfer = 0;
+        TransferIni(importing);
+        return true;
+    }
     if (!ProfilePage::g_notice.empty())
     {
         ShowToast(ProfilePage::g_notice);
@@ -3624,6 +3635,8 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
         DeleteObject(m_editFont);
     // Text controls and the search box keep the 14 DIP font they are drawn
     // with. GDI renders Segoe UI medium as regular, so semibold matches it.
+    // Numbers are drawn at 13 DIP with grayscale smoothing; GDI regular with
+    // grayscale smoothing matches their stroke, ClearType makes them look thinner.
     const bool matchDrawn = (control && control->kind == ControlKind::Text) || (!control && !renameDisplay);
     m_editFont = CreateFontW(-int((matchDrawn ? 14 : 13) * scale + .5f),
                              0,
@@ -3636,12 +3649,37 @@ void Direct2DHostWindow::BeginEdit(D2DControl* control, const D2D1_RECT_F& r, bo
                              DEFAULT_CHARSET,
                              0,
                              0,
-                             CLEARTYPE_QUALITY,
+                             number ? ANTIALIASED_QUALITY : CLEARTYPE_QUALITY,
                              0,
                              MenuGdiFont());
     SendMessageW(m_edit, WM_SETFONT, reinterpret_cast<WPARAM>(m_editFont), TRUE);
-    if (matchDrawn)
+    if (matchDrawn || number)
         SendMessageW(m_edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
+    if (number)
+    {
+        // A one-line edit draws its text at the top. Make it one line high and
+        // centre it in the box, where the number is drawn, so it does not jump.
+        // GDI sets the glyphs 1 DIP lower than DirectWrite in the same line.
+        TEXTMETRICW metrics = {};
+        if (HDC dc = GetDC(m_edit))
+        {
+            const auto old = SelectObject(dc, m_editFont);
+            GetTextMetricsW(dc, &metrics);
+            SelectObject(dc, old);
+            ReleaseDC(m_edit, dc);
+        }
+        if (metrics.tmHeight > 0)
+        {
+            const int middle = int((r.top + r.bottom) * .5f * scale + .5f);
+            SetWindowPos(m_edit,
+                         nullptr,
+                         int(r.left * scale),
+                         middle - metrics.tmHeight / 2 - int(scale + .5f),
+                         int((r.right - r.left) * scale),
+                         metrics.tmHeight,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+    }
     SetWindowSubclass(m_edit, EditProc, 1, reinterpret_cast<DWORD_PTR>(this));
     SetFocus(m_edit);
     SendMessageW(m_edit, EM_SETSEL, 0, -1);
@@ -3935,12 +3973,6 @@ void Direct2DHostWindow::OnLButtonDown(float x, float y)
             const auto rect = h.rect;
             SelectProfileMenu(rect);
             return;
-        }
-        else if (h.type == HitRegion::ImportBtn || h.type == HitRegion::ExportBtn)
-        {
-            TransferIni(h.type == HitRegion::ImportBtn);
-            if (!*alive)
-                return;
         }
         else if (h.type == HitRegion::ApplyBtn)
         {

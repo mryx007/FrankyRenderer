@@ -52,11 +52,13 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(iccPath);
     INI_FIELD(lutPath);
     INI_FIELD(lutFromFolder);
+    INI_FIELD(imagePosition);
     INI_FIELD(adaptiveSharpen);
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
+    INI_FIELD(useDolbyVision);
     INI_FIELD(imageAnalysis);
-    INI_FIELD(statisticsInVideo);
+    INI_FIELD(statisticsTextScale);
     INI_FIELD(sharpenStrength);
     INI_FIELD(smoothMotion);
     INI_FIELD(outputLevels);
@@ -321,6 +323,38 @@ inline Entries ReadEntries(const std::string& text, size_t limit = 1024 * 1024, 
     return entries;
 }
 
+// Entries as lines "Section.key=value", sorted by that text, for values kept
+// in the settings file (content profiles, Custom quality).
+inline std::string JoinEntries(const Entries& entries)
+{
+    std::map<std::string, std::string> lines;
+    for (const auto& [key, value] : entries)
+        lines[key.first + "." + key.second] = value;
+    std::string text;
+    for (const auto& [name, value] : lines)
+        text += name + "=" + value + "\n";
+    return text;
+}
+
+inline Entries SplitEntries(const std::string& text)
+{
+    Entries entries;
+    size_t at = 0;
+    while (at < text.size())
+    {
+        auto end = text.find('\n', at);
+        if (end == std::string::npos)
+            end = text.size();
+        const auto line = text.substr(at, end - at);
+        at = end + 1;
+        const auto equals = line.find('=');
+        const auto dot = equals == std::string::npos ? std::string::npos : line.rfind('.', equals);
+        if (dot != std::string::npos && dot)
+            entries[{line.substr(0, dot), line.substr(dot + 1, equals - dot - 1)}] = line.substr(equals + 1);
+    }
+    return entries;
+}
+
 inline PlaceboSettings Parse(const std::string& text)
 {
     auto entries = ReadEntries(text);
@@ -328,6 +362,9 @@ inline PlaceboSettings Parse(const std::string& text)
     if (version == entries.end() || version->second != "1")
         throw std::runtime_error("Unsupported settings file version.");
     entries.erase(version);
+    // Settings that no longer exist; older files still load.
+    for (const char* retired : {"statisticsInVideo", "displayGamma", "sdrGamma"})
+        entries.erase({"Renderer", retired});
     PlaceboSettings candidate;
     Visit(candidate,
           [&](const std::string& group, const std::string& name, auto& value)
@@ -345,6 +382,7 @@ inline PlaceboSettings Parse(const std::string& text)
     if (!entries.empty())
         throw std::runtime_error("Unknown INI setting.");
     for (BOOL flag : {candidate.deband,
+                      candidate.useDolbyVision,
                       candidate.hdrPassthrough,
                       candidate.autoHdr,
                       candidate.clippingProtection,
@@ -357,7 +395,6 @@ inline PlaceboSettings Parse(const std::string& text)
                       candidate.peakDetect,
                       candidate.showClipping,
                       candidate.imageAnalysis,
-                      candidate.statisticsInVideo,
                       candidate.colorAdjustment,
                       candidate.allowDelayedPeak,
                       candidate.shaderAutoOrder})

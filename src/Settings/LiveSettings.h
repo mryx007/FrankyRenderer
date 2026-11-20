@@ -51,7 +51,7 @@ struct Session
     bool commit = false;
     std::map<std::wstring, PlaceboSettings> displayOpenings;
     std::map<std::wstring, DisplayProfiles::Metadata> metadataOpenings;
-    ContentProfiles::Files profileOpenings;
+    SettingsStore::Node profileOpenings;
 };
 
 inline thread_local std::map<HWND, Session*> sessions;
@@ -86,7 +86,7 @@ inline LRESULT CALLBACK Host(HWND h, UINT msg, WPARAM w, LPARAM l, UINT_PTR id, 
         if (!s->commit)
         {
             // Profiles first: restoring the settings makes the renderer read them.
-            ContentProfiles::WriteFiles(s->profileOpenings);
+            ContentProfiles::Restore(s->profileOpenings);
             if (s->displayOpenings.empty())
                 s->config->SetSettings(&s->opening);
             else
@@ -193,7 +193,7 @@ inline void Attach(HWND page, IPlaceboSettings* config, std::function<HRESULT()>
         }
         config->AddRef();
         s->displayOpenings.emplace(s->opening.displayProfile, s->opening);
-        s->profileOpenings = ContentProfiles::ReadFiles();
+        s->profileOpenings = ContentProfiles::Capture();
         if (!SetWindowSubclass(host, Host, 219, reinterpret_cast<DWORD_PTR>(s)))
         {
             config->Release();

@@ -8,6 +8,7 @@
 #include <windowsx.h>
 #include "Settings/SettingsLayout.h"
 #include "UI/MenuTheme.h"
+#include "UI/BuildInfo.h"
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "advapi32.lib")
 
@@ -48,6 +49,7 @@ class Direct2DFrame
     bool closeHovered = false;
     HWND hoveredButton = nullptr; // OK or Cancel under the mouse
     HFONT titleFont = nullptr;
+    HFONT buildFont = nullptr; // Smaller, normal weight: the version beside the name.
     bool additionalPages = false, sizing = false;
     int rendererTab = 0;
     static constexpr int CloseId = 0x7f10;
@@ -167,6 +169,19 @@ class Direct2DFrame
             SetBkMode(dc, TRANSPARENT);
             SetTextColor(dc, MenuColorRef(CurrentMenuPalette().textMain));
             DrawTextW(dc, L"FrankyRenderer", -1, &bounds, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
+            // The version (or Nightly / test build) beside the name: smaller, dimmed, on the same baseline.
+            SIZE name = {};
+            GetTextExtentPoint32W(dc, L"FrankyRenderer", 14, &name);
+            TEXTMETRICW nameMetrics = {}, labelMetrics = {};
+            GetTextMetricsW(dc, &nameMetrics);
+            SelectObject(dc, buildFont ? buildFont : titleFont);
+            GetTextMetricsW(dc, &labelMetrics);
+            auto rest = bounds;
+            rest.left += name.cx + MulDiv(10, int(GetDpiForWindow(control)), 96);
+            rest.top += nameMetrics.tmAscent - labelMetrics.tmAscent;
+            SetTextColor(dc, MenuColorRef(CurrentMenuPalette().textDim));
+            DrawTextW(
+                dc, BuildLabel().c_str(), -1, &rest, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
             SelectObject(dc, font);
             return;
         }
@@ -356,13 +371,7 @@ class Direct2DFrame
         savedSize = {};
         SIZE value = {};
         DWORD bytes = sizeof(value);
-        if (RegGetValueW(HKEY_CURRENT_USER,
-                         MenuAppearanceKey().c_str(),
-                         L"WindowSize",
-                         RRF_RT_REG_BINARY,
-                         nullptr,
-                         &value,
-                         &bytes) == ERROR_SUCCESS &&
+        if (SettingsStore::Get(MenuAppearanceKey(), L"WindowSize", REG_BINARY, &value, &bytes) == ERROR_SUCCESS &&
             bytes == sizeof(value) && value.cx >= 640 && value.cy >= 400 && value.cx <= 16384 && value.cy <= 16384)
             savedSize = value;
     }
@@ -376,15 +385,7 @@ class Direct2DFrame
             return;
         const UINT dpi = GetDpiForWindow(host);
         savedSize = {MulDiv(bounds.right - bounds.left, 96, dpi), MulDiv(bounds.bottom - bounds.top, 96, dpi)};
-        HKEY key = nullptr;
-        if (RegCreateKeyExW(
-                HKEY_CURRENT_USER, MenuAppearanceKey().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) ==
-            ERROR_SUCCESS)
-        {
-            RegSetValueExW(
-                key, L"WindowSize", 0, REG_BINARY, reinterpret_cast<const BYTE*>(&savedSize), sizeof(savedSize));
-            RegCloseKey(key);
-        }
+        SettingsStore::Put(MenuAppearanceKey(), L"WindowSize", REG_BINARY, &savedSize, sizeof(savedSize));
     }
 
     void SizeToContent()
@@ -456,7 +457,7 @@ class Direct2DFrame
         };
         placeChrome(closeButton, client.right - px(48), 0, px(48), header);
         if (titleLabel)
-            placeChrome(titleLabel, px(16), px(8), std::max(0, std::min(px(240), int(client.right) - px(80))), px(24));
+            placeChrome(titleLabel, px(16), px(8), std::max(0, std::min(px(520), int(client.right) - px(80))), px(24));
         const int edge = px(6), corner = px(12), grip = px(20);
         const int right = int(client.right), bottom = int(client.bottom);
         const RECT edgeRects[] = {{right - grip, bottom - grip, right, bottom},
@@ -858,7 +859,7 @@ class Direct2DFrame
                                      WS_CHILD | WS_VISIBLE | SS_LEFT,
                                      16,
                                      8,
-                                     240,
+                                     520,
                                      24,
                                      host,
                                      nullptr,
@@ -869,6 +870,20 @@ class Direct2DFrame
                                 0,
                                 0,
                                 FW_SEMIBOLD,
+                                FALSE,
+                                FALSE,
+                                FALSE,
+                                DEFAULT_CHARSET,
+                                0,
+                                0,
+                                CLEARTYPE_QUALITY,
+                                0,
+                                L"Segoe UI");
+        buildFont = CreateFontW(-MulDiv(11, int(GetDpiForWindow(host)), 96),
+                                0,
+                                0,
+                                0,
+                                FW_NORMAL,
                                 FALSE,
                                 FALSE,
                                 FALSE,
@@ -915,7 +930,7 @@ class Direct2DFrame
                 SetWindowSubclass(handle, GripProc, 306, reinterpret_cast<DWORD_PTR>(this));
         }
         resizeGrip = resizeEdges.front();
-        SetWindowTextW(host, L"FrankyRenderer");
+        SetWindowTextW(host, BuildLabel().empty() ? L"FrankyRenderer" : (L"FrankyRenderer " + BuildLabel()).c_str());
         SizeToContent();
         Layout();
         InvalidateRect(host, nullptr, TRUE);
@@ -956,6 +971,11 @@ class Direct2DFrame
         {
             DeleteObject(titleFont);
             titleFont = nullptr;
+        }
+        if (buildFont)
+        {
+            DeleteObject(buildFont);
+            buildFont = nullptr;
         }
         if (host && IsWindow(host))
         {

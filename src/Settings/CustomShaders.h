@@ -180,21 +180,14 @@ inline std::wstring SlotKey()
 inline std::map<std::wstring, int> LoadAssignments()
 {
     std::map<std::wstring, int> saved;
-    HKEY key;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, SlotKey().c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
-        return saved;
-    for (DWORD i = 0;; ++i)
+    for (const auto& [name, value] : SettingsStore::At(SlotKey()).Values())
     {
-        wchar_t name[512];
-        DWORD length = DWORD(std::size(name)), type = 0, value = 0, bytes = sizeof(value);
-        const auto result =
-            RegEnumValueW(key, i, name, &length, nullptr, &type, reinterpret_cast<BYTE*>(&value), &bytes);
-        if (result == ERROR_NO_MORE_ITEMS)
-            break;
-        if (result == ERROR_SUCCESS && type == REG_DWORD && value < DWORD(ShaderCustomCount))
-            saved[name] = int(value);
+        DWORD slot = 0;
+        if (value.type == REG_DWORD && value.data.size() == sizeof(slot))
+            memcpy(&slot, value.data.data(), sizeof(slot));
+        if (value.type == REG_DWORD && value.data.size() == sizeof(slot) && slot < DWORD(ShaderCustomCount))
+            saved[name] = int(slot);
     }
-    RegCloseKey(key);
     return saved;
 }
 
@@ -208,8 +201,8 @@ inline std::map<std::wstring, int> Assign(const std::vector<std::wstring>& files
     for (const auto& file : files)
         if (const auto found = saved.find(file); found != saved.end() && taken.insert(found->second).second)
             result[file] = found->second;
-    HKEY key = nullptr;
-    RegCreateKeyExW(HKEY_CURRENT_USER, SlotKey().c_str(), 0, nullptr, 0, KEY_READ | KEY_WRITE, nullptr, &key, nullptr);
+    SettingsStore::Batch batch;
+    const auto key = SettingsStore::At(SlotKey());
     for (const auto& file : files)
     {
         if (result.count(file))
@@ -225,8 +218,7 @@ inline std::map<std::wstring, int> Assign(const std::vector<std::wstring>& files
             if (!taken.count(entry->second))
             {
                 slot = entry->second;
-                if (key)
-                    RegDeleteValueW(key, entry->first.c_str());
+                key.Delete(entry->first.c_str());
                 saved.erase(entry);
                 break;
             }
@@ -235,14 +227,9 @@ inline std::map<std::wstring, int> Assign(const std::vector<std::wstring>& files
         result[file] = slot;
         taken.insert(slot);
         saved[file] = slot;
-        if (key)
-        {
-            const DWORD value = DWORD(slot);
-            RegSetValueExW(key, file.c_str(), 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
-        }
+        const DWORD value = DWORD(slot);
+        key.Set(file.c_str(), REG_DWORD, &value, sizeof(value));
     }
-    if (key)
-        RegCloseKey(key);
     return result;
 }
 

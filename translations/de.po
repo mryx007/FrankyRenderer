@@ -175,14 +175,12 @@ msgstr ""
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
-msgstr "Statistik im Bildbereich"
+msgid "Statistics Text Size (%)"
+msgstr "Textgröße der Statistik (%)"
 
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid ""
-"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
-msgstr ""
-"Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen Balken."
+#. Setting description (General > Image Analysis > Statistics Text Size (%))
+msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
+msgstr "Größe der Ctrl+J-Statistik. 100 ist die automatische Größe."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
@@ -821,6 +819,34 @@ msgstr "Erkennung und Zoom"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
+msgid "Vertical Image Position"
+msgstr "Vertikale Bildposition"
+
+#. Setting description (Processing > Detection & Zoom > Vertical Image Position)
+msgid ""
+"Aligns the image to the top or bottom. With Protect Burned-in Subtitles, "
+"subtitles in the bars stay visible."
+msgstr ""
+"Richtet das Bild oben oder unten aus. Mit „Eingebrannte Untertitel schützen“ "
+"bleiben Untertitel in den Balken sichtbar."
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Center"
+msgstr "Mitte"
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Bottom"
+msgstr "Unten"
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Top"
+msgstr "Oben"
+
+#. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
 msgstr "Im Video enthaltene schwarze Balken erkennen"
 
@@ -884,15 +910,6 @@ msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 "Maximale Helligkeit erkannter Balken als Prozentsatz des decodierten "
 "Weißwerts in SDR."
-
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr "Erkennungsstabilisierung (Sekunden)"
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
 
 #. Category
 #. Category heading
@@ -1663,10 +1680,11 @@ msgstr "Display-Gamma"
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-"tone mapped to SDR."
+"tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
 "Wie der Bildschirm das Signal dekodiert, z. B. 2.4 bei vielen TVs. Wird "
-"genutzt, wenn HDR auf SDR umgerechnet wird."
+"genutzt, wenn HDR auf SDR umgerechnet wird, und von der SDR-Gamma-"
+"Verarbeitung."
 
 #. Choice (Color > Display > Display Gamma)
 #. Setting name (Shortcuts > )
@@ -2086,6 +2104,19 @@ msgid ""
 msgstr ""
 "KI-Umwandlung von SDR in HDR durch den NVIDIA-Treiber. Braucht Windows-HDR, "
 "eine RTX-GPU und RTX Video HDR in der NVIDIA App."
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use Dolby Vision"
+msgstr "Dolby Vision verwenden"
+
+#. Setting description (HDR > HDR Output > Use Dolby Vision)
+msgid ""
+"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always "
+"uses Dolby Vision."
+msgstr ""
+"Aus spielt Dolby Vision Profil 7 und 8 als HDR10 oder HLG ab. Profil 5 nutzt "
+"immer Dolby Vision."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -3229,13 +3260,11 @@ msgid "Reduce color noise."
 msgstr "Verringert Farbrauschen."
 
 #. Setting name (Shaders > Chroma Denoise)
-#. Setting name (Shaders > SSimDownscaler)
 #. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
 msgstr "Schwellenwert (THR)"
 
 #. Setting description (Shaders > Chroma Denoise > Threshold (THR))
-#. Setting description (Shaders > SSimDownscaler > Threshold (THR))
 msgid ""
 "Adjust Threshold for this shader. The default preserves the shader author's "
 "setting."
@@ -3650,6 +3679,15 @@ msgstr ""
 "Verbessert das Herunterskalieren. Benötigt eine kleinere Ausgabeauflösung; "
 "funktioniert am besten mit Mitchell als Filter zum Verkleinern."
 
+#. Setting name (Shaders > SSimDownscaler)
+#. Setting name (Shortcuts > )
+msgid "Oversharp (THR)"
+msgstr "Überschärfung (THR)"
+
+#. Setting description (Shaders > SSimDownscaler > Oversharp (THR))
+msgid "Extra sharpening on top of SSIM. 0 is the author's default."
+msgstr "Zusätzliche Schärfe zu SSIM. 0 ist die Vorgabe des Autors."
+
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
 msgstr ""
@@ -3723,6 +3761,46 @@ msgstr "Bildschirmname"
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a display name (1 to 80 characters)."
 msgstr "Einen Bildschirmnamen eingeben (1 bis 80 Zeichen)."
+
+#. Section heading (Profiles)
+msgid "Settings File"
+msgstr "Einstellungsdatei"
+
+#. Setting name (Profiles > Settings File)
+msgid "Settings Folder"
+msgstr "Einstellungsordner"
+
+#. Setting description (Profiles > Settings File > Settings Folder)
+msgid "Opens the folder with Settings.ini."
+msgstr "Öffnet den Ordner mit der Settings.ini."
+
+#. Button (Profiles > Settings File > Settings Folder)
+msgid "Open"
+msgstr "Öffnen"
+
+#. Setting name (Profiles > Settings File)
+msgid "Import Settings"
+msgstr "Einstellungen importieren"
+
+#. Setting description (Profiles > Settings File > Import Settings)
+msgid "Loads settings from an INI file."
+msgstr "Lädt Einstellungen aus einer INI-Datei."
+
+#. Button (Profiles > Settings File > Import Settings)
+msgid "Import"
+msgstr "Importieren"
+
+#. Setting name (Profiles > Settings File)
+msgid "Export Settings"
+msgstr "Einstellungen exportieren"
+
+#. Setting description (Profiles > Settings File > Export Settings)
+msgid "Saves settings to an INI file."
+msgstr "Speichert die Einstellungen in einer INI-Datei."
+
+#. Button (Profiles > Settings File > Export Settings)
+msgid "Export"
+msgstr "Exportieren"
 
 #. Setting name (Profiles > Profile)
 msgid "Name"
@@ -3880,8 +3958,8 @@ msgid "Lowers the value by %s."
 msgstr "Verringert den Wert um %s."
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr "Schaltet ein oder aus, jeder Druck wechselt."
 
@@ -4064,14 +4142,6 @@ msgid "Rename"
 msgstr "Umbenennen"
 
 #. Menu text; keep %d and %s placeholders
-msgid "Import"
-msgstr "Importieren"
-
-#. Menu text; keep %d and %s placeholders
-msgid "Export"
-msgstr "Exportieren"
-
-#. Menu text; keep %d and %s placeholders
 msgid "Reset Page"
 msgstr "Seite zurücksetzen"
 
@@ -4153,12 +4223,16 @@ msgid "Could not open the INI file dialog."
 msgstr "Der INI-Dateidialog konnte nicht geöffnet werden."
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
-msgstr "Alle Anzeigeprofile exportiert."
+msgid "All settings exported."
+msgstr "Alle Einstellungen exportiert."
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
-msgstr "INI-Sicherung exportiert."
+msgid "All settings imported."
+msgstr "Alle Einstellungen importiert."
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
+msgstr "Alle Einstellungen durch die aus dieser Datei ersetzen?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All display profiles imported."
@@ -4261,3 +4335,25 @@ msgstr "Hohe Qualität"
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr "Schärfstes Bild. Für dedizierte GPUs."
+
+#~ msgid "Detection Stability (seconds)"
+#~ msgstr "Erkennungsstabilisierung (Sekunden)"
+
+#~ msgid "Time required for a new detected bar layout to become stable."
+#~ msgstr "Zeit, nach der eine neu erkannte Balkenanordnung als stabil gilt."
+
+#~ msgid "Statistics in Video Area"
+#~ msgstr "Statistik im Bildbereich"
+
+#~ msgid ""
+#~ "Ctrl+J statistics and image analysis sit on the picture, not in black "
+#~ "bars."
+#~ msgstr ""
+#~ "Ctrl+J-Statistik und Bildanalyse stehen im Bild, nicht in schwarzen "
+#~ "Balken."
+
+#~ msgid "All display profiles exported."
+#~ msgstr "Alle Anzeigeprofile exportiert."
+
+#~ msgid "INI backup exported."
+#~ msgstr "INI-Sicherung exportiert."

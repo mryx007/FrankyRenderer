@@ -1,21 +1,22 @@
 #pragma once
 // Content profiles: settings that differ for videos from chosen folders, e.g.
-// other scalers for anime. Each profile is one INI file (written by the menu)
-// in %APPDATA%\FrankyRenderer\Profiles (file name = profile name):
+// other scalers for anime. Each profile is a key in the settings file
+// (Settings.ini), named like the profile:
 //
-//   [Profile]
-//   folders="D:\Anime;E:\Serien\Anime"
-//   monitors="<display profile id>;<display profile id>"
-//   [Renderer]
-//   smoothMotion=0
+//   [Settings\Profiles\Anime]
+//   Folders="D:\Anime;E:\Serien\Anime"
+//   Monitors="<display profile id>;<display profile id>"
+//   Renderer.smoothMotion=0
 //
 // A profile only stores what differs from the display's normal settings
-// ("Default"), in the same format as the settings backup. The folder decides:
-// a folder belongs to one profile, includes its subfolders, and the folder
-// closest to the file wins. Without monitors the profile applies on every
-// display, otherwise only on the listed ones. While the menu shows another
-// profile, the playing video previews it.
+// ("Default"), as "Section.key" lines of the settings backup. The folder
+// decides: a folder belongs to one profile, includes its subfolders, and the
+// folder closest to the file wins. Without monitors the profile applies on
+// every display, otherwise only on the listed ones. While the menu shows
+// another profile, the playing video previews it.
 #include "Settings/SettingsIni.h"
+#include "Settings/QualityPresets.h"
+#include "Settings/SettingsStore.h"
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -51,32 +52,21 @@ inline std::wstring FolderKey(std::wstring path)
     return path;
 }
 
-inline std::wstring Directory()
+inline std::wstring KeyPath()
 {
-    wchar_t appData[MAX_PATH] = {};
-    const DWORD length = GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
-    if (!length || length >= MAX_PATH)
-        return {};
-    return std::wstring(appData) + L"\\FrankyRenderer\\Profiles";
+    return SettingsStore::Root() + L"\\Profiles";
 }
 
-// A quoted, ';'-separated list taken literally (no escapes), so Windows paths
-// need no doubled backslashes.
-inline std::vector<std::wstring> ReadList(SettingsIni::Entries& entries, const char* key)
+// Earlier versions kept one INI file per profile in this folder.
+inline std::wstring OldDirectory()
+{
+    const auto folder = SettingsStore::Folder();
+    return folder.empty() ? L"" : folder + L"\\Profiles";
+}
+
+inline std::vector<std::wstring> SplitList(const std::wstring& list)
 {
     std::vector<std::wstring> result;
-    const auto found = entries.find({"Profile", key});
-    if (found == entries.end())
-        return result;
-    auto raw = found->second;
-    entries.erase(found);
-    if (raw.size() >= 2 && raw.front() == '"' && raw.back() == '"')
-        raw = raw.substr(1, raw.size() - 2);
-    std::wstring list(raw.size(), L'\0');
-    list.resize(size_t(
-        std::max(0,
-                 MultiByteToWideChar(
-                     CP_UTF8, MB_ERR_INVALID_CHARS, raw.data(), int(raw.size()), list.data(), int(list.size())))));
     for (std::wstring rest = list; !rest.empty();)
     {
         const auto end = rest.find(L';');
@@ -90,15 +80,34 @@ inline std::vector<std::wstring> ReadList(SettingsIni::Entries& entries, const c
     return result;
 }
 
-inline std::string WriteList(const std::vector<std::wstring>& items)
+// A quoted, ';'-separated list taken literally (no escapes), so Windows paths
+// need no doubled backslashes.
+inline std::vector<std::wstring> ReadList(SettingsIni::Entries& entries, const char* key)
+{
+    const auto found = entries.find({"Profile", key});
+    if (found == entries.end())
+        return {};
+    auto raw = found->second;
+    entries.erase(found);
+    if (raw.size() >= 2 && raw.front() == '"' && raw.back() == '"')
+        raw = raw.substr(1, raw.size() - 2);
+    std::wstring list(raw.size(), L'\0');
+    list.resize(size_t(
+        std::max(0,
+                 MultiByteToWideChar(
+                     CP_UTF8, MB_ERR_INVALID_CHARS, raw.data(), int(raw.size()), list.data(), int(list.size())))));
+    return SplitList(list);
+}
+
+inline std::wstring JoinList(const std::vector<std::wstring>& items)
 {
     std::wstring list;
     for (const auto& item : items)
         list += (list.empty() ? L"" : L";") + item;
-    return "\"" + (list.empty() ? std::string() : SettingsIni::Utf8(list.c_str())) + "\"";
+    return list;
 }
 
-// Throws on malformed files; Load() skips those. A profile without folders is
+// A profile file of earlier versions; throws on malformed files. A profile without folders is
 // valid (just created in the menu) and matches nothing.
 inline Profile Parse(const std::wstring& name, const std::string& text)
 {
@@ -113,69 +122,95 @@ inline Profile Parse(const std::wstring& name, const std::string& text)
     return profile;
 }
 
-inline std::vector<Profile> Load(const std::wstring& directory = Directory())
+inline SettingsStore::Value Text(const std::wstring& text)
 {
+    const auto bytes = reinterpret_cast<const BYTE*>(text.c_str());
+    return {REG_SZ, std::vector<BYTE>(bytes, bytes + (text.size() + 1) * sizeof(wchar_t))};
+}
+
+// Writes the profile as it is, replacing what was stored under its name.
+inline bool Store(const Profile& profile)
+{
+    SettingsStore::Node node;
+    node.values[L"Folders"] = Text(JoinList(profile.folders));
+    node.values[L"Monitors"] = Text(JoinList(profile.monitors));
+    if (!profile.overrides.empty())
+    {
+        const auto text = SettingsIni::JoinEntries(profile.overrides);
+        node.values[L"Overrides"] = {REG_BINARY, std::vector<BYTE>(text.begin(), text.end())};
+    }
+    return SettingsStore::ReplaceSubtree(KeyPath() + L"\\" + profile.name, node) == ERROR_SUCCESS;
+}
+
+// Profile files of earlier versions are taken over once, then removed.
+inline void MoveOldFiles()
+{
+    // Custom quality files of earlier versions too: the profiles are read on
+    // every start of the menu and of playback.
+    MoveOldCustomQuality();
+    static std::once_flag once;
+    std::call_once(once,
+                   []
+                   {
+                       const auto directory = OldDirectory();
+                       std::error_code error;
+                       if (directory.empty() || !std::filesystem::is_directory(directory, error))
+                           return;
+                       std::vector<std::filesystem::path> moved;
+                       for (const auto& entry : std::filesystem::directory_iterator(directory, error))
+                       {
+                           std::error_code itemError;
+                           if (!entry.is_regular_file(itemError) || _wcsicmp(entry.path().extension().c_str(), L".ini"))
+                               continue;
+                           try
+                           {
+                               std::ifstream file(entry.path(), std::ios::binary);
+                               const std::string text((std::istreambuf_iterator<char>(file)),
+                                                      std::istreambuf_iterator<char>());
+                               const auto name = entry.path().stem().wstring();
+                               if (!SettingsStore::Exists(KeyPath() + L"\\" + name) && !Store(Parse(name, text)))
+                                   continue;
+                           }
+                           catch (const std::exception&)
+                           {
+                               continue; // a broken file stays where it is
+                           }
+                           moved.push_back(entry.path());
+                       }
+                       if (!SettingsStore::Flush())
+                           return;
+                       for (const auto& path : moved)
+                           std::filesystem::remove(path, error);
+                       std::filesystem::remove(directory, error); // only when empty
+                   });
+}
+
+inline std::vector<Profile> Load()
+{
+    MoveOldFiles();
     std::vector<Profile> profiles;
-    std::error_code error;
-    if (directory.empty() || !std::filesystem::is_directory(directory, error))
+    SettingsStore::Key root;
+    if (SettingsStore::Open(KeyPath(), root) != ERROR_SUCCESS)
         return profiles;
-
-    // Every settings change reads the profiles, in the menu and in each
-    // renderer. Read and parse the files again only when one was added,
-    // removed or written since: name, time and size come with the listing.
-    struct Stamp
+    for (const auto& name : root.SubKeys())
     {
-        std::wstring name;
-        long long written;
-        uintmax_t size;
-        bool operator==(const Stamp&) const = default;
-    };
-
-    std::vector<Stamp> stamps;
-    std::vector<std::filesystem::path> files;
-    for (const auto& entry : std::filesystem::directory_iterator(directory, error))
-    {
-        std::error_code itemError;
-        if (!entry.is_regular_file(itemError) || _wcsicmp(entry.path().extension().c_str(), L".ini"))
-            continue;
-        stamps.push_back({entry.path().filename().wstring(),
-                          entry.last_write_time(itemError).time_since_epoch().count(),
-                          entry.file_size(itemError)});
-        files.push_back(entry.path());
-    }
-    static std::mutex cacheLock;
-    static std::wstring cachedDirectory;
-    static std::vector<Stamp> cachedStamps;
-    static std::vector<Profile> cachedProfiles;
-    {
-        std::lock_guard guard(cacheLock);
-        if (!error && cachedDirectory == directory && cachedStamps == stamps)
-            return cachedProfiles;
-    }
-    for (const auto& path : files)
-    {
-        try
+        Profile profile;
+        profile.name = name;
+        for (const auto& [value, data] : SettingsStore::At(KeyPath() + L"\\" + name).Values())
         {
-            std::ifstream file(path, std::ios::binary);
-            std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            profiles.push_back(Parse(path.stem().wstring(), text));
+            std::wstring text;
+            if (!_wcsicmp(value.c_str(), L"Overrides") && data.type == REG_BINARY)
+                profile.overrides = SettingsIni::SplitEntries(std::string(data.data.begin(), data.data.end()));
+            else if (!_wcsicmp(value.c_str(), L"Folders") && SettingsStore::PlainString(data, text))
+                profile.folders = SplitList(text);
+            else if (!_wcsicmp(value.c_str(), L"Monitors") && SettingsStore::PlainString(data, text))
+                profile.monitors = SplitList(text);
         }
-        catch (const std::exception&)
-        {
-        }
+        profiles.push_back(std::move(profile));
     }
     std::sort(profiles.begin(),
               profiles.end(),
               [](const auto& a, const auto& b) { return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0; });
-    if (!error)
-    {
-        // A file written while it was read has a newer time by now and is
-        // read again next time.
-        std::lock_guard cache(cacheLock);
-        cachedDirectory = directory;
-        cachedStamps = std::move(stamps);
-        cachedProfiles = profiles;
-    }
     return profiles;
 }
 
@@ -187,33 +222,16 @@ inline const Profile* Find(const std::vector<Profile>& profiles, const std::wstr
     return nullptr;
 }
 
-// Writes the profile as <directory>\<name>.ini.
-inline bool Save(const Profile& profile, const std::wstring& directory = Directory())
+inline bool Save(const Profile& profile)
 {
-    try
-    {
-        std::error_code error;
-        std::filesystem::create_directories(directory, error);
-        std::string text =
-            "; FrankyRenderer content profile (UTF-8)\r\n[Profile]\r\nfolders=" + WriteList(profile.folders) +
-            "\r\nmonitors=" + WriteList(profile.monitors) + "\r\n";
-        std::string section;
-        for (const auto& [key, value] : profile.overrides)
-        {
-            if (key.first != section)
-            {
-                section = key.first;
-                text += "\r\n[" + section + "]\r\n";
-            }
-            text += key.second + "=" + value + "\r\n";
-        }
-        std::wstring message;
-        return SUCCEEDED(SettingsIni::ExportText((directory + L"\\" + profile.name + L".ini").c_str(), text, message));
-    }
-    catch (const std::exception&)
-    {
-        return false;
-    }
+    MoveOldFiles();
+    return Store(profile);
+}
+
+inline bool Remove(const std::wstring& name)
+{
+    MoveOldFiles();
+    return SettingsStore::DeleteTree(KeyPath() + L"\\" + name) == ERROR_SUCCESS;
 }
 
 inline bool AllowsDisplay(const Profile& profile, const std::wstring& display)
@@ -259,43 +277,16 @@ inline const Profile* FolderOwner(const std::vector<Profile>& profiles, const st
     return nullptr;
 }
 
-// Every file of the profile folder by name,
-// so a cancelled menu can put the folder back as it was.
-using Files = std::map<std::wstring, std::string>;
-
-inline Files ReadFiles(const std::wstring& directory = Directory())
+// Every profile as stored, so a cancelled menu can put them back as they were.
+inline SettingsStore::Node Capture()
 {
-    Files files;
-    std::error_code error;
-    if (directory.empty() || !std::filesystem::is_directory(directory, error))
-        return files;
-    for (const auto& entry : std::filesystem::directory_iterator(directory, error))
-    {
-        const auto extension = entry.path().extension().wstring();
-        if (!entry.is_regular_file() || (_wcsicmp(extension.c_str(), L".ini") && _wcsicmp(extension.c_str(), L".txt")))
-            continue;
-        std::ifstream file(entry.path(), std::ios::binary);
-        files[entry.path().filename().wstring()] =
-            std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    }
-    return files;
+    MoveOldFiles();
+    return SettingsStore::Subtree(KeyPath());
 }
 
-inline void WriteFiles(const Files& files, const std::wstring& directory = Directory())
+inline void Restore(const SettingsStore::Node& profiles)
 {
-    if (directory.empty())
-        return;
-    std::error_code error;
-    for (const auto& [name, text] : ReadFiles(directory))
-        if (!files.count(name))
-            std::filesystem::remove(std::filesystem::path(directory) / name, error);
-    if (!files.empty())
-        std::filesystem::create_directories(directory, error);
-    for (const auto& [name, text] : files)
-    {
-        std::ofstream file(std::filesystem::path(directory) / name, std::ios::binary | std::ios::trunc);
-        file << text;
-    }
+    SettingsStore::ReplaceSubtree(KeyPath(), profiles);
 }
 
 // The profile for a file on a display: the one the menu previews (a profile

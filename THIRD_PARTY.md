@@ -7,6 +7,7 @@
 - **libdovi**, **Little CMS**, **shaderc**, **SPIRV-Cross**, **Vulkan loader** and GCC runtime libraries - runtime dependencies obtained from MSYS2. Their exact package versions, URLs and SHA256 hashes are recorded in `src/deps/packages.lock.json`. Package license files are restored under `src/deps/msys/ucrt64/share/licenses`.
 - **PlayKit shader collection** - upstream https://github.com/hooke007/mpv_PlayKit . Included source files retain their original authorship and licenses; see `src/Shaders/PlayKit` and its source manifest. Collection licensing does not replace individual shader licenses.
 - **SSimDownscaler** - LGPL-3.0-or-later, by igv. `src/Shaders/PlayKit/SSimDownscaler_RT.glsl` is igv's original (https://gist.github.com/igv/36508af3ffc84410fe39761d6969be10) with the PlayKit THR and DEBUG parameters added; its notice is retained in the file header.
+- **SSimDownscaler_AR** - LGPL-3.0-or-later, based on igv's SSimDownscaler. `src/Shaders/Custom/SSimDownscaler_AR.glsl` adds an edge-selective anti-ringing limit to the reconstruction; igv's notice is retained in the file header.
 - **SubRenderIntf.h** (subtitle renderer interface used by XySubFilter) - BSD license, (C) 2011-2015 madshi; included unchanged under `src/DirectShow/Include`.
 - **Adaptive Sharpen** - the notice is in `licenses/adaptive-sharpen/LICENSE.txt` of the package and in the embedded source header; the original shader is under `src/Shaders`.
 

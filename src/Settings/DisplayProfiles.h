@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <bcrypt.h>
+#include "Settings/SettingsStore.h"
 #include <algorithm>
 #include <atomic>
 #include <cwctype>
@@ -21,9 +22,7 @@ struct Device
 
 inline std::wstring Root()
 {
-    wchar_t test[512];
-    const auto size = GetEnvironmentVariableW(L"PLACEBO_RENDERER_TEST_ROOT", test, 512);
-    return size && size < 512 ? test : L"Software\\PlaceboRenderer";
+    return SettingsStore::Root();
 }
 
 inline bool ValidId(const std::wstring& id)
@@ -176,12 +175,7 @@ inline std::vector<Device> Connected()
                 duplicate = true;
         // Once identical units received path-based IDs, preserve those IDs
         // when only one unit remains connected.
-        HKEY previous = nullptr;
-        const auto pathKey = Root() + L"\\Displays\\" + Hash(CanonicalPath(devicePaths[i]));
-        const bool usedPath =
-            RegOpenKeyExW(HKEY_CURRENT_USER, pathKey.c_str(), 0, KEY_READ, &previous) == ERROR_SUCCESS;
-        if (previous)
-            RegCloseKey(previous);
+        const bool usedPath = SettingsStore::Exists(Root() + L"\\Displays\\" + Hash(CanonicalPath(devicePaths[i])));
         if (duplicate || usedPath)
             result[i].identity = CanonicalPath(devicePaths[i]);
         result[i].id = Hash(result[i].identity);
@@ -202,50 +196,36 @@ inline std::wstring Key(const std::wstring& id)
 inline bool Linked()
 {
     DWORD value = 0, bytes = sizeof(value);
-    return RegGetValueW(
-               HKEY_CURRENT_USER, Root().c_str(), L"LinkDisplays", RRF_RT_REG_DWORD, nullptr, &value, &bytes) ==
-               ERROR_SUCCESS &&
-           value;
+    return SettingsStore::Get(Root(), L"LinkDisplays", REG_DWORD, &value, &bytes) == ERROR_SUCCESS && value;
 }
 
 inline HRESULT SetLinked(bool linked)
 {
-    HKEY root;
-    auto result =
-        RegCreateKeyExW(HKEY_CURRENT_USER, Root().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &root, nullptr);
-    if (result != ERROR_SUCCESS)
-        return HRESULT_FROM_WIN32(result);
     const DWORD value = linked;
-    result = RegSetValueExW(root, L"LinkDisplays", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
-    RegCloseKey(root);
-    return HRESULT_FROM_WIN32(result);
+    return HRESULT_FROM_WIN32(SettingsStore::Put(Root(), L"LinkDisplays", REG_DWORD, &value, sizeof(value)));
 }
 
 // Every display that has stored settings, without querying the hardware.
 inline std::vector<std::wstring> StoredIds()
 {
     std::vector<std::wstring> ids;
-    HKEY root;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, (Root() + L"\\Displays").c_str(), 0, KEY_READ, &root) != ERROR_SUCCESS)
+    SettingsStore::Key root;
+    if (SettingsStore::Open(Root() + L"\\Displays", root) != ERROR_SUCCESS)
         return ids;
-    for (DWORD index = 0;; ++index)
-    {
-        wchar_t id[128];
-        DWORD count = 128;
-        if (RegEnumKeyExW(root, index, id, &count, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
-            break;
+    for (const auto& id : root.SubKeys())
         if (ValidId(id))
             ids.push_back(id);
-    }
-    RegCloseKey(root);
     return ids;
 }
 
-inline std::wstring ReadString(HKEY key, const wchar_t* name)
+inline std::wstring ReadString(const SettingsStore::Key& key, const wchar_t* name)
 {
     wchar_t text[2048];
-    DWORD bytes = sizeof(text);
-    return RegGetValueW(key, nullptr, name, RRF_RT_REG_SZ, nullptr, text, &bytes) == ERROR_SUCCESS ? text : L"";
+    DWORD bytes = sizeof(text), type = 0;
+    return key.Query(name, &type, text, &bytes) == ERROR_SUCCESS && type == REG_SZ && bytes >= sizeof(wchar_t) &&
+                   !text[bytes / sizeof(wchar_t) - 1]
+               ? text
+               : L"";
 }
 
 struct Metadata
@@ -261,8 +241,8 @@ inline Metadata ReadMetadata(const std::wstring& id)
     if (!ValidId(id))
         throw std::runtime_error("Invalid display profile identity.");
     Metadata metadata;
-    HKEY key;
-    const auto result = RegOpenKeyExW(HKEY_CURRENT_USER, Key(id).c_str(), 0, KEY_READ, &key);
+    SettingsStore::Key key;
+    const auto result = SettingsStore::Open(Key(id), key);
     if (result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND)
         return metadata;
     if (result != ERROR_SUCCESS)
@@ -270,7 +250,6 @@ inline Metadata ReadMetadata(const std::wstring& id)
     metadata.exists = true;
     for (int i = 0; i < 3; ++i)
         metadata.text[i] = ReadString(key, MetadataKeys[i]);
-    RegCloseKey(key);
     return metadata;
 }
 
@@ -284,62 +263,39 @@ inline HRESULT WriteMetadata(const std::wstring& id, const Metadata& metadata)
     if (!metadata.exists)
     {
         ++KeysDeleted;
-        const auto result = RegDeleteTreeW(HKEY_CURRENT_USER, Key(id).c_str());
-        return result == ERROR_FILE_NOT_FOUND ? S_OK : HRESULT_FROM_WIN32(result);
+        return HRESULT_FROM_WIN32(SettingsStore::DeleteTree(Key(id)));
     }
-    HKEY key;
-    auto result =
-        RegCreateKeyExW(HKEY_CURRENT_USER, Key(id).c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr);
-    if (result != ERROR_SUCCESS)
-        return HRESULT_FROM_WIN32(result);
+    SettingsStore::Batch batch;
+    SettingsStore::Key key;
+    auto result = SettingsStore::Create(Key(id), key);
     for (int i = 0; i < 3 && result == ERROR_SUCCESS; ++i)
     {
         const auto& value = metadata.text[i];
-        result = value.empty() ? RegDeleteValueW(key, MetadataKeys[i])
-                               : RegSetValueExW(key,
-                                                MetadataKeys[i],
-                                                0,
-                                                REG_SZ,
-                                                reinterpret_cast<const BYTE*>(value.c_str()),
-                                                DWORD((value.size() + 1) * sizeof(wchar_t)));
-        if (result == ERROR_FILE_NOT_FOUND)
-            result = ERROR_SUCCESS;
+        result = value.empty()
+                     ? key.Delete(MetadataKeys[i])
+                     : key.Set(MetadataKeys[i], REG_SZ, value.c_str(), DWORD((value.size() + 1) * sizeof(wchar_t)));
     }
-    RegCloseKey(key);
     return HRESULT_FROM_WIN32(result);
 }
 
 inline std::vector<Device> All()
 {
     auto devices = Connected();
-    HKEY root;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, (Root() + L"\\Displays").c_str(), 0, KEY_READ, &root) != ERROR_SUCCESS)
-        return devices;
-    for (DWORD index = 0;; ++index)
+    for (const auto& id : StoredIds())
     {
-        wchar_t id[128];
-        DWORD count = 128;
-        if (RegEnumKeyExW(root, index, id, &count, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
-            break;
-        if (!ValidId(id) || std::any_of(devices.begin(), devices.end(), [&](const Device& d) { return d.id == id; }))
+        if (std::any_of(devices.begin(), devices.end(), [&](const Device& d) { return d.id == id; }))
             continue;
-        HKEY key;
-        if (RegOpenKeyExW(root, id, 0, KEY_READ, &key) == ERROR_SUCCESS)
-        {
-            devices.push_back({id, ReadString(key, L"DeviceName"), ReadString(key, L"DeviceIdentity"), nullptr, false});
-            RegCloseKey(key);
-        }
+        const SettingsStore::Key key(L"Displays\\" + id);
+        devices.push_back({id, ReadString(key, L"DeviceName"), ReadString(key, L"DeviceIdentity"), nullptr, false});
     }
-    RegCloseKey(root);
     for (auto& device : devices)
     {
-        HKEY key;
-        if (RegOpenKeyExW(HKEY_CURRENT_USER, Key(device.id).c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS)
+        SettingsStore::Key key;
+        if (SettingsStore::Open(Key(device.id), key) == ERROR_SUCCESS)
         {
             const auto alias = ReadString(key, L"DisplayName");
             if (!alias.empty())
                 device.name = alias;
-            RegCloseKey(key);
         }
     }
     return devices;
@@ -355,17 +311,10 @@ inline HRESULT Rename(const std::wstring& id, std::wstring name)
     name = name.substr(first, name.find_last_not_of(L" \t\r\n") - first + 1);
     if (name.size() > 80 || std::any_of(name.begin(), name.end(), [](wchar_t c) { return c < 32; }))
         return E_INVALIDARG;
-    HKEY key;
-    auto result = RegOpenKeyExW(HKEY_CURRENT_USER, Key(id).c_str(), 0, KEY_SET_VALUE, &key);
-    if (result != ERROR_SUCCESS)
-        return HRESULT_FROM_WIN32(result);
-    result = RegSetValueExW(key,
-                            L"DisplayName",
-                            0,
-                            REG_SZ,
-                            reinterpret_cast<const BYTE*>(name.c_str()),
-                            DWORD((name.size() + 1) * sizeof(wchar_t)));
-    RegCloseKey(key);
+    SettingsStore::Key key;
+    auto result = SettingsStore::Open(Key(id), key);
+    if (result == ERROR_SUCCESS)
+        result = key.Set(L"DisplayName", REG_SZ, name.c_str(), DWORD((name.size() + 1) * sizeof(wchar_t)));
     return HRESULT_FROM_WIN32(result);
 }
 }

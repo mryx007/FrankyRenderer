@@ -55,6 +55,7 @@ struct RenderSettings
     TonalSettings tonal;
     UserShaderSettings userShaders;
     BlackBarSettings blackBars;
+    int imagePosition = 0; // 0=center, 1=bottom, 2=top
     RendererExtras extras;
     ColorMappingSettings colorMapping;
     float saturation = 1.f, contrast = 1.f, brightness = 0.f, gamma = 1.f;
@@ -94,8 +95,9 @@ struct RenderSettings
     float sharpenStrength = .5f;
     bool smoothMotion = false;
     bool rtxSuperResolution = false, rtxHdr = false;
+    bool useDolbyVision = true; // statistics: Dolby Vision left out by the setting
     bool imageAnalysis = false;
-    bool statisticsInVideo = false; // statistics and analysis follow the picture
+    int statisticsTextScale = 100; // statistics text size in percent of the automatic size
     std::optional<ScalingSettings> scaling;
     float motionRadius = 0;
     bool iccEnabled = false, lutEnabled = false;
@@ -107,7 +109,7 @@ struct MeasurementSnapshot
 {
     bool feedback = false, timing = false, countersAvailable = false;
     uint32_t pending = 0;
-    uint64_t drops = 0;
+    uint64_t drops = 0, skipped = 0; // drops: real ones; skipped: video faster than the display
     uint64_t submissions = 0, confirmed = 0, repeats = 0, glitches = 0, resets = 0;
     uint64_t renderCpuSamples = 0, renderGpuSamples = 0, presentCpuSamples = 0;
     double renderCpuAverage = 0, renderCpuMax = 0, renderGpuAverage = 0, renderGpuMax = 0, presentCpuAverage = 0,
@@ -153,7 +155,10 @@ class PlaceboBackend
                               pl_field first,
                               int64_t timestamp,
                               float duration);
-    HRESULT Present();
+    // holdSwap: render and start the GPU, but hand the picture to DXGI only
+    // at Swap (without Smooth Motion a frame renders ahead of its refresh).
+    HRESULT Present(bool holdSwap = false);
+    HRESULT Swap();
     void HoldForResize(bool hold);
     HRESULT TryPresent(bool blackWhenEmpty = false);
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
@@ -182,6 +187,8 @@ class PlaceboBackend
     int CacheLoadedObjects() const;
     int CacheObjects() const;
     void ShowStatistics(bool enabled);
+    // The decoder marks the video as interlaced, whether or not it is deinterlaced.
+    void SetSourceInterlaced(bool interlaced);
     // Short text in the picture for about two seconds, e.g. after a shortcut.
     void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;
@@ -201,14 +208,21 @@ class PlaceboBackend
     // after a switch; -1 asks DXGI. rebuildOutput recreates the swapchain.
     void SetDisplayHdrState(int enabled, bool rebuildOutput);
     uint64_t RtxFrames() const;
+    // The reference clock against real time (QPC), for the statistics; the
+    // deviation in parts per billion, INT64_MIN while still measuring.
+    void ObserveClock(int64_t qpc, int64_t clock);
+    void ResetClockMeasurement();
+    int64_t ClockDeviationPpb() const;
     void SetSourceCodec(const std::string& codec);
     // Statistics line for content profiles, e.g. "Anime" or "none (no file path)".
     void SetContentProfile(const std::wstring& label);
-    void SetStatisticsInput(double fps, bool directGpu, int dropped = -1);
+    // fps: the file's frame rate; rate: the player's playback rate.
+    void SetStatisticsInput(double fps, double rate, bool directGpu, int dropped = -1);
     // refreshLead: Smooth Motion scheduled this present on its own display
     // refresh, this many refreshes ahead, so it cannot drift ahead of scanout.
     void SetPresentationTiming(int64_t dueQpc, bool running, int64_t mediaTime = -1, int refreshLead = 0);
     void ResetPresentationMeasurement(bool counters = false);
+    void RestartPresentationAfterPause(double displayPeriod);
     // Ctrl+J from zero: lost pictures, DXGI counters, averages and peaks.
     void ResetStatistics();
     // Last observed vsync (QPC, absolute refresh count) and refresh period in
@@ -218,6 +232,8 @@ class PlaceboBackend
     // frame latency limit blocking Present.
     int PresentAheadCeiling() const;
     void RestartDropMeasurement(int rawBeforeReset);
+    // A frame left out because the video is faster than the display.
+    void CountSkippedFrame();
     MeasurementSnapshot Measurements() const;
     BlackBarStatus BlackBars() const;
     int OutputLevels() const;

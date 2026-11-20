@@ -10,9 +10,23 @@
 #include <cstring>
 #include <string>
 
+// Sets a parameter named ANTIRING to the global anti-ringing strength.
+inline void ApplyGlobalAntiring(const pl_hook* hook, float strength)
+{
+    if (!hook || strength < 0)
+        return;
+    for (int n = 0; n < hook->num_parameters; n++)
+    {
+        const auto& par = hook->parameters[n];
+        if (par.type == PL_VAR_FLOAT && !strcmp(par.name, GlobalAntiringParameter))
+            par.data->f = std::clamp(strength, par.minimum.f, par.maximum.f);
+    }
+}
+
 // Catalogue shader `id` with the overridden parameter values of `c`; nullptr
 // when the file is missing, does not parse or lacks a configured parameter.
-inline const pl_hook* ParseUserShader(pl_gpu gpu, int id, const ShaderConfig& c)
+// `antiring` >= 0 sets a parameter named ANTIRING (global anti-ringing).
+inline const pl_hook* ParseUserShader(pl_gpu gpu, int id, const ShaderConfig& c, float antiring = -1)
 {
     const auto& info = ShaderCatalog[id];
     const bool custom = id >= ShaderBuiltinCount;
@@ -47,6 +61,7 @@ inline const pl_hook* ParseUserShader(pl_gpu gpu, int id, const ShaderConfig& c)
                 else if (found->type == PL_VAR_UINT)
                     found->data->u = static_cast<unsigned>(value);
             }
+    ApplyGlobalAntiring(hook, antiring);
     return hook;
 }
 

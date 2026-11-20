@@ -91,6 +91,7 @@ static bool interlacedTest = false, bottomFirst = false, weaveTest = false, eosT
 // playing. 1 = alternate woven and field pictures, 2 = alternate field order.
 static int mixedFields = 0;
 static bool flushRaceTest = false, rtxTest = false, rtxHdrTest = false;
+static bool frameStepTest = false;
 static std::atomic<bool> blockSampleTime = false;
 static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
 static DXGI_FORMAT textureFormat = DXGI_FORMAT_P010;
@@ -1090,6 +1091,8 @@ int wmain(int argc, wchar_t** argv)
             textureBind = D3D11_BIND_SHADER_RESOURCE;
     for (int i = 1; i < argc; i++)
     {
+        if (wcscmp(argv[i], L"--frame-step") == 0)
+            frameStepTest = true;
         if (wcscmp(argv[i], L"--flush-race") == 0)
             flushRaceTest = true;
         if (wcscmp(argv[i], L"--sharpen") == 0)
@@ -1455,6 +1458,104 @@ int wmain(int argc, wchar_t** argv)
         }
         Check(config->GetStatus(&status), "status");
     } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    if (frameStepTest)
+    {
+        // MPC-HC/BE step with the graph's IVideoFrameStep (Ctrl+Right): the
+        // renderer must show exactly the next source frame and keep it while
+        // paused, with fields and Smooth Motion ticks counted per frame.
+        auto pump = [](DWORD ms)
+        {
+            const DWORD until = GetTickCount() + ms;
+            do
+            {
+                MSG msg;
+                while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+                Sleep(5);
+            } while (GetTickCount() < until);
+        };
+        ComPtr<IVideoFrameStep> step;
+        ComPtr<IMediaEvent> events;
+        Check(graph.As(&step), "frame step interface");
+        Check(graph.As(&events), "graph events");
+        Check(control->Pause(), "pause before stepping");
+        OAFilterState state = State_Running;
+        Check(control->GetState(3000, &state), "paused state");
+        pump(300);
+        if (step->CanStep(0, nullptr) != S_OK || step->CanStep(1, nullptr) != S_OK)
+        {
+            puts("FAIL the graph cannot step frames with this renderer");
+            return 60;
+        }
+        auto shown = [&]
+        {
+            __int64 at = 0;
+            Check(hostConfig->Flt_GetInt64("placeboFrameStart", &at), "frame on screen");
+            return at;
+        };
+        auto waitStep = [&]
+        {
+            const DWORD until = GetTickCount() + 5000;
+            while (GetTickCount() < until)
+            {
+                long code = 0;
+                LONG_PTR first = 0, second = 0;
+                if (events->GetEvent(&code, &first, &second, 10) == S_OK)
+                {
+                    events->FreeEventParams(code, first, second);
+                    if (code == EC_STEP_COMPLETE)
+                        return true;
+                }
+                pump(0);
+            }
+            return false;
+        };
+        const REFERENCE_TIME frame = 333333;
+        for (int round = 0; round < 6; ++round)
+        {
+            const DWORD frames = round == 5 ? 2 : 1;
+            const auto before = shown();
+            Check(step->Step(frames, nullptr), "step");
+            if (!waitStep())
+            {
+                printf("FAIL no EC_STEP_COMPLETE for step %d\n", round + 1);
+                return 61;
+            }
+            Check(control->GetState(3000, &state), "state after step");
+            const auto after = shown();
+            pump(400); // the next picture must not follow while paused
+            const auto later = shown();
+            const auto moved = after - before;
+            // Smooth Motion shows ticks inside a frame: compare source frame numbers.
+            const bool exact = after / frame - before / frame == static_cast<__int64>(frames) && moved > 0;
+            printf("%s step %d (%lu frame%s): %.1f -> %.1f ms, still %.1f ms after 400 ms, state %ld\n",
+                   exact && later == after && state == State_Paused ? "PASS" : "FAIL",
+                   round + 1,
+                   static_cast<unsigned long>(frames),
+                   frames > 1 ? "s" : "",
+                   before / 1e4,
+                   after / 1e4,
+                   later / 1e4,
+                   static_cast<long>(state));
+            if (!exact || later != after || state != State_Paused)
+                return 62;
+        }
+        // Playing on after stepping starts at the held picture.
+        const auto stepped = shown();
+        Check(control->Run(), "run after stepping");
+        pump(300);
+        if (shown() <= stepped)
+        {
+            puts("FAIL playback did not continue after stepping");
+            return 63;
+        }
+        puts("PASS playback continues after frame stepping");
+        control->Stop();
+        return 0;
+    }
     if (mixedFields)
     {
         // Pictures must keep coming although their flags change every frame.

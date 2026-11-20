@@ -2,9 +2,12 @@
 // libplacebo integration uses only its public API. No existing MPC pixel path.
 #include "Renderer/Backend.h"
 #include "Renderer/BlackBarAnalysis.h"
+#include "Renderer/ImagePosition.h"
 #include "Renderer/GpuPacked422.h"
 #include "Renderer/NativeHdrDisplay.h"
 #include "Renderer/NativeHdrSwapchain.h"
+#include "Renderer/ClockStatistics.h"
+#include "Renderer/StatisticsGamma.h"
 #include "Renderer/ColorManagement.h"
 #include "Settings/SettingsChoices.h"
 #include "Settings/HdrTuning.h"
@@ -109,6 +112,8 @@ struct PlaceboBackend::State
     TonalHook tonalHook;
     const pl_hook* userHooks[ShaderCount] = {};
     ShaderConfig userCached[ShaderCount];
+    // Global anti-ringing strength each parsed shader was given (ANTIRING).
+    float userAntiring[ShaderCount] = {};
     bool userFailed[ShaderCount] = {};
     // Shaders compiled on a worker device, once per session; see ShaderWarmup.h.
     std::shared_ptr<ShaderWarmupJob> warmups[ShaderCount];
@@ -179,20 +184,36 @@ struct PlaceboBackend::State
     std::wstring userShaderMessage;
     // Content profile in use, or why none applies; shown in the statistics.
     std::wstring contentProfile;
+    std::wstring renderAdapter; // The GPU libplacebo renders on.
+
+    void NameRenderGpu()
+    {
+        renderAdapter.clear();
+        ComPtr<IDXGIDevice> dxgi;
+        ComPtr<IDXGIAdapter> adapter;
+        DXGI_ADAPTER_DESC desc = {};
+        if (d3d && SUCCEEDED(d3d->device->QueryInterface(IID_PPV_ARGS(&dxgi))) &&
+            SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&desc)))
+            renderAdapter = desc.Description;
+        Trace("Render GPU: %ls", renderAdapter.empty() ? L"unknown" : renderAdapter.c_str());
+    }
 
     bool PrepareUserShader(int id)
     {
         const auto& c = settings.userShaders.shaders[id];
         auto& cached = userCached[id];
+        const float antiring = options ? options->params.antiringing_strength : 0.f;
         const bool same = c.enabled == cached.enabled && c.overrides == cached.overrides &&
-                          std::equal(std::begin(c.values), std::end(c.values), std::begin(cached.values));
+                          std::equal(std::begin(c.values), std::end(c.values), std::begin(cached.values)) &&
+                          userAntiring[id] == antiring;
         if (same && userFailed[id])
             return false;
         if (same && userHooks[id])
             return true;
         userFailed[id] = false;
         cached = c;
-        const pl_hook* hook = ParseUserShader(d3d->gpu, id, c);
+        userAntiring[id] = antiring;
+        const pl_hook* hook = ParseUserShader(d3d->gpu, id, c, antiring);
         if (!hook)
         {
             Trace("Shader failed to load: %s", ShaderCatalog[id].file);
@@ -216,8 +237,13 @@ struct PlaceboBackend::State
     uint64_t messageUntil = 0;
     ImageAnalysis imageAnalysis;
     std::atomic<bool> showStatistics = false;
+    std::atomic<bool> sourceInterlaced = false;
+    // Field of the picture being rendered, kept before RTX Video replaces the
+    // picture with its progressive output; the statistics report this one.
+    pl_field statisticsField = PL_FIELD_NONE;
     std::string sourceCodec;
-    double statisticsFps = 0;
+    // statisticsFps is the rate the display receives (file rate × playback rate).
+    double statisticsFps = 0, statisticsFileFps = 0, statisticsRate = 1;
     bool statisticsDirect = false;
     int statisticsDropped = -1;
     std::wstring statisticsText;
@@ -231,6 +257,7 @@ struct PlaceboBackend::State
     GpuMeasurement renderGpu;
     uint64_t traceGpuCount = 0, traceSummary = 0, traceFrames = 0;
     double traceCpuMax = 0, traceGpuMax = 0;
+    uint64_t traceMixedFrames = 0;
 
     // Opt-in diagnostics: render peaks and presentation queue every 10 s.
     void TraceRender(uint64_t now)
@@ -238,6 +265,8 @@ struct PlaceboBackend::State
         if (!TraceEnabled())
             return;
         ++traceFrames;
+        if (mixing && settings.smoothMotion)
+            ++traceMixedFrames;
         traceCpuMax = std::max(traceCpuMax, renderCpu.last);
         if (renderGpu.duration.count != traceGpuCount)
         {
@@ -248,21 +277,27 @@ struct PlaceboBackend::State
             traceSummary = now;
         if (now - traceSummary < 10000)
             return;
-        Trace("Render summary %llu frames, peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
-              "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue",
-              static_cast<unsigned long long>(traceFrames),
-              traceCpuMax,
-              traceGpuMax,
-              presentCpu.Maximum(now),
-              static_cast<unsigned long long>(traceQueued[0]),
-              static_cast<unsigned long long>(traceQueued[1]),
-              static_cast<unsigned long long>(traceQueued[2]),
-              static_cast<unsigned long long>(traceQueued[3]),
-              static_cast<unsigned long long>(driftSkips),
-              static_cast<unsigned long long>(backlog.skipped));
+        Trace(
+            "Render summary %llu frames (%llu with frame mixing), peak %.2f ms CPU / %.2f ms GPU, present peak %.2f ms, "
+            "queued 0/1/2/3+ %llu/%llu/%llu/%llu, ticks left out %llu drift / %llu queue, "
+            "display %.6f Hz nominal / %.6f Hz measured",
+            static_cast<unsigned long long>(traceFrames),
+            static_cast<unsigned long long>(traceMixedFrames),
+            traceCpuMax,
+            traceGpuMax,
+            presentCpu.Maximum(now),
+            static_cast<unsigned long long>(traceQueued[0]),
+            static_cast<unsigned long long>(traceQueued[1]),
+            static_cast<unsigned long long>(traceQueued[2]),
+            static_cast<unsigned long long>(traceQueued[3]),
+            static_cast<unsigned long long>(driftSkips),
+            static_cast<unsigned long long>(backlog.skipped),
+            measuredPeriod > 0 ? 1e7 / measuredPeriod : 0.0,
+            refreshFit.Span() >= 10 ? refreshFit.Hz() : 0.0);
         std::fill(std::begin(traceQueued), std::end(traceQueued), 0);
         traceSummary = now;
         traceFrames = 0;
+        traceMixedFrames = 0;
         traceCpuMax = traceGpuMax = 0;
     }
 
@@ -270,6 +305,12 @@ struct PlaceboBackend::State
     {
         std::lock_guard guard(dropsLock);
         return drops.total;
+    }
+
+    uint64_t SkipTotal()
+    {
+        std::lock_guard guard(dropsLock);
+        return drops.skipped;
     }
 
     std::atomic<unsigned> measurementReset = 0;
@@ -302,8 +343,12 @@ struct PlaceboBackend::State
     bool presentationTimed = false;
     int presentationLead = 0;
     ULONGLONG periodUpdated = 0;
+    std::atomic<double> resumeDisplayPeriod = 0;
     HMONITOR measuredMonitor = nullptr;
     double measuredPeriod = 0;
+    // Statistics "Clock": the reference clock and the display against real time.
+    ClockStatistics::RateFit clockFit;
+    ClockStatistics::RefreshFit refreshFit;
     int measuredWidth = 0, measuredHeight = 0;
     int64_t lastSyncQpc = 0;
     UINT lastSyncRefresh = 0;
@@ -376,8 +421,37 @@ struct PlaceboBackend::State
         return true;
     }
 
+    // A picture rendered ahead and not yet handed to DXGI (Present holdSwap).
+    bool swapPending = false, pendingTimed = false;
+    int64_t pendingDue = 0;
+    int pendingTextureFormat = 0;
+
+    void FinishSwap()
+    {
+        if (!swapPending)
+            return;
+        swapPending = false;
+        LARGE_INTEGER begin = {}, end = {}, frequency = {};
+        QueryPerformanceFrequency(&frequency);
+        QueryPerformanceCounter(&begin);
+        pl_swapchain_swap_buffers(swapchain);
+        QueryPerformanceCounter(&end);
+        const auto tick = GetTickCount64();
+        const double presentMs = 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart;
+        presentCpu.Add(tick, presentMs);
+        MeasurePresentation(pendingDue, pendingTimed);
+        if (pendingTimed && measuredPeriod > 0 && presentMs > 1.5 * measuredPeriod / 10000.0)
+            Trace("Slow presentation: tick=%llu took %.3f ms, refresh interval %.3f ms",
+                  static_cast<unsigned long long>(tick),
+                  presentMs,
+                  measuredPeriod / 10000.0);
+        outputTextureFormat = pendingTextureFormat;
+        RepaintPending();
+    }
+
     void DestroySwapchain()
     {
+        swapPending = false;
         nativeSwapchain.Destroy();
         pl_swapchain_destroy(&swapchain);
         presentation.Reset(false);
@@ -420,6 +494,7 @@ struct PlaceboBackend::State
     pl_log log = nullptr;
     pl_d3d11 d3d = nullptr;
     pl_renderer renderer = nullptr;
+    pl_renderer subtitleRenderer = nullptr;
     pl_swapchain swapchain = nullptr;
     pl_options options = nullptr;
     pl_tex planes[4] = {};
@@ -650,6 +725,7 @@ struct PlaceboBackend::State
         failedNativeMonitor = nullptr;
         pl_options_free(&options);
         pl_renderer_destroy(&renderer);
+        pl_renderer_destroy(&subtitleRenderer);
         pl_mpv_user_shader_destroy(&sharpenHook);
         sharpenCached = -1;
         for (int i = 0; i < ShaderCount; i++)
@@ -908,6 +984,7 @@ struct PlaceboBackend::State
             d3d = pl_d3d11_create(log, &params);
             if (!d3d)
                 return E_FAIL;
+            NameRenderGpu();
         }
         return S_OK;
     }
@@ -987,7 +1064,10 @@ struct PlaceboBackend::State
                 rtx.Invalidate();
             if (memcmp(&previous.tonal, &settings.tonal, sizeof(settings.tonal)) && renderer)
                 pl_renderer_flush_cache(renderer);
-            if (memcmp(&oldBars, &settings.blackBars, sizeof(oldBars)))
+            // Timing and presentation changes keep the measured movie bounds.
+            // Throwing them away would briefly fit the encoded bars again.
+            if (oldBars.enabled != settings.blackBars.enabled || oldBars.threshold != settings.blackBars.threshold ||
+                oldBars.keepSubtitles != settings.blackBars.keepSubtitles)
                 blackBars.Reset();
             if (previous.outputFormat != settings.outputFormat)
             {
@@ -1068,6 +1148,7 @@ struct PlaceboBackend::State
         if (hr == DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
         {
             presentation.Disjoint();
+            refreshFit.Reset();
             lastSyncQpc = 0;
             lastSyncRefresh = 0;
             stableCadence = true;
@@ -1088,6 +1169,9 @@ struct PlaceboBackend::State
             {
                 lastSyncQpc = result.SyncQPCTime.QuadPart;
                 lastSyncRefresh = result.SyncRefreshCount;
+                refreshFit.Add(double(result.SyncQPCTime.QuadPart) / double(frequency.QuadPart),
+                               result.SyncRefreshCount,
+                               measuredPeriod > 0 ? 1e7 / measuredPeriod : 0);
             }
             const auto refreshDelta = static_cast<int64_t>(result.PresentRefreshCount) - result.SyncRefreshCount;
             const auto actual = result.SyncQPCTime.QuadPart +
@@ -1180,11 +1264,29 @@ struct PlaceboBackend::State
         if (statisticsFps > 0 || period > 0)
         {
             auto& value = row(L"Timing");
+            if (statisticsFps > 0 && statisticsRate != 1)
+                value << std::setprecision(3) << statisticsFileFps << L" fps × " << std::setprecision(2)
+                      << statisticsRate << L" = ";
             if (statisticsFps > 0)
                 value << std::setprecision(3) << statisticsFps << L" fps (" << std::setprecision(2)
                       << 1000 / statisticsFps << L" ms)";
             if (period > 0)
                 value << (statisticsFps > 0 ? dot : L"") << L"vsync " << std::setprecision(2) << period / 1e4 << L" ms";
+            // A video faster than the display shows one frame per refresh; the
+            // frames in between are left out on purpose and not listed as drops.
+            if (statisticsFps > 0 && period > 0 && 1000 / statisticsFps < 0.95 * period / 1e4)
+                value << dot << std::setprecision(0) << 1e7 / period << L" fps shown";
+        }
+        {
+            // How far the audio clock deviates and how often that repeats or drops a frame.
+            ClockStatistics::Input clock;
+            clock.deviation = clockFit.Deviation();
+            clock.clockSpan = clockFit.Span();
+            clock.displayHz = refreshFit.Span() >= 10 ? refreshFit.Hz() : period > 0 ? 1e7 / period : 0;
+            clock.nominalHz = measuredPeriod > 0 ? 1e7 / measuredPeriod : clock.displayHz;
+            clock.fps = statisticsFps;
+            clock.smoothMotion = settings.smoothMotion;
+            row(L"Clock") << ClockStatistics::Text(clock);
         }
         row(L"Size") << description.width << L"×" << description.height << arrow << int(output.crop.x1 - output.crop.x0)
                      << L"×" << int(output.crop.y1 - output.crop.y0) << dot << std::setprecision(2)
@@ -1214,11 +1316,37 @@ struct PlaceboBackend::State
                           : description.levels == PL_COLOR_LEVELS_FULL  ? L"full range"
                                                                         : L"unknown range");
         {
+            // The source's gamma and what the display gets (as during this render).
+            StatisticsGamma::Output gamma;
+            gamma.transfer = output.color.transfer;
+            gamma.hdr = pl_color_transfer_is_hdr(output.color.transfer);
+            gamma.icc = settings.iccEnabled;
+            gamma.sdrGamma = sdrGammaCurve;
+            gamma.displayGamma = settings.displayGammaCurve;
+            gamma.displayContrast = settings.displayContrast;
+            row(L"Gamma") << StatisticsGamma::Text(description.color.transfer, gamma);
+        }
+        {
             // Dolby Vision status lines "Name: value" become rows; the
             // processing state is yellow unless active.
             std::wostringstream dv;
-            AppendDolbyVisionStatus(
-                dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
+            // Dolby Vision switched off: the picture plays as its HDR10 or HLG
+            // base layer, and the file's profile is named, without colour.
+            if (description.dvSource.present && !image.repr.dovi && !settings.useDolbyVision &&
+                pl_color_transfer_is_hdr(description.color.transfer))
+            {
+                const bool plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
+                row(L"Format") << (description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
+                                   : plus                                         ? L"HDR10+"
+                                                                                  : L"HDR10");
+                auto& off = row(L"Dolby Vision");
+                off << L"off";
+                if (description.dvSource.profile > 0)
+                    off << dot << L"Profile " << description.dvSource.profile;
+            }
+            else
+                AppendDolbyVisionStatus(
+                    dv, description.dvSource, bool(image.repr.dovi), description.dvLayered, output.color);
             std::wistringstream lines(dv.str());
             for (std::wstring line; std::getline(lines, line);)
             {
@@ -1307,10 +1435,9 @@ struct PlaceboBackend::State
             else
                 value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
         }
-        row(L"Deinterlacing") << (image.field == PL_FIELD_NONE  ? L"off (progressive / not active)"
-                                  : settings.deinterlacing == 2 ? L"Yadif"
-                                  : settings.deinterlacing == 1 ? L"Bwdif"
-                                                                : L"off (settings)");
+        row(L"Deinterlacing") << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
+                                  : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
+                                                                                : L"off (progressive / not active)");
         row(L"Debanding") << (settings.deband ? L"on" : L"off");
         row(L"Sharpening") << L"adaptive sharpen "
                            << (sharpenState == 1   ? L"on"
@@ -1330,7 +1457,7 @@ struct PlaceboBackend::State
                     value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
             }
         }
-        if (settings.blackBars.enabled)
+        if (settings.blackBars.enabled || settings.imagePosition)
         {
             const RECT r = blackBars.detector.Bounds(description.width, description.height);
             auto& value = row(L"Black bars");
@@ -1379,11 +1506,16 @@ struct PlaceboBackend::State
         row(L"Transfer") << (statisticsDirect ? L"D3D11 texture (GPU direct)" : L"CPU memory → GPU upload");
 
         heading(L"Performance");
+        if (!renderAdapter.empty())
+            row(L"GPU") << renderAdapter;
         // Time available per rendered picture: one refresh with Smooth Motion,
-        // otherwise one video frame (one field when deinterlacing).
+        // otherwise one video frame (one field when deinterlacing), but never
+        // less than a refresh: a faster video only shows one picture per refresh.
+        const double frameBudget =
+            statisticsFps > 0 ? 1000 / statisticsFps / (statisticsField != PL_FIELD_NONE ? 2 : 1) : 0;
         const double budget = mixing && settings.smoothMotion && period > 0 ? period / 1e4
-                              : statisticsFps > 0 ? 1000 / statisticsFps / (image.field != PL_FIELD_NONE ? 2 : 1)
-                                                  : period / 1e4;
+                              : period > 0                                  ? std::max(frameBudget, period / 1e4)
+                                                                            : frameBudget;
         // Show recent sustained render load. A single expensive cache build
         // must not dominate the display for five seconds as a peak did.
         const auto render = [&]()
@@ -1617,10 +1749,30 @@ struct PlaceboBackend::State
     bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
         RenderProbe::Scope probe(renderProbe, showStatistics.load());
-        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, settings.blackBars, &probe);
+        auto analysisSettings = settings.blackBars;
+        analysisSettings.enabled = analysisSettings.enabled || settings.imagePosition != 0;
+        // Keep the movie geometry stable while the original subtitle bar is composited.
+        const bool relocateSubtitles =
+            (settings.imagePosition || (settings.blackBars.enabled && settings.blackBars.crop)) &&
+            settings.blackBars.keepSubtitles && rotation == 0;
+        pl_frame originalImage = image;
+        // The host's source rectangle may trim blank rows from the decoded
+        // frame. The caption bar still needs the original bottom padding.
+        originalImage.crop.y0 = 0;
+        originalImage.crop.y1 = float(description.height);
+        blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, analysisSettings, &probe);
+        const RECT contentBounds = blackBars.failed
+                                       ? RECT{0, 0, description.width, description.height}
+                                       : blackBars.detector.ContentBounds(description.width, description.height);
+        const RECT visibleBounds = blackBars.failed ? RECT{0, 0, description.width, description.height}
+                                                    : blackBars.detector.Bounds(description.width, description.height);
+        const RECT pictureBounds = contentBounds;
         probe.Next(RenderProbe::Setup);
         const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
-        bool cropBars = autoZoom && blackBars.detector.measured;
+        // Text in a bar is shown over the cropped picture. Without that (a
+        // rotated picture) protected subtitles keep the bars.
+        bool cropBars =
+            autoZoom && blackBars.detector.measured && (relocateSubtitles || !settings.blackBars.keepSubtitles);
 
         // Apply only temporary crops: stored frames and decoder references keep
         // their original geometry. Every temporal sample uses identical bounds.
@@ -1658,7 +1810,7 @@ struct PlaceboBackend::State
 
         if (cropBars)
         {
-            const RECT r = blackBars.detector.Bounds(description.width, description.height);
+            const RECT r = pictureBounds;
             auto crop = [&](pl_frame& f)
             {
                 f.crop.x0 = std::max(f.crop.x0, float(r.left));
@@ -1727,7 +1879,8 @@ struct PlaceboBackend::State
         if (autoZoom)
             target.crop = {0, 0, float(target.planes[0].texture->params.w), float(target.planes[0].texture->params.h)};
         float width = target.crop.x1 - target.crop.x0, height = target.crop.y1 - target.crop.y0;
-        const bool fill = autoZoom && settings.blackBars.zoom == 1 && !blackBars.detector.subtitleProtection;
+        const bool fill =
+            autoZoom && settings.blackBars.zoom == 1 && (relocateSubtitles || !blackBars.detector.subtitleProtection);
         // MPC-HC and MPC-BE compute the video rectangle themselves, with the
         // aspect ratio, an override, stretching and zoom, like for MPC Video
         // Renderer; draw exactly into it. The renderer fits the picture itself
@@ -1751,6 +1904,32 @@ struct PlaceboBackend::State
             target.crop.y1 -= pad;
         }
 
+        if (settings.imagePosition)
+            AlignImageVertically(target.crop,
+                                 image.crop,
+                                 pictureBounds,
+                                 rotation,
+                                 settings.imagePosition,
+                                 float(target.planes[0].texture->params.h));
+        pl_rect2df sourceBars[2] = {}, destinationBars[2] = {};
+        int subtitleBarCount = 0;
+        if (relocateSubtitles && blackBars.detector.subtitleProtection)
+            for (bool top : {true, false})
+            {
+                const bool textInBar =
+                    top ? visibleBounds.top < contentBounds.top : visibleBounds.bottom > contentBounds.bottom;
+                if (textInBar && HiddenSubtitleBar(originalImage.crop,
+                                                   image.crop,
+                                                   target.crop,
+                                                   contentBounds,
+                                                   float(target.planes[0].texture->params.h),
+                                                   sourceBars[subtitleBarCount],
+                                                   destinationBars[subtitleBarCount],
+                                                   top))
+                    ++subtitleBarCount;
+            }
+        const bool drawSubtitleBar = subtitleBarCount != 0;
+
         struct RestoreProcessed
         {
             pl_frame& image;
@@ -1769,6 +1948,7 @@ struct PlaceboBackend::State
             }
         } processed{image, mixFrames, image};
 
+        statisticsField = image.field;
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         rtxUpscaled = rtxDirect = false;
         probe.Next(RenderProbe::Rtx);
@@ -1980,7 +2160,7 @@ struct PlaceboBackend::State
                 // in linear light it overshoots into ringing.
                 const float source = pl_rect_w(image.crop) * pl_rect_h(image.crop),
                             output = pl_rect_w(target.crop) * pl_rect_h(target.crop);
-                if (!strcmp(ShaderCatalog[id].file, "SSimDownscaler_RT.glsl") && std::abs(output) < std::abs(source))
+                if (IsSsimDownscaler(ShaderCatalog[id].file) && std::abs(output) < std::abs(source))
                     params.disable_linear_scaling = true;
             }
             else
@@ -2083,7 +2263,7 @@ struct PlaceboBackend::State
                           static_cast<LONG>(target.crop.y0),
                           static_cast<LONG>(target.crop.x1),
                           static_cast<LONG>(target.crop.y1)};
-            if (autoZoom)
+            if (autoZoom || settings.imagePosition)
             {
                 video.left = std::max<LONG>(0, video.left);
                 video.top = std::max<LONG>(0, video.top);
@@ -2113,7 +2293,8 @@ struct PlaceboBackend::State
                                     std::clamp(std::min(target.crop.y0, target.crop.y1), 0.f, viewH),
                                     std::clamp(std::max(target.crop.x0, target.crop.x1), 0.f, viewW),
                                     std::clamp(std::max(target.crop.y0, target.crop.y1), 0.f, viewH)};
-        const pl_rect2df* placement = settings.statisticsInVideo ? &picture : nullptr;
+        // Statistics and analysis sit on the picture, never in black bars.
+        const pl_rect2df* placement = &picture;
         probe.Next(RenderProbe::StatisticsInfo);
         // The overlay box keeps its largest size while shown; start over each
         // time the statistics are switched on.
@@ -2128,7 +2309,8 @@ struct PlaceboBackend::State
                                         statisticsText,
                                         target.planes[0].texture->params.w,
                                         target.planes[0].texture->params.h,
-                                        window))
+                                        window,
+                                        settings.statisticsTextScale))
             {
                 const int index = target.num_overlays;
                 statisticsBitmap.Describe(overlays[index], parts[index], placement);
@@ -2178,6 +2360,41 @@ struct PlaceboBackend::State
             }
         }
         probe.Next(RenderProbe::Draw);
+        // Movie first, original embedded subtitle pixels second, host subtitles
+        // and diagnostics last. No decoding, OCR or CPU readback of the bar.
+        pl_frame overlayTarget = target;
+        if (drawSubtitleBar)
+            target.num_overlays = 0;
+        auto finish = [&](bool ok)
+        {
+            if (!ok || !drawSubtitleBar)
+                return ok;
+            if (!subtitleRenderer)
+                subtitleRenderer = pl_renderer_create(nullptr, d3d->gpu);
+            if (!subtitleRenderer)
+                return false;
+            pl_render_params barParams = params;
+            barParams.border = PL_CLEAR_SKIP;
+            barParams.peak_detect_params = nullptr;
+            barParams.hooks = nullptr;
+            barParams.num_hooks = 0;
+            barParams.deband_params = nullptr;
+            for (int index = 0; index < subtitleBarCount; ++index)
+            {
+                pl_frame bar = originalImage, barTarget = target;
+                bar.crop = sourceBars[index];
+                if (flip)
+                    std::swap(bar.crop.x0, bar.crop.x1);
+                bar.rotation = PL_ROTATION_0;
+                bar.overlays = nullptr;
+                bar.num_overlays = 0;
+                barTarget.crop = destinationBars[index];
+                if (!pl_render_image(subtitleRenderer, &bar, &barTarget, &barParams))
+                    return false;
+            }
+            return !overlayTarget.num_overlays ||
+                   pl_render_image(subtitleRenderer, nullptr, &overlayTarget, &barParams);
+        };
         pl_frame shown = image;
         pl_frame gammaFrames[16];
         if (sdrGammaCurve)
@@ -2236,9 +2453,9 @@ struct PlaceboBackend::State
                     mix.timestamps = kept;
                 }
             }
-            return renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); });
+            return finish(renderWithRecovery([&]() { return pl_render_image_mix(renderer, &mix, &target, &params); }));
         }
-        return renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); });
+        return finish(renderWithRecovery([&]() { return pl_render_image(renderer, &shown, &target, &params); }));
     }
 };
 
@@ -2280,6 +2497,7 @@ HRESULT PlaceboBackend::SetDevice(ID3D11Device* device, HANDLE mutex)
     s.d3d = pl_d3d11_create(s.log, &params);
     if (!s.d3d)
         return E_FAIL;
+    s.NameRenderGpu();
     return s.Ensure();
 }
 
@@ -2481,7 +2699,7 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         !range(settings.brightness, -1, 1) || !range(settings.gamma, 0, 100) ||
         !range(settings.hue, -3.141593f, 3.141593f) || !range(settings.temperature, -1.143f, 5.286f))
         return E_INVALIDARG;
-    if (!ValidBlackBars(settings.blackBars))
+    if (!ValidBlackBars(settings.blackBars) || settings.imagePosition < 0 || settings.imagePosition > 2)
         return E_INVALIDARG;
     if (!range(settings.sharpenStrength, 0, 2))
         return E_INVALIDARG;
@@ -2863,10 +3081,11 @@ HRESULT PlaceboBackend::Import(const VideoFrame& frame, ID3D11Texture2D* texture
     return S_OK;
 }
 
-HRESULT PlaceboBackend::Present()
+HRESULT PlaceboBackend::Present(bool holdSwap)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
+    s.FinishSwap();
     s.ApplyMeasurementReset();
     const auto due = s.presentationDue;
     const bool timed = s.presentationTimed;
@@ -2883,8 +3102,27 @@ HRESULT PlaceboBackend::Present()
     HRESULT applied = s.ApplySettings();
     if (FAILED(applied))
         return applied;
-    if (timed && s.mixing && s.settings.smoothMotion && s.SkipForBacklog(lead))
+    const auto resumePeriod = timed ? s.resumeDisplayPeriod.exchange(0) : 0;
+    if (resumePeriod > 0 && s.swapchain)
+    {
+        // At one frame per refresh there is no spare scanout slot to drain
+        // a backed-up queue. Start the resumed stream on a fresh swapchain.
+        Trace("Restarting the presentation queue after pause at %.6f Hz", 1e7 / resumePeriod);
+        s.DestroySwapchain();
+        s.context->Flush();
+    }
+    const bool motionScheduled = lead > 0 || (s.mixing && s.settings.smoothMotion);
+    if (timed && motionScheduled && s.SkipForBacklog(lead))
         return S_FALSE;
+    // Without Smooth Motion one picture per refresh (60 fps on 60 Hz) keeps a
+    // queue that once built up (start, seek) full forever, and with it a
+    // delay of several refreshes. Leave one out once the queue stayed deep.
+    else if (timed && !motionScheduled && s.SkipForBacklog(0))
+    {
+        std::lock_guard drops(s.dropsLock);
+        s.drops.Skip();
+        return S_FALSE;
+    }
     const auto monitor = MonitorFromWindow(s.window, MONITOR_DEFAULTTONEAREST);
     const int hdrInput = 1 | (pl_color_space_is_hdr(&s.image.color) ? 2 : 0) |
                          (s.settings.rtxHdr && s.nvidiaApp.TrueHdr() != NvidiaAppSettings::State::Off ? 4 : 0);
@@ -3064,13 +3302,27 @@ HRESULT PlaceboBackend::Present()
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     s.ProbePresent();
 #endif
-    QueryPerformanceCounter(&begin);
-    pl_swapchain_swap_buffers(s.swapchain);
-    QueryPerformanceCounter(&end);
-    s.presentCpu.Add(GetTickCount64(), 1000. * (end.QuadPart - begin.QuadPart) / frequency.QuadPart);
-    s.MeasurePresentation(due, timed);
-    s.outputTextureFormat = textureFormat;
-    s.RepaintPending();
+    s.swapPending = true;
+    s.pendingDue = due;
+    s.pendingTimed = timed;
+    s.pendingTextureFormat = textureFormat;
+    if (holdSwap && timed)
+    {
+        // Start the GPU now; the picture waits for its moment fully rendered.
+        s.context->Flush();
+        return S_OK;
+    }
+    s.FinishSwap();
+    return S_OK;
+}
+
+HRESULT PlaceboBackend::Swap()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    if (!s.swapPending)
+        return S_FALSE;
+    s.FinishSwap();
     return S_OK;
 }
 
@@ -3168,7 +3420,8 @@ HRESULT PlaceboBackend::TryPresent(bool blackWhenEmpty)
 {
     auto& s = *state;
     std::unique_lock guard(s.lock, std::try_to_lock);
-    if (!guard.owns_lock())
+    // A rendered picture waits for its refresh; the next one comes anyway.
+    if (!guard.owns_lock() || s.swapPending)
         return HRESULT_FROM_WIN32(ERROR_BUSY);
     s.presentationTimed = false;
     if (blackWhenEmpty && !s.valid && s.nativeHdr.Active())
@@ -3352,6 +3605,11 @@ void PlaceboBackend::ShowStatistics(bool enabled)
     state->showStatistics = enabled;
 }
 
+void PlaceboBackend::SetSourceInterlaced(bool interlaced)
+{
+    state->sourceInterlaced = interlaced;
+}
+
 void PlaceboBackend::ShowMessage(const std::wstring& text)
 {
     std::lock_guard guard(state->messageLock);
@@ -3362,6 +3620,27 @@ void PlaceboBackend::ShowMessage(const std::wstring& text)
 bool PlaceboBackend::StatisticsVisible() const
 {
     return state->showStatistics.load();
+}
+
+void PlaceboBackend::ObserveClock(int64_t qpc, int64_t clock)
+{
+    LARGE_INTEGER frequency = {};
+    QueryPerformanceFrequency(&frequency);
+    std::lock_guard guard(state->lock);
+    state->clockFit.Add(double(qpc) / double(frequency.QuadPart), double(clock) / 1e7);
+}
+
+void PlaceboBackend::ResetClockMeasurement()
+{
+    std::lock_guard guard(state->lock);
+    state->clockFit.Reset();
+}
+
+int64_t PlaceboBackend::ClockDeviationPpb() const
+{
+    std::lock_guard guard(state->lock);
+    return state->clockFit.Span() >= ClockStatistics::MeasuringSeconds ? std::llround(state->clockFit.Deviation() * 1e9)
+                                                                       : INT64_MIN;
 }
 
 uint64_t PlaceboBackend::RtxFrames() const
@@ -3388,15 +3667,24 @@ void PlaceboBackend::SetSourceCodec(const std::string& codec)
     }
 }
 
-void PlaceboBackend::SetStatisticsInput(double fps, bool direct, int dropped)
+void PlaceboBackend::SetStatisticsInput(double fps, double rate, bool direct, int dropped)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
-    s.statisticsFps = fps;
+    s.statisticsRate = PlaybackRate(rate);
+    s.statisticsFileFps = fps;
+    s.statisticsFps = fps * s.statisticsRate;
     s.statisticsDirect = direct;
     s.statisticsDropped = dropped;
     std::lock_guard dropGuard(s.dropsLock);
     s.drops.Observe(dropped);
+}
+
+void PlaceboBackend::CountSkippedFrame()
+{
+    auto& s = *state;
+    std::lock_guard guard(s.dropsLock);
+    s.drops.Skip();
 }
 
 void PlaceboBackend::RestartDropMeasurement(int rawBeforeReset)
@@ -3429,7 +3717,7 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
     LARGE_INTEGER now = {}, frequency = {};
     QueryPerformanceCounter(&now);
     QueryPerformanceFrequency(&frequency);
-    if (!s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
+    if (s.resumeDisplayPeriod.load() > 0 || !s.lastSyncQpc || !s.stableCadence || !(s.measuredPeriod > 0) ||
         now.QuadPart - s.lastSyncQpc > frequency.QuadPart / 2)
         return false;
     qpc = s.lastSyncQpc;
@@ -3441,6 +3729,11 @@ bool PlaceboBackend::VsyncGrid(int64_t& qpc, uint32_t& refresh, double& period) 
 void PlaceboBackend::ResetPresentationMeasurement(bool counters)
 {
     state->measurementReset.fetch_or(counters ? 2u : 1u);
+}
+
+void PlaceboBackend::RestartPresentationAfterPause(double displayPeriod)
+{
+    state->resumeDisplayPeriod = displayPeriod;
 }
 
 void PlaceboBackend::ResetStatistics()
@@ -3458,6 +3751,7 @@ MeasurementSnapshot PlaceboBackend::Measurements() const
     out.timing = s.presentation.timing;
     out.countersAvailable = s.presentation.haveCounters;
     out.drops = s.DropTotal();
+    out.skipped = s.SkipTotal();
     out.pending = s.presentation.pending;
     out.submissions = s.presentation.submissions;
     out.confirmed = s.presentation.confirmed;

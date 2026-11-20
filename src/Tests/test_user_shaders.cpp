@@ -164,6 +164,28 @@ int main()
             Require(custom->num_parameters == 1 && custom->parameters[0].data->f == 2.f,
                     "saved value reaches the shader within the file's limits");
             pl_mpv_user_shader_destroy(&custom);
+            // A variant of SSimDownscaler is recognised by its name, and its
+            // ANTIRING parameter follows the global anti-ringing strength.
+            std::ofstream(folder / L"SSimDownscaler AntiRinging.glsl", std::ios::binary)
+                << "//!PARAM ANTIRING\n//!TYPE CONSTANT float\n//!MINIMUM 0.0\n//!MAXIMUM 1.0\n1.0\n\n"
+                   "//!HOOK MAIN\n//!BIND HOOKED\nvec4 hook() { return HOOKED_tex(HOOKED_pos) * ANTIRING; }\n";
+            CustomShaders::Refresh();
+            int variant = ShaderBuiltinCount;
+            while (variant < ShaderCount && strcmp(ShaderCatalog[variant].file, "SSimDownscaler AntiRinging.glsl"))
+                ++variant;
+            Require(variant < ShaderCount && IsSsimDownscaler(ShaderCatalog[variant].file) &&
+                        IsSsimDownscaler("SSimDownscaler_RT.glsl") && !IsSsimDownscaler("DPID_RT.glsl"),
+                    "SSimDownscaler variants are recognised by name");
+            const pl_hook* following = ParseUserShader(gpu, variant, {}, .25f);
+            Require(following && following->num_parameters == 1 && following->parameters[0].data->f == .25f,
+                    "ANTIRING follows the global anti-ringing strength");
+            pl_mpv_user_shader_destroy(&following);
+            const pl_hook* unchanged = ParseUserShader(gpu, variant, {});
+            Require(unchanged && unchanged->parameters[0].data->f == 1.f, "without a strength the file's value stays");
+            pl_mpv_user_shader_destroy(&unchanged);
+            id = ShaderBuiltinCount;
+            while (id < ShaderCount && strcmp(ShaderCatalog[id].file, "tint.glsl"))
+                ++id;
             {
                 // A worker device compiles the shader; its cache reaches this device.
                 ShaderWarmupJob job;

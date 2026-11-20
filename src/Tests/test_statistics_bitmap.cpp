@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "Renderer/StatisticsBitmap.h"
+#include "Renderer/ClockStatistics.h"
+#include "Renderer/StatisticsGamma.h"
 #include <libplacebo/d3d11.h>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +13,103 @@ static void Check(bool ok, const char* message)
         printf("FAIL %s\n", message);
         exit(1);
     }
+}
+
+// The Clock row: deviation of the audio clock and the repeats or drops it causes.
+static void CheckClock()
+{
+    using namespace ClockStatistics;
+    // An audio clock 0.01 % fast that advances in 1 ms steps, read 30 times a
+    // second with some jitter: the fit finds the deviation.
+    RateFit fit;
+    for (int i = 0; i <= 30 * 60; ++i)
+    {
+        const double seconds = 100 + i / 30.0 + (i % 7) * 0.0003;
+        fit.Add(seconds, 5 + std::floor((seconds - 100) * (1 + 1e-4) / 0.001) * 0.001);
+    }
+    Check(std::abs(fit.Deviation() - 1e-4) < 2e-6 && fit.Span() > 59, "clock deviation measured");
+    fit.Add(500, 2000); // another clock
+    Check(fit.Span() == 0, "a jump starts the measurement over");
+    // A 50 ms step of the clock in the middle (a flush or resynchronisation)
+    // must not tilt the result: the measurement starts over after it.
+    RateFit stepped;
+    for (int i = 0; i <= 30 * 120; ++i)
+    {
+        const double seconds = i / 30.0, step = seconds >= 60 ? 0.05 : 0;
+        stepped.Add(seconds, std::floor((seconds * (1 + 1e-5) + step) / 0.001) * 0.001);
+    }
+    Check(std::abs(stepped.Deviation() - 1e-5) < 2e-6 && stepped.Span() < 61, "a 50 ms step does not tilt the fit");
+
+    RefreshFit display;
+    for (int i = 0; i <= 24 * 20; ++i)
+        display.Add(10 + i / 23.9999, 1000 + i, 24);
+    Check(std::abs(display.Hz() - 23.9999) < 1e-6, "display refresh rate measured");
+
+    Input in;
+    in.clockSpan = 1;
+    in.displayHz = in.nominalHz = in.fps = 24;
+    Check(Text(in) == L"measuring…", "measuring at first");
+    in.clockSpan = 60;
+    in.deviation = 1e-5;
+    Check(Text(in) == L"+0.0010 % · 1 drop every 1.2 h", "fast clock drops frames");
+    in.deviation = 0;
+    in.fps = 23.976;
+    Check(Text(in) == L"+0.0000 % · 1 repeat every 41.7 s", "23.976 fps on 24 Hz");
+    in.displayHz = in.nominalHz = 60;
+    in.fps = 24;
+    in.deviation = -2e-6;
+    Check(Text(in) == L"-0.0002 % · 1 repeat every 2.3 h", "3:2 cadence on 60 Hz");
+    in.displayHz = in.nominalHz = 144;
+    in.fps = 30;
+    Check(Text(in) == L"-0.0002 % · uneven cadence", "uneven cadence");
+    in.smoothMotion = true;
+    in.deviation = 1e-5;
+    Check(Text(in) == L"+0.0010 % · 1 drop every 11.6 min", "Smooth Motion with a fast clock");
+    in.deviation = -1e-8;
+    Check(Text(in) == L"-0.0000 % · less than 1 repeat in 10 h", "very rare repeats");
+    puts("PASS statistics clock: deviation fit, restart on jumps, display rate, measuring, drops and repeats with "
+         "and without Smooth Motion, 3:2 and uneven cadence");
+}
+
+// The Gamma row: source gamma and what the display gets.
+static void CheckGamma()
+{
+    using namespace StatisticsGamma;
+    Output sdr;
+    sdr.transfer = PL_COLOR_TRC_SRGB;
+    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output unchanged", "SDR without gamma settings");
+    auto processed = sdr;
+    processed.sdrGamma = 240;
+    processed.displayGamma = 235;
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"source BT.1886 → output shown as 2.40 on display 2.35",
+          "SDR gamma processing shows the chosen gammas");
+    processed.displayGamma = 0;
+    Check(Text(PL_COLOR_TRC_BT_1886, processed) == L"source BT.1886 → output shown as 2.40 on display sRGB",
+          "automatic display");
+    auto toneMapped = sdr;
+    toneMapped.transfer = PL_COLOR_TRC_BT_1886;
+    toneMapped.displayGamma = 1;
+    toneMapped.displayContrast = 1000;
+    Check(Text(PL_COLOR_TRC_PQ, toneMapped) == L"source PQ → output BT.1886 (1000:1)", "HDR to BT.1886 with contrast");
+    toneMapped.displayContrast = 0;
+    Check(Text(PL_COLOR_TRC_HLG, toneMapped) == L"source HLG → output BT.1886 (infinite contrast)", "HLG to BT.1886");
+    Output hdr;
+    hdr.transfer = PL_COLOR_TRC_PQ;
+    hdr.hdr = true;
+    Check(Text(PL_COLOR_TRC_PQ, hdr) == L"source PQ → output PQ (HDR)", "HDR output");
+    Output linear;
+    linear.transfer = PL_COLOR_TRC_LINEAR;
+    Check(Text(PL_COLOR_TRC_BT_1886, linear) == L"source BT.1886 → output linear", "16-bit float output");
+    auto icc = processed;
+    icc.icc = true;
+    Check(Text(PL_COLOR_TRC_PQ, icc) == L"source PQ → output ICC profile", "ICC profile");
+    Check(Text(PL_COLOR_TRC_UNKNOWN, sdr) == L"source unknown → output unchanged", "unknown source");
+    auto unused = sdr;
+    unused.displayGamma = 245;
+    Check(Text(PL_COLOR_TRC_BT_1886, unused) == L"source BT.1886 → output unchanged (Display Gamma 2.45 not used)",
+          "SDR says the display gamma is not used");
+    puts("PASS statistics gamma: SDR unchanged and processed, exact display gamma, BT.1886 contrast, HDR and "
+         "linear output, ICC, unknown source");
 }
 
 static std::optional<StatisticsRasterizer::Image> Wait(StatisticsRasterizer& raster, int viewWidth)
@@ -41,6 +140,14 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM w, LPA
 int main()
 {
     setvbuf(stdout, nullptr, _IONBF, 0);
+    CheckGamma();
+    CheckClock();
+    // DirectWrite keeps a few GDI objects once it is loaded; draw once first so
+    // only what each drawing leaves behind is counted.
+    {
+        StatisticsRasterizer warm;
+        Check(warm.Submit(L"warm up", 640, 360) && Wait(warm, 640).has_value(), "first drawing");
+    }
     const DWORD before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProcedure;
@@ -68,6 +175,23 @@ int main()
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
             DispatchMessageW(&msg);
         Check(notifications > 0, "completion wakes a paused window");
+        // Text size: 100 % is the automatic size (at most 24 pixels), the
+        // setting scales it, and it shrinks only when the view is too small.
+        Check(raster.Submit(L"display 120 Hz\nwhite text", 3840, 2160), "automatic size");
+        const auto automatic = Wait(raster, 3840);
+        Check(automatic && automatic->fontHeight == 24, "automatic text size is at most 24 pixels");
+        Check(raster.Submit(L"display 120 Hz\nwhite text", 3841, 2160, nullptr, 150), "larger size");
+        const auto larger = Wait(raster, 3841);
+        Check(larger && larger->fontHeight == 36, "150 percent of the automatic size");
+        Check(raster.Submit(L"display 120 Hz\nwhite text", 3842, 2160, nullptr, 50), "smaller size");
+        const auto smaller = Wait(raster, 3842);
+        Check(smaller && smaller->fontHeight == 12, "50 percent of the automatic size");
+        std::wstring tall;
+        for (int i = 0; i < 20; i++)
+            tall += L"line\n";
+        Check(raster.Submit(tall, 801, 600, nullptr, 200), "larger size in a small view");
+        const auto shrunk = Wait(raster, 801);
+        Check(shrunk && shrunk->fontHeight < 26 && shrunk->height <= 600, "the text shrinks to fit the view");
         std::wstring large;
         for (int i = 0; i < 2000; i++)
             large += L"obsolete statistics\n";

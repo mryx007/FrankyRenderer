@@ -4,12 +4,24 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <cwchar>
 #include <iterator>
 #include <string>
 #include <string_view>
 #include <vector>
+
 // Built-in shaders come first; files from shaders\Custom use the slots after them.
+// SSimDownscaler and variants of it from shaders\Custom, recognised by the start
+// of the file name, e.g. "SSimDownscaler AntiRinging.glsl".
+inline bool IsSsimDownscaler(const char* file)
+{
+    return file && _strnicmp(file, "SSimDownscaler", 14) == 0;
+}
+
+// A shader parameter with this name follows the global anti-ringing strength.
+inline constexpr const char* GlobalAntiringParameter = "ANTIRING";
+
 inline constexpr int ShaderBuiltinCount = 23, ShaderCustomCount = 32,
                      ShaderCount = ShaderBuiltinCount + ShaderCustomCount, ShaderParameterLimit = 12;
 

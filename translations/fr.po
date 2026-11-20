@@ -185,12 +185,11 @@ msgstr ""
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
-msgid "Statistics in Video Area"
+msgid "Statistics Text Size (%)"
 msgstr ""
 
-#. Setting description (General > Image Analysis > Statistics in Video Area)
-msgid ""
-"Ctrl+J statistics and image analysis sit on the picture, not in black bars."
+#. Setting description (General > Image Analysis > Statistics Text Size (%))
+msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
 msgstr ""
 
 #. Section heading (General)
@@ -827,6 +826,32 @@ msgstr "Détection et zoom"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
+msgid "Vertical Image Position"
+msgstr ""
+
+#. Setting description (Processing > Detection & Zoom > Vertical Image Position)
+msgid ""
+"Aligns the image to the top or bottom. With Protect Burned-in Subtitles, "
+"subtitles in the bars stay visible."
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Center"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Bottom"
+msgstr ""
+
+#. Choice (Processing > Detection & Zoom > Vertical Image Position)
+#. Setting name (Shortcuts > )
+msgid "Top"
+msgstr ""
+
+#. Setting name (Processing > Detection & Zoom)
+#. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
 msgstr "Détecter les bandes noires incrustées"
 
@@ -889,16 +914,6 @@ msgstr "Seuil de noir"
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
 "Luminosité maximale des bandes détectées, en pourcentage du blanc SDR décodé."
-
-#. Setting name (Processing > Detection & Zoom)
-#. Setting name (Shortcuts > )
-msgid "Detection Stability (seconds)"
-msgstr "Stabilité de détection (secondes)"
-
-#. Setting description (Processing > Detection & Zoom > Detection Stability (seconds))
-msgid "Time required for a new detected bar layout to become stable."
-msgstr ""
-"Temps nécessaire pour stabiliser une nouvelle disposition de bandes détectée."
 
 #. Category
 #. Category heading
@@ -1613,7 +1628,7 @@ msgstr "Mode d'affichage"
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-"tone mapped to SDR."
+"tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
 
 #. Choice (Color > Display > Display Gamma)
@@ -2005,6 +2020,17 @@ msgstr ""
 msgid ""
 "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "
 "GPU and RTX Video HDR in the NVIDIA app."
+msgstr ""
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use Dolby Vision"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > Use Dolby Vision)
+msgid ""
+"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always "
+"uses Dolby Vision."
 msgstr ""
 
 #. Section heading (HDR)
@@ -3023,13 +3049,11 @@ msgid "Reduce color noise."
 msgstr ""
 
 #. Setting name (Shaders > Chroma Denoise)
-#. Setting name (Shaders > SSimDownscaler)
 #. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
 msgstr ""
 
 #. Setting description (Shaders > Chroma Denoise > Threshold (THR))
-#. Setting description (Shaders > SSimDownscaler > Threshold (THR))
 msgid ""
 "Adjust Threshold for this shader. The default preserves the shader author's "
 "setting."
@@ -3375,6 +3399,15 @@ msgid ""
 "Mitchell as downscaler."
 msgstr ""
 
+#. Setting name (Shaders > SSimDownscaler)
+#. Setting name (Shortcuts > )
+msgid "Oversharp (THR)"
+msgstr ""
+
+#. Setting description (Shaders > SSimDownscaler > Oversharp (THR))
+msgid "Extra sharpening on top of SSIM. 0 is the author's default."
+msgstr ""
+
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
 msgstr ""
@@ -3445,6 +3478,46 @@ msgstr "Mode d'affichage"
 #. Input error (Profiles > Display > Display Name)
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a display name (1 to 80 characters)."
+msgstr ""
+
+#. Section heading (Profiles)
+msgid "Settings File"
+msgstr ""
+
+#. Setting name (Profiles > Settings File)
+msgid "Settings Folder"
+msgstr ""
+
+#. Setting description (Profiles > Settings File > Settings Folder)
+msgid "Opens the folder with Settings.ini."
+msgstr ""
+
+#. Button (Profiles > Settings File > Settings Folder)
+msgid "Open"
+msgstr ""
+
+#. Setting name (Profiles > Settings File)
+msgid "Import Settings"
+msgstr ""
+
+#. Setting description (Profiles > Settings File > Import Settings)
+msgid "Loads settings from an INI file."
+msgstr ""
+
+#. Button (Profiles > Settings File > Import Settings)
+msgid "Import"
+msgstr ""
+
+#. Setting name (Profiles > Settings File)
+msgid "Export Settings"
+msgstr ""
+
+#. Setting description (Profiles > Settings File > Export Settings)
+msgid "Saves settings to an INI file."
+msgstr ""
+
+#. Button (Profiles > Settings File > Export Settings)
+msgid "Export"
 msgstr ""
 
 #. Setting name (Profiles > Profile)
@@ -3597,8 +3670,8 @@ msgid "Lowers the value by %s."
 msgstr ""
 
 #. Setting description (Shortcuts >  > Image Analysis)
-#. Setting description (Shortcuts >  > Statistics in Video Area)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
+#. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
 msgstr ""
 
@@ -3781,14 +3854,6 @@ msgid "Rename"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "Import"
-msgstr ""
-
-#. Menu text; keep %d and %s placeholders
-msgid "Export"
-msgstr ""
-
-#. Menu text; keep %d and %s placeholders
 msgid "Reset Page"
 msgstr ""
 
@@ -3869,11 +3934,15 @@ msgid "Could not open the INI file dialog."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "All display profiles exported."
+msgid "All settings exported."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "INI backup exported."
+msgid "All settings imported."
+msgstr ""
+
+#. Menu text; keep %d and %s placeholders
+msgid "Replace all settings with the ones in this file?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
@@ -3975,6 +4044,14 @@ msgstr ""
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
 msgstr ""
+
+#~ msgid "Detection Stability (seconds)"
+#~ msgstr "Stabilité de détection (secondes)"
+
+#~ msgid "Time required for a new detected bar layout to become stable."
+#~ msgstr ""
+#~ "Temps nécessaire pour stabiliser une nouvelle disposition de bandes "
+#~ "détectée."
 
 #~ msgid "Themes"
 #~ msgstr "Thèmes"

@@ -179,21 +179,15 @@ using Table = std::array<DWORD, Count>;
 inline Table Load()
 {
     Table table;
-    HKEY key = nullptr;
-    const bool open = RegOpenKeyExW(HKEY_CURRENT_USER, KeyPath().c_str(), 0, KEY_READ, &key) == ERROR_SUCCESS;
+    const auto key = SettingsStore::At(KeyPath());
     for (int i = 0; i < Count; ++i)
     {
         DWORD value = 0, size = sizeof(value), type = 0;
-        table[i] =
-            open &&
-                    RegQueryValueExW(key, Actions[i].id, nullptr, &type, reinterpret_cast<BYTE*>(&value), &size) ==
-                        ERROR_SUCCESS &&
-                    type == REG_DWORD && size == sizeof(value) && !ModifierKey(Key(value))
-                ? value
-                : DefaultCombo(Action(i));
+        table[i] = key.Query(Actions[i].id, &type, &value, &size) == ERROR_SUCCESS && type == REG_DWORD &&
+                           size == sizeof(value) && !ModifierKey(Key(value))
+                       ? value
+                       : DefaultCombo(Action(i));
     }
-    if (open)
-        RegCloseKey(key);
     return table;
 }
 
@@ -286,23 +280,18 @@ inline bool Parse(const std::wstring& text, Custom& out)
 inline std::vector<Custom> LoadCustom()
 {
     std::vector<Custom> list;
-    HKEY key = nullptr;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, CustomPath().c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
-        return list;
+    const auto key = SettingsStore::At(CustomPath());
     for (int i = 0;; ++i)
     {
         wchar_t text[1024];
         DWORD size = sizeof(text), type = 0;
-        if (RegQueryValueExW(key, std::to_wstring(i).c_str(), nullptr, &type, reinterpret_cast<BYTE*>(text), &size) !=
-                ERROR_SUCCESS ||
-            type != REG_SZ)
+        if (key.Query(std::to_wstring(i).c_str(), &type, text, &size) != ERROR_SUCCESS || type != REG_SZ)
             break;
         text[std::min<size_t>(size / sizeof(wchar_t), 1023)] = 0;
         Custom entry;
         if (Parse(text, entry))
             list.push_back(entry);
     }
-    RegCloseKey(key);
     return list;
 }
 
@@ -322,24 +311,18 @@ inline const std::vector<Custom>& CachedCustom()
 
 inline bool SaveCustom(const std::vector<Custom>& list)
 {
-    RegDeleteTreeW(HKEY_CURRENT_USER, CustomPath().c_str());
-    HKEY key = nullptr;
-    if (RegCreateKeyExW(
-            HKEY_CURRENT_USER, CustomPath().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) !=
-        ERROR_SUCCESS)
+    SettingsStore::Batch batch;
+    SettingsStore::DeleteTree(CustomPath());
+    SettingsStore::Key key;
+    if (SettingsStore::Create(CustomPath(), key) != ERROR_SUCCESS)
         return false;
     bool ok = true;
     for (size_t i = 0; i < list.size(); ++i)
     {
         const auto text = Serialize(list[i]);
-        ok &= RegSetValueExW(key,
-                             std::to_wstring(i).c_str(),
-                             0,
-                             REG_SZ,
-                             reinterpret_cast<const BYTE*>(text.c_str()),
-                             DWORD((text.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS;
+        ok &= key.Set(std::to_wstring(i).c_str(), REG_SZ, text.c_str(), DWORD((text.size() + 1) * sizeof(wchar_t))) ==
+              ERROR_SUCCESS;
     }
-    RegCloseKey(key);
     g_customAt = 0;
     return ok;
 }
@@ -408,14 +391,7 @@ inline int Assign(Action action, DWORD combo)
     g_cachedAt = g_customAt = 0;
     if (const int other = FindAny(combo); other >= 0 && other != int(action))
         return other;
-    HKEY key = nullptr;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, KeyPath().c_str(), 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) ==
-        ERROR_SUCCESS)
-    {
-        RegSetValueExW(
-            key, Actions[int(action)].id, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&combo), sizeof(combo));
-        RegCloseKey(key);
-    }
+    SettingsStore::At(KeyPath()).Set(Actions[int(action)].id, REG_DWORD, &combo, sizeof(combo));
     g_cachedAt = 0;
     return -1;
 }

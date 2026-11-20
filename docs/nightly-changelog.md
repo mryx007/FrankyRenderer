@@ -15,7 +15,6 @@
 - Added profiles. Videos from folders you choose can get their own settings, for example a different upscaler for anime. A profile can change any setting in the menu.<br>• Click "+" on the Profiles page to create a profile, then add one or more folders. Videos in these folders use the profile, all other videos use your normal settings ("Default").<br>• At the top of the menu, next to Quality, choose which profile you want to change. All pages then change that profile.<br>• A profile only remembers what you change in it. Everything else comes from Default.<br>• Ctrl+J shows which profile a video uses.<br>• Choosing the display whose normal settings the menu shows is on the Profiles page.
 - Added display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (BT.709, SMPTE C, EBU / PAL, BT.2020, DCI-P3 (DCI white) or P3-D65 (Display P3)) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.80 in steps of 0.05) on that display; when it is off, SDR stays as before.
 - Added switch "Same Settings on All Displays" (Profiles > Default): copies the chosen display's settings to all displays and keeps them equal while on. Turned off, every display keeps those settings and can be changed alone again.
-- Added "Statistics in Video Area" (General > Image Analysis): the Ctrl+J statistics and image analysis sit at the edge of the picture instead of in black bars, like madVR.
 - Added keyboard shortcuts (new Shortcuts page). Every menu setting can get a key: switch it on or off, go to its next value or a chosen one, or raise and lower a number. Each row says what a key press does. The list follows the menu (General, Processing, Scaling, Color, HDR, Shaders, where every shader can be switched on or off); a closed group shows how many keys it holds. Renderer actions: statistics, all shaders off for comparison, next quality preset or profile, reset picture controls and reset statistics. A short message in the picture confirms each key. Only Ctrl+J is assigned by default.
 - Fixed the reset buttons in the settings header: they now look like the tabs beside them, and the Profiles page no longer shows them.
 - Fixed wasted space in the settings menu: rows, section headings and the gaps between sections are smaller, a number's range is a small label after its name, and long descriptions are shorter, so more settings fit without scrolling.
@@ -110,3 +109,27 @@
 - Added "Remember Last Page" (General > Appearance, formerly Themes): the settings window reopens where it was closed.
 - Fixed stretched subtitles in MPC-BE when the window size does not change after opening ([#28](https://github.com/mryx007/FrankyRenderer/issues/28)).
 - Better performance: less CPU work per frame (RTX Video, HDR displays, software decoding) and a smoother settings menu.
+- Added "Statistics Text Size" (General > Image Analysis): makes the Ctrl+J statistics larger or smaller, per display ([#30](https://github.com/mryx007/FrankyRenderer/issues/30)).
+- Added SSimDownscaler_AR (Shaders): SSimDownscaler with anti-ringing at hard edges, controlled by Global Anti-Ringing. SSimDownscaler's THR is now called Oversharp.
+- Fixed Ctrl+J showing deinterlacing as off with RTX Video HDR; it says "off (settings)" when deinterlacing is switched off ([#31](https://github.com/mryx007/FrankyRenderer/issues/31)).
+- Changed: settings are saved in %APPDATA%\FrankyRenderer\Settings.ini, created automatically on the first change; open folder, import and export are on the Profiles page ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
+- Changed: Install.cmd and Uninstall.cmd are plain batch files; /s runs them silently ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
+- Added the version beside the name in the settings window ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
+- Changed: Ctrl+J statistics and image analysis sit on the picture, never in black bars, like madVR.
+- Changed: Settings.ini also holds the content profiles and Custom quality; Export saves this file and Import replaces all settings with it.
+- Added Backup Settings.cmd and Import Settings.cmd: they save the settings as Settings.ini in the install folder and take them from there.
+- Added the source gamma and the gamma the display gets to the Ctrl+J statistics ([#34](https://github.com/mryx007/FrankyRenderer/issues/34)).
+- Fixed Ctrl+J for videos faster than the display (120 fps on 60 Hz): frames the display cannot show no longer count as dropped, and the render budget is one refresh ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
+- Added the GPU the renderer uses to the Ctrl+J statistics and the diagnostic report ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
+- Fixed stutter for videos faster than the display (120 fps on 60 Hz): one frame per refresh, and Ctrl+J shows how many fps are shown ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
+- Changed: the shader cache is in %LOCALAPPDATA%\FrankyRenderer\Cache; an existing one moves there once. Uninstall.cmd removes it when deleting the settings.
+- Added a Clock row to the Ctrl+J statistics, like madVR: how far the audio clock deviates and how often a frame repeats or drops because of it.
+- Improved frame timing without Smooth Motion.
+- Fixed a slanted, broken picture with some software decoders when the video width is not a multiple of 16 (for example 854×480).
+- Added "Use Dolby Vision" (HDR): off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. On by default.
+- Added "Vertical Image Position" (Black Bars & Zoom): center, bottom or top; subtitles in cropped bars stay visible.
+- Fixed stutter with Smooth Motion at a matching frame rate and after the display mode change.
+- Fixed the player's playback speed being ignored ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
+- Changed: black bars are detected once and then only grow.
+- Fixed frame stepping (Ctrl+Right / Ctrl+Left) in MPC-HC and MPC-BE.
+- After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

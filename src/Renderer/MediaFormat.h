@@ -28,7 +28,18 @@ struct HdrSideDataStatus
     bool dovi = false;
 };
 
-HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame);
+// dolbyVision false leaves a decoder's Dolby Vision metadata unused.
+HdrSideDataStatus ReadHdrSideData(IMediaSample* sample, VideoFrame& frame, bool dolbyVision = true);
+
+// Dolby Vision is left out only where the base layer is a picture of its own:
+// HDR10 (PQ) or HLG, as in Profile 7 and 8. Profile 5 has no such base layer
+// (its picture is IPT) and always keeps Dolby Vision.
+inline bool KeepsDolbyVision(const VideoFrame& base, bool preferred, int profile)
+{
+    return preferred || profile == 5 ||
+           !(base.color.transfer == PL_COLOR_TRC_PQ || base.color.transfer == PL_COLOR_TRC_HLG);
+}
+
 // True when the decoder attached Dolby Vision metadata to this sample.
 bool HasDoviSideData(IMediaSample*);
 // Applies decoder-layout (V2) Dolby Vision side data supplied by another source.

@@ -337,11 +337,13 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         scope.desc =
             L"Waveform, histogram, RGB parade, false color and gray ramp, before or after color mapping, without subtitles.";
         analysis.controls.push_back(std::move(scope));
-        analysis.controls.push_back(
-            D2DBool(s,
-                    L"Statistics in Video Area",
-                    &s.statisticsInVideo,
-                    L"Ctrl+J statistics and image analysis sit on the picture, not in black bars."));
+        analysis.controls.push_back(D2DNumber(s,
+                                              L"Statistics Text Size (%)",
+                                              &s.statisticsTextScale,
+                                              50,
+                                              200,
+                                              10,
+                                              L"Size of the Ctrl+J statistics. 100 is the automatic size."));
         auto& mode = card(p,
                           L"Display Mode",
                           L"Switches the display to a listed mode matching the video frame rate in fullscreen and "
@@ -655,6 +657,8 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                        L"Black Bars & Zoom",
                        L"Detect bars in decoded video pixels and adjust the active image.");
         auto& c = card(p, L"Detection & Zoom");
+        c.controls.push_back(
+            D2DChoice(s, L"Vertical Image Position", &s.imagePosition, {{0, L"Center"}, {1, L"Bottom"}, {2, L"Top"}}));
         c.controls.push_back(D2DBool(s, L"Detect Hardcoded Black Bars", &s.blackBars.enabled));
         c.controls.push_back(D2DBool(s, L"Crop Black Bars", &s.blackBars.crop));
         c.controls.push_back(D2DBool(s,
@@ -664,7 +668,6 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
         c.controls.push_back(D2DChoice(
             s, L"Zoom Mode", &s.blackBars.zoom, {{0, L"Fit (Keep All Content)"}, {1, L"Fill (May Crop Content)"}}));
         c.controls.push_back(D2DNumber(s, L"Black Threshold", &s.blackBars.threshold, 0, 10, .01f));
-        c.controls.push_back(D2DNumber(s, L"Detection Stability (seconds)", &s.blackBars.delay, 0, 10, .01f));
     }
     {
         auto& p = page(L"Color Adjustment",
@@ -734,6 +737,11 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             L"RTX Video HDR",
             &s.rtxHdr,
             L"AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX GPU and RTX Video HDR in the NVIDIA app."));
+        c.controls.push_back(
+            D2DBool(s,
+                    L"Use Dolby Vision",
+                    &s.useDolbyVision,
+                    L"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));
@@ -875,7 +883,7 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                                &s.displayGammaCurve,
                                std::move(displayCurves),
                                L"How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
-                               L"tone mapped to SDR.");
+                               L"tone mapped to SDR and by SDR Gamma Processing.");
         gamma.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(gamma));
         auto contrast = D2DNumber(s,
@@ -973,10 +981,19 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
             for (int i = 0; i < info.count; i++)
             {
                 const auto& param = info.parameters[i];
+                // ANTIRING is set by Global Anti-Ringing, so it has no row of its own.
+                if (!strcmp(param.name, GlobalAntiringParameter))
+                    continue;
                 D2DControl n;
                 n.name = ShaderParameterLabel(param.name) + L" (" + D2DWide(param.name) + L")";
                 n.desc = std::wstring(L"Adjust ") + ShaderParameterLabel(param.name) +
                          L" for this shader. The default preserves the shader author's setting.";
+                // In SSimDownscaler THR is the extra sharpening ("oversharp").
+                if (IsSsimDownscaler(info.file) && !strcmp(param.name, "THR"))
+                {
+                    n.name = L"Oversharp (THR)";
+                    n.desc = L"Extra sharpening on top of SSIM. 0 is the author's default.";
+                }
                 // A whole number that is only 0 or 1 switches a shader variant on or off.
                 const bool onOff = param.integer && param.minimum == 0 && param.maximum == 1;
                 n.kind = onOff           ? ControlKind::Toggle

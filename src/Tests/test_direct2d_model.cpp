@@ -590,24 +590,15 @@ int wmain()
                         hit.rect.right > hit.rect.left)
                         Require(hit.rect.left >= 60 && hit.rect.right <= size.width - 16,
                                 "Full HD controls remain inside content area");
-                // Navigation, display and transfer controls in the open drawer.
+                // Navigation in the open drawer leaves room for the status text.
                 host->m_navigationOpen = true;
                 host->m_navigationProgress = 1;
                 host->Render();
-                float navBottom = 0, actionsTop = size.height;
+                float navBottom = 0;
                 for (const auto& hit : host->m_hitRegions)
-                {
                     if (hit.type == HitRegion::NavItem)
                         navBottom = std::max(navBottom, hit.rect.bottom);
-                    if (hit.type == HitRegion::ImportBtn || hit.type == HitRegion::ExportBtn)
-                    {
-                        Require(hit.rect.left >= 16 && hit.rect.right <= SettingsLayout::SidebarWidth - 16 &&
-                                    hit.rect.bottom <= size.height,
-                                "Full HD action buttons remain inside sidebar");
-                        actionsTop = std::min(actionsTop, hit.rect.top - 72.f);
-                    }
-                }
-                Require(navBottom < actionsTop, "Full HD navigation does not overlap device or transfer controls");
+                Require(navBottom < size.height - 73.f, "Full HD navigation does not overlap the status text");
                 host->m_navigationOpen = false;
                 host->m_navigationProgress = 0;
             }
@@ -648,22 +639,28 @@ int wmain()
         }
         Require(scrollbar && !apply, "visible page scrollbar and no live preview button");
         Require(SUCCEEDED(host->m_pRenderTarget->Resize(D2D1::SizeU(1100, 850))), "restore model render target");
-        // Import and export live in the navigation drawer.
-        host->m_navigationOpen = true;
-        host->m_navigationProgress = 1;
-        host->Render();
-        int transferButtons = 0;
-        for (const auto& hit : host->m_hitRegions)
-            if (hit.type == HitRegion::ImportBtn || hit.type == HitRegion::ExportBtn)
-            {
-                ++transferButtons;
-                Require(hit.rect.left >= 16 && hit.rect.right <= SettingsLayout::SidebarWidth - 16 &&
-                            hit.rect.bottom <= 850,
-                        "import/export fit inside sidebar");
-            }
-        Require(transferButtons == 2, "import and export buttons visible");
-        host->m_navigationOpen = false;
-        host->m_navigationProgress = 0;
+        // The settings file, import and export are on the Profiles page.
+        {
+            int fileActions = 0;
+            for (const auto& page : host->m_pages)
+                for (const auto& card : page.cards)
+                    if (page.name == L"Profiles" && card.tab == ProfilePage::DefaultTab &&
+                        card.title == L"Settings File")
+                        for (const auto& c : card.controls)
+                        {
+                            Require(c.kind == ControlKind::Action && c.action, "settings file rows are buttons");
+                            if (c.id == L"Import Settings" || c.id == L"Export Settings")
+                            {
+                                c.action(nullptr);
+                                Require(ProfilePage::g_requestTransfer == (c.id == L"Import Settings" ? 1 : 2),
+                                        "import and export ask the host for its file dialog");
+                                ProfilePage::g_requestTransfer = 0;
+                            }
+                            fileActions +=
+                                c.id == L"Settings Folder" || c.id == L"Import Settings" || c.id == L"Export Settings";
+                        }
+            Require(fileActions == 3, "settings folder, import and export are on the Profiles page");
+        }
         const auto beforeImport = s;
         auto imported = SettingsIni::Parse(SettingsIni::Serialize(beforeImport));
         imported.brightness = .1875f;
@@ -795,40 +792,28 @@ int wmain()
             host->BeginEdit(nullptr, rect, true);
             SetWindowTextW(host->m_edit, L"Wohnzimmer-TV");
             SendMessageW(host->m_edit, WM_KEYDOWN, VK_RETURN, 0);
-            HKEY key;
-            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
-                        ERROR_SUCCESS,
-                    "renamed key");
+            SettingsStore::Key key;
+            Require(SettingsStore::Open(DisplayProfiles::Key(bId), key) == ERROR_SUCCESS, "renamed key");
             Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"Wohnzimmer-TV",
                     "inline rename persists with Enter");
-            RegCloseKey(key);
             host->BeginEdit(nullptr, rect, true);
             SetWindowTextW(host->m_edit, L"Discard this");
             SendMessageW(host->m_edit, WM_KEYDOWN, VK_ESCAPE, 0);
-            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
-                        ERROR_SUCCESS,
-                    "rename cancel key");
+            Require(SettingsStore::Open(DisplayProfiles::Key(bId), key) == ERROR_SUCCESS, "rename cancel key");
             Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"Wohnzimmer-TV", "Escape cancels rename");
-            RegCloseKey(key);
             host->BeginEdit(nullptr, rect, true);
             SetWindowTextW(host->m_edit, L"TV after click");
             host->OnLButtonDown(260, 100);
-            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
-                        ERROR_SUCCESS,
-                    "rename click key");
+            Require(SettingsStore::Open(DisplayProfiles::Key(bId), key) == ERROR_SUCCESS, "rename click key");
             Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"TV after click",
                     "click outside saves rename without Enter");
-            RegCloseKey(key);
             host->BeginEdit(nullptr, rect, true);
             SetWindowTextW(host->m_edit, L"TV after OK focus");
             SetFocus(parent);
             Require(!host->m_edit, "leaving edit for parent button ends rename");
-            Require(RegOpenKeyExW(HKEY_CURRENT_USER, DisplayProfiles::Key(bId).c_str(), 0, KEY_READ, &key) ==
-                        ERROR_SUCCESS,
-                    "rename focus key");
+            Require(SettingsStore::Open(DisplayProfiles::Key(bId), key) == ERROR_SUCCESS, "rename focus key");
             Require(DisplayProfiles::ReadString(key, L"DisplayName") == L"TV after OK focus",
                     "focus loss saves rename without Enter");
-            RegCloseKey(key);
             host->m_preview = {};
         }
         Direct2DSettingsHost::Destroy(view);
