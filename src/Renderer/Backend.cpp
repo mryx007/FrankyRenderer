@@ -33,6 +33,8 @@
 #include "Renderer/OutputGammaHook.h"
 #include "Renderer/SdrWhiteLevel.h"
 #include <libplacebo/shaders/custom.h>
+#include <libplacebo/shaders/sampling.h>
+#include <libplacebo/dispatch.h>
 #include <charconv>
 #include "Renderer/Trace.h"
 #include <libplacebo/d3d11.h>
@@ -99,11 +101,14 @@ struct PlaceboBackend::State
     // x100 the SDR picture should have on the display (0 = off). Output
     // gamma: power raising the encoded output to a pure-power display gamma
     // between libplacebo's fixed curves (1 = none).
-    // Output black and gain: black removed from and light scale of a linear
-    // 16-bit float output (0 and 1 = none).
     int sdrGammaCurve = 0;
-    float outputGamma = 1, outputBlack = 0, outputGain = 1;
-    OutputGammaHook outputGammaHook, outputGainHook;
+    float outputGamma = 1;
+    OutputGammaHook outputGammaHook;
+    // A 16-bit float (scRGB) output is rendered like the integer output into
+    // this texture, then converted as Windows converts that output.
+    pl_tex floatStage = nullptr;
+    pl_dispatch floatDispatch = nullptr;
+    char floatBody[1024] = {};
     uint64_t mixSignatures[16] = {};
     double mixTimes[16] = {}, mixDuration = 0;
     int mixCount = 0;
@@ -727,6 +732,9 @@ struct PlaceboBackend::State
         nativeHdr.Restore();
         failedNativeMonitor = nullptr;
         pl_options_free(&options);
+        if (d3d)
+            pl_tex_destroy(d3d->gpu, &floatStage);
+        pl_dispatch_destroy(&floatDispatch);
         pl_renderer_destroy(&renderer);
         pl_renderer_destroy(&subtitleRenderer);
         pl_mpv_user_shader_destroy(&sharpenHook);
@@ -1694,6 +1702,67 @@ struct PlaceboBackend::State
         outputSdrWhite = SdrWhiteLevel::Nits(desc.DeviceName);
     }
 
+    // The float stage (an integer output's picture) into the scRGB swapchain,
+    // as Windows converts the integer output: SDR clamped to 0..1 like an
+    // integer signal, as sRGB times gain (Windows' SDR white / 80); HDR10 as PQ
+    // BT.2020 to linear BT.709 nits / 80, colours outside BT.709 kept as
+    // negative values.
+    bool ConvertFloatStage(pl_tex output, bool hdr10, float gain)
+    {
+        if (!floatDispatch)
+            floatDispatch = pl_dispatch_create(log, d3d->gpu);
+        if (!floatDispatch)
+            return false;
+        if (hdr10)
+        {
+            const pl_matrix3x3 m = pl_get_color_mapping_matrix(pl_raw_primaries_get(PL_COLOR_PRIM_BT_2020),
+                                                               pl_raw_primaries_get(PL_COLOR_PRIM_BT_709),
+                                                               PL_INTENT_RELATIVE_COLORIMETRIC);
+            sprintf_s(floatBody,
+                      "{ const float m1 = 2610.0 / 16384.0, m2 = 2523.0 / 32.0, c1 = 3424.0 / 4096.0,"
+                      " c2 = 2413.0 / 128.0, c3 = 2392.0 / 128.0;"
+                      " vec3 p = pow(max(color.rgb, vec3(0.0)), vec3(1.0 / m2));"
+                      " vec3 nits = 10000.0 * pow(max(p - vec3(c1), vec3(0.0)) / (vec3(c2) - c3 * p), vec3(1.0 / m1));"
+                      " color.rgb = mat3(%.9f, %.9f, %.9f, %.9f, %.9f, %.9f, %.9f, %.9f, %.9f) * (nits / 80.0); }",
+                      m.m[0][0],
+                      m.m[1][0],
+                      m.m[2][0],
+                      m.m[0][1],
+                      m.m[1][1],
+                      m.m[2][1],
+                      m.m[0][2],
+                      m.m[1][2],
+                      m.m[2][2]);
+        }
+        else
+            sprintf_s(floatBody,
+                      "{ vec3 c = clamp(color.rgb, vec3(0.0), vec3(1.0));"
+                      " color.rgb = mix(c / 12.92, pow((c + vec3(0.055)) / 1.055, vec3(2.4)),"
+                      " step(vec3(0.04045), c)) * %.9f; }",
+                      double(gain));
+        pl_shader sh = pl_dispatch_begin(floatDispatch);
+        pl_sample_src src = {};
+        src.tex = floatStage;
+        if (!pl_shader_sample_direct(sh, &src))
+        {
+            pl_dispatch_abort(floatDispatch, &sh);
+            return false;
+        }
+        pl_custom_shader custom = {};
+        custom.description = "16-bit float output";
+        custom.input = custom.output = PL_SHADER_SIG_COLOR;
+        custom.body = floatBody;
+        if (!pl_shader_custom(sh, &custom))
+        {
+            pl_dispatch_abort(floatDispatch, &sh);
+            return false;
+        }
+        pl_dispatch_params params = {};
+        params.shader = &sh;
+        params.target = output;
+        return pl_dispatch_finish(floatDispatch, &params);
+    }
+
     // How bright Windows shows SDR white in HDR mode, in nits; 0 if unknown.
     float SdrWhite()
     {
@@ -1735,6 +1804,10 @@ struct PlaceboBackend::State
         target.repr.alpha = PL_ALPHA_INDEPENDENT;
         target.color = pl_color_space_hdr10;
         target.color.hdr = image.color.hdr;
+#ifdef PLACEBO_TEST_PRESENT_PIXELS
+        if (presentColorProbe)
+            presentColorProbe(target.color);
+#endif
         LARGE_INTEGER begin = {}, end = {}, frequency = {};
         QueryPerformanceFrequency(&frequency);
         renderGpu.Begin(d3d->device, context.Get());
@@ -1840,7 +1913,8 @@ struct PlaceboBackend::State
             else
                 cropBars = false;
         }
-        if (settings.outputLevels)
+        // A float output has no levels; the driver applies its own range.
+        if (settings.outputLevels && target.planes[0].texture->params.format->type != PL_FMT_FLOAT)
             target.repr.levels = settings.outputLevels == 1 ? PL_COLOR_LEVELS_FULL : PL_COLOR_LEVELS_LIMITED;
         if (settings.displayDepth)
         {
@@ -2130,8 +2204,6 @@ struct PlaceboBackend::State
         // the display.
         if (outputGamma != 1 && !target.lut)
             hooks[count++] = outputGammaHook.Prepare(outputGamma, target.repr);
-        if ((outputGain != 1 || outputBlack != 0) && !target.lut)
-            hooks[count++] = outputGainHook.PrepareLevels(outputBlack, outputGain);
         const pl_hook* analysisHooks[2] = {};
         int analysisCount = 0;
         if (settings.imageAnalysis)
@@ -2436,8 +2508,6 @@ struct PlaceboBackend::State
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
                     (uint64_t(sdrGammaCurve) * 0xbf58476d1ce4e5b9ULL) ^
                     (uint64_t(outputGamma * 1e6f) * 0x2545f4914f6cdd1dULL) ^
-                    (uint64_t(outputGain * 1e6f) * 0x9fb21c651e98df25ULL) ^
-                    (uint64_t(outputBlack * 1e9f) * 0xc2b2ae3d27d4eb4fULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
                          : 0);
@@ -3239,42 +3309,51 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
         return E_FAIL;
     pl_frame target = {};
     pl_frame_from_swapchain(&target, &frame);
-    // A 16-bit float swapchain is scRGB (linear, 1.0 = 80 nits), and libplacebo
-    // writes SDR white at 203 nits. With Windows HDR off the desktop shows 1.0
-    // as the display's white and clips above it, so write linear SDR with white
-    // at 1.0 there.
-    if (target.color.transfer == PL_COLOR_TRC_SCRGB && !s.HdrActive())
-        target.color.transfer = PL_COLOR_TRC_LINEAR;
-    if (!hdr)
-        target.color.hdr.max_luma = s.SdrTargetNits();
-    // SDR on a linear 16-bit float output, made to look like an integer
-    // output: libplacebo leaves black at its SDR black point (1/1000 of white)
-    // where an integer output shows the display's black, and with Windows HDR
-    // on (scRGB, 1.0 = 80 nits) it puts SDR white at the target peak, while
-    // Windows shows integer SDR at its SDR content brightness.
-    if (!hdr && (target.color.transfer == PL_COLOR_TRC_SCRGB || target.color.transfer == PL_COLOR_TRC_LINEAR))
+    // A 16-bit float swapchain is scRGB (linear BT.709, 1.0 = 80 nits). It is
+    // rendered exactly as the 10-bit output would be, into a float texture:
+    // sRGB for SDR, HDR10 (PQ, BT.2020) for HDR, with every display setting,
+    // subtitles and statistics. The last pass converts that picture as Windows
+    // converts the 10-bit output: SDR as sRGB at Windows' SDR content
+    // brightness (with Windows HDR off: white 1.0), HDR10 as PQ BT.2020.
+    pl_tex swapTexture = nullptr;
+    float floatGain = 1;
+    if (target.color.transfer == PL_COLOR_TRC_SCRGB)
     {
-        float black = 0, peak = 0;
-        pl_nominal_luma_params luma = {};
-        luma.color = &target.color;
-        luma.scaling = PL_HDR_NITS;
-        luma.out_min = &black;
-        luma.out_max = &peak;
-        pl_color_space_nominal_luma_ex(&luma);
-        const bool scrgb = target.color.transfer == PL_COLOR_TRC_SCRGB;
-        const float unit = scrgb ? 80.f : peak; // nits of the value 1.0
-        const float white = scrgb && s.SdrWhite() > 0 ? s.SdrWhite() : peak;
-        if (peak > black && black >= 0 && unit > 0)
+        const auto& planeTex = target.planes[0].texture->params;
+        if (!s.floatStage || s.floatStage->params.w != planeTex.w || s.floatStage->params.h != planeTex.h)
         {
-            s.outputBlack = black / unit;
-            s.outputGain = white / (peak - black);
+            pl_tex_destroy(s.d3d->gpu, &s.floatStage);
+            pl_tex_params stage = {};
+            stage.w = planeTex.w;
+            stage.h = planeTex.h;
+            stage.format = planeTex.format;
+            stage.renderable = stage.sampleable = true;
+            s.floatStage = pl_tex_create(s.d3d->gpu, &stage);
+        }
+        if (s.floatStage)
+        {
+            swapTexture = target.planes[0].texture;
+            target.planes[0].texture = s.floatStage;
+            // The HDR peak the swapchain was given; not its scRGB (BT.709)
+            // gamut, which would squeeze colours further than a 10-bit output.
+            const auto hdrMetadata = target.color.hdr;
+            target.color = hdr ? pl_color_space_hdr10 : pl_color_space_srgb;
+            if (hdr)
+            {
+                target.color.hdr = hdrMetadata;
+                target.color.hdr.prim = {};
+            }
+            if (!hdr && s.HdrActive())
+                floatGain = (s.SdrWhite() > 0 ? s.SdrWhite() : PL_COLOR_SDR_WHITE) / 80.f;
         }
     }
+    if (!hdr)
+        target.color.hdr.max_luma = s.SdrTargetNits();
     // Display gamma: HDR tone mapped to SDR is encoded for how the display
     // decodes. SDR only changes with gamma processing, which converts it from
     // the desired gamma to the display gamma; otherwise it stays as before.
-    // Only a plain sRGB target qualifies: linear 16-bit float and Windows HDR
-    // outputs have no display gamma to match.
+    // Only a plain sRGB target qualifies (16-bit float renders one as well);
+    // Windows HDR outputs have no display gamma to match.
     // An ICC profile describes the display itself.
     const bool sdrTarget = !hdr && target.color.transfer == PL_COLOR_TRC_SRGB && !s.settings.iccEnabled;
     const bool hdrSource = pl_color_space_is_hdr(&s.image.color);
@@ -3325,11 +3404,11 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     QueryPerformanceFrequency(&frequency);
     s.renderGpu.Begin(s.d3d->device, s.context.Get());
     QueryPerformanceCounter(&begin);
-    const bool rendered = s.Render(target, hdr);
+    bool rendered = s.Render(target, hdr);
+    if (rendered && swapTexture)
+        rendered = s.ConvertFloatStage(swapTexture, hdr, floatGain);
     s.sdrGammaCurve = 0;
     s.outputGamma = 1;
-    s.outputBlack = 0;
-    s.outputGain = 1;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());
     if (rendered)
