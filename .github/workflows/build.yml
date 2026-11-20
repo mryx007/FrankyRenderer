@@ -66,6 +66,9 @@ jobs:
           python .github\scripts\prepare_dv.py
       - name: Build shared native renderer
         shell: cmd
+        env:
+          FRANKY_CHANNEL: ${{ inputs.channel }}
+          FRANKY_BUILD_ID: ${{ inputs.build_id }}
         run: build.cmd
       - name: Run non-GPU regression checks
         shell: cmd
