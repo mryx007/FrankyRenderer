@@ -44,7 +44,7 @@ class StablePromotionTest(unittest.TestCase):
             write("src/Renderer/Feature.cpp", "base implementation")
             write("src/Renderer/Renderer.rc", 'FILEVERSION 1,0,9,0\nPRODUCTVERSION 1,0,9,0\n'
                   'VALUE "FileVersion", "1.0.9"\nVALUE "ProductVersion", "1.0.9"\n')
-            write("src/Tools/package.py", 'print(f"FrankyRenderer 1.0.9 - package")\n')
+            write("src/Tools/package.py", 'shutil.copy2(ROOT / "Tools/INSTALL.txt", out / "INSTALL.txt")\n')
             write("src/Tools/package_variants.py", "obsolete packager")
             git("add", ".")
             git("commit", "-m", "Base")
@@ -85,8 +85,7 @@ class StablePromotionTest(unittest.TestCase):
                 self.assertNotIn("docs/screenshots/menu/1.png", git("ls-tree", "-r", "--name-only", "HEAD").splitlines())
                 self.assertFalse((root / "src/Tools/package_variants.py").exists())
                 changed = git("diff", "--name-only", nightly, "HEAD", "--", "src").splitlines()
-                self.assertEqual(set(changed), {"src/Renderer/Renderer.rc", "src/Tools/package.py",
-                                                "src/Tools/package_release.py"})
+                self.assertEqual(set(changed), {"src/Renderer/Renderer.rc", "src/Tools/package_release.py"})
                 self.assertEqual(git("show", "-s", "--format=%P", "HEAD").split(), [stable, nightly])
                 notes = (root / "promotion/release-notes.md").read_text(encoding="utf-8")
                 self.assertTrue(notes.startswith("## Important upgrade information"))

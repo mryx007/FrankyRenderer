@@ -34,7 +34,8 @@ def main():
         if not re.search(rf"^{field}\s+{major},{minor},{patch},0$", rc, re.MULTILINE):
             raise ValueError("Numeric resource version does not match: " + field)
     packager = "src/Tools/package_release.py" if (root / "src/Tools/package_release.py").is_file() else "src/Tools/package_variants.py"
-    for file in ("src/Tools/package.py", packager):
+    # The package name carries the version; INSTALL.txt (copied by package.py) has none.
+    for file in (packager,):
         if not re.search(r'(?<![\d.])' + re.escape(version) + r'(?![\d.])', (root / file).read_text()):
             raise ValueError("Package version does not match: " + file)
 
