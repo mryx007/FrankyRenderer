@@ -180,10 +180,30 @@ class BlackBarDetector
             }
             else
             {
-                while (top < h && !rows[top])
-                    ++top;
-                while (bottom < h && !rr[bottom])
-                    ++bottom;
+                // Data lines on the outermost rows (line 21 captions of DVDs)
+                // are no subtitles: a thin lit band touching the frame edge,
+                // with black after it, is left out. Text never touches the edge.
+                auto firstLit = [&](const std::vector<int>& counts)
+                {
+                    const int n = static_cast<int>(counts.size()), thin = std::max(2, n / 100);
+                    int at = 0;
+                    if (counts[0])
+                    {
+                        int end = 0;
+                        while (end < n && counts[end])
+                            ++end;
+                        int after = end;
+                        while (after < n && !counts[after])
+                            ++after;
+                        if (end <= thin && after - end >= thin)
+                            at = end;
+                    }
+                    while (at < n && !counts[at])
+                        ++at;
+                    return at;
+                };
+                top = firstLit(rows);
+                bottom = firstLit(rr);
             }
             // One probe-pixel safety margin; chroma-safe outward rounding.
             return RECT{LONG(std::max(0, left - 1) * sourceW / w) & ~1L,
