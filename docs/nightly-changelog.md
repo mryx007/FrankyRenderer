@@ -135,7 +135,7 @@
 - Changed: a new profile takes no settings from Main and starts fresh with the built-in settings; "Default" is now called "Main" ([#45](https://github.com/mryx007/FrankyRenderer/issues/45)). Existing profiles stay as they are. If you have a profile called "Main", rename it before updating.
 - Fixed 16-bit float output looking darker than 8/10-bit with Windows HDR on, and its slightly grey black.
 - Fixed 16-bit float output ignoring Display Gamma, Display Gamut, SDR Gamma Processing and RGB levels, and showing HDR colours less saturated.
-- Changed: Output Texture Format "Auto" uses 8-bit when the display receives 8 bits, so the renderer dithers instead of the GPU driver.
+- Changed: Output Texture Format "Auto (Display)" uses 8-bit when the display receives 8 bits, so the renderer dithers instead of the GPU driver.
 - Fixed 16-bit float output not being dithered; it now dithers to the bit depth the display receives.
 - Fixed DVD line 21 caption dots keeping the top black bar visible.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
