@@ -51,16 +51,22 @@ msgid "Output Texture Format"
 msgstr "Format de texture de sortie"
 
 #. Setting description (General > Output > Output Texture Format)
+#, fuzzy
+#| msgid ""
+#| "Precision of the final output texture. Auto follows the renderer's output "
+#| "selection."
 msgid ""
-"Precision of the final output texture. Auto follows the renderer's output "
-"selection."
+"Precision of the final output texture. Auto: 8-bit when the display receives "
+"8 bits, otherwise 10-bit."
 msgstr ""
 "Précision de la texture de sortie finale. Automatique suit la sélection de "
 "sortie du moteur de rendu."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-msgid "Auto (libplacebo)"
+#, fuzzy
+#| msgid "Auto (libplacebo)"
+msgid "Auto (Display)"
 msgstr "Automatique (libplacebo)"
 
 #. Choice (General > Output > Output Texture Format)
@@ -3647,7 +3653,7 @@ msgstr ""
 msgid "Next value; after the last one, the first again."
 msgstr ""
 
-#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
