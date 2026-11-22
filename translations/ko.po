@@ -5,596 +5,640 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Last-Translator: Hack茶ん <hackjjang@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Korean <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/ko/>\n"
 "Language: ko\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"PO-Revision-Date: 2026-11-23 15:51+0000\n"
+"X-Generator: Weblate 2026.12.dev0\n"
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "General"
-msgstr ""
+msgstr "일반"
 
 #. Category description
 msgid ""
 "Output precision, display mode switching, background and image analysis."
-msgstr ""
+msgstr "출력 정밀도, 표시 모드 전환, 배경 및 이미지 분석."
 
 #. Tab (General)
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Output"
-msgstr ""
+msgstr "출력"
 
 #. Tab (General)
 msgid "Background"
-msgstr ""
+msgstr "배경"
 
 #. Tab (General)
 msgid "Appearance"
-msgstr ""
+msgstr "외관"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Output Texture Format"
-msgstr ""
+msgstr "출력 텍스처 형식"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
 "Precision of the final output texture. Auto: 8-bit when the display receives "
 "8 bits, otherwise 10-bit."
 msgstr ""
+"최종 출력 텍스처의 정밀도. 자동 : 디스플레이가 8비트를 수신하면 8비트로, "
+"그렇지 않으면 10비트를 사용합니다."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Auto (Display)"
-msgstr ""
+msgstr "자동(디스플레이)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "8-bit Integer (SDR)"
-msgstr ""
+msgstr "8비트 정수(SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Prefer 10-bit Integer"
-msgstr ""
+msgstr "10비트 정수 선호"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Prefer 16-bit Float"
-msgstr ""
+msgstr "16비트 정수 선호"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "RGB Output Levels"
-msgstr ""
+msgstr "RGB 출력 레벨"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr ""
+msgstr "디스플레이와 GPU 드라이버에서 사용하는 RGB 범위를 일치시키십시오."
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "Auto (Output)"
-msgstr ""
+msgstr "자동(출력)"
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "PC Levels (0–255)"
-msgstr ""
+msgstr "PC 레벨(0–255)"
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "TV Levels (16–235)"
-msgstr ""
+msgstr "TV 레벨(16–235)"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Dither Target Bit Depth"
-msgstr ""
+msgstr "디더링 대상 비트 심도"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
-msgstr ""
+msgstr "실제 출력 정밀도에 맞춰 디더링; '자동(Auto)' 설정 시, 출력 텍스처를 따릅니다."
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "Auto (Output Texture)"
-msgstr ""
+msgstr "자동(출력 텍스처)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "4 Bit"
-msgstr ""
+msgstr "4비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "5 Bit"
-msgstr ""
+msgstr "5비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "6 Bit"
-msgstr ""
+msgstr "6비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "8 Bit"
-msgstr ""
+msgstr "8비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "10 Bit"
-msgstr ""
+msgstr "10비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "12 Bit"
-msgstr ""
+msgstr "12비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "16 Bit"
-msgstr ""
+msgstr "16비트"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Max Frames in Flight"
-msgstr ""
+msgstr "동시 처리 프레임 수"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
-msgstr ""
+msgstr "0은 기기 기본값을 유지합니다. 버퍼링을 늘리면 지연 시간이 증가합니다."
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Image Analysis"
-msgstr ""
+msgstr "이미지 분석"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
 "Waveform, histogram, RGB parade, false color and gray ramp, before or after "
 "color mapping, without subtitles."
 msgstr ""
+"파형, 히스토그램, RGB 퍼레이드, 가색상 및 회색조 변화를 색상 매핑 전후에 "
+"자막 없이 보여줍니다."
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
-msgstr ""
+msgstr "통계 글자 크기(%)"
 
 #. Setting description (General > Image Analysis > Statistics Text Size (%))
 msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
-msgstr ""
+msgstr "Ctrl+J 통계의 크기입니다. 100은 자동 크기입니다."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Display Mode"
-msgstr ""
+msgstr "표시 모드"
 
 #. Section description (General > Display Mode)
 msgid ""
 "Switches the display to a listed mode matching the video frame rate in "
 "fullscreen and restores it when leaving fullscreen or stopping."
 msgstr ""
+"전체 화면 모드에서 비디오 프레임 속도에 맞춰 디스플레이 모드를 목록에 표시된 "
+"모드로 전환하고, 전체 화면 모드를 종료하거나 재생을 중지하면 원래 모드로 "
+"복원합니다."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
 msgid "Switch Display Mode in Fullscreen"
-msgstr ""
+msgstr "전체 화면에서 디스플레이 모드 전환"
 
 #. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
 "Uses the listed mode whose refresh rate is the lowest whole multiple of the "
 "frame rate. Only for this display."
 msgstr ""
+"명시된 모드 중 프레임 속도의 정수 배수 중 가장 작은 새로 고침 빈도를 "
+"사용하는 모드를 사용합니다. 이 디스플레이에만 적용됩니다."
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
-msgstr ""
+msgstr "허용된 모드"
 
 #. Setting description (General > Display Mode > Allowed Modes)
 msgid ""
 "Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and "
 "59 mean 23.976, 29.97 and 59.94 Hz."
 msgstr ""
+"쉼표로 구분, 2160p23 또는 해상도를 유지하기 위해 그냥 23으로 하세요. 23, 29, "
+"59는 각각 23.976, 29.97, 59.94Hz를 의미합니다."
 
 #. Input hint (General > Display Mode > Allowed Modes)
 msgid "e.g. 2160p23, 2160p24, 2160p60"
-msgstr ""
+msgstr "예 : 2160p23, 2160p24, 2160p60"
 
 #. Input error (General > Display Mode > Allowed Modes)
 msgid ""
 "Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, "
 "60."
 msgstr ""
+"2160p23, 2160p24, 2160p50, 2160p60과 같은 디스플레이 모드를 입력하거나, "
+"간단히 23, 24, 60을 입력하세요."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
 msgid "Pause After Switching (seconds)"
-msgstr ""
+msgstr "전환 후 대기 시간(초)"
 
 #. Setting description (General > Display Mode > Pause After Switching (seconds))
 msgid "Pauses playback while the display resynchronises after a mode change."
-msgstr ""
+msgstr "모드 변경 후 디스플레이가 다시 동기화되는 동안 재생을 일시 중지합니다."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Background & Transparency"
-msgstr ""
+msgstr "배경 및 투명도"
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Red"
-msgstr ""
+msgstr "빨강 배경"
 
 #. Setting description (General > Background & Transparency > Background Red)
 msgid ""
 "Red channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
-msgstr ""
+msgstr "빨강 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Green"
-msgstr ""
+msgstr "초록 배경"
 
 #. Setting description (General > Background & Transparency > Background Green)
 msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
-msgstr ""
+msgstr "초록 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Blue"
-msgstr ""
+msgstr "파랑 배경"
 
 #. Setting description (General > Background & Transparency > Background Blue)
 msgid ""
 "Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
-msgstr ""
+msgstr "파랑 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Transparency"
-msgstr ""
+msgstr "배경 투명도"
 
 #. Setting description (General > Background & Transparency > Background Transparency)
 msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
+"0은 불투명, 1은 투명입니다. 변경 사항은 윈도 바탕 화면/창의 투명도가 아닌, "
+"렌더링된 알파 값에 적용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Corner Rounding"
-msgstr ""
+msgstr "모서리 둥글게"
 
 #. Setting description (General > Background & Transparency > Corner Rounding)
 msgid ""
 "Relative amount of rounded video corners. 0 keeps square corners; 1 applies "
 "the maximum rounding."
 msgstr ""
+"영상 모서리가 둥글게 처리된 정도입니다. 0은 모서리를 직각으로 유지하며, 1은 "
+"최대한 둥글게 만듭니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Skip Target Clearing"
-msgstr ""
+msgstr "대상 정리 건너뛰기"
 
 #. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
 "Skips clearing the borders around the picture. Old pixels may remain there. "
 "Default: Off."
 msgstr ""
+"이미지 주변의 테두리를 지우는 과정을 건너뜁니다. 이 경우 기존 픽셀이 그대로 "
+"남아 있을 수 있습니다. 기본값 : 끔."
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "Default (Off)"
-msgstr ""
+msgstr "기본값(끔)"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Processing > Deinterlacing > Algorithm)
 msgid "Off"
-msgstr ""
+msgstr "끔"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "On"
-msgstr ""
+msgstr "켬"
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Blend Against Tiles"
-msgstr ""
+msgstr "타일 배경과 혼합"
 
 #. Setting description (General > Background & Transparency > Blend Against Tiles)
 msgid ""
 "Composite transparent image regions onto a checkerboard. Default is Off. "
 "Tile colors do not recolor opaque video."
 msgstr ""
+"투명한 이미지 영역을 체크무늬 배경 위에 합성합니다. 기본값은 '끔'입니다. "
+"체크무늬 색상은 불투명한 영상의 색상에 영향을 주지 않습니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Red"
-msgstr ""
+msgstr "밝은 빨강 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Red)
 msgid ""
 "Red channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"밝은 체크무늬 타일의 빨강 채널입니다. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Green"
-msgstr ""
+msgstr "밝은 초록 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Green)
 msgid ""
 "Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"밝은 체크무늬 타일의 초록 채널입니다. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Blue"
-msgstr ""
+msgstr "밝은 파랑 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Blue)
 msgid ""
 "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"밝은 체크무늬 타일의 블루 채널입니다. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Red"
-msgstr ""
+msgstr "어두운 빨강 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Red)
 msgid ""
 "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"어두운 체크무늬 타일의 빨강 채널입니. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Green"
-msgstr ""
+msgstr "어두운 초록 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Green)
 msgid ""
 "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"어두운 체크무늬 타일의 초 채널입니다. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Blue"
-msgstr ""
+msgstr "어두운 파랑 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Blue)
 msgid ""
 "Blue channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"어두운 체크무늬 타일의 파랑 채널입니. 타일 배경과 혼합 기능과 함께 "
+"사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Tile Size (pixels)"
-msgstr ""
+msgstr "타일 크기(픽셀)"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid ""
 "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to "
 "256."
 msgstr ""
+"출력 픽셀 단위의 체커보드 반복 크기입니다. 기본값 : 32; 수동 설정 범위 : "
+"2~256."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Diagnostics"
-msgstr ""
+msgstr "진단"
 
 #. Setting name (General > Diagnostics)
 msgid "Diagnostic Log"
-msgstr ""
+msgstr "진단 로그"
 
 #. Setting description (General > Diagnostics > Diagnostic Log)
 msgid ""
 "Records the next start of the player for a bug report, then turns itself off."
-msgstr ""
+msgstr "버그 보고를 위해 재생기의 다음 시작 시점을 기록한 자동으로 종료합니다."
 
 #. Setting name (General > Diagnostics)
 msgid "Save Report"
-msgstr ""
+msgstr "보고서 저장"
 
 #. Setting description (General > Diagnostics > Save Report)
 msgid "Saves a report for a bug report on the desktop."
-msgstr ""
+msgstr "버그 보고서를 바탕 화면에 저장합니다."
 
 #. Button (General > Diagnostics > Save Report)
 msgid "Save"
-msgstr ""
+msgstr "저장"
 
 #. Section heading (General)
 msgid "Menu Appearance"
-msgstr ""
+msgstr "메뉴 모양"
 
 #. Section description (General > Menu Appearance)
 msgid "Look and behaviour of this settings window. Applies immediately."
-msgstr ""
+msgstr "이 설정 창의 모양과 작동 방식입니다. 변경 사항은 즉시 적용됩니다."
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
-msgstr ""
+msgstr "테마"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Indigo"
-msgstr ""
+msgstr "인디고"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Graphite"
-msgstr ""
+msgstr "석묵"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Midnight"
-msgstr ""
+msgstr "미드나이트"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Ocean"
-msgstr ""
+msgstr "오션"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Light"
-msgstr ""
+msgstr "라이트"
 
 #. Setting name (General > Menu Appearance)
 msgid "Accent Color"
-msgstr ""
+msgstr "강조색"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Violet"
-msgstr ""
+msgstr "바이올렛"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Blue"
-msgstr ""
+msgstr "파랑"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Teal"
-msgstr ""
+msgstr "청록"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Green"
-msgstr ""
+msgstr "초록"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Orange"
-msgstr ""
+msgstr "주황"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Pink"
-msgstr ""
+msgstr "분홍"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
-msgstr ""
+msgstr "윈도"
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"
-msgstr ""
+msgstr "언어"
 
 #. Setting description (General > Menu Appearance > Language)
 msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
 msgstr ""
+"이 설정 창의 언어입니다. 자동으로 설정하면 Windows 설정을 따르며, 번역이 "
+"제공되지 않은 항목은 영어로 표시됩니다."
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "Automatic (Windows)"
-msgstr ""
+msgstr "자동(윈도)"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "English"
-msgstr ""
+msgstr "영어"
 
 #. Setting name (General > Menu Appearance)
 msgid "Remember Last Page"
-msgstr ""
+msgstr "마지막 페이지 기억하기"
 
 #. Setting description (General > Menu Appearance > Remember Last Page)
 msgid "Opens this window on the page you left."
-msgstr ""
+msgstr "이 창을 마지막으로 열었던 페이지로 다시 엽니다."
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "Processing"
-msgstr ""
+msgstr "처리"
 
 #. Category description
 msgid "Image cleanup, field processing, dithering and black bar handling."
-msgstr ""
+msgstr "이미지 정제, 필드 처리, 디더링 및 검은 테두리 처리."
 
 #. Tab (Processing)
 msgid "Image Cleanup"
-msgstr ""
+msgstr "이미지 정리"
 
 #. Tab (Processing)
 msgid "Deinterlacing & Dithering"
-msgstr ""
+msgstr "디인터레이싱 및 디더링"
 
 #. Tab (Processing)
 msgid "Black Bars / Zoom"
-msgstr ""
+msgstr "검은 테두리 / 확대"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Debanding"
-msgstr ""
+msgstr "디밴딩"
 
 #. Setting description (Processing > Debanding > Debanding)
 msgid ""
 "Reduce visible steps in smooth gradients. Excessive settings can remove fine "
 "detail."
 msgstr ""
+"부드러운 그라디언트에서 눈에 띄는 계단 현상을 줄이세요. 과도한 설정은 미세한 "
+"디테일을 제거할 수 있습니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Iterations"
-msgstr ""
+msgstr "반복"
 
 #. Setting description (Processing > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
+"반복 횟수가 많아질수록 밴딩 현상이 심해지지만, 세부적인 부분이 손실될 수 "
+"있습니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Threshold"
-msgstr ""
+msgstr "임계값"
 
 #. Setting description (Processing > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
-msgstr ""
+msgstr "밴딩을 감지하기 위한 차이 임계값입니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 msgid "Radius"
-msgstr ""
+msgstr "반경"
 
 #. Setting description (Processing > Debanding > Radius)
 msgid "Search radius in pixels."
-msgstr ""
+msgstr "픽셀 단위의 검색 반경입니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Grain"
-msgstr ""
+msgstr "그레인"
 
 #. Setting description (Processing > Debanding > Grain)
 msgid "Grain added after debanding."
-msgstr ""
+msgstr "그레인은 디벤딩 후 첨가됩니다."
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "Adaptive Sharpen"
-msgstr ""
+msgstr "적응형 선명화"
 
 #. Setting name (Processing > Adaptive Sharpen)
 #. Setting name (Shortcuts > )
 msgid "Enhance Edges and Details"
-msgstr ""
+msgstr "가장자리 및 세부 사항 강화"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
-msgstr ""
+msgstr "내장된 잔상 방지 기능이 있는 적응형 선명도 조정 기능을 적용하십시오."
 
 #. Setting name (Processing > Adaptive Sharpen)
 #. Setting name (Shortcuts > )
