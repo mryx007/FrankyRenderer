@@ -98,6 +98,31 @@ class RtxScaling
     };
 
     std::vector<NativeView> nativeViews;
+
+    // A prepared HDR picture goes to the driver as P010, the format its
+    // Super Resolution takes for HDR (it only scales a Y410 picture, issue
+    // #48). Each new picture is written into the next texture of this pool,
+    // so none is overwritten while the driver may still read it.
+    struct PreparedP010
+    {
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> view;
+        pl_tex planes[2] = {};
+    };
+
+    static constexpr size_t PreparedPool = 6;
+    std::vector<PreparedP010> preparedPool;
+    size_t preparedNext = 0;
+
+    void ClearPrepared()
+    {
+        for (auto& picture : preparedPool)
+            for (auto& plane : picture.planes)
+                pl_tex_destroy(gpu, &plane);
+        preparedPool.clear();
+        preparedNext = 0;
+    }
+
     bool upscaling = false, hdr = false;
     bool failed = false;
     // Why the driver refused RTX Video HDR; Super Resolution stays available.
@@ -112,6 +137,7 @@ class RtxScaling
         ClearFrames();
         if (input)
             pl_tex_destroy(gpu, &input);
+        ClearPrepared();
         processor.Reset();
         wchar_t text[128];
         swprintf_s(text, L"unavailable (0x%08X); normal scaling", unsigned(result));
@@ -207,6 +233,7 @@ class RtxScaling
         Invalidate();
         if (input)
             pl_tex_destroy(gpu, &input);
+        ClearPrepared();
         pl_renderer_destroy(&converter);
         processor.Reset();
         gpu = nullptr;
@@ -293,14 +320,17 @@ class RtxScaling
         const auto type = bits == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
         const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
         const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
-        const auto kind = !direct ? RtxVideoProcessor::PreparedInput(bits, pq, bt2020, trueHdr)
+        // A prepared HDR picture goes as P010 (see preparedPool).
+        const bool preparedP010 = !direct && hdrSource && !trueHdr;
+        const auto kind = preparedP010 ? RtxVideoProcessor::InputKind::P010
+                          : !direct    ? RtxVideoProcessor::PreparedInput(bits, pq, bt2020, trueHdr)
                           : nativeDesc.Format == DXGI_FORMAT_P010 ? RtxVideoProcessor::InputKind::P010
                                                                   : RtxVideoProcessor::InputKind::Nv12;
-        // The driver scales a prepared Y410 picture without Super Resolution,
-        // softer than the renderer's own scaling (issue #48).
+        // The driver scales a prepared Y410 picture (now only BT.2020 SDR)
+        // without Super Resolution, softer than the renderer's own scaling.
         if (kind == RtxVideoProcessor::InputKind::Y410 && !trueHdr)
         {
-            status = L"bypassed (driver does not upscale this HDR picture; normal scaling)";
+            status = L"bypassed (driver does not upscale this picture; normal scaling)";
             return {};
         }
         // A larger picture than the processor was made for needs a new one;
@@ -316,6 +346,7 @@ class RtxScaling
             ClearFrames();
             if (input)
                 pl_tex_destroy(gpu, &input);
+            ClearPrepared();
             width = inW;
             height = inH;
             outputWidth = maxW;
@@ -369,7 +400,7 @@ class RtxScaling
             Fail(hr);
             return {};
         }
-        Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> picture;
+        Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> picture, preparedView;
         if (direct)
         {
             for (const auto& known : nativeViews)
@@ -399,8 +430,46 @@ class RtxScaling
             }
             D3D11_TEXTURE2D_DESC inputDesc;
             processor.Input()->GetDesc(&inputDesc);
+            PreparedP010* pooled = nullptr;
+            if (preparedP010)
+            {
+                // Luma and chroma planes of the next pool texture, written by libplacebo.
+                if (preparedPool.empty())
+                {
+                    preparedPool.resize(PreparedPool);
+                    for (auto& entry : preparedPool)
+                    {
+                        D3D11_TEXTURE2D_DESC desc = inputDesc;
+                        desc.Format = DXGI_FORMAT_P010;
+                        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+                        desc.MiscFlags = 0;
+                        hr = d3d->device->CreateTexture2D(&desc, nullptr, &entry.texture);
+                        if (SUCCEEDED(hr))
+                            hr = processor.InputView(entry.texture.Get(), entry.view);
+                        for (int p = 0; SUCCEEDED(hr) && p < 2; ++p)
+                        {
+                            pl_d3d11_wrap_params wrap = {};
+                            wrap.tex = entry.texture.Get();
+                            wrap.fmt = p ? DXGI_FORMAT_R16G16_UNORM : DXGI_FORMAT_R16_UNORM;
+                            wrap.w = int(desc.Width) >> p;
+                            wrap.h = int(desc.Height) >> p;
+                            entry.planes[p] = pl_d3d11_wrap(gpu, &wrap);
+                            if (!entry.planes[p] || !entry.planes[p]->params.renderable)
+                                hr = E_FAIL;
+                        }
+                        if (FAILED(hr))
+                        {
+                            Fail(hr);
+                            return {};
+                        }
+                    }
+                }
+                pooled = &preparedPool[preparedNext];
+                preparedNext = (preparedNext + 1) % preparedPool.size();
+                preparedView = pooled->view;
+            }
             // One plane: RGBA for 8 bits, RGB or Y410 (written as R10G10B10A2) for 10.
-            if (!input)
+            if (!input && !pooled)
             {
                 pl_d3d11_wrap_params wrap = {};
                 wrap.tex = processor.Input();
@@ -417,11 +486,25 @@ class RtxScaling
                     return {};
                 }
             }
-            auto prepared = Describe(input, source.color, bits);
+            auto prepared = Describe(pooled ? pooled->planes[0] : input, source.color, bits);
             prepared.crop = {0, 0, float(inW), float(inH)};
             pl_frame picture = source;
             picture.crop = {fullX, fullY, fullX + float(inW), fullY + float(inH)};
-            if (kind == RtxVideoProcessor::InputKind::Y410)
+            if (pooled)
+            {
+                // P010: 10-bit limited-range YCbCr in the high bits of 16.
+                prepared.num_planes = 2;
+                prepared.planes[0].components = 1;
+                prepared.planes[0].component_mapping[0] = 0;
+                prepared.planes[1].texture = pooled->planes[1];
+                prepared.planes[1].components = 2;
+                prepared.planes[1].component_mapping[0] = 1;
+                prepared.planes[1].component_mapping[1] = 2;
+                prepared.repr.sys = bt2020 ? PL_COLOR_SYSTEM_BT_2020_NC : PL_COLOR_SYSTEM_BT_709;
+                prepared.repr.levels = PL_COLOR_LEVELS_LIMITED;
+                prepared.repr.bits = {16, 10, 6};
+            }
+            else if (kind == RtxVideoProcessor::InputKind::Y410)
             {
                 // Y410 keeps Cb, Y and Cr in the red, green and blue bits.
                 prepared.planes[0].component_mapping[0] = 1;
@@ -456,6 +539,8 @@ class RtxScaling
             // these commands; the CPU need not wait for the GPU here.
             pl_gpu_flush(gpu);
         }
+        if (preparedView)
+            picture = preparedView;
         inputIndex = std::max(inputIndex, index);
         auto saved = std::make_shared<Frame>();
         saved->gpu = gpu;

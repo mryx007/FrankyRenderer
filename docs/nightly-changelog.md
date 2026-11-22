@@ -144,4 +144,5 @@
 - Fixed RTX Super Resolution making SDR slightly too dark; SDR is now upscaled in 10 bits ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
 - Fixed a black picture after switching from FrankyRenderer to another renderer in PotPlayer ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
 - Fixed subtitles in the black bars stacking up with 16-bit float output ([#47](https://github.com/mryx007/FrankyRenderer/issues/47)).
+- RTX Super Resolution now also sharpens HDR video that does not arrive as P010.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

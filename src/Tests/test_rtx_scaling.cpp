@@ -70,15 +70,8 @@ int main()
                 const auto before = scaling.Evaluations();
                 auto processed = scaling.Get(d3d, context.Get(), source, 123, 1920, 1080, pl_render_default_params);
                 if (hdr)
-                {
-                    // Issue #48: the driver scales a prepared HDR (Y410) picture
-                    // without Super Resolution, so the renderer scales it itself.
-                    Require(!processed && scaling.Status().find(L"bypassed") != std::wstring::npos,
-                            "prepared HDR picture bypasses RTX");
-                    scaling.Invalidate();
-                    pl_tex_destroy(d3d->gpu, &input);
-                    continue;
-                }
+                    Require(scaling.Status().find(L"prepared picture") != std::wstring::npos,
+                            "prepared HDR picture goes to the driver as P010");
                 if (!processed)
                     wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
                 Require(bool(processed), "libplacebo to RTX to libplacebo conversion");
@@ -91,7 +84,7 @@ int main()
                 D3D11_TEXTURE2D_DESC actual;
                 processed->pixels->GetDesc(&actual);
                 // Issue #48: SDR goes to the driver as 10-bit RGB, also from 8 bits.
-                Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM, "SDR is upscaled in 10 bits");
+                Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM, "upscaled in 10 bits");
                 if (hdr)
                 {
                     actual.Usage = D3D11_USAGE_STAGING;
@@ -260,8 +253,8 @@ int main()
                 hdrSource.color = pl_color_space_hdr10;
                 auto passthrough =
                     scaling.Get(d3d, context.Get(), hdrSource, 202, 1920, 1080, pl_render_default_params, true, true);
-                Require(!passthrough && scaling.Status().find(L"bypassed") != std::wstring::npos,
-                        "a prepared HDR source gets neither RTX Video HDR nor a driver upscale");
+                Require(bool(passthrough) && scaling.Status().find(L"HDR") == std::wstring::npos,
+                        "HDR sources get Super Resolution only");
                 passthrough.reset();
                 scaling.Invalidate();
                 pl_tex_destroy(d3d->gpu, &input);
