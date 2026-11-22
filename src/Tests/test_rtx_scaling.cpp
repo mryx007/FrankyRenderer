@@ -69,6 +69,16 @@ int main()
                 }
                 const auto before = scaling.Evaluations();
                 auto processed = scaling.Get(d3d, context.Get(), source, 123, 1920, 1080, pl_render_default_params);
+                if (hdr)
+                {
+                    // Issue #48: the driver scales a prepared HDR (Y410) picture
+                    // without Super Resolution, so the renderer scales it itself.
+                    Require(!processed && scaling.Status().find(L"bypassed") != std::wstring::npos,
+                            "prepared HDR picture bypasses RTX");
+                    scaling.Invalidate();
+                    pl_tex_destroy(d3d->gpu, &input);
+                    continue;
+                }
                 if (!processed)
                     wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
                 Require(bool(processed), "libplacebo to RTX to libplacebo conversion");
@@ -80,8 +90,8 @@ int main()
                         "processed frame is RGB without a second deinterlace");
                 D3D11_TEXTURE2D_DESC actual;
                 processed->pixels->GetDesc(&actual);
-                Require(actual.Format == (tenBit ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM),
-                        "10-bit HDR is not quantized to 8-bit");
+                // Issue #48: SDR goes to the driver as 10-bit RGB, also from 8 bits.
+                Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM, "SDR is upscaled in 10 bits");
                 if (hdr)
                 {
                     actual.Usage = D3D11_USAGE_STAGING;
@@ -250,8 +260,8 @@ int main()
                 hdrSource.color = pl_color_space_hdr10;
                 auto passthrough =
                     scaling.Get(d3d, context.Get(), hdrSource, 202, 1920, 1080, pl_render_default_params, true, true);
-                Require(bool(passthrough) && scaling.Status().find(L"HDR") == std::wstring::npos,
-                        "HDR sources get Super Resolution only");
+                Require(!passthrough && scaling.Status().find(L"bypassed") != std::wstring::npos,
+                        "a prepared HDR source gets neither RTX Video HDR nor a driver upscale");
                 passthrough.reset();
                 scaling.Invalidate();
                 pl_tex_destroy(d3d->gpu, &input);
@@ -419,12 +429,16 @@ int main()
                         "each RTX picture keeps its own HDR10+ tone mapping metadata");
                 printf("RTX HDR10+ alternating metadata: 40 cache hits, no resubmissions or allocations\n");
             }
-            Require(scaling.DecoderPicture() && scaling.Status().find(L"decoder picture") != std::wstring::npos,
-                    "decoder picture is read by the driver directly");
+            // Issue #48: only HDR decoder pictures go to the driver directly;
+            // SDR ones are prepared as 10-bit RGB (the driver's YCbCr
+            // conversion is off), and every output has 10 bits.
+            Require(scaling.DecoderPicture() == hdrSource &&
+                        scaling.Status().find(hdrSource ? L"decoder picture" : L"prepared picture") !=
+                            std::wstring::npos,
+                    "HDR decoder pictures direct, SDR ones prepared");
             D3D11_TEXTURE2D_DESC actual;
             processed->pixels->GetDesc(&actual);
-            Require(actual.Format == (eightBit ? DXGI_FORMAT_R8G8B8A8_UNORM : DXGI_FORMAT_R10G10B10A2_UNORM),
-                    "output depth follows the decoder picture");
+            Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM, "10-bit output");
             actual.Usage = D3D11_USAGE_STAGING;
             actual.BindFlags = actual.MiscFlags = 0;
             actual.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -437,7 +451,7 @@ int main()
                 reinterpret_cast<const UINT*>(static_cast<const BYTE*>(mapped.pData) + 540 * mapped.RowPitch)[960];
             context->Unmap(readback.Get(), 0);
             // Mid grey: about 0.51 of full scale in every channel.
-            const int bitsOut = eightBit ? 8 : 10, mask = (1 << bitsOut) - 1;
+            const int bitsOut = 10, mask = (1 << bitsOut) - 1;
             const int r = pixel & mask, g = (pixel >> bitsOut) & mask, b = (pixel >> (2 * bitsOut)) & mask;
             const float scale = float(mask);
             printf("RTX direct %s: grey -> %.3f %.3f %.3f\n",

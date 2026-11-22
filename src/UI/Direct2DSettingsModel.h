@@ -594,10 +594,24 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                             return float(j);
                     return 0.f;
                 };
-                n.set = [field, names](float v) { strcpy_s(field, 64, names[int(v)].c_str()); };
+                // A new starting filter starts over: kernel, window, polar and
+                // edited values follow it again instead of the previous one.
+                const auto choose = [&f, field, kind](const char* name)
+                {
+                    if (kind == 0 && strcmp(field, name))
+                    {
+                        strcpy_s(f.kernel, "auto");
+                        strcpy_s(f.window, "auto");
+                        f.polar = -1;
+                        f.overrides = 0;
+                        std::fill(std::begin(f.values), std::end(f.values), 0.f);
+                    }
+                    strcpy_s(field, 64, name);
+                };
+                n.set = [choose, names](float v) { choose(names[int(v)].c_str()); };
                 if (kind == 0)
                     n.detail = [field, role] { return D2DScalerDescription(role, field); };
-                n.reset = [field] { strcpy_s(field, 64, "auto"); };
+                n.reset = [choose] { choose("auto"); };
                 e.controls.push_back(std::move(n));
             }
             for (int i = 0; i < 9; i++)

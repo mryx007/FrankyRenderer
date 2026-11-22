@@ -588,11 +588,16 @@ int main()
         }
     }
 
-    // RTX Video Super Resolution against the renderer's own upscaling (2x).
+    // RTX Video Super Resolution against the renderer's own upscaling (2x),
+    // for 8 and 10-bit decoder pictures. Issue #48: the driver's own YCbCr
+    // conversion was up to 1.5 (NV12) and 2.2 (P010 colours) 8-bit steps off;
+    // the 10-bit RGB path keeps every patch within one step.
+    for (auto format : {PixelFormat::NV12, PixelFormat::P010})
     {
         SetWindowPos(g_window, nullptr, 0, 0, Width * 2, Height * 2, SWP_NOZORDER | SWP_NOACTIVATE);
         Source s;
-        s.format = PixelFormat::NV12;
+        s.format = format;
+        const std::string name = std::string("RTX Super Resolution vs own, ") + Layout(format).name;
         auto rtx = settings;
         rtx.rtxSuperResolution = true;
         PlaceboBackend probe;
@@ -610,9 +615,9 @@ int main()
             used = check.RtxFrames() > 0;
         }
         if (used)
-            Compare("RTX Super Resolution vs own upscaling", own, upscaled, false, .02);
+            Compare(name, own, upscaled, false, 1. / 255);
         else
-            Skip("RTX Super Resolution vs own upscaling", "RTX Video not active on this GPU");
+            Skip(name, "RTX Video not active on this GPU");
         SetWindowPos(g_window, nullptr, 0, 0, Width, Height, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 

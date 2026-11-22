@@ -254,10 +254,17 @@ class RtxScaling
         }
         // A progressive NV12 or P010 decoder picture goes to the driver as it is; the
         // picture texture is then the input and the crop is a rectangle in it.
+        // Not for BT.709 SDR Super Resolution alone (issue #48): the driver's own
+        // YCbCr conversion leaves NV12 up to 1.5 steps too dark and P010
+        // colours up to 2 steps off, and its 8-bit path only takes 8-bit
+        // input. libplacebo converts the picture to 10-bit RGB instead, which
+        // the driver upscales exactly into a 10-bit output.
+        const bool hdrSource = pl_color_space_is_hdr(&source.color);
+        const bool exactSdr = !trueHdr && !hdrSource && source.color.primaries != PL_COLOR_PRIM_BT_2020;
         D3D11_TEXTURE2D_DESC nativeDesc = {};
         if (native)
             native->GetDesc(&nativeDesc);
-        const bool direct = native &&
+        const bool direct = native && !exactSdr &&
                             (nativeDesc.Format == DXGI_FORMAT_P010 || nativeDesc.Format == DXGI_FORMAT_NV12) &&
                             nativeDesc.ArraySize == 1 && source.field == PL_FIELD_NONE;
         const pl_rect2df full = whole ? *whole : source.crop;
@@ -282,13 +289,20 @@ class RtxScaling
         if (failed)
             return {};
         // RTX Video HDR takes the 10-bit YCbCr input the driver path expects.
-        const int bits = trueHdr || pl_color_space_is_hdr(&source.color) || source.repr.bits.color_depth > 8 ? 10 : 8;
+        const int bits = trueHdr || hdrSource || exactSdr || source.repr.bits.color_depth > 8 ? 10 : 8;
         const auto type = bits == 10 ? DXGI_FORMAT_R10G10B10A2_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
         const bool pq = source.color.transfer == PL_COLOR_TRC_PQ;
         const bool bt2020 = source.color.primaries == PL_COLOR_PRIM_BT_2020;
         const auto kind = !direct ? RtxVideoProcessor::PreparedInput(bits, pq, bt2020, trueHdr)
                           : nativeDesc.Format == DXGI_FORMAT_P010 ? RtxVideoProcessor::InputKind::P010
                                                                   : RtxVideoProcessor::InputKind::Nv12;
+        // The driver scales a prepared Y410 picture without Super Resolution,
+        // softer than the renderer's own scaling (issue #48).
+        if (kind == RtxVideoProcessor::InputKind::Y410 && !trueHdr)
+        {
+            status = L"bypassed (driver does not upscale this HDR picture; normal scaling)";
+            return {};
+        }
         // A larger picture than the processor was made for needs a new one;
         // a smaller one fits into it.
         // HDR10+ metadata belongs to each cached image and is used by the

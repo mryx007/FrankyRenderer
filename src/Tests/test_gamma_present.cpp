@@ -67,7 +67,7 @@ int main()
             average = total / (32 * 32);
             context->Unmap(staging.Get(), 0);
         });
-    auto upload = [&](bool hdr)
+    auto upload = [&](bool hdr, int luma = 512)
     {
         VideoFrame f;
         f.width = f.height = 64;
@@ -78,7 +78,7 @@ int main()
         f.color.hdr.max_luma = hdr ? 1000 : 0;
         std::vector<uint16_t> data(64 * 64 * 3 / 2, 512 << 6);
         for (int i = 0; i < 64 * 64; i++)
-            data[i] = static_cast<uint16_t>(512 << 6);
+            data[i] = static_cast<uint16_t>(luma << 6);
         Check(SUCCEEDED(b.Upload(f, reinterpret_cast<uint8_t*>(data.data()), data.size() * 2)), "source");
     };
     auto measure = [&](int display, int sdr)
@@ -92,9 +92,22 @@ int main()
     auto srgbEncode = [](double l) { return l <= .0031308 ? 12.92 * l : 1.055 * std::pow(l, 1 / 2.4) - .055; };
     const double v = (512 - 64) / 876.;
 
+    // Without SDR gamma processing the SDR signal reaches the display as it is
+    // (issue #48: BT.1886 was converted to sRGB, shadows up to 2.3 8-bit steps
+    // too dark). Dark patches of 8-bit limited video, any display gamma.
+    for (int display : {0, 1, 240})
+        for (int luma8 : {17, 18, 20, 24, 30, 45, 64, 128, 200})
+        {
+            upload(false, luma8 * 4);
+            const double got = measure(display, 0), want = (luma8 - 16) / 219.;
+            printf("SDR off, display %d, luma %d: %.5f expected %.5f\n", display, luma8, got, want);
+            Check(std::abs(got - want) < 1.5 / 1023, "SDR without gamma processing passes unchanged");
+        }
+
     upload(false);
     const double off = measure(235, 0);
     printf("SDR off (display 2.35): %.5f\n", off);
+    Check(std::abs(off - v) < 1.5 / 1023, "SDR off leaves the signal unchanged");
 
     struct Case
     {

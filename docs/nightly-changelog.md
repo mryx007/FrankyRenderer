@@ -138,4 +138,10 @@
 - Changed: Output Texture Format "Auto (Display)" uses 8-bit when the display receives 8 bits, so the renderer dithers instead of the GPU driver.
 - Fixed 16-bit float output not being dithered; it now dithers to the bit depth the display receives.
 - Fixed DVD line 21 caption dots keeping the top black bar visible.
+- Fixed Tone Mapping Metadata "Auto (Metadata)" not using the automatic HDR10+ / Dolby Vision selection once chosen in the menu.
+- Fixed SDR shadows being too dark without SDR Gamma Processing ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed a new Starting Filter keeping the previous custom scaler values; Ctrl+J shows radius and blur ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed RTX Super Resolution making SDR slightly too dark; SDR is now upscaled in 10 bits ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed a black picture after switching from FrankyRenderer to another renderer in PotPlayer ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed subtitles in the black bars stacking up with 16-bit float output ([#47](https://github.com/mryx007/FrankyRenderer/issues/47)).
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

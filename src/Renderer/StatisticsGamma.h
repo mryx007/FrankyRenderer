@@ -64,6 +64,7 @@ struct Output
     bool hdr = false;                                  // HDR output (Windows HDR / native)
     bool icc = false;                                  // an ICC profile describes the display
     int sdrGamma = 0;                                  // SDR Gamma Processing in use (hundredths)
+    bool unchanged = false;                            // SDR signal passed to the display as it is
     int displayGamma = 0;                              // Display Gamma: 0 auto, 1 BT.1886, else hundredths
     int displayContrast = 0;                           // for BT.1886; 0 = infinite
 };
@@ -92,7 +93,7 @@ inline std::wstring Text(pl_color_transfer source, const Output& out)
         shown = Name(out.transfer);
     else if (out.sdrGamma > 0)
         shown = L"shown as " + Curve(out.sdrGamma) + L" on display " + display();
-    else if (pl_color_transfer_is_hdr(source))
+    else if (pl_color_transfer_is_hdr(source) || !out.unchanged)
         shown = display();
     else
     {

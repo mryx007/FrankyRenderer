@@ -77,6 +77,8 @@ static void CheckGamma()
     using namespace StatisticsGamma;
     Output sdr;
     sdr.transfer = PL_COLOR_TRC_SRGB;
+    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output sRGB", "SDR converted to the output");
+    sdr.unchanged = true;
     Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output unchanged", "SDR without gamma settings");
     auto processed = sdr;
     processed.sdrGamma = 240;

@@ -599,9 +599,13 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
             return hr;
         }
         StatisticsKey::Detach(video);
+        const HWND previousOwner = m_hwndOwner;
         const auto result = DoneWithWindow();
         if (SUCCEEDED(result))
+        {
+            VideoBackground::Release(previousOwner);
             m_hwndOwner = nullptr;
+        }
         return result;
     }
     SetLastError(ERROR_SUCCESS);
@@ -1002,8 +1006,8 @@ Renderer::~Renderer()
     backend.SetWindow(nullptr);
     if (window)
         window->DoneWithWindow();
-    VideoBackground::Repaint(videoParent);
-    Trace("Renderer window released; owner background refreshed");
+    VideoBackground::Release(videoParent);
+    Trace("Renderer window released; owner background painted and hidden");
 }
 
 CBasePin* Renderer::GetPin(int index)

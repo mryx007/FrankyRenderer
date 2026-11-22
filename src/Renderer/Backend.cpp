@@ -105,6 +105,9 @@ struct PlaceboBackend::State
     // between libplacebo's fixed curves (1 = none).
     int sdrGammaCurve = 0;
     float outputGamma = 1;
+    // SDR on a plain SDR output without gamma processing: the signal reaches
+    // the display unchanged (no BT.1886 to sRGB conversion).
+    bool sdrUnchanged = false;
     OutputGammaHook outputGammaHook;
     // A 16-bit float (scRGB) output is rendered like the integer output into
     // this texture, then converted as Windows converts that output.
@@ -1343,6 +1346,7 @@ struct PlaceboBackend::State
             gamma.hdr = pl_color_transfer_is_hdr(output.color.transfer);
             gamma.icc = settings.iccEnabled;
             gamma.sdrGamma = sdrGammaCurve;
+            gamma.unchanged = sdrUnchanged;
             gamma.displayGamma = settings.displayGammaCurve;
             gamma.displayContrast = settings.displayContrast;
             row(L"Gamma") << StatisticsGamma::Text(description.color.transfer, gamma);
@@ -1431,12 +1435,30 @@ struct PlaceboBackend::State
                 detail += L", EWA";
             return L"custom (" + detail + L")";
         };
+        // A custom filter's radius and blur (and anti-ringing, taper when used)
+        // on a row of their own below it, so the filter row stays short.
+        const auto filterValues = [&](const pl_filter_config* f)
+        {
+            if (!f || !f->name || strcmp(f->name, "custom") || !f->kernel)
+                return;
+            std::wostringstream values;
+            values << std::setprecision(4) << L"radius " << (f->radius > 0 ? f->radius : f->kernel->radius) << dot
+                   << L"blur " << (f->blur > 0 ? f->blur : 1.f);
+            if (f->antiring > 0)
+                values << dot << L"anti-ringing " << f->antiring;
+            if (f->taper > 0)
+                values << dot << L"taper " << f->taper;
+            row(L"") << values.str();
+        };
         const bool chromaPlane = options->params.plane_upscaler != nullptr;
         const auto* chromaFilter = chromaPlane ? options->params.plane_upscaler : options->params.upscaler;
         if (rtxDirect)
             row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
         else
+        {
             row(L"Chroma") << L"upscale" << dot << filterName(chromaFilter, "bilinear", chromaPlane ? 2 : 0);
+            filterValues(chromaFilter);
+        }
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
                           output.crop.y1 - output.crop.y0 < image.crop.y1 - image.crop.y0;
         const bool same = output.crop.x1 - output.crop.x0 == image.crop.x1 - image.crop.x0 &&
@@ -1449,6 +1471,8 @@ struct PlaceboBackend::State
                                : dot + filterName(down ? options->params.downscaler : options->params.upscaler,
                                                   "bilinear",
                                                   down ? 1 : 0));
+        if (!same)
+            filterValues(down ? options->params.downscaler : options->params.upscaler);
         {
             auto& value = row(L"Smooth motion");
             if (mixing && settings.smoothMotion)
@@ -1456,6 +1480,8 @@ struct PlaceboBackend::State
             else
                 value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
         }
+        if (mixing && settings.smoothMotion)
+            filterValues(options->params.frame_mixer);
         row(L"Deinterlacing") << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
                                   : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
                                                                                 : L"off (progressive / not active)");
@@ -2317,7 +2343,9 @@ struct PlaceboBackend::State
         };
         pl_color_map_params dynamicMap =
             params.color_map_params ? *params.color_map_params : pl_color_map_default_params;
-        const bool explicitMetadata = settings.colorMapping.values[MappingIndex("tone_map_metadata")][0] != 0;
+        // The menu stores Auto (Metadata) as "any"; only a specific type is explicit.
+        const char* metadataChoice = settings.colorMapping.values[MappingIndex("tone_map_metadata")];
+        const bool explicitMetadata = metadataChoice[0] != 0 && strcmp(metadataChoice, "any") != 0;
         if (image.repr.dovi && !explicitMetadata)
         {
             const bool authoredBrightness = pl_hdr_metadata_contains(&image.color.hdr, PL_HDR_METADATA_CIE_Y);
@@ -2498,16 +2526,21 @@ struct PlaceboBackend::State
         };
         pl_frame shown = image;
         pl_frame gammaFrames[16];
-        if (sdrGammaCurve)
-            shown.color.transfer = PL_COLOR_TRC_GAMMA22;
+        // The signal is taken as the gamma the output is encoded with: 2.2 for
+        // SDR gamma processing (then adjusted), sRGB to leave SDR unchanged.
+        const pl_color_transfer shownTransfer = sdrGammaCurve  ? PL_COLOR_TRC_GAMMA22
+                                                : sdrUnchanged ? PL_COLOR_TRC_SRGB
+                                                               : PL_COLOR_TRC_UNKNOWN;
+        if (shownTransfer)
+            shown.color.transfer = shownTransfer;
         if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
             for (size_t i = 0; i < static_cast<size_t>(mixCount); i++)
             {
                 gammaFrames[i] = mixFrames[i];
-                if (sdrGammaCurve)
-                    gammaFrames[i].color.transfer = PL_COLOR_TRC_GAMMA22;
+                if (shownTransfer)
+                    gammaFrames[i].color.transfer = shownTransfer;
                 frames[i] = &gammaFrames[i];
             }
             pl_frame_mix mix = {};
@@ -2520,7 +2553,7 @@ struct PlaceboBackend::State
                 signatures[i] =
                     mixSignatures[i] ^ (blackBars.generation * 0x9e3779b97f4a7c15ULL) ^
                     (uint64_t(rotation + int(flip)) * 0xd6e8feb86659fd93ULL) ^
-                    (uint64_t(sdrGammaCurve) * 0xbf58476d1ce4e5b9ULL) ^
+                    (uint64_t(sdrGammaCurve + (sdrUnchanged ? 1000 : 0)) * 0xbf58476d1ce4e5b9ULL) ^
                     (uint64_t(outputGamma * 1e6f) * 0x2545f4914f6cdd1dULL) ^
                     (processed.active
                          ? uint64_t(reinterpret_cast<uintptr_t>(mixFrames[i].planes[0].texture)) * 0x94d049bb133111ebULL
@@ -3349,6 +3382,9 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
             stage.h = planeTex.h;
             stage.format = planeTex.format;
             stage.renderable = stage.sampleable = true;
+            // libplacebo clears the black bars with a texture clear; without it
+            // host subtitles there stay from frame to frame (issue #47).
+            stage.blit_dst = true;
             s.floatStage = pl_tex_create(s.d3d->gpu, &stage);
         }
         if (s.floatStage)
@@ -3379,7 +3415,8 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
         target.color.hdr.max_luma = s.SdrTargetNits();
     // Display gamma: HDR tone mapped to SDR is encoded for how the display
     // decodes. SDR only changes with gamma processing, which converts it from
-    // the desired gamma to the display gamma; otherwise it stays as before.
+    // the desired gamma to the display gamma; otherwise its signal reaches the
+    // display unchanged (sdrUnchanged), as other renderers show it.
     // Only a plain sRGB target qualifies (16-bit float renders one as well);
     // Windows HDR outputs have no display gamma to match.
     // An ICC profile describes the display itself.
@@ -3422,6 +3459,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
                                         ? target.color.hdr.max_luma / float(s.settings.displayContrast)
                                         : PL_COLOR_HDR_BLACK;
     s.sdrGammaCurve = sdrTarget && !hdrSource ? s.settings.sdrGammaCurve : 0;
+    s.sdrUnchanged = sdrTarget && !hdrSource && !s.sdrGammaCurve;
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -3441,6 +3479,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
             s.outputDitherDepth = floatDitherBits;
     }
     s.sdrGammaCurve = 0;
+    s.sdrUnchanged = false;
     s.outputGamma = 1;
     QueryPerformanceCounter(&end);
     s.renderGpu.End(s.context.Get());

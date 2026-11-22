@@ -63,7 +63,9 @@ int main()
         [&]()
         {
             created = VideoBackground::Ensure(parent) != nullptr;
-            VideoBackground::Repaint(parent);
+            // The renderer leaving a graph-thread owner (MPC-HC, MPC-BE):
+            // no background child, the exposed area is painted black.
+            VideoBackground::Release(parent);
         });
     graph.join();
     int result = 0;
@@ -81,6 +83,51 @@ int main()
     }
     else
         puts("PASS graph-thread repaint clears exposed owner pixels and preserves visible children");
+
+    // Issue #48: after this renderer leaves, another renderer's child window
+    // must not be covered by the background.
+    if (!result)
+    {
+        const HWND background = VideoBackground::Ensure(parent);
+        if (!background || !IsWindowVisible(background))
+            result = 7, puts("FAIL owner thread creates a visible background");
+        std::thread leave([&] { VideoBackground::Release(parent); });
+        leave.join();
+        MSG msg;
+        for (int i = 0; i < 50 && IsWindowVisible(background); ++i)
+        {
+            while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                DispatchMessageW(&msg);
+            Sleep(10);
+        }
+        if (!result && IsWindowVisible(background))
+            result = 8, puts("FAIL background stays visible after the renderer left");
+        HWND foreign = CreateWindowExW(0,
+                                       L"STATIC",
+                                       L"",
+                                       WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+                                       0,
+                                       0,
+                                       300,
+                                       200,
+                                       parent,
+                                       nullptr,
+                                       GetModuleHandleW(nullptr),
+                                       nullptr);
+        SetWindowPos(foreign, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        UpdateWindow(foreign);
+        Paint(foreign, RGB(30, 60, 220));
+        if (!result && Pixel(parent, 50, 50) != RGB(30, 60, 220))
+            result = 9, puts("FAIL another renderer's window is covered after this renderer left");
+        // This renderer returns: the background shows again, below the video.
+        VideoBackground::Ensure(parent);
+        if (!result && !IsWindowVisible(background))
+            result = 10, puts("FAIL background returns with this renderer");
+        DestroyWindow(foreign);
+        if (!result)
+            puts("PASS background hides when the renderer leaves, another renderer stays visible, it returns with "
+                 "this renderer");
+    }
     VideoBackground::Repaint(nullptr);
     DestroyWindow(parent);
     return result;

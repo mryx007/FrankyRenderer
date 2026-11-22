@@ -248,6 +248,19 @@ int wmain()
             Require(preset.Enabled(), "disabling custom re-enables preset selector");
             toggle.set(1);
             Require(filter.overrides == 4 && filter.values[2] == 1.1f, "toggle preserves custom adjustments");
+            // Issue #48: a new starting filter starts over; the same one keeps edits.
+            strcpy_s(filter.kernel, "sinc");
+            strcpy_s(filter.window, "sinc");
+            filter.polar = 1;
+            starting.set(starting.Value());
+            Require(filter.overrides == 4 && filter.values[2] == 1.1f && !strcmp(filter.kernel, "sinc") &&
+                        filter.polar == 1,
+                    "same starting filter keeps custom edits");
+            const float other = starting.Value() == 0 ? 1.f : 0.f;
+            starting.set(other);
+            Require(filter.overrides == 0 && filter.values[2] == 0 && !strcmp(filter.kernel, "auto") &&
+                        !strcmp(filter.window, "auto") && filter.polar == -1 && starting.Value() == other,
+                    "new starting filter resets kernel, window, polar and values");
             toggle.reset();
             Require(toggle.Value() == 0 && !starting.Enabled(), "custom switch reset disables editor");
             filter = {};
