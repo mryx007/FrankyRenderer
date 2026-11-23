@@ -189,7 +189,7 @@ int main()
             {
                 // A worker device compiles the shader; its cache reaches this device.
                 ShaderWarmupJob job;
-                job.source = LoadUserShaderSource(id);
+                job.id = id;
                 Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
                 Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
                 DXGI_ADAPTER_DESC adapterDesc = {};
@@ -197,8 +197,7 @@ int main()
                             SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&adapterDesc)),
                         "adapter of the playing device");
                 job.adapter = adapterDesc.AdapterLuid;
-                job.width = 320;
-                job.height = 180;
+                DescribeWarmupVideo(job, 320, 180);
                 Require(WarmUpShader(job) && !job.cache.empty(), "a worker device compiles the shader");
                 auto cacheParams = pl_cache_default_params;
                 pl_cache cache = pl_cache_create(&cacheParams);

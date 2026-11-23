@@ -145,4 +145,8 @@
 - Fixed a black picture after switching from FrankyRenderer to another renderer in PotPlayer ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
 - Fixed subtitles in the black bars stacking up with 16-bit float output ([#47](https://github.com/mryx007/FrankyRenderer/issues/47)).
 - RTX Super Resolution now also sharpens HDR video that does not arrive as P010.
+- Fewer dropped frames when entering full screen, showing player panels or resizing the window ([#49](https://github.com/mryx007/FrankyRenderer/issues/49)).
+- Fixed playback freezing for seconds when a large shader such as ArtCNN switches on in full screen.
+- The shader cache is now saved during playback, not only when the player closes.
+- Ctrl+J names the scalers as in the menu ("Downscaler: …") and lists the shaders right below the image scaler ([#50](https://github.com/mryx007/FrankyRenderer/issues/50)).
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

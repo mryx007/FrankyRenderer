@@ -12,8 +12,10 @@
 #include <array>
 #include <atomic>
 #include <cstring>
+#include <memory>
 
-// Disk access is confined to construction/destruction, never a render callback.
+// Disk access is confined to construction, destruction and a background
+// writer, never a render callback.
 // A cache is an optional optimization: all I/O failures leave a working RAM cache.
 class ShaderCache
 {
@@ -173,6 +175,94 @@ class ShaderCache
         }
     }
 
+    // A write on a worker thread: the data is copied before, so the thread
+    // never touches the libplacebo cache.
+    struct BackgroundSave
+    {
+        std::filesystem::path file;
+        uint64_t library = 0, signature = 0;
+        std::vector<uint8_t> data;
+        std::atomic<bool> good{false};
+        HMODULE module = nullptr;
+    };
+
+    HANDLE writer = nullptr;
+    std::unique_ptr<BackgroundSave> writing;
+
+    static DWORD WINAPI BackgroundSaveThread(void* parameter)
+    {
+        auto* job = static_cast<BackgroundSave*>(parameter);
+        job->good = Write(job->file, job->library, job->data);
+        // The renderer may already be gone; this thread keeps its DLL loaded.
+        FreeLibraryAndExitThread(job->module, 0);
+    }
+
+    // Waits up to `wait` ms for a running write; true once none runs.
+    bool FinishBackgroundSave(DWORD wait) noexcept
+    {
+        if (!writer)
+            return true;
+        if (WaitForSingleObject(writer, wait) != WAIT_OBJECT_0)
+            return false;
+        CloseHandle(writer);
+        writer = nullptr;
+        if (writing && writing->good)
+            saved = writing->signature;
+        writing.reset();
+        return true;
+    }
+
+    bool Serialize(std::vector<uint8_t>& data) const
+    {
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            const size_t size = pl_cache_save(cache, nullptr, 0);
+            if (size > Limit)
+                return false;
+            data.resize(size);
+            if (pl_cache_save(cache, data.data(), data.size()) <= data.size())
+                return true;
+        }
+        return false;
+    }
+
+    static bool Write(const std::filesystem::path& file, uint64_t library, const std::vector<uint8_t>& data) noexcept
+    {
+        try
+        {
+            Header header;
+            header.library = library;
+            header.size = data.size();
+            header.checksum = Hash(data.data(), data.size());
+            std::error_code error;
+            std::filesystem::create_directories(file.parent_path(), error);
+            if (error)
+                return false;
+            static std::atomic<unsigned> sequence = 0;
+            auto temporary = file;
+            temporary += L".tmp-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(sequence++);
+            HANDLE output =
+                CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (output == INVALID_HANDLE_VALUE)
+                return false;
+            DWORD written = 0;
+            bool good = WriteFile(output, &header, sizeof(header), &written, nullptr) && written == sizeof(header) &&
+                        WriteFile(output, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) &&
+                        written == data.size() && FlushFileBuffers(output);
+            CloseHandle(output);
+            if (good)
+                good =
+                    !!MoveFileExW(temporary.c_str(), file.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+            if (!good)
+                DeleteFileW(temporary.c_str());
+            return good;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
   public:
     ShaderCache()
     {
@@ -246,54 +336,65 @@ class ShaderCache
         return cache;
     }
 
+    // Writes the cache now, on this thread.
     void Save() noexcept
     {
         try
         {
+            // A write still running after five seconds (a stalled disk) is
+            // left to finish on its own, with its data, so closing the
+            // player does not hang; this newer state is not written then.
+            if (!FinishBackgroundSave(5000))
+            {
+                (void)writing.release();
+                CloseHandle(writer);
+                writer = nullptr;
+                return;
+            }
             if (file.empty() || pl_cache_signature(cache) == saved)
                 return;
+            const uint64_t signature = pl_cache_signature(cache);
             std::vector<uint8_t> data;
-            for (int attempt = 0; attempt < 3; attempt++)
-            {
-                const size_t size = pl_cache_save(cache, nullptr, 0);
-                if (size > Limit)
-                    return;
-                data.resize(size);
-                if (pl_cache_save(cache, data.data(), data.size()) <= data.size())
-                    break;
-                if (attempt == 2)
-                    return;
-            }
-            Header header;
-            header.library = library;
-            header.size = data.size();
-            header.checksum = Hash(data.data(), data.size());
-            std::error_code error;
-            std::filesystem::create_directories(file.parent_path(), error);
-            if (error)
-                return;
-            static std::atomic<unsigned> sequence = 0;
-            auto temporary = file;
-            temporary += L".tmp-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(sequence++);
-            HANDLE output =
-                CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (output == INVALID_HANDLE_VALUE)
-                return;
-            DWORD written = 0;
-            bool good = WriteFile(output, &header, sizeof(header), &written, nullptr) && written == sizeof(header) &&
-                        WriteFile(output, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) &&
-                        written == data.size() && FlushFileBuffers(output);
-            CloseHandle(output);
-            if (good)
-                good =
-                    !!MoveFileExW(temporary.c_str(), file.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-            if (!good)
-                DeleteFileW(temporary.c_str());
-            else
-                saved = pl_cache_signature(cache);
+            if (Serialize(data) && Write(file, library, data))
+                saved = signature;
         }
         catch (...)
         { /* Cache failures must never prevent playback or teardown. */
+        }
+    }
+
+    // Writes new shaders to disk on a worker thread, so a player that is
+    // killed or crashes keeps what was compiled; does nothing while a write
+    // is still running or nothing changed. Copying the cache takes
+    // milliseconds, writing it more, so only the copy stays on this thread.
+    void SaveInBackground() noexcept
+    {
+        try
+        {
+            if (!FinishBackgroundSave(0) || file.empty() || pl_cache_signature(cache) == saved)
+                return;
+            auto job = std::make_unique<BackgroundSave>();
+            job->signature = pl_cache_signature(cache);
+            if (!Serialize(job->data))
+                return;
+            job->file = file;
+            job->library = library;
+            if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                                    reinterpret_cast<LPCWSTR>(&BackgroundSaveThread),
+                                    &job->module))
+                return;
+            BackgroundSave* handed = job.get();
+            HANDLE thread = CreateThread(nullptr, 0, BackgroundSaveThread, handed, 0, nullptr);
+            if (!thread)
+            {
+                FreeLibrary(job->module);
+                return;
+            }
+            writer = thread;
+            writing = std::move(job);
+        }
+        catch (...)
+        {
         }
     }
 };

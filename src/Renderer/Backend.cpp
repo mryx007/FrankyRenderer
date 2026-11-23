@@ -131,8 +131,90 @@ struct PlaceboBackend::State
     bool userFailed[ShaderCount] = {};
     // Shaders compiled on a worker device, once per session; see ShaderWarmup.h.
     std::shared_ptr<ShaderWarmupJob> warmups[ShaderCount];
-    bool warmupMerged[ShaderCount] = {}, warmupReported[ShaderCount] = {};
-    uint64_t warmupStarted[ShaderCount] = {};
+    bool warmupMerged[ShaderCount] = {}, warmupReported[ShaderCount] = {}, warmupLaunched[ShaderCount] = {};
+    uint64_t warmupStarted[ShaderCount] = {}, cacheSaveChecked = 0;
+
+    // Starts the prepared warm-ups with this frame's setup: the final render
+    // parameters, the source planes and the output format (ShaderWarmup.h).
+    void StartShaderWarmups(const pl_frame& picture, const pl_frame& output, const pl_render_params& params, bool mix)
+    {
+        bool pending = false;
+        for (int id = 0; id < ShaderCount; id++)
+            pending |= warmups[id] && !warmupLaunched[id];
+        if (!pending || !picture.num_planes || picture.num_planes > 4 || !output.planes[0].texture)
+            return;
+        // pl_options_reset copies the parameter structs the pointers lead to;
+        // hooks (built-in and user shaders) and LUTs are not options.
+        pl_render_params plain = params;
+        plain.hooks = nullptr;
+        plain.num_hooks = 0;
+        plain.lut = nullptr;
+        plain.info_callback = nullptr;
+        plain.info_priv = nullptr;
+        std::string saved;
+        if (pl_options saving = pl_options_alloc(nullptr))
+        {
+            pl_options_reset(saving, &plain);
+            if (const char* text = pl_options_save(saving))
+                saved = text;
+            pl_options_free(&saving);
+        }
+        std::vector<ShaderWarmupPlane> described;
+        for (int i = 0; i < picture.num_planes; i++)
+        {
+            const auto& plane = picture.planes[i];
+            if (!plane.texture)
+                return;
+            ShaderWarmupPlane p;
+            p.format = plane.texture->params.format->name;
+            p.width = plane.texture->params.w;
+            p.height = plane.texture->params.h;
+            p.components = plane.components;
+            for (int c = 0; c < 4; c++)
+                p.mapping[c] = plane.component_mapping[c];
+            described.push_back(p);
+        }
+        MONITORINFO monitor = {sizeof(monitor)};
+        const bool screen = window && GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor);
+        const auto cache = shaderCache.Snapshot();
+        for (int id = 0; id < ShaderCount; id++)
+        {
+            auto& job = warmups[id];
+            if (!job || warmupLaunched[id])
+                continue;
+            job->options = saved;
+            job->planes = described;
+            job->sourceRepr = picture.repr;
+            job->sourceColor = picture.color;
+            job->targetRepr = output.repr;
+            job->targetColor = output.color;
+            job->targetFormat = output.planes[0].texture->params.format->name;
+            job->targetComponents = output.planes[0].components;
+            for (int c = 0; c < 4; c++)
+                job->targetMapping[c] = output.planes[0].component_mapping[c];
+            if (screen)
+            {
+                job->screenWidth = monitor.rcMonitor.right - monitor.rcMonitor.left;
+                job->screenHeight = monitor.rcMonitor.bottom - monitor.rcMonitor.top;
+            }
+            job->mix = mix;
+            job->cache = cache;
+            job->adapter = AdapterLuid();
+            job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
+            warmupLaunched[id] = true;
+            warmupStarted[id] = GetTickCount64();
+            Trace("Shader warm-up start: %s, feature level %x, video %dx%d %s, target %s%s, cache %zu bytes",
+                  ShaderCatalog[id].file,
+                  unsigned(job->featureLevel),
+                  described[0].width,
+                  described[0].height,
+                  described[0].format.c_str(),
+                  job->targetFormat.c_str(),
+                  mix ? ", frame mixing" : "",
+                  job->cache.size());
+            StartShaderWarmup(job);
+        }
+    }
 
     LUID AdapterLuid() const
     {
@@ -151,29 +233,17 @@ struct PlaceboBackend::State
         auto& job = warmups[id];
         if (!job)
         {
-            const auto layout = Layout(description.format);
+            // Started by StartShaderWarmups once this frame's setup is known.
             job = std::make_shared<ShaderWarmupJob>();
-            job->source = LoadUserShaderSource(id);
-            job->cache = shaderCache.Snapshot();
-            job->adapter = AdapterLuid();
-            job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
-            job->width = description.width;
-            job->height = description.height;
-            job->deep = layout.depth > 8;
-            job->rgb = layout.rgb;
+            job->id = id;
+            job->config = settings.userShaders.shaders[id];
+            job->antiring = userAntiring[id];
             job->notify = window;
-            warmupMerged[id] = warmupReported[id] = false;
-            warmupStarted[id] = GetTickCount64();
-            Trace("Shader warm-up start: %s, feature level %x, video %dx%d deep=%d rgb=%d, cache %zu bytes",
-                  ShaderCatalog[id].file,
-                  unsigned(job->featureLevel),
-                  job->width,
-                  job->height,
-                  int(job->deep),
-                  int(job->rgb),
-                  job->cache.size());
-            StartShaderWarmup(job);
+            warmupMerged[id] = warmupReported[id] = warmupLaunched[id] = false;
+            return false;
         }
+        if (!warmupLaunched[id])
+            return false;
         const int state = job->state.load();
         // The statistics show the shader as preparing meanwhile.
         if (state == 0)
@@ -191,6 +261,7 @@ struct PlaceboBackend::State
             warmupMerged[id] = true;
             shaderCache.Import(job->cache);
             std::vector<uint8_t>().swap(job->cache);
+            shaderCache.SaveInBackground();
         }
         return true;
     }
@@ -1452,11 +1523,14 @@ struct PlaceboBackend::State
         };
         const bool chromaPlane = options->params.plane_upscaler != nullptr;
         const auto* chromaFilter = chromaPlane ? options->params.plane_upscaler : options->params.upscaler;
+        // Named as in the menu (Upscaler / Downscaler and the filter's name);
+        // without a filter the GPU's own texture sampling scales.
+        constexpr const char* plainScaling = "none (simple GPU scaling)";
         if (rtxDirect)
-            row(L"Chroma") << L"upscale" << dot << L"NVIDIA driver (RTX)";
+            row(L"Chroma") << L"Upscaler: NVIDIA driver (RTX)";
         else
         {
-            row(L"Chroma") << L"upscale" << dot << filterName(chromaFilter, "bilinear", chromaPlane ? 2 : 0);
+            row(L"Chroma") << L"Upscaler: " << filterName(chromaFilter, plainScaling, chromaPlane ? 2 : 0);
             filterValues(chromaFilter);
         }
         const bool down = output.crop.x1 - output.crop.x0 < image.crop.x1 - image.crop.x0 ||
@@ -1465,58 +1539,15 @@ struct PlaceboBackend::State
                           output.crop.y1 - output.crop.y0 == image.crop.y1 - image.crop.y0;
         row(L"Image") << (same && rtxUpscaled ? L"RTX Super Resolution"
                           : same              ? L"native size"
-                          : down              ? L"downscale"
-                                              : L"upscale")
+                          : down              ? L"Downscaler: "
+                                              : L"Upscaler: ")
                       << (same ? L""
-                               : dot + filterName(down ? options->params.downscaler : options->params.upscaler,
-                                                  "bilinear",
-                                                  down ? 1 : 0));
+                               : filterName(down ? options->params.downscaler : options->params.upscaler,
+                                            plainScaling,
+                                            down ? 1 : 0));
         if (!same)
             filterValues(down ? options->params.downscaler : options->params.upscaler);
-        {
-            auto& value = row(L"Smooth motion");
-            if (mixing && settings.smoothMotion)
-                value << L"on (" << filterName(options->params.frame_mixer, "none", 4) << L")";
-            else
-                value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
-        }
-        if (mixing && settings.smoothMotion)
-            filterValues(options->params.frame_mixer);
-        row(L"Deinterlacing") << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
-                                  : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
-                                                                                : L"off (progressive / not active)");
-        row(L"Debanding") << (settings.deband ? L"on" : L"off");
-        row(L"Sharpening") << L"adaptive sharpen "
-                           << (sharpenState == 1   ? L"on"
-                               : sharpenState == 2 ? L"bypassed"
-                                                   : L"off");
-        {
-            auto& value = row(L"RTX Video");
-            const bool appOff =
-                (!settings.rtxSuperResolution || nvidiaApp.SuperResolution() == NvidiaAppSettings::State::Off) &&
-                (!settings.rtxHdr || nvidiaApp.TrueHdr() == NvidiaAppSettings::State::Off);
-            if ((settings.rtxSuperResolution || settings.rtxHdr) && appOff)
-                value << L"off in the NVIDIA app";
-            else
-            {
-                value << rtx.Status();
-                if (settings.rtxSuperResolution || settings.rtxHdr)
-                    value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
-            }
-        }
-        if (settings.blackBars.enabled || settings.imagePosition)
-        {
-            const RECT r = blackBars.detector.Bounds(description.width, description.height);
-            auto& value = row(L"Black bars");
-            if (blackBars.failed)
-                value << L"analysis unavailable (uncropped)";
-            else if (!blackBars.detector.measured)
-                value << L"detecting";
-            else
-                value << L"L " << r.left << L", T " << r.top << L", R " << description.width - r.right << L", B "
-                      << description.height - r.bottom << L" px" << dot
-                      << (settings.blackBars.crop ? L"crop on" : L"detect only");
-        }
+        // Shaders right below the image scaler: some build on it (SSimDownscaler).
         {
             // A long chain continues on further rows so the box fits the picture.
             std::wstring shaders;
@@ -1545,6 +1576,50 @@ struct PlaceboBackend::State
                 finishRow();
             if (!userShaderMessage.empty())
                 colored(L"Shaders", L'y') << userShaderMessage;
+        }
+        row(L"Sharpening") << L"adaptive sharpen "
+                           << (sharpenState == 1   ? L"on"
+                               : sharpenState == 2 ? L"bypassed"
+                                                   : L"off");
+        {
+            auto& value = row(L"Smooth motion");
+            if (mixing && settings.smoothMotion)
+                value << L"on (" << filterName(options->params.frame_mixer, "none", 4) << L")";
+            else
+                value << (settings.smoothMotion ? L"off (not needed / no frame mix)" : L"off (settings)");
+        }
+        if (mixing && settings.smoothMotion)
+            filterValues(options->params.frame_mixer);
+        row(L"Deinterlacing") << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
+                                  : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
+                                                                                : L"off (progressive / not active)");
+        row(L"Debanding") << (settings.deband ? L"on" : L"off");
+        {
+            auto& value = row(L"RTX Video");
+            const bool appOff =
+                (!settings.rtxSuperResolution || nvidiaApp.SuperResolution() == NvidiaAppSettings::State::Off) &&
+                (!settings.rtxHdr || nvidiaApp.TrueHdr() == NvidiaAppSettings::State::Off);
+            if ((settings.rtxSuperResolution || settings.rtxHdr) && appOff)
+                value << L"off in the NVIDIA app";
+            else
+            {
+                value << rtx.Status();
+                if (settings.rtxSuperResolution || settings.rtxHdr)
+                    value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+            }
+        }
+        if (settings.blackBars.enabled || settings.imagePosition)
+        {
+            const RECT r = blackBars.detector.Bounds(description.width, description.height);
+            auto& value = row(L"Black bars");
+            if (blackBars.failed)
+                value << L"analysis unavailable (uncropped)";
+            else if (!blackBars.detector.measured)
+                value << L"detecting";
+            else
+                value << L"L " << r.left << L", T " << r.top << L", R " << description.width - r.right << L", B "
+                      << description.height - r.bottom << L" px" << dot
+                      << (settings.blackBars.crop ? L"crop on" : L"detect only");
         }
         row(L"Profile") << (contentProfile.empty() ? L"Main" : contentProfile);
         // Which 3D LUT applies: the configured one or the one from the video's folder.
@@ -2203,6 +2278,13 @@ struct PlaceboBackend::State
         if (sdrGammaCurve)
             adjustment.gamma *= 220.f / float(sdrGammaCurve);
         pl_render_params params = options->params;
+        // Sizes and parameters as runtime values, not compile-time constants:
+        // a new window or video area size (full screen, player panels, window
+        // resize) then mostly needs no shader recompile, which took 0.3-1.2 s
+        // per new size and dropped frames (issue #49). A polar (EWA) scaler
+        // still compiles once per scaling ratio step (its shared memory is
+        // sized by the ratio), into the disk cache. Measured GPU cost: none.
+        params.dynamic_constants = true;
         params.color_adjustment = settings.colorAdjustment || sdrGammaCurve ? &adjustment : nullptr;
         // Default preserves the established output-calibration stage. Manual
         // LUT types use libplacebo's actual color-mapping LUT semantics.
@@ -2533,6 +2615,14 @@ struct PlaceboBackend::State
                                                                : PL_COLOR_TRC_UNKNOWN;
         if (shownTransfer)
             shown.color.transfer = shownTransfer;
+        StartShaderWarmups(shown, target, params, mixing && settings.smoothMotion && !stillPicture);
+        // Shaders compiled during playback reach the disk within seconds,
+        // not only when the player closes.
+        if (const uint64_t now = GetTickCount64(); now - cacheSaveChecked >= 10000)
+        {
+            cacheSaveChecked = now;
+            shaderCache.SaveInBackground();
+        }
         if (mixing && settings.smoothMotion && !stillPicture)
         {
             const pl_frame* frames[16] = {};
