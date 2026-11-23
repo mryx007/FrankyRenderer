@@ -1213,6 +1213,47 @@ int wmain(int argc, wchar_t** argv)
     }
     else
         Check(factory->CreateInstance(nullptr, IID_PPV_ARGS(&renderer)), "renderer");
+    if (!mpcbeOwnerTest)
+    {
+        // MPC-HC/BE DVD mode: the DVD Navigator sets the disc's Macrovision
+        // level on the renderer or its input pin and stops with "Macrovision
+        // Error" when that is refused.
+        ComPtr<IEnumPins> pins;
+        ComPtr<IPin> input;
+        Check(renderer->EnumPins(&pins), "renderer pins");
+        if (pins->Next(1, &input, nullptr) != S_OK)
+            return 64;
+        ComPtr<IKsPropertySet> onFilter, onPin;
+        if (FAILED(renderer.As(&onFilter)) || FAILED(input.As(&onPin)))
+        {
+            puts("FAIL the renderer has no IKsPropertySet for the DVD Navigator");
+            return 64;
+        }
+        for (IKsPropertySet* properties : {onFilter.Get(), onPin.Get()})
+        {
+            for (DWORD id : {DWORD{AM_PROPERTY_COPY_MACROVISION}, DWORD{AM_PROPERTY_COPY_DIGITAL_CP}})
+            {
+                DWORD support = 0;
+                DWORD level = 1;
+                if (properties->QuerySupported(AM_KSPROPSETID_CopyProt, id, &support) != S_OK ||
+                    !(support & KSPROPERTY_SUPPORT_SET) ||
+                    properties->Set(AM_KSPROPSETID_CopyProt, id, nullptr, 0, &level, sizeof(level)) != S_OK)
+                {
+                    puts("FAIL the renderer refuses the DVD Navigator's copy protection");
+                    return 64;
+                }
+            }
+            DWORD support = 0;
+            if (properties->QuerySupported(AM_KSPROPSETID_FrameStep, AM_PROPERTY_FRAMESTEP_CANSTEP, &support) != S_OK ||
+                properties->QuerySupported(AM_KSPROPSETID_CopyProt, AM_PROPERTY_DVDCOPY_TITLE_KEY, &support) !=
+                    E_PROP_ID_UNSUPPORTED)
+            {
+                puts("FAIL the renderer's property sets changed");
+                return 64;
+            }
+        }
+        puts("PASS the renderer accepts the DVD Navigator's copy protection on filter and pin");
+    }
     ComPtr<IPlaceboSettings> config;
     Check(renderer.As(&config), "settings interface");
     PlaceboSettings settings;

@@ -204,7 +204,26 @@ STDMETHODIMP DecoderPin::NonDelegatingQueryInterface(REFIID id, void** out)
             Trace("Decoder queried D3D11 texture flags: supported");
         return GetInterface(static_cast<ID3D11DecoderTextureConfiguration*>(this), out);
     }
+    // Copy protection can be set on the renderer's input pin as well.
+    if (id == IID_IKsPropertySet)
+        return GetInterface(static_cast<IKsPropertySet*>(this), out);
     return CRendererInputPin::NonDelegatingQueryInterface(id, out);
+}
+
+STDMETHODIMP DecoderPin::Set(REFGUID set, DWORD id, LPVOID instance, DWORD instanceBytes, LPVOID data, DWORD bytes)
+{
+    return owner->Set(set, id, instance, instanceBytes, data, bytes);
+}
+
+STDMETHODIMP
+DecoderPin::Get(REFGUID set, DWORD id, LPVOID instance, DWORD instanceBytes, LPVOID data, DWORD bytes, DWORD* returned)
+{
+    return owner->Get(set, id, instance, instanceBytes, data, bytes, returned);
+}
+
+STDMETHODIMP DecoderPin::QuerySupported(REFGUID set, DWORD id, DWORD* support)
+{
+    return owner->QuerySupported(set, id, support);
 }
 
 STDMETHODIMP DecoderPin::ActivateD3D11Decoding(ID3D11Device* device, ID3D11DeviceContext* context, HANDLE mutex, UINT)
@@ -2735,8 +2754,24 @@ void Renderer::CountStep(const FieldSample* field, bool running)
     }
 }
 
+// The DVD Navigator sets the disc's Macrovision level and digital copy
+// protection on the renderer and reports "Macrovision Error" when the renderer
+// refuses. Both only concern analogue and protected outputs, so the renderer
+// accepts them without acting on them, as madVR and MPC Video Renderer do.
+static bool IsCopyProtection(REFGUID set, DWORD id)
+{
+    return set == AM_KSPROPSETID_CopyProt && (id == AM_PROPERTY_COPY_MACROVISION || id == AM_PROPERTY_COPY_DIGITAL_CP);
+}
+
 STDMETHODIMP Renderer::Set(REFGUID set, DWORD id, LPVOID, DWORD, LPVOID data, DWORD bytes)
 {
+    if (IsCopyProtection(set, id))
+    {
+        Trace("Copy protection property %lu accepted", static_cast<unsigned long>(id));
+        return S_OK;
+    }
+    if (set == AM_KSPROPSETID_CopyProt)
+        return E_PROP_ID_UNSUPPORTED;
     if (set != AM_KSPROPSETID_FrameStep)
         return E_PROP_SET_UNSUPPORTED;
     switch (id)
@@ -2764,13 +2799,21 @@ STDMETHODIMP Renderer::Set(REFGUID set, DWORD id, LPVOID, DWORD, LPVOID data, DW
 
 STDMETHODIMP Renderer::Get(REFGUID set, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*)
 {
-    return set == AM_KSPROPSETID_FrameStep ? E_PROP_ID_UNSUPPORTED : E_PROP_SET_UNSUPPORTED;
+    return set == AM_KSPROPSETID_FrameStep || set == AM_KSPROPSETID_CopyProt ? E_PROP_ID_UNSUPPORTED
+                                                                             : E_PROP_SET_UNSUPPORTED;
 }
 
 STDMETHODIMP Renderer::QuerySupported(REFGUID set, DWORD id, DWORD* support)
 {
     if (!support)
         return E_POINTER;
+    if (IsCopyProtection(set, id))
+    {
+        *support = KSPROPERTY_SUPPORT_SET;
+        return S_OK;
+    }
+    if (set == AM_KSPROPSETID_CopyProt)
+        return E_PROP_ID_UNSUPPORTED;
     if (set != AM_KSPROPSETID_FrameStep)
         return E_PROP_SET_UNSUPPORTED;
     if (id < AM_PROPERTY_FRAMESTEP_STEP || id > AM_PROPERTY_FRAMESTEP_CANSTEPMULTIPLE)

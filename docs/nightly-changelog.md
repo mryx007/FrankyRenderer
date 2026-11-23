@@ -149,4 +149,5 @@
 - Fixed playback freezing for seconds when a large shader such as ArtCNN switches on in full screen.
 - The shader cache is now saved during playback, not only when the player closes.
 - Ctrl+J names the scalers as in the menu ("Downscaler: …") and lists the shaders right below the image scaler ([#50](https://github.com/mryx007/FrankyRenderer/issues/50)).
+- Fixed "Macrovision Error" when opening a DVD or DVD folder in MPC-HC and MPC-BE.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

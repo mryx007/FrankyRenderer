@@ -30,7 +30,8 @@ struct ModePause;
 
 class DecoderPin final : public CRendererInputPin,
                          public ID3D11DecoderConfiguration,
-                         public ID3D11DecoderTextureConfiguration
+                         public ID3D11DecoderTextureConfiguration,
+                         public IKsPropertySet
 {
     Renderer* owner;
     std::atomic<unsigned> queried = 0;
@@ -62,6 +63,10 @@ class DecoderPin final : public CRendererInputPin,
     HRESULT BreakConnect() override;
     STDMETHODIMP ActivateD3D11Decoding(ID3D11Device*, ID3D11DeviceContext*, HANDLE, UINT) override;
     UINT STDMETHODCALLTYPE GetD3D11AdapterIndex() override;
+    // IKsPropertySet: the renderer's properties (copy protection, frame step).
+    STDMETHODIMP Set(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD) override;
+    STDMETHODIMP Get(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*) override;
+    STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*) override;
 
     UINT STDMETHODCALLTYPE GetD3D11TextureBindFlags() override;
 
@@ -377,7 +382,7 @@ class Renderer final : public CBaseVideoRenderer,
     STDMETHODIMP Pause() override;
     HRESULT OnStartStreaming() override;
     STDMETHODIMP GetPages(CAUUID*) override;
-    // IKsPropertySet: AM_KSPROPSETID_FrameStep only.
+    // IKsPropertySet: AM_KSPROPSETID_FrameStep and copy protection.
     STDMETHODIMP Set(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD) override;
     STDMETHODIMP Get(REFGUID, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*) override;
     STDMETHODIMP QuerySupported(REFGUID, DWORD, DWORD*) override;
