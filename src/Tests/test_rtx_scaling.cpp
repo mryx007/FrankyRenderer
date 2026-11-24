@@ -1,5 +1,8 @@
 #define NOMINMAX
 #include "Renderer/RtxScaling.h"
+#include "Renderer/ShaderWarmup.h"
+#include <libplacebo/shaders/custom.h>
+#include <libplacebo/cache.h>
 #include <cstdio>
 #include <vector>
 #include <stdexcept>
@@ -70,7 +73,7 @@ int main()
                 const auto before = scaling.Evaluations();
                 auto processed = scaling.Get(d3d, context.Get(), source, 123, 1920, 1080, pl_render_default_params);
                 if (hdr)
-                    Require(scaling.Status().find(L"prepared picture") != std::wstring::npos,
+                    Require(scaling.Status().find(L"prepared") != std::wstring::npos,
                             "prepared HDR picture goes to the driver as P010");
                 if (!processed)
                     wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
@@ -227,7 +230,7 @@ int main()
                     Require(actual.Format == DXGI_FORMAT_R10G10B10A2_UNORM &&
                                 int(actual.Width) == (upscale ? 1920 : w) && int(actual.Height) == (upscale ? 1080 : h),
                             "RTX Video HDR output format and size");
-                    Require(scaling.Status().find(upscale ? L"Super Resolution + HDR" : L"(HDR)") != std::wstring::npos,
+                    Require(scaling.Status().starts_with(upscale ? L"Super Resolution + HDR" : L"HDR ·"),
                             "RTX Video HDR status");
                     actual.Usage = D3D11_USAGE_STAGING;
                     actual.BindFlags = actual.MiscFlags = 0;
@@ -426,8 +429,7 @@ int main()
             // SDR ones are prepared as 10-bit RGB (the driver's YCbCr
             // conversion is off), and every output has 10 bits.
             Require(scaling.DecoderPicture() == hdrSource &&
-                        scaling.Status().find(hdrSource ? L"decoder picture" : L"prepared picture") !=
-                            std::wstring::npos,
+                        scaling.Status().find(hdrSource ? L"decoder picture" : L"prepared") != std::wstring::npos,
                     "HDR decoder pictures direct, SDR ones prepared");
             D3D11_TEXTURE2D_DESC actual;
             processed->pixels->GetDesc(&actual);
@@ -511,6 +513,176 @@ int main()
                             "RTX HDR at issue 21's odd output size, with and without VSR");
                     Require(reporterSize.FailureDescription().empty(), "successful HDR has no failure detail");
                 }
+            }
+            {
+                // Issue #51: user shaders that work before scaling run in the
+                // conversion pass, so the decoder picture goes through it too.
+                const auto lumaShader = [&](const char* value)
+                {
+                    const std::string text = std::string("//!HOOK LUMA\n//!BIND HOOKED\n//!DESC test luma\n"
+                                                         "vec4 hook() { return vec4(") +
+                                             value + "); }\n";
+                    const pl_hook* hook = pl_mpv_user_shader_parse(d3d->gpu, text.data(), text.size());
+                    Require(hook != nullptr, "test LUMA shader parses");
+                    return hook;
+                };
+                const pl_hook* bright = lumaShader("0.9");
+                const pl_hook* dark = lumaShader("0.1");
+                const auto centre = [&](const std::shared_ptr<RtxScaling::Frame>& frame)
+                {
+                    D3D11_TEXTURE2D_DESC desc;
+                    frame->pixels->GetDesc(&desc);
+                    desc.Usage = D3D11_USAGE_STAGING;
+                    desc.BindFlags = desc.MiscFlags = 0;
+                    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+                    Microsoft::WRL::ComPtr<ID3D11Texture2D> copy;
+                    Require(SUCCEEDED(d3d->device->CreateTexture2D(&desc, nullptr, &copy)), "shader readback");
+                    context->CopyResource(copy.Get(), frame->pixels.Get());
+                    D3D11_MAPPED_SUBRESOURCE map;
+                    Require(SUCCEEDED(context->Map(copy.Get(), 0, D3D11_MAP_READ, 0, &map)), "shader readback map");
+                    const UINT code = reinterpret_cast<const UINT*>(static_cast<const BYTE*>(map.pData) +
+                                                                    desc.Height / 2 * map.RowPitch)[desc.Width / 2];
+                    context->Unmap(copy.Get(), 0);
+                    return int((code >> 10) & 1023);
+                };
+                // SDR sources with RTX Video HDR (the issue), HDR with Super Resolution.
+                const bool trueHdr = !hdrSource;
+                const auto get = [&](const pl_hook* hook, uint64_t hookKey)
+                {
+                    return scaling.Get(d3d,
+                                       context.Get(),
+                                       source,
+                                       50,
+                                       1920,
+                                       1080,
+                                       pl_render_default_params,
+                                       true,
+                                       trueHdr,
+                                       nullptr,
+                                       0,
+                                       0,
+                                       decoded.Get(),
+                                       hook ? &hook : nullptr,
+                                       hook ? 1 : 0,
+                                       hookKey);
+                };
+                auto plain = get(nullptr, 0);
+                Require(bool(plain) && scaling.DecoderPicture(), "without shaders the decoder picture goes direct");
+                const int plainCode = centre(plain);
+                auto lifted = get(bright, 1);
+                if (!lifted)
+                    wprintf(L"RTX status: %ls\n", scaling.Status().c_str());
+                Require(bool(lifted) && !scaling.DecoderPicture() &&
+                            scaling.Status().find(L"shaders first") != std::wstring::npos,
+                        "a LUMA shader takes the conversion pass");
+                const int liftedCode = centre(lifted);
+                const auto evaluations = scaling.Evaluations();
+                Require(get(bright, 1) == lifted && scaling.Evaluations() == evaluations,
+                        "the same shaders keep the RTX picture cached");
+                auto lowered = get(dark, 2);
+                Require(bool(lowered) && scaling.Evaluations() == evaluations + 1,
+                        "changed shaders evaluate the cached picture again");
+                const int loweredCode = centre(lowered);
+                printf("RTX %s with a LUMA shader: grey %d, luma 0.9 -> %d, luma 0.1 -> %d\n",
+                       variant == 0   ? "P010 SDR + HDR"
+                       : variant == 1 ? "P010 HDR10"
+                                      : "NV12 SDR + HDR",
+                       plainCode,
+                       liftedCode,
+                       loweredCode);
+                Require(liftedCode > plainCode + 20 && loweredCode < plainCode - 20,
+                        "the LUMA shader's result reaches the RTX output");
+                Require(get(nullptr, 0) && scaling.DecoderPicture(), "without shaders again: decoder picture");
+                Require(!scaling.TakeHooksFailed(), "working shaders are not dropped");
+                plain.reset();
+                lifted.reset();
+                lowered.reset();
+                pl_mpv_user_shader_destroy(&bright);
+                pl_mpv_user_shader_destroy(&dark);
+                puts("PASS user shaders before scaling run before RTX and refresh its cache");
+            }
+            if (variant != 0)
+            {
+                // Issue #51: the shader warm-up compiles RTX's conversion pass
+                // on its own device, so the shader's first use there compiles
+                // nothing (NV12 with RTX Video HDR, P010 HDR10 prepared as P010).
+                auto cacheParams = pl_cache_default_params;
+                cacheParams.max_object_size = 16 << 20;
+                cacheParams.max_total_size = 64 << 20;
+                pl_cache cache = pl_cache_create(&cacheParams);
+                pl_gpu_set_cache(d3d->gpu, cache);
+                const bool trueHdr = !hdrSource;
+                RtxScaling fresh;
+                const auto get = [&](const pl_hook* hook, uint64_t frame, uint64_t hookKey)
+                {
+                    return fresh.Get(d3d,
+                                     context.Get(),
+                                     source,
+                                     frame,
+                                     1920,
+                                     1080,
+                                     pl_render_default_params,
+                                     true,
+                                     trueHdr,
+                                     nullptr,
+                                     0,
+                                     0,
+                                     decoded.Get(),
+                                     hook ? &hook : nullptr,
+                                     hook ? 1 : 0,
+                                     hookKey);
+                };
+                Require(bool(get(nullptr, 60, 0)), "RTX before the warm-up");
+                RtxScaling::Conversion conversion;
+                Require(fresh.DescribeConversion(source, 1920, 1080, true, trueHdr, nullptr, conversion),
+                        "the conversion pass is described");
+                ShaderWarmupJob job;
+                job.conversion = DescribeWarmupConversion(conversion);
+                Require(job.conversion.targets.size() == (hdrSource ? 2u : 1u), "the prepared planes are described");
+                const std::string text = "//!HOOK LUMA\n//!BIND HOOKED\n//!DESC warm-up luma\n"
+                                         "vec4 hook() { return HOOKED_tex(HOOKED_pos) * 0.75; }\n";
+                const size_t before = pl_cache_size(cache);
+                {
+                    std::vector<uint8_t> bytes(pl_cache_save(cache, nullptr, 0));
+                    pl_cache_save(cache, bytes.data(), bytes.size());
+                    pl_cache workerCache = pl_cache_create(&cacheParams);
+                    pl_cache_load(workerCache, bytes.data(), bytes.size());
+                    auto workerParams = pl_d3d11_default_params;
+                    pl_d3d11 worker = pl_d3d11_create(nullptr, &workerParams);
+                    Require(worker != nullptr, "warm-up device");
+                    pl_gpu_set_cache(worker->gpu, workerCache);
+                    const pl_hook* hook = pl_mpv_user_shader_parse(worker->gpu, text.data(), text.size());
+                    pl_renderer renderer = pl_renderer_create(nullptr, worker->gpu);
+                    const bool warmed = hook && renderer && WarmUpConversion(worker->gpu, renderer, hook, job);
+                    pl_renderer_destroy(&renderer);
+                    pl_mpv_user_shader_destroy(&hook);
+                    pl_gpu_set_cache(worker->gpu, nullptr);
+                    pl_d3d11_destroy(&worker);
+                    Require(warmed, "the warm-up renders the conversion pass");
+                    bytes.resize(pl_cache_save(workerCache, nullptr, 0));
+                    pl_cache_save(workerCache, bytes.data(), bytes.size());
+                    pl_cache_destroy(&workerCache);
+                    pl_cache_load(cache, bytes.data(), bytes.size());
+                }
+                const pl_hook* hook = pl_mpv_user_shader_parse(d3d->gpu, text.data(), text.size());
+                Require(hook != nullptr, "playing device shader");
+                const size_t warmed = pl_cache_size(cache);
+                Require(warmed > before, "the warm-up adds the compiled conversion pass");
+                auto shaded = get(hook, 61, 7);
+                Require(bool(shaded) && fresh.Status().find(L"shaders first") != std::wstring::npos,
+                        "RTX with the warmed-up shader");
+                printf("RTX %s conversion pass: warm-up cache %zu -> %zu bytes, first use -> %zu bytes\n",
+                       hdrSource ? "P010 HDR10" : "NV12 SDR + HDR",
+                       before,
+                       warmed,
+                       pl_cache_size(cache));
+                Require(pl_cache_size(cache) == warmed, "the warmed-up conversion pass compiles nothing new");
+                shaded.reset();
+                pl_mpv_user_shader_destroy(&hook);
+                fresh.Reset();
+                pl_gpu_set_cache(d3d->gpu, nullptr);
+                pl_cache_destroy(&cache);
+                puts("PASS the shader warm-up covers RTX's conversion pass");
             }
             if (variant == 0)
             {

@@ -5,6 +5,7 @@
 #include <libplacebo/options.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/shaders/custom.h>
+#include "Renderer/RtxScaling.h"
 #include "Renderer/ShaderHooks.h"
 #include "Renderer/Trace.h"
 #include <algorithm>
@@ -46,6 +47,20 @@ struct ShaderWarmupJob
     int targetComponents = 4, targetMapping[4] = {0, 1, 2, 3};
     int screenWidth = 0, screenHeight = 0; // full screen on this monitor
     bool mix = false;                      // Smooth Motion blends frames
+
+    // With RTX Video, its conversion pass before the driver, where shaders
+    // that work before scaling run (issue #51): the source picture, the
+    // prepared picture; the pass's parameters follow from `options`
+    // (RtxScaling::ConversionParams). No target planes: none.
+    struct Conversion
+    {
+        std::vector<ShaderWarmupPlane> sources, targets;
+        pl_color_repr sourceRepr = pl_color_repr_sdtv, targetRepr = pl_color_repr_rgb;
+        pl_color_space sourceColor = pl_color_space_bt709, targetColor = pl_color_space_bt709;
+        pl_rect2df sourceCrop = {}, targetCrop = {};
+        pl_field field = PL_FIELD_NONE;
+    } conversion;
+
     // In: the playing device's cache, so known shaders load at once.
     // Out, once done: the same cache with the new shader.
     std::vector<uint8_t> cache;
@@ -66,6 +81,116 @@ inline void DescribeWarmupVideo(ShaderWarmupJob& job, int width, int height)
     job.sourceRepr = pl_color_repr_sdtv;
     job.sourceRepr.sys = PL_COLOR_SYSTEM_BT_709;
     job.sourceColor = pl_color_space_bt709;
+}
+
+// The warm-up's description of RTX's conversion pass (RtxScaling::DescribeConversion);
+// empty when a source plane is unknown.
+inline ShaderWarmupJob::Conversion DescribeWarmupConversion(const RtxScaling::Conversion& conversion)
+{
+    ShaderWarmupJob::Conversion described;
+    bool complete = true;
+    const auto& source = conversion.picture;
+    for (int i = 0; i < source.num_planes && i < 4; i++)
+    {
+        const auto& plane = source.planes[i];
+        if (!plane.texture)
+        {
+            complete = false;
+            break;
+        }
+        ShaderWarmupPlane p;
+        p.format = plane.texture->params.format->name;
+        p.width = plane.texture->params.w;
+        p.height = plane.texture->params.h;
+        p.components = plane.components;
+        for (int c = 0; c < 4; c++)
+            p.mapping[c] = plane.component_mapping[c];
+        described.sources.push_back(p);
+    }
+    const auto& prepared = conversion.prepared;
+    for (int i = 0; complete && i < prepared.num_planes && i < 2; i++)
+    {
+        ShaderWarmupPlane p;
+        p.format = conversion.formats[i] ? conversion.formats[i] : "";
+        p.width = conversion.widths[i];
+        p.height = conversion.heights[i];
+        p.components = prepared.planes[i].components;
+        for (int c = 0; c < 4; c++)
+            p.mapping[c] = prepared.planes[i].component_mapping[c];
+        described.targets.push_back(p);
+    }
+    described.sourceRepr = source.repr;
+    described.sourceColor = source.color;
+    described.sourceCrop = source.crop;
+    described.field = source.field;
+    described.targetRepr = prepared.repr;
+    described.targetColor = prepared.color;
+    described.targetCrop = prepared.crop;
+    if (!complete)
+        described = {};
+    return described;
+}
+
+// Renders RTX's conversion pass with the shader, as playback does once the
+// shader runs before the driver.
+inline bool WarmUpConversion(pl_gpu gpu, pl_renderer renderer, const pl_hook* hook, const ShaderWarmupJob& job)
+{
+    const auto& c = job.conversion;
+    if (c.sources.empty() || c.sources.size() > 4 || c.targets.empty() || c.targets.size() > 4)
+        return false;
+    // The playing options, from which RtxScaling derives the pass's own.
+    pl_options options = pl_options_alloc(nullptr);
+    bool ok = options && (job.options.empty() || pl_options_load(options, job.options.c_str()));
+    std::vector<pl_tex> textures;
+    pl_frame source = {}, target = {};
+    const auto planes = [&](const std::vector<ShaderWarmupPlane>& from, pl_frame& frame, bool render)
+    {
+        for (size_t i = 0; ok && i < from.size(); i++)
+        {
+            const auto& p = from[i];
+            pl_tex_params tp = {};
+            tp.w = std::max(p.width, 1);
+            tp.h = std::max(p.height, 1);
+            tp.format = pl_find_named_fmt(gpu, p.format.c_str());
+            tp.sampleable = true;
+            tp.renderable = render;
+            tp.blit_dst = render;
+            pl_tex tex = tp.format ? pl_tex_create(gpu, &tp) : nullptr;
+            ok = tex != nullptr;
+            textures.push_back(tex);
+            frame.planes[i].texture = tex;
+            frame.planes[i].components = p.components;
+            for (int n = 0; n < 4; n++)
+                frame.planes[i].component_mapping[n] = p.mapping[n];
+        }
+        frame.num_planes = int(from.size());
+    };
+    planes(c.sources, source, false);
+    planes(c.targets, target, true);
+    source.repr = c.sourceRepr;
+    source.color = c.sourceColor;
+    source.crop = c.sourceCrop;
+    source.field = c.field;
+    target.repr = c.targetRepr;
+    target.color = c.targetColor;
+    target.crop = c.targetCrop;
+    if (ok)
+    {
+        // As in playback: no dynamic constants in this pass.
+        pl_color_map_params mapping;
+        pl_render_params render =
+            RtxScaling::ConversionParams(job.options.empty() ? pl_render_default_params : options->params, mapping);
+        render.hooks = &hook;
+        render.num_hooks = 1;
+        ok = pl_render_image(renderer, &source, &target, &render);
+        pl_gpu_finish(gpu);
+    }
+    if (!ok)
+        Trace("Shader warm-up: RTX conversion pass failed");
+    for (auto& tex : textures)
+        pl_tex_destroy(gpu, &tex);
+    pl_options_free(&options);
+    return ok;
 }
 
 inline bool WarmUpShader(ShaderWarmupJob& job)
@@ -184,6 +309,11 @@ inline bool WarmUpShader(ShaderWarmupJob& job)
                     ok = drawn && ok;
                     pl_tex_destroy(gpu, &target);
                 }
+            // With RTX Video a shader that works before scaling runs in its
+            // conversion pass instead. A failure there leaves the rest.
+            constexpr unsigned beforeScaling = PL_HOOK_SIGMOID - 1;
+            if (ok && hook->stages && !(hook->stages & ~beforeScaling) && !job.conversion.targets.empty())
+                WarmUpConversion(gpu, renderer, hook, job);
         }
         else
             Trace("Shader warm-up: setup failed (hook %d, renderer %d, options %d)",

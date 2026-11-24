@@ -58,6 +58,7 @@
 #include <utility>
 #include <cmath>
 #include <atomic>
+#include <bit>
 #include "build/OverlayVS.h"
 #include "build/OverlayPS.h"
 #include "build/OverlayFullscreen.h"
@@ -136,7 +137,11 @@ struct PlaceboBackend::State
 
     // Starts the prepared warm-ups with this frame's setup: the final render
     // parameters, the source planes and the output format (ShaderWarmup.h).
-    void StartShaderWarmups(const pl_frame& picture, const pl_frame& output, const pl_render_params& params, bool mix)
+    void StartShaderWarmups(const pl_frame& picture,
+                            const pl_frame& output,
+                            const pl_render_params& params,
+                            bool mix,
+                            const RtxScaling::Conversion* conversion)
     {
         bool pending = false;
         for (int id = 0; id < ShaderCount; id++)
@@ -174,6 +179,8 @@ struct PlaceboBackend::State
                 p.mapping[c] = plane.component_mapping[c];
             described.push_back(p);
         }
+        // RTX's conversion pass, where shaders before scaling then run.
+        const auto rtxPass = conversion ? DescribeWarmupConversion(*conversion) : ShaderWarmupJob::Conversion{};
         MONITORINFO monitor = {sizeof(monitor)};
         const bool screen = window && GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor);
         const auto cache = shaderCache.Snapshot();
@@ -198,6 +205,7 @@ struct PlaceboBackend::State
                 job->screenHeight = monitor.rcMonitor.bottom - monitor.rcMonitor.top;
             }
             job->mix = mix;
+            job->conversion = rtxPass;
             job->cache = cache;
             job->adapter = AdapterLuid();
             job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
@@ -1605,7 +1613,7 @@ struct PlaceboBackend::State
             {
                 value << rtx.Status();
                 if (settings.rtxSuperResolution || settings.rtxHdr)
-                    value << dot << L"quality: NVIDIA driver; submitted " << rtx.Evaluations();
+                    value << dot << rtx.Evaluations() << L" frames";
             }
         }
         if (settings.blackBars.enabled || settings.imagePosition)
@@ -2151,6 +2159,60 @@ struct PlaceboBackend::State
         } processed{image, mixFrames, image};
 
         statisticsField = image.field;
+        // The user shaders ready for this frame, in chain order.
+        userShaderMessage.clear();
+        int readyIds[ShaderCount] = {};
+        int readyCount = 0;
+        for (int id : ShaderChainOrder(settings.userShaders, settings.shaderAutoOrder))
+        {
+            // A custom shader whose file was deleted simply drops out.
+            if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
+            {
+                pl_mpv_user_shader_destroy(&userHooks[id]);
+                userCached[id] = {};
+                userFailed[id] = false;
+                continue;
+            }
+            if (PrepareUserShader(id))
+            {
+                if (ShaderReady(id))
+                    readyIds[readyCount++] = id;
+            }
+            else
+                userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
+        }
+        // Shaders that work only before scaling go into RTX's conversion pass:
+        // the driver returns a scaled RGB picture, on which LUMA, CHROMA and
+        // NATIVE hooks never run (issue #51). The order holds, since
+        // libplacebo runs hooks by stage. A shader that also hooks after
+        // scaling stays in the main pass.
+        const pl_hook* rtxHooks[ShaderCount] = {};
+        int rtxHookIds[ShaderCount] = {};
+        int rtxHookCount = 0;
+        uint64_t rtxHookKey = 0;
+        for (int n = 0; n < readyCount; ++n)
+        {
+            const int id = readyIds[n];
+            constexpr unsigned beforeScaling = PL_HOOK_SIGMOID - 1;
+            const unsigned stages = userHooks[id]->stages;
+            if (!stages || (stages & ~beforeScaling))
+                continue;
+            rtxHooks[rtxHookCount] = userHooks[id];
+            rtxHookIds[rtxHookCount++] = id;
+            // The parameter values live in the hook: a new value parses a new one.
+            auto mixKey = [&](uint64_t v) { rtxHookKey = (rtxHookKey ^ v) * 0x100000001b3ULL; };
+            if (!rtxHookKey)
+                rtxHookKey = 0xcbf29ce484222325ULL;
+            mixKey(uint64_t(id));
+            mixKey(uint64_t(reinterpret_cast<uintptr_t>(userHooks[id])));
+            mixKey(userCached[id].overrides);
+            for (float v : userCached[id].values)
+                mixKey(std::bit_cast<uint32_t>(v));
+            mixKey(std::bit_cast<uint32_t>(userAntiring[id]));
+        }
+        bool rtxShaders = false;
+        RtxScaling::Conversion rtxConversion;
+        bool rtxConversionKnown = false;
         std::vector<std::shared_ptr<RtxScaling::Frame>> rtxFrames;
         rtxUpscaled = rtxDirect = false;
         probe.Next(RenderProbe::Rtx);
@@ -2190,7 +2252,10 @@ struct PlaceboBackend::State
                                    &restore.main,
                                    targetW,
                                    targetH,
-                                   NativePicture(image));
+                                   NativePicture(image),
+                                   rtxHooks,
+                                   rtxHookCount,
+                                   rtxHookKey);
             bool ready = bool(current);
             if (current)
                 rtxFrames.push_back(std::move(current));
@@ -2208,14 +2273,34 @@ struct PlaceboBackend::State
                                      &restore.saved[i],
                                      targetW,
                                      targetH,
-                                     NativePicture(mixFrames[i]));
+                                     NativePicture(mixFrames[i]),
+                                     rtxHooks,
+                                     rtxHookCount,
+                                     rtxHookKey);
                 ready = bool(mixed);
                 if (mixed)
                     rtxFrames.push_back(std::move(mixed));
             }
+            // A shader that broke the conversion pass is bypassed from now on.
+            if (rtx.TakeHooksFailed())
+            {
+                for (int n = 0; n < rtxHookCount; n++)
+                    userFailed[rtxHookIds[n]] = true;
+                userShaderMessage = L"custom shaders bypassed after a render error";
+                rtxHookCount = 0;
+            }
+            const auto converterErrors = rtx.ConverterErrors();
+            for (int i = 0; i < converterErrors.num_disabled_hooks; i++)
+                for (int n = 0; n < rtxHookCount; n++)
+                    if (rtxHooks[n]->signature == converterErrors.disabled_hooks[i])
+                        userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[rtxHookIds[n]].label;
             if (ready)
             {
+                // For the shader warm-up: the pass the shaders run in.
+                rtxConversionKnown =
+                    rtx.DescribeConversion(image, outW, outH, rtxUpscale, rtxHdr, &restore.main, rtxConversion);
                 processed.active = true;
+                rtxShaders = rtxHookCount > 0;
                 rtxUpscaled = rtx.Upscaling();
                 rtxDirect = rtx.DecoderPicture();
                 processed.originals.assign(mixFrames, mixFrames + mixCount);
@@ -2348,32 +2433,20 @@ struct PlaceboBackend::State
                 analysisHooks[analysisCount++] = ramp;
         }
         const int builtins = count;
-        userShaderMessage.clear();
-        for (int id : ShaderChainOrder(settings.userShaders, settings.shaderAutoOrder))
+        for (int n = 0; n < readyCount; n++)
         {
-            // A custom shader whose file was deleted simply drops out.
-            if (!settings.userShaders.shaders[id].enabled || !ShaderListed(id))
-            {
-                pl_mpv_user_shader_destroy(&userHooks[id]);
-                userCached[id] = {};
-                userFailed[id] = false;
+            const int id = readyIds[n];
+            // Ran in RTX's conversion pass already, or broke it.
+            if (userFailed[id] || (rtxShaders && std::count(rtxHookIds, rtxHookIds + rtxHookCount, id)))
                 continue;
-            }
-            if (PrepareUserShader(id))
-            {
-                if (!ShaderReady(id))
-                    continue;
-                hooks[count++] = userHooks[id];
-                hookIds[users++] = id;
-                // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
-                // in linear light it overshoots into ringing.
-                const float source = pl_rect_w(image.crop) * pl_rect_h(image.crop),
-                            output = pl_rect_w(target.crop) * pl_rect_h(target.crop);
-                if (IsSsimDownscaler(ShaderCatalog[id].file) && std::abs(output) < std::abs(source))
-                    params.disable_linear_scaling = true;
-            }
-            else
-                userShaderMessage = std::wstring(L"shader failed: ") + ShaderCatalog[id].label;
+            hooks[count++] = userHooks[id];
+            hookIds[users++] = id;
+            // SSimDownscaler is tuned for gamma light (mpv: linear-downscaling=no);
+            // in linear light it overshoots into ringing.
+            const float source = pl_rect_w(image.crop) * pl_rect_h(image.crop),
+                        output = pl_rect_w(target.crop) * pl_rect_h(target.crop);
+            if (IsSsimDownscaler(ShaderCatalog[id].file) && std::abs(output) < std::abs(source))
+                params.disable_linear_scaling = true;
         }
         // libplacebo turns off a shader that does not compile on this GPU.
         const auto renderErrors = pl_renderer_get_errors(renderer);
@@ -2615,7 +2688,11 @@ struct PlaceboBackend::State
                                                                : PL_COLOR_TRC_UNKNOWN;
         if (shownTransfer)
             shown.color.transfer = shownTransfer;
-        StartShaderWarmups(shown, target, params, mixing && settings.smoothMotion && !stillPicture);
+        StartShaderWarmups(shown,
+                           target,
+                           params,
+                           mixing && settings.smoothMotion && !stillPicture,
+                           rtxConversionKnown ? &rtxConversion : nullptr);
         // Shaders compiled during playback reach the disk within seconds,
         // not only when the player closes.
         if (const uint64_t now = GetTickCount64(); now - cacheSaveChecked >= 10000)

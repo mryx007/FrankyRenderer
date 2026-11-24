@@ -150,4 +150,6 @@
 - The shader cache is now saved during playback, not only when the player closes.
 - Ctrl+J names the scalers as in the menu ("Downscaler: …") and lists the shaders right below the image scaler ([#50](https://github.com/mryx007/FrankyRenderer/issues/50)).
 - Fixed "Macrovision Error" when opening a DVD or DVD folder in MPC-HC and MPC-BE.
+- Fixed shaders such as denoising, debanding and chroma shaders doing nothing with RTX Video HDR or Super Resolution ([#51](https://github.com/mryx007/FrankyRenderer/issues/51)).
+- Ctrl+J shows a shorter RTX Video line.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
