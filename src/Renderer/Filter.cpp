@@ -3591,7 +3591,7 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
     auto next = match ? *match : ContentProfiles::Profile{};
     backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Main")) +
                                                      (forced ? L" (shortcut)" : L" (menu preview)")
-                              : match                                    ? next.name
+                              : match          ? next.name
                               : !profiles.empty() && contentPath.empty() ? L"Main (file path unknown)"
                                                                          : L"Main");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)

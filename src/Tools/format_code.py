@@ -12,15 +12,15 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Check formatting without changing files")
-    parser.add_argument("--clang-format", default="clang-format", help="Path to clang-format 21.1.8")
+    parser.add_argument("--clang-format", default="clang-format", help="Path to clang-format 23.1.5")
     args = parser.parse_args()
     formatter = shutil.which(args.clang_format)
     if formatter is None:
         parser.error("clang-format is missing. Install requirements-dev.txt first.")
 
     version = subprocess.check_output([formatter, "--version"], text=True)
-    if "version 21.1.8" not in version:
-        parser.error("Use clang-format 21.1.8 to keep formatting consistent.")
+    if "version 23.1.5" not in version:
+        parser.error("Use clang-format 23.1.5 to keep formatting consistent.")
 
     tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()
     files = [
