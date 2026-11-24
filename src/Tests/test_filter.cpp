@@ -806,7 +806,7 @@ class PatternStream final : public CSourceStream
             context->Flush();
             ReleaseMutex(mutex);
         }
-        REFERENCE_TIME start = index * 333333LL, stop = start + 333333;
+        REFERENCE_TIME start = index * 333333LL, stop = start + (mixedFields == 3 ? 166666 : 333333);
         sample->SetTime(&start, &stop);
         sample->SetSyncPoint(TRUE);
         sample->SetActualDataLength(SampleBytes());
@@ -1119,6 +1119,9 @@ int wmain(int argc, wchar_t** argv)
             mixedFields = 1;
         if (wcscmp(argv[i], L"--mixed-order") == 0)
             mixedFields = 2;
+        // One field's duration per frame, as an MP4 with a sample per field.
+        if (wcscmp(argv[i], L"--field-duration") == 0)
+            mixedFields = 3;
     }
     setvbuf(stdout, nullptr, _IONBF, 0);
     g_hInst = GetModuleHandleW(nullptr);
@@ -1606,10 +1609,12 @@ int wmain(int argc, wchar_t** argv)
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
             DispatchMessageW(&msg);
         Check(config->GetStatus(&status), "status after changing field flags");
-        printf("%s %s with changing %s: %llu pictures shown (%llu more in 1.5 s), %llu fields, %llu mixed\n",
+        printf("%s %s with %s: %llu pictures shown (%llu more in 1.5 s), %llu fields, %llu mixed\n",
                status.rendered >= 5 && status.rendered > first ? "PASS" : "FAIL",
                motionTest ? "Smooth Motion" : "playback",
-               mixedFields == 1 ? "woven/field pictures" : "field order",
+               mixedFields == 1   ? "changing woven/field pictures"
+               : mixedFields == 2 ? "changing field order"
+                                  : "one field's duration per frame",
                status.rendered,
                status.rendered - first,
                status.deinterlacedFields,

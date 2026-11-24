@@ -2,6 +2,7 @@
 // libplacebo integration uses only its public API. No existing MPC pixel path.
 #include "Renderer/Backend.h"
 #include "Renderer/BlackBarAnalysis.h"
+#include "Renderer/FieldOrderAnalysis.h"
 #include "Renderer/ImagePosition.h"
 #include "Renderer/GpuPacked422.h"
 #include "Renderer/NativeHdrDisplay.h"
@@ -626,6 +627,12 @@ struct PlaceboBackend::State
     ComPtr<ID3D11RasterizerState> overlayRasterizer;
     GpuPacked422 unpack422;
     BlackBarAnalysis blackBars;
+    // Field order measured from the picture; the frames SelectField chose.
+    FieldOrderAnalysis fieldOrder;
+    uint64_t fieldCurrent = 0, fieldNext = 0;
+    // The field order the filter took from the picture against the
+    // decoder's flags (FieldOrderAnalysis values; 0: none).
+    std::atomic<int> fieldOrderCorrected = 0;
     RenderSettings settings;
     VideoFrame description;
     RECT source = {}, targetRect = {};
@@ -793,6 +800,7 @@ struct PlaceboBackend::State
     void Destroy()
     {
         blackBars.Reset();
+        fieldOrder.Reset();
         rtx.Reset();
         unpack422.Reset();
         renderGpu.Reset();
@@ -1598,9 +1606,14 @@ struct PlaceboBackend::State
         }
         if (mixing && settings.smoothMotion)
             filterValues(options->params.frame_mixer);
-        row(L"Deinterlacing") << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
-                                  : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
-                                                                                : L"off (progressive / not active)");
+        {
+            auto& value = row(L"Deinterlacing");
+            value << (statisticsField != PL_FIELD_NONE ? (settings.deinterlacing == 2 ? L"Yadif" : L"Bwdif")
+                      : sourceInterlaced && !settings.deinterlacing ? L"off (settings)"
+                                                                    : L"off (progressive / not active)");
+            if (statisticsField != PL_FIELD_NONE && fieldOrderCorrected)
+                value << dot << (fieldOrderCorrected == 1 ? L"TFF" : L"BFF") << L" (detected)";
+        }
         row(L"Debanding") << (settings.deband ? L"on" : L"off");
         {
             auto& value = row(L"RTX Video");
@@ -1970,6 +1983,9 @@ struct PlaceboBackend::State
         originalImage.crop.y0 = 0;
         originalImage.crop.y1 = float(description.height);
         blackBars.Analyze(d3d, context.Get(), image, description.width, description.height, analysisSettings, &probe);
+        if (image.field != PL_FIELD_NONE && image.next && fieldNext != fieldCurrent)
+            fieldOrder.Analyze(
+                d3d, context.Get(), image, *image.next, fieldCurrent, fieldNext, description.width, description.height);
         const RECT contentBounds = blackBars.failed
                                        ? RECT{0, 0, description.width, description.height}
                                        : blackBars.detector.ContentBounds(description.width, description.height);
@@ -2853,6 +2869,8 @@ HRESULT PlaceboBackend::SelectField(uint64_t current, uint64_t previous, uint64_
     s.image.field = field;
     s.image.first_field = first;
     s.rtxKey = current * 4 + static_cast<unsigned>(field);
+    s.fieldCurrent = current;
+    s.fieldNext = next;
     s.image.prev = &p.image;
     s.image.next = &n.image;
     s.valid = true;
@@ -3968,6 +3986,42 @@ void PlaceboBackend::ShowStatistics(bool enabled)
 void PlaceboBackend::SetSourceInterlaced(bool interlaced)
 {
     state->sourceInterlaced = interlaced;
+}
+
+void PlaceboBackend::MeasureFieldOrder(uint64_t current, uint64_t next)
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    if (!s.d3d || s.fieldOrder.votes.decided)
+        return;
+    auto a = s.history.find(current), b = s.history.find(next);
+    if (a == s.history.end() || b == s.history.end())
+        return;
+    const auto& first = a->second->description;
+    const auto& second = b->second->description;
+    if (first.width != second.width || first.height != second.height || first.format != second.format)
+        return;
+    s.fieldOrder.MeasureNow(
+        s.d3d, s.context.Get(), a->second->image, b->second->image, current, next, first.width, first.height);
+}
+
+int PlaceboBackend::DetectedFieldOrder() const
+{
+    return state->fieldOrder.detected;
+}
+
+int PlaceboBackend::FieldOrderCorrected() const
+{
+    return state->fieldOrderCorrected;
+}
+
+void PlaceboBackend::SetFieldOrderCorrected(int order)
+{
+    if (state->fieldOrderCorrected.exchange(order) != order)
+        Trace("Field order from the picture: %s",
+              order == 1   ? "top field first, flags say bottom"
+              : order == 2 ? "bottom field first, flags say top"
+                           : "as flagged");
 }
 
 void PlaceboBackend::ShowMessage(const std::wstring& text)

@@ -189,6 +189,15 @@ class PlaceboBackend
     void ShowStatistics(bool enabled);
     // The decoder marks the video as interlaced, whether or not it is deinterlaced.
     void SetSourceInterlaced(bool interlaced);
+    // Field order measured from the picture while deinterlacing: 0 unknown,
+    // 1 top field first, 2 bottom field first (FieldOrderAnalysis.h).
+    int DetectedFieldOrder() const;
+    // Measures two captured frames now (while the order is unknown), before
+    // they are shown.
+    void MeasureFieldOrder(uint64_t current, uint64_t next);
+    // The statistics show a field order taken from the picture against the flags.
+    void SetFieldOrderCorrected(int order);
+    int FieldOrderCorrected() const;
     // Short text in the picture for about two seconds, e.g. after a shortcut.
     void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;

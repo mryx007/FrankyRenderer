@@ -27,6 +27,7 @@ CHECKS = [
     ("settings_store", ROOT),
     ("dovi_mapping", SRC),
     ("dv_status", SRC),
+    ("field_order", SRC),
 ]
 
 

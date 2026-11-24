@@ -1460,6 +1460,18 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         interlaced = true;
         top = fieldOverride == 1;
     }
+    // Some broadcast streams mark every picture with the wrong field order
+    // (GitHub issue 53); with Field Order on Auto the picture decides once
+    // the renderer has measured it.
+    int corrected = 0;
+    if (!reconstructed && interlaced && !fieldOverride)
+        if (const int detected = backend.DetectedFieldOrder())
+        {
+            if ((detected == 1) != top)
+                corrected = detected;
+            top = detected == 1;
+        }
+    backend.SetFieldOrderCorrected(corrected);
     if (!fieldDecisionLogged)
     {
         fieldDecisionLogged = true;
@@ -1542,10 +1554,13 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                                                         : pending.start;
         // Smooth Motion keeps its queue across irregular timestamps; emptying
         // it means rendering several frames at once, a visible stutter.
+        // Deinterlacing alone follows the start times too: a stream with one
+        // sample per field (an MP4 copied from broadcast TV) gives each frame
+        // the duration of one field, so its end never meets the next start.
+        // Starting over on that gap stopped the picture (GitHub issue 53).
         const bool timelineReset =
             sample->IsDiscontinuity() == S_OK ||
-            (buffered && (smooth ? !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration)
-                                 : std::abs(start - expected) > 20000));
+            (buffered && !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration));
         if (timelineReset || !buffering || bool(deinterlacingActive) != fields ||
             (fields && (!motionQueue.empty() || pending.id) && bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)))
             ResetFields(true, !timelineReset);
@@ -1603,6 +1618,28 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         }
         if (FAILED(hr))
             return hr;
+        // While the field order is unknown, this frame is measured against the
+        // one before it at once, so a wrong order is put right before the
+        // first frames are shown; frames still waiting take it too.
+        if (fields && !fieldOverride && !backend.DetectedFieldOrder())
+        {
+            const uint64_t before = !motionQueue.empty() ? motionQueue.back().id : pending.id;
+            if (before)
+                backend.MeasureFieldOrder(before, input.id);
+            if (const int detected = backend.DetectedFieldOrder())
+            {
+                const auto first = detected == 1 ? PL_FIELD_TOP : PL_FIELD_BOTTOM;
+                for (auto& queued : motionQueue)
+                    if (queued.first != PL_FIELD_NONE)
+                        queued.first = first;
+                for (auto* queued : {&pending, &followingQueued})
+                    if (queued->id && queued->first != PL_FIELD_NONE)
+                        queued->first = first;
+                input.first = first;
+                corrected = (detected == 1) != top ? detected : 0;
+                backend.SetFieldOrderCorrected(corrected);
+            }
+        }
         buffering = true;
         smoothBuffering = smooth;
         if (deinterlacingActive.exchange(fields) != fields)
@@ -1623,6 +1660,10 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         else
         {
             output = pending;
+            // Its fields share the time up to this frame: a frame that claims
+            // only one field's duration would show its second field early.
+            if (output.id)
+                output.stop = MotionIntervalEnd(output.start, output.stop, input.start, output.nominalDuration);
             past = previous;
             previous = pending;
             pending = input;
@@ -3830,6 +3871,18 @@ STDMETHODIMP Renderer::Flt_GetInt64(LPCSTR field, __int64* value)
     if (!strcmp(field, "placeboFrameStart"))
     {
         *value = frameStart.load();
+        return S_OK;
+    }
+    // Field order measured from the picture and whether it overrode the flags
+    // (tests of GitHub issue 53): 0 none, 1 top field first, 2 bottom field first.
+    if (!strcmp(field, "placeboFieldOrderDetected"))
+    {
+        *value = backend.DetectedFieldOrder();
+        return S_OK;
+    }
+    if (!strcmp(field, "placeboFieldOrderCorrected"))
+    {
+        *value = backend.FieldOrderCorrected();
         return S_OK;
     }
     Trace("Host Flt_GetInt64 %s", field);
