@@ -71,24 +71,8 @@ jobs:
           FRANKY_BUILD_ID: ${{ inputs.build_id }}
         run: build.cmd
       - name: Run non-GPU regression checks
-        shell: cmd
-        run: |
-          call src\Tests\build_motion_timing_tests.cmd
-          if errorlevel 1 exit /b 1
-          src\build\bin\test_motion_timing.exe
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_presentation_timing_tests.cmd
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_settings_ini_tests.cmd
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_settings_before_playback_tests.cmd
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_settings_store_tests.cmd
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_dovi_mapping_tests.cmd
-          if errorlevel 1 exit /b 1
-          call src\Tests\build_dv_status_tests.cmd
-          if errorlevel 1 exit /b 1
+        # Builds the checks at the same time, then runs them one after another.
+        run: python src/Tools/run_ci_checks.py
       - name: Package and verify ZIP
         env:
           CHANNEL: ${{ inputs.channel }}
