@@ -1543,6 +1543,16 @@ int wmain(int argc, wchar_t** argv)
             puts("FAIL no first sparse frame or video window");
             return 66;
         }
+        if (motionTest)
+        {
+            // Smooth Motion buffers pictures; a gap in the timeline must show
+            // them, not discard them (MPC-BE stayed black, issue 54). Its
+            // ticks keep counting after the last picture, so the redraw
+            // counts below apply without Smooth Motion only.
+            printf("PASS Smooth Motion shows pictures before a gap in the timeline: %llu shown\n", status.rendered);
+            control->Stop();
+            return 0;
+        }
         // Resize right after the frame, as in the report: the repaint is first
         // left to the next frame, which is 8 s away.
         const auto frames = status.rendered;

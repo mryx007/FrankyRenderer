@@ -1554,6 +1554,27 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                                          (fields && (!motionQueue.empty() || pending.id) &&
                                           bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)));
     }
+    // A gap forward in the timeline (screen recordings leave unchanged
+    // pictures out, GitHub issue 54) also shows the buffered pictures first.
+    // Discarding them never showed a picture at all: MPC-BE waited paused
+    // for its first one and stayed black. A seek (discontinuity or a step
+    // back) still starts over without them.
+    if (!structureChanged && sample->IsDiscontinuity() != S_OK)
+    {
+        CAutoLock render(&m_RendererLock);
+        const bool buffered = !motionQueue.empty() || followingQueued.id || pending.id;
+        if (buffered)
+        {
+            const auto expected = !motionQueue.empty() ? motionQueue.back().stop
+                                  : followingQueued.id ? followingQueued.stop
+                                                       : pending.stop;
+            const auto previousStart = !motionQueue.empty() ? motionQueue.back().start
+                                       : followingQueued.id ? followingQueued.start
+                                                            : pending.start;
+            structureChanged = start > previousStart &&
+                               !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration);
+        }
+    }
     if (structureChanged)
     {
         HRESULT hr = DrainFields();
