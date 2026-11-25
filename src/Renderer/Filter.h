@@ -108,6 +108,9 @@ class VideoWindow final : public CBaseControlWindow
 class VideoControl final : public CBaseControlVideo
 {
     Renderer* owner;
+    // The format as IBasicVideo reports it: a positive height also for
+    // top-down RGB, whose connection format stores a negative one.
+    VIDEOINFOHEADER reported = {};
 
   public:
     VideoControl(Renderer*, CCritSec*, IUnknown*, HRESULT*);

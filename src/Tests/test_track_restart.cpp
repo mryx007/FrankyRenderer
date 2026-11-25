@@ -36,7 +36,9 @@ class Source final : public CBaseFilter
         {
             VIDEOINFOHEADER2 info{};
             info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-            info.bmiHeader.biWidth = info.bmiHeader.biHeight = 64;
+            // Top-down RGB, as decoders deliver screen recordings (issue 54).
+            info.bmiHeader.biWidth = 64;
+            info.bmiHeader.biHeight = -64;
             info.bmiHeader.biPlanes = 1;
             info.bmiHeader.biBitCount = 32;
             info.bmiHeader.biCompression = BI_RGB;
@@ -158,6 +160,14 @@ class RendererRestartTest
         ComPtr<IBasicVideo> basic;
         Check(filter.As(&basic), "screenshot basic video");
         Check(basic->SetDestinationPosition(32, 32, 64, 64), "offset window destination");
+        // MPC-HC computes its video frame from this size; a negative height
+        // made it send no destination after the first one (issue 54).
+        long videoWidth = 0, videoHeight = 0, reportedHeight = 0;
+        Check(basic->GetVideoSize(&videoWidth, &videoHeight), "video size");
+        Check(basic->get_VideoHeight(&reportedHeight), "video height");
+        Require(videoWidth == 64 && videoHeight == 64 && reportedHeight == 64,
+                "top-down RGB reports a positive video height");
+        puts("PASS top-down RGB reports a positive video size to the player");
         long bytes = 0;
         Check(basic->GetCurrentImage(&bytes, nullptr), "source screenshot size query");
         Require(bytes == long(sizeof(BITMAPINFOHEADER) + 64 * 64 * 4), "source screenshot buffer size");

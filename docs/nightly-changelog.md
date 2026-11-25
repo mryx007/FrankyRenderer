@@ -156,4 +156,6 @@
 - Field Order Auto now detects a wrong field order from the picture, for broadcast streams that are marked wrong ([#53](https://github.com/mryx007/FrankyRenderer/issues/53)).
 - Fixed screen recordings with few frames: resizing, Ctrl+J and the statistics no longer wait for the next frame ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
 - Added "Use HDR10+" (HDR > HDR Output): off plays HDR10+ videos as HDR10.
+- Fixed RGB videos such as screen recordings keeping their first size and position in MPC-HC and MPC-BE when the window or video frame changes ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
+- Fixed MPC-HC and MPC-BE video frames other than "Touch Window From Inside" (from outside, stretch, normal size, zoom) having no effect with Crop Black Bars; they now show the whole video.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

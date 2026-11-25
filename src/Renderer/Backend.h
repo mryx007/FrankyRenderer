@@ -168,6 +168,8 @@ class PlaceboBackend
 #endif
     bool PaintLoadingBackground(HDC dc);
     void SetGeometry(const RECT& source, const RECT& target);
+    // The video window size the player set (IVideoWindow::SetWindowPosition).
+    void SetHostWindowSize(int width, int height);
     HRESULT SetRotation(int degrees);
     int Rotation() const;
     void SetFlip(bool mirror);

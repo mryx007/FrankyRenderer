@@ -633,6 +633,16 @@ struct PlaceboBackend::State
     // The field order the filter took from the picture against the
     // decoder's flags (FieldOrderAnalysis values; 0: none).
     std::atomic<int> fieldOrderCorrected = 0;
+    // Crop Black Bars is on, but the player chose another video frame than
+    // touch window from inside (statistics).
+    bool cropSuspended = false;
+    // The player sends its rectangle, then the window size; the swapchain
+    // follows with the next present. Between them the rectangle does not
+    // match the drawing area, so the video frame decision is kept.
+    int hostWindowW = 0, hostWindowH = 0;
+    uint64_t targetChangedAt = 0;
+    bool targetPending = false, lastPlayerFrame = false;
+    std::string tracedGeometry; // diagnostic log: last traced window geometry
     RenderSettings settings;
     VideoFrame description;
     RECT source = {}, targetRect = {};
@@ -1645,7 +1655,9 @@ struct PlaceboBackend::State
             else
                 value << L"L " << r.left << L", T " << r.top << L", R " << description.width - r.right << L", B "
                       << description.height - r.bottom << L" px" << dot
-                      << (settings.blackBars.crop ? L"crop on" : L"detect only");
+                      << (!settings.blackBars.crop ? L"detect only"
+                          : cropSuspended          ? L"crop off (video frame)"
+                                                   : L"crop on");
         }
         row(L"Profile") << (contentProfile.empty() ? L"Main" : contentProfile);
         // Which 3D LUT applies: the configured one or the one from the video's folder.
@@ -2017,10 +2029,45 @@ struct PlaceboBackend::State
         RenderProbe::Scope probe(renderProbe, showStatistics.load());
         auto analysisSettings = settings.blackBars;
         analysisSettings.enabled = analysisSettings.enabled || settings.imagePosition != 0;
+        // Crop Black Bars fits the cropped picture like MPC-HC's default video
+        // frame, touch window from inside. Any other frame the player chose
+        // (touch window from outside, stretch, normal size, zoom, pan and scan)
+        // is drawn exactly into its rectangle, without cropping, as other
+        // renderers do. Its rectangle for the whole video tells the frame: the
+        // inside fit of its own shape, or the whole window in the video's shape.
+        bool playerFrame = false;
+        const bool resizing = hostWindowW > 0 && ((targetPending && GetTickCount64() - targetChangedAt < 200) ||
+                                                  target.planes[0].texture->params.w != hostWindowW ||
+                                                  target.planes[0].texture->params.h != hostWindowH);
+        if (windowGeometry && !IsRectEmpty(&targetRect) && rotation % 180 == 0 && resizing)
+            playerFrame = lastPlayerFrame;
+        else if (windowGeometry && !IsRectEmpty(&targetRect) && rotation % 180 == 0)
+        {
+            const float windowW = float(target.planes[0].texture->params.w),
+                        windowH = float(target.planes[0].texture->params.h);
+            const float playerW = float(targetRect.right - targetRect.left),
+                        playerH = float(targetRect.bottom - targetRect.top);
+            const float videoAspect = description.aspectX > 0 && description.aspectY > 0
+                                          ? float(description.aspectX) / float(description.aspectY)
+                                          : float(description.width) / float(description.height);
+            if (targetRect.left == 0 && targetRect.top == 0 && playerW == windowW && playerH == windowH)
+                playerFrame = std::abs(windowW / windowH / videoAspect - 1.f) > .01f;
+            else
+            {
+                // MPC-HC rounds its rectangle to whole pixels.
+                const bool wider = windowW / windowH > playerW / playerH;
+                const float insideW = wider ? windowH * playerW / playerH : windowW,
+                            insideH = wider ? windowH : windowW * playerH / playerW;
+                playerFrame = std::abs(playerW - insideW) > 2.f || std::abs(playerH - insideH) > 2.f;
+            }
+            lastPlayerFrame = playerFrame;
+        }
+        const bool cropWanted = settings.blackBars.enabled && settings.blackBars.crop && !playerFrame;
+        if (windowGeometry)
+            cropSuspended = settings.blackBars.enabled && settings.blackBars.crop && playerFrame;
         // Keep the movie geometry stable while the original subtitle bar is composited.
         const bool relocateSubtitles =
-            (settings.imagePosition || (settings.blackBars.enabled && settings.blackBars.crop)) &&
-            settings.blackBars.keepSubtitles && rotation == 0;
+            (settings.imagePosition || cropWanted) && settings.blackBars.keepSubtitles && rotation == 0;
         pl_frame originalImage = image;
         // The host's source rectangle may trim blank rows from the decoded
         // frame. The caption bar still needs the original bottom padding.
@@ -2037,7 +2084,7 @@ struct PlaceboBackend::State
                                                     : blackBars.detector.Bounds(description.width, description.height);
         const RECT pictureBounds = contentBounds;
         probe.Next(RenderProbe::Setup);
-        const bool autoZoom = settings.blackBars.enabled && settings.blackBars.crop && !blackBars.failed;
+        const bool autoZoom = cropWanted && !blackBars.failed;
         // Text in a bar is shown over the cropped picture. Without that (a
         // rotated picture) protected subtitles keep the bars.
         bool cropBars =
@@ -2172,6 +2219,35 @@ struct PlaceboBackend::State
             float pad = (height - width / aspect) * .5f;
             target.crop.y0 += pad;
             target.crop.y1 -= pad;
+        }
+        if (windowGeometry && TraceEnabled())
+        {
+            char line[320];
+            snprintf(line,
+                     sizeof(line),
+                     "Geometry output %dx%d player %ld,%ld,%ld,%ld crop=%d playerFrame=%d content %.0f,%.0f,%.0f,%.0f "
+                     "-> %.0f,%.0f,%.0f,%.0f",
+                     target.planes[0].texture->params.w,
+                     target.planes[0].texture->params.h,
+                     targetRect.left,
+                     targetRect.top,
+                     targetRect.right,
+                     targetRect.bottom,
+                     autoZoom,
+                     playerFrame,
+                     image.crop.x0,
+                     image.crop.y0,
+                     image.crop.x1,
+                     image.crop.y1,
+                     target.crop.x0,
+                     target.crop.y0,
+                     target.crop.x1,
+                     target.crop.y1);
+            if (tracedGeometry != line)
+            {
+                tracedGeometry = line;
+                Trace("%s", line);
+            }
         }
 
         if (settings.imagePosition)
@@ -3910,11 +3986,25 @@ bool PlaceboBackend::PaintLoadingBackground(HDC dc)
     return FillRect(dc, &client, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH))) != 0;
 }
 
+void PlaceboBackend::SetHostWindowSize(int width, int height)
+{
+    auto& s = *state;
+    std::lock_guard guard(s.lock);
+    s.hostWindowW = width;
+    s.hostWindowH = height;
+    s.targetPending = false;
+}
+
 void PlaceboBackend::SetGeometry(const RECT& source, const RECT& target)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
     s.source = source;
+    if (!EqualRect(&s.targetRect, &target))
+    {
+        s.targetChangedAt = GetTickCount64();
+        s.targetPending = true;
+    }
     s.targetRect = target;
     for (auto& entry : s.history)
     {

@@ -580,8 +580,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
     // Prepare newly exposed parent space before the GPU child grows over it.
     if (GetOwnerWindow())
         VideoBackground::Resize(GetOwnerWindow());
-    if (owner->windowState.load() == State_Running)
-        Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
+    Trace("Host SetWindowPosition state=%d %ld,%ld %ldx%ld", int(owner->windowState.load()), left, top, width, height);
+    owner->backend.SetHostWindowSize(width, height);
     // MPC-BE applies this size to its subtitle buffer right after this call.
     owner->AttachSubtitleDevice();
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
@@ -821,6 +821,7 @@ HRESULT VideoControl::SetTargetRect(RECT* r)
     if (!r)
         return E_POINTER;
     owner->target = *r;
+    Trace("Host destination %ld,%ld,%ld,%ld", r->left, r->top, r->right, r->bottom);
     owner->backend.SetGeometry(owner->source, owner->target);
     return S_OK;
 }
@@ -866,7 +867,12 @@ HRESULT VideoControl::GetSourceRect(RECT* r)
 
 VIDEOINFOHEADER* VideoControl::GetVideoFormat()
 {
-    return &owner->format.basic;
+    // MPC-HC sizes the video frame from IBasicVideo::GetVideoSize. A negative
+    // height (top-down RGB such as screen recordings) made it skip every
+    // destination rectangle after the first one (issue 54).
+    reported = owner->format.basic;
+    reported.bmiHeader.biHeight = std::abs(reported.bmiHeader.biHeight);
+    return &reported;
 }
 
 STDMETHODIMP VideoControl::GetPreferredAspectRatio(long* width, long* height)

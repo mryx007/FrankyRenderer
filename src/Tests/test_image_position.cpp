@@ -72,8 +72,15 @@ int main(int argc, char** argv)
         Require(SUCCEEDED(backend.Upload(frame, input.data(), input.size())), "upload");
     };
     std::vector<uint8_t> pixels;
+    // With crop, the player sends its default video frame (touch window from
+    // inside) for the output size; other frames are drawn without cropping.
+    bool insideFrame = false;
     auto render = [&](int h)
-    { Require(SUCCEEDED(backend.RenderOffscreen(192, h, pixels, false, 8, true)), "GPU render"); };
+    {
+        if (insideFrame)
+            backend.SetGeometry(RECT{}, h == 108 ? RECT{0, 0, 192, 108} : RECT{25, 0, 167, h});
+        Require(SUCCEEDED(backend.RenderOffscreen(192, h, pixels, false, 8, true)), "GPU render");
+    };
     auto green = [&](int x, int y) { return int(pixels[(y * 192 + x) * 4 + 1]); };
     upload(false);
     // The player's zoom fills the scope screen by width, with the encoded
@@ -110,7 +117,7 @@ int main(int argc, char** argv)
     backend.SetGeometry(RECT{0, 0, 192, 105}, RECT{0, 0, 192, 108});
     render(80);
     Require(green(96, 77) < 8, "player source crop must not remove the subtitle bottom margin");
-    backend.SetGeometry(RECT{}, RECT{0, 0, 192, 108});
+    insideFrame = true;
     // Cropping must use the movie bounds, not jump when captions appear.
     settings.blackBars.enabled = TRUE;
     Require(SUCCEEDED(backend.SetSettings(settings)), "enable automatic crop");
@@ -179,6 +186,8 @@ int main(int argc, char** argv)
     settings.blackBars.enabled = FALSE;
     settings.blackBars.keepSubtitles = FALSE;
     Require(SUCCEEDED(backend.SetSettings(settings)), "disable subtitle protection");
+    insideFrame = false;
+    backend.SetGeometry(RECT{}, RECT{0, 0, 192, 108});
     render(80);
     Require(green(20, 72) > 50, "subtitle bar can be disabled");
     // No encoded bars: moving a wide movie in a taller output still works.
@@ -188,6 +197,7 @@ int main(int argc, char** argv)
     frame.color = pl_color_space_bt709;
     input.assign(192 * 76 * 3 / 2, 128);
     std::fill(input.begin(), input.begin() + 192 * 76, uint8_t(110));
+    insideFrame = false;
     backend.SetGeometry(RECT{}, RECT{});
     Require(SUCCEEDED(backend.Upload(frame, input.data(), input.size())), "bar-free upload");
     for (int position : {0, 1, 2})
@@ -197,6 +207,86 @@ int main(int argc, char** argv)
         render(108);
         Require((green(96, 3) > 50) == (position == 2), "bar-free top edge");
         Require((green(96, 104) > 50) == (position == 1), "bar-free bottom edge");
+    }
+    {
+        // MPC-HC's video frame modes with automatic crop: the player sends the
+        // rectangle of the whole 16:9 video; the cropped 32:9 picture follows
+        // its mode (touch window from inside or outside, normal size).
+        PlaceboBackend framed;
+        RenderSettings config;
+        config.peakDetect = config.colorAdjustment = false;
+        config.ditherMethod = 3;
+        config.blackBars.enabled = config.blackBars.crop = TRUE;
+        config.blackBars.keepSubtitles = FALSE;
+        config.blackBars.delay = 0;
+        Require(SUCCEEDED(framed.SetSettings(config)), "video frame settings");
+        VideoFrame video = {};
+        video.width = video.stride = 192;
+        video.height = 108;
+        video.aspectX = 16;
+        video.aspectY = 9;
+        video.color = pl_color_space_bt709;
+        std::vector<uint8_t> letterboxed(192 * 108 * 3 / 2, 128);
+        std::fill(letterboxed.begin(), letterboxed.begin() + 192 * 108, uint8_t(16));
+        for (int y = 27; y < 81; ++y)
+            std::fill_n(letterboxed.begin() + y * 192, 192, uint8_t(110));
+        Require(SUCCEEDED(framed.Upload(video, letterboxed.data(), letterboxed.size())), "letterboxed upload");
+        std::vector<uint8_t> out;
+        auto draw = [&](RECT player, int outputHeight = 300)
+        {
+            framed.SetGeometry(RECT{}, player);
+            Require(SUCCEEDED(framed.RenderOffscreen(400, outputHeight, out, false, 8, true)), "video frame render");
+        };
+        auto picture = [&](int x, int y) { return out[(size_t(y) * 400 + x) * 4 + 1] > 50; };
+        // Touch window from inside in a wide 400x150 window: the 16:9 video's
+        // rectangle is 267x150; the cropped 32:9 picture fills the width.
+        const RECT inside = {67, 0, 334, 150}, outside = {-67, 0, 467, 300}, normal = {104, 96, 296, 204};
+        for (int i = 0; i < 20 && !framed.BlackBars().measured; ++i)
+        {
+            draw(inside, 150);
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        }
+        Require(framed.BlackBars().measured, "letterbox measured");
+        draw(inside, 150);
+        Require(picture(20, 75) && picture(380, 75) && !picture(200, 10) && !picture(200, 140),
+                "touch window from inside crops the bars and fits the picture");
+        // Any other video frame draws the whole video into the player's
+        // rectangle, encoded bars included, as other renderers do.
+        draw(outside);
+        Require(picture(6, 150) && picture(393, 150) && picture(200, 80) && picture(200, 220) && !picture(200, 40) &&
+                    !picture(200, 260),
+                "touch window from outside draws the whole video without cropping");
+        draw(normal);
+        Require(picture(110, 128) && picture(290, 172) && !picture(200, 115) && !picture(200, 185) &&
+                    !picture(95, 150) && !picture(305, 150),
+                "normal size draws the video at the player's size");
+        // Stretch to window: the whole 4:3 window for a 16:9 video.
+        draw(RECT{0, 0, 400, 300});
+        Require(picture(6, 150) && picture(393, 150) && picture(200, 80) && picture(200, 220) && !picture(200, 40) &&
+                    !picture(200, 260),
+                "stretch to window draws the whole video stretched");
+        // The whole window in the video's shape is touching from inside: crop.
+        draw(RECT{0, 0, 400, 225}, 225);
+        Require(picture(200, 112) && !picture(200, 40) && !picture(200, 185),
+                "a whole window in the video's shape keeps cropping");
+        draw(inside, 150);
+        Require(picture(20, 75), "back to touch window from inside crops again");
+        // A player sends its rectangle first, then the window size, and the
+        // drawing area follows with the next present. In between, the new
+        // rectangle does not fit the old area: the decision must stay.
+        framed.SetHostWindowSize(400, 150);
+        draw(inside, 150);
+        framed.SetGeometry(RECT{}, outside);
+        Require(SUCCEEDED(framed.RenderOffscreen(400, 150, out, false, 8, true)), "rectangle before window size");
+        Require(picture(20, 30), "a new rectangle before its window size keeps cropping");
+        framed.SetHostWindowSize(400, 300);
+        Require(SUCCEEDED(framed.RenderOffscreen(400, 150, out, false, 8, true)), "window size before the area");
+        Require(picture(20, 30), "a drawing area of the old size keeps cropping");
+        Require(SUCCEEDED(framed.RenderOffscreen(400, 300, out, false, 8, true)), "area of the new size");
+        Require(picture(200, 80) && picture(200, 220) && !picture(200, 40),
+                "the new size decides: touch window from outside draws the whole video");
+        puts("PASS video frames with Crop Black Bars: inside crops; outside, normal size and stretch use the "
+             "player's rectangle");
     }
     if (argc == 2)
         for (int actualPosition : {2, 0, 1})
