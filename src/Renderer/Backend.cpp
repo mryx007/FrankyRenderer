@@ -1154,7 +1154,8 @@ struct PlaceboBackend::State
             // render cached frames again. Any other change only needs a new
             // sample; libplacebo renders again by itself when its parameters
             // change, and peak detection and Smooth Motion keep their state.
-            if (previous.imageAnalysis != settings.imageAnalysis)
+            const bool hdr10PlusChanged = previous.useHdr10Plus != settings.useHdr10Plus;
+            if (previous.imageAnalysis != settings.imageAnalysis || hdr10PlusChanged)
             {
                 imageAnalysis.Reset();
                 if (renderer)
@@ -1169,7 +1170,7 @@ struct PlaceboBackend::State
                 rtx.Reset();
             else if (previous.rtxSuperResolution != settings.rtxSuperResolution || previous.rtxHdr != settings.rtxHdr ||
                      previous.deinterlacing != settings.deinterlacing ||
-                     previous.chromaUpscaler != settings.chromaUpscaler || scalingChanged)
+                     previous.chromaUpscaler != settings.chromaUpscaler || scalingChanged || hdr10PlusChanged)
                 rtx.Invalidate();
             if (memcmp(&previous.tonal, &settings.tonal, sizeof(settings.tonal)) && renderer)
                 pl_renderer_flush_cache(renderer);
@@ -1481,7 +1482,11 @@ struct PlaceboBackend::State
             const bool dovi = bool(image.repr.dovi),
                        plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
             if (!description.dvSource.present && !dovi)
-                row(L"HDR") << (plus ? L"HDR10+" : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG" : L"HDR10");
+                row(L"HDR") << (plus && settings.useHdr10Plus                    ? L"HDR10+"
+                                : description.color.transfer == PL_COLOR_TRC_HLG ? L"HLG"
+                                                                                 : L"HDR10");
+            if (plus && !settings.useHdr10Plus)
+                row(L"HDR10+") << L"off";
             pl_hdr_metadata measured = {};
             const bool haveMeasured = pl_renderer_get_hdr_metadata(renderer, &measured);
             if ((std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0) || haveMeasured)
@@ -1926,6 +1931,15 @@ struct PlaceboBackend::State
         return outputHdr;
     }
 
+    void ApplyHdr10PlusPreference(pl_color_space& color) const
+    {
+        if (settings.useHdr10Plus)
+            return;
+        auto& hdr = color.hdr;
+        hdr.scene_max[0] = hdr.scene_max[1] = hdr.scene_max[2] = hdr.scene_avg = 0;
+        hdr.ootf = {};
+    }
+
     HRESULT PresentNative(int64_t due, bool timed)
     {
         pl_frame target = {};
@@ -1940,6 +1954,7 @@ struct PlaceboBackend::State
         target.repr.alpha = PL_ALPHA_INDEPENDENT;
         target.color = pl_color_space_hdr10;
         target.color.hdr = image.color.hdr;
+        ApplyHdr10PlusPreference(target.color);
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
         if (presentColorProbe)
             presentColorProbe(target.color);
@@ -1970,6 +1985,35 @@ struct PlaceboBackend::State
 
     bool Render(pl_frame& target, bool hdrOutput = false, bool nativeOutput = false, bool windowGeometry = true)
     {
+        // Keep the decoded metadata for toggling during pause and for frames
+        // held by Smooth Motion. Only the copies being rendered are filtered.
+        struct RestoreHdr10Plus
+        {
+            pl_frame& image;
+            pl_frame* mix;
+            int count;
+            pl_hdr_metadata main;
+            pl_hdr_metadata frames[16];
+
+            ~RestoreHdr10Plus()
+            {
+                if (count < 0)
+                    return;
+                image.color.hdr = main;
+                for (int i = 0; i < count; ++i)
+                    mix[i].color.hdr = frames[i];
+            }
+        } hdrMetadata{image, mixFrames, settings.useHdr10Plus ? -1 : mixCount, image.color.hdr, {}};
+
+        if (!settings.useHdr10Plus)
+        {
+            ApplyHdr10PlusPreference(image.color);
+            for (int i = 0; i < mixCount; ++i)
+            {
+                hdrMetadata.frames[i] = mixFrames[i].color.hdr;
+                ApplyHdr10PlusPreference(mixFrames[i].color);
+            }
+        }
         RenderProbe::Scope probe(renderProbe, showStatistics.load());
         auto analysisSettings = settings.blackBars;
         analysisSettings.enabled = analysisSettings.enabled || settings.imagePosition != 0;
@@ -2514,6 +2558,11 @@ struct PlaceboBackend::State
         };
         pl_color_map_params dynamicMap =
             params.color_map_params ? *params.color_map_params : pl_color_map_default_params;
+        if (!settings.useHdr10Plus && dynamicMap.metadata == PL_HDR_METADATA_HDR10PLUS)
+        {
+            dynamicMap.metadata = PL_HDR_METADATA_HDR10;
+            params.color_map_params = &dynamicMap;
+        }
         // The menu stores Auto (Metadata) as "any"; only a specific type is explicit.
         const char* metadataChoice = settings.colorMapping.values[MappingIndex("tone_map_metadata")];
         const bool explicitMetadata = metadataChoice[0] != 0 && strcmp(metadataChoice, "any") != 0;
@@ -3524,6 +3573,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
     // PQ on 10-bit buffers. Keep SDR signalling fixed; apply the user's peak
     // only to the render target below, after its SDR transfer is established.
     pl_color_space hint = rtxHdr ? pl_color_space_hdr10 : hdr ? s.image.color : pl_color_space_srgb;
+    s.ApplyHdr10PlusPreference(hint);
     if (rtxHdr)
     {
         const float peak = s.DisplayPeak();

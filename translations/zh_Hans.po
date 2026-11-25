@@ -1959,6 +1959,15 @@ msgstr ""
 "关闭时将杜比视界配置文件 7 和 8 作为 HDR10 或 HLG 播放。配置文件 5 始终使用杜"
 "比视界。"
 
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr "使用 HDR10+"
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid "Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr "关闭时忽略动态 HDR10+ 元数据，并保持所选的 HDR 输出模式。"
+
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"

@@ -2609,6 +2609,12 @@ msgstr "Erlaubt die Erweiterung auf einen größeren Bildschirmfarbumfang."
 msgid "Tone Mapping Metadata"
 msgstr "Metadaten für Tone Mapping"
 
+msgid "Use HDR10+"
+msgstr "HDR10+ verwenden"
+
+msgid "Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr "Aus ignoriert dynamische HDR10+-Metadaten und behält den gewählten HDR-Ausgabemodus bei."
+
 #. Setting description (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid ""
 "Default retains automatic Dolby Vision / HDR10+ metadata selection. A manual "

@@ -756,6 +756,10 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                     L"Use Dolby Vision",
                     &s.useDolbyVision,
                     L"Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always uses Dolby Vision."));
+        c.controls.push_back(D2DBool(s,
+                                     L"Use HDR10+",
+                                     &s.useHdr10Plus,
+                                     L"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."));
         auto& d = card(p, L"HDR Peak Detection");
         d.controls.push_back(D2DBool(s, L"Enable Peak Detection", &s.peakDetect));
         d.controls.push_back(D2DBool(s, L"Allow Delayed Peak Detection", &s.allowDelayedPeak));

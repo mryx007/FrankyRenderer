@@ -96,6 +96,7 @@ struct RenderSettings
     bool smoothMotion = false;
     bool rtxSuperResolution = false, rtxHdr = false;
     bool useDolbyVision = true; // statistics: Dolby Vision left out by the setting
+    bool useHdr10Plus = true;
     bool imageAnalysis = false;
     int statisticsTextScale = 100; // statistics text size in percent of the automatic size
     std::optional<ScalingSettings> scaling;

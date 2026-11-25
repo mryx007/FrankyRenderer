@@ -57,6 +57,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(rtxSuperResolution);
     INI_FIELD(rtxHdr);
     INI_FIELD(useDolbyVision);
+    INI_FIELD(useHdr10Plus);
     INI_FIELD(imageAnalysis);
     INI_FIELD(statisticsTextScale);
     INI_FIELD(sharpenStrength);
@@ -383,6 +384,7 @@ inline PlaceboSettings Parse(const std::string& text)
         throw std::runtime_error("Unknown INI setting.");
     for (BOOL flag : {candidate.deband,
                       candidate.useDolbyVision,
+                      candidate.useHdr10Plus,
                       candidate.hdrPassthrough,
                       candidate.autoHdr,
                       candidate.clippingProtection,

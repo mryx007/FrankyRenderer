@@ -59,6 +59,7 @@ int wmain()
         original.blackBars.delay = 3.25f;
         original.blackBars.zoom = 1;
         original.useDolbyVision = FALSE;
+        original.useHdr10Plus = FALSE;
         original.extras.values[0] = .12345679f;
         strcpy_s(original.colorMapping.values[MappingIndex("knee_adaptation")], "0.75");
         auto& scaler = original.scaling.filters[0];
@@ -81,6 +82,8 @@ int wmain()
         Require(restored.statisticsTextScale == 150, "Statistics text size was lost");
         Require(restored.useDolbyVision == FALSE && PlaceboSettings{}.useDolbyVision,
                 "Use Dolby Vision was lost or is not on by default");
+        Require(restored.useHdr10Plus == FALSE && PlaceboSettings{}.useHdr10Plus,
+                "Use HDR10+ was lost or is not on by default");
         Require(restored.presentAhead == 3, "Present in advance was lost");
         Require(restored.displayGammaCurve == 1 && restored.sdrGammaCurve == 235 && restored.displayContrast == 3000 &&
                     restored.displayPrimaries == 4,

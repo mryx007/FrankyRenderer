@@ -182,6 +182,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(rtxSuperResolution),
         FIELD(rtxHdr),
         FIELD(useDolbyVision),
+        FIELD(useHdr10Plus),
         FIELD(imageAnalysis),
         FIELD(statisticsTextScale),
         FIELD(displayModeSwitch),
@@ -348,6 +349,7 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     Bool(key, L"RtxSuperResolution", settings.rtxSuperResolution);
     Bool(key, L"RtxHdr", settings.rtxHdr);
     Bool(key, L"UseDolbyVision", settings.useDolbyVision);
+    Bool(key, L"UseHdr10Plus", settings.useHdr10Plus);
     Bool(key, L"ImageAnalysis", settings.imageAnalysis);
     Bool(key, L"DisplayModeSwitch", settings.displayModeSwitch);
     String(key, L"DisplayModes", settings.displayModes);
@@ -571,7 +573,7 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
         return E_INVALIDARG;
     if ((s.rtxSuperResolution != FALSE && s.rtxSuperResolution != TRUE) || (s.rtxHdr != FALSE && s.rtxHdr != TRUE))
         return E_INVALIDARG;
-    if (s.useDolbyVision != FALSE && s.useDolbyVision != TRUE)
+    if ((s.useDolbyVision != FALSE && s.useDolbyVision != TRUE) || (s.useHdr10Plus != FALSE && s.useHdr10Plus != TRUE))
         return E_INVALIDARG;
     std::vector<DisplayModes::Mode> modes;
     if ((s.displayModeSwitch != FALSE && s.displayModeSwitch != TRUE) || wcsnlen_s(s.displayModes, 256) >= 256 ||
@@ -669,6 +671,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.rtxSuperResolution = !!s.rtxSuperResolution;
     out.rtxHdr = !!s.rtxHdr;
     out.useDolbyVision = !!s.useDolbyVision;
+    out.useHdr10Plus = !!s.useHdr10Plus;
     out.imageAnalysis = !!s.imageAnalysis;
     out.statisticsTextScale = s.statisticsTextScale;
     out.sharpenStrength = s.sharpenStrength;
@@ -808,6 +811,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"RtxSuperResolution", REG_DWORD, &s.rtxSuperResolution, 4);
     save(L"RtxHdr", REG_DWORD, &s.rtxHdr, 4);
     save(L"UseDolbyVision", REG_DWORD, &s.useDolbyVision, 4);
+    save(L"UseHdr10Plus", REG_DWORD, &s.useHdr10Plus, 4);
     save(L"ImageAnalysis", REG_DWORD, &s.imageAnalysis, 4);
     save(L"StatisticsTextScale", REG_DWORD, &s.statisticsTextScale, 4);
     save(L"DisplayModeSwitch", REG_DWORD, &s.displayModeSwitch, 4);
