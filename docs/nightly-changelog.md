@@ -158,5 +158,6 @@
 - Added "Use HDR10+" (HDR > HDR Output): off plays HDR10+ videos as HDR10.
 - Fixed RGB videos such as screen recordings keeping their first size and position in MPC-HC and MPC-BE when the window or video frame changes ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
 - Fixed screen recordings with long gaps between pictures staying black with Smooth Motion on, for example in MPC-BE ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
+- Fixed Dolby Vision videos closing the player with an "Assertion failed" message while shaders were being prepared.
 - Fixed MPC-HC and MPC-BE video frames other than "Touch Window From Inside" (from outside, stretch, normal size, zoom) having no effect with Crop Black Bars; they now show the whole video.
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

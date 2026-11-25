@@ -203,6 +203,40 @@ int main()
                 pl_cache cache = pl_cache_create(&cacheParams);
                 Require(pl_cache_load(cache, job.cache.data(), job.cache.size()) > 0, "its cache can be loaded");
                 pl_cache_destroy(&cache);
+                // A Dolby Vision picture: the worker runs after the picture and
+                // its metadata are gone. libplacebo read the freed metadata and
+                // stopped on "comp->num_pivots >= 2 && comp->num_pivots <= 9".
+                ShaderWarmupJob dv;
+                dv.id = id;
+                dv.adapter = adapterDesc.AdapterLuid;
+                DescribeWarmupVideo(dv, 320, 180);
+                dv.planes = {{"r16", 320, 180, 1, {PL_CHANNEL_Y}},
+                             {"rg16", 160, 90, 2, {PL_CHANNEL_CB, PL_CHANNEL_CR}}};
+                auto picture = std::make_unique<pl_dovi_metadata>();
+                picture->nonlinear = picture->linear = pl_matrix3x3_identity;
+                for (auto& comp : picture->comp)
+                {
+                    comp.num_pivots = 2;
+                    comp.pivots[1] = 1023.f / 1024.f;
+                    comp.poly_coeffs[0][1] = 1.f;
+                }
+                dv.sourceRepr = pl_color_repr_uhdtv;
+                dv.sourceRepr.sys = PL_COLOR_SYSTEM_DOLBYVISION;
+                dv.sourceRepr.dovi = picture.get();
+                dv.sourceColor = pl_color_space_hdr10;
+                KeepDoviMetadata(dv.sourceRepr, dv.sourceDovi);
+                // The picture moves on: its metadata change, then go.
+                for (auto& comp : picture->comp)
+                    comp.num_pivots = 200;
+                picture.reset();
+                Require(dv.sourceRepr.dovi && dv.sourceRepr.dovi->comp[0].num_pivots == 2,
+                        "the job keeps its own Dolby Vision metadata");
+                Require(WarmUpShader(dv), "a worker device prepares the shader for a Dolby Vision picture");
+                pl_color_repr plain = pl_color_repr_sdtv;
+                std::shared_ptr<const pl_dovi_metadata> none;
+                KeepDoviMetadata(plain, none);
+                Require(!plain.dovi && !none, "a picture without Dolby Vision keeps none");
+                puts("PASS shader warm-up keeps its own Dolby Vision metadata");
             }
             // A chain from a package runs as one shader.
             std::filesystem::create_directories(folder / L"shaders");

@@ -24,6 +24,16 @@
 // debanding and frame mixing, the plane formats, the shader's own parameter
 // values), so the worker renders the playing setup: otherwise the playing
 // device compiles the shader again once it becomes active (ArtCNN: 15 s).
+// A colour representation can point to Dolby Vision metadata owned by the
+// picture. The worker uses it long after that picture is gone, so a job keeps
+// its own copy and points the representation there (libplacebo read freed
+// metadata otherwise and stopped on an assertion).
+inline void KeepDoviMetadata(pl_color_repr& repr, std::shared_ptr<const pl_dovi_metadata>& owned)
+{
+    owned = repr.dovi ? std::make_shared<const pl_dovi_metadata>(*repr.dovi) : nullptr;
+    repr.dovi = owned.get();
+}
+
 struct ShaderWarmupPlane
 {
     std::string format;
@@ -42,6 +52,8 @@ struct ShaderWarmupJob
     std::string options;
     std::vector<ShaderWarmupPlane> planes;
     pl_color_repr sourceRepr = pl_color_repr_sdtv, targetRepr = pl_color_repr_rgb;
+    // Owners of the Dolby Vision metadata the representations point to (KeepDoviMetadata).
+    std::shared_ptr<const pl_dovi_metadata> sourceDovi, targetDovi;
     pl_color_space sourceColor = pl_color_space_bt709, targetColor = pl_color_space_srgb;
     std::string targetFormat = "rgba8";
     int targetComponents = 4, targetMapping[4] = {0, 1, 2, 3};
@@ -56,6 +68,7 @@ struct ShaderWarmupJob
     {
         std::vector<ShaderWarmupPlane> sources, targets;
         pl_color_repr sourceRepr = pl_color_repr_sdtv, targetRepr = pl_color_repr_rgb;
+        std::shared_ptr<const pl_dovi_metadata> sourceDovi, targetDovi;
         pl_color_space sourceColor = pl_color_space_bt709, targetColor = pl_color_space_bt709;
         pl_rect2df sourceCrop = {}, targetCrop = {};
         pl_field field = PL_FIELD_NONE;
@@ -120,10 +133,12 @@ inline ShaderWarmupJob::Conversion DescribeWarmupConversion(const RtxScaling::Co
         described.targets.push_back(p);
     }
     described.sourceRepr = source.repr;
+    KeepDoviMetadata(described.sourceRepr, described.sourceDovi);
     described.sourceColor = source.color;
     described.sourceCrop = source.crop;
     described.field = source.field;
     described.targetRepr = prepared.repr;
+    KeepDoviMetadata(described.targetRepr, described.targetDovi);
     described.targetColor = prepared.color;
     described.targetCrop = prepared.crop;
     if (!complete)

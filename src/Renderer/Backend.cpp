@@ -193,8 +193,10 @@ struct PlaceboBackend::State
             job->options = saved;
             job->planes = described;
             job->sourceRepr = picture.repr;
+            KeepDoviMetadata(job->sourceRepr, job->sourceDovi);
             job->sourceColor = picture.color;
             job->targetRepr = output.repr;
+            KeepDoviMetadata(job->targetRepr, job->targetDovi);
             job->targetColor = output.color;
             job->targetFormat = output.planes[0].texture->params.format->name;
             job->targetComponents = output.planes[0].components;
