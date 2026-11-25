@@ -2118,6 +2118,18 @@ msgstr ""
 "Aus spielt Dolby Vision Profil 7 und 8 als HDR10 oder HLG ab. Profil 5 nutzt "
 "immer Dolby Vision."
 
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr "HDR10+ verwenden"
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr ""
+"Aus ignoriert dynamische HDR10+-Metadaten und behält den gewählten HDR-"
+"Ausgabemodus bei."
+
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"
@@ -2608,12 +2620,6 @@ msgstr "Erlaubt die Erweiterung auf einen größeren Bildschirmfarbumfang."
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping Metadata"
 msgstr "Metadaten für Tone Mapping"
-
-msgid "Use HDR10+"
-msgstr "HDR10+ verwenden"
-
-msgid "Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
-msgstr "Aus ignoriert dynamische HDR10+-Metadaten und behält den gewählten HDR-Ausgabemodus bei."
 
 #. Setting description (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid ""
