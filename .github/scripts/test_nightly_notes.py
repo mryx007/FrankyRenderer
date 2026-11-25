@@ -10,6 +10,13 @@ class NightlyNotesTest(unittest.TestCase):
         current = "- Fixed one.\n- Added two.<br><img src=b>\n- Fixed three.\n"
         self.assertEqual(nightly_notes.new_entries(current, previous), "- Fixed three.")
 
+    def test_unreleased_entries_stay(self):
+        released = "- Fixed one.\n- Added two.<br><img src=a>\n"
+        current = "- Fixed one.\n- Added two.<br><img src=b>\n- Fixed three.\n- Added four.\n"
+        self.assertEqual(nightly_notes.unreleased(current, released), "- Fixed three.\n- Added four.\n")
+        self.assertEqual(nightly_notes.unreleased(released, released), "")
+        self.assertEqual(nightly_notes.unreleased(current, ""), current)
+
     def test_stable_marker(self):
         sha = "38646bc7e5" + "0" * 30
         self.assertEqual(nightly_notes.promoted_commit('{"source_commit": "%s", "version": "1.2"}' % sha), sha)

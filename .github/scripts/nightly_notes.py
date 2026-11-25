@@ -1,4 +1,4 @@
-"""Show only new Nightly entries; keep the cumulative list for stable releases."""
+"""Show only new Nightly entries; the changelog collects the entries since the last stable release."""
 import json
 import os
 from pathlib import Path
@@ -19,6 +19,14 @@ def key(entry):
 def new_entries(current, previous):
     old = {key(line) for line in entries(previous)}
     return "\n".join(line for line in entries(current) if key(line) not in old)
+
+
+def unreleased(current, released):
+    """The changelog without the entries a stable release already contains."""
+    old = {key(line) for line in entries(released)}
+    lines = [line for line in current.splitlines()
+             if not (line.strip().startswith("- ") and key(line.strip()) in old)]
+    return "\n".join(lines).strip("\n") + "\n" if lines else ""
 
 
 def promoted_commit(marker):
@@ -46,7 +54,8 @@ def main():
     sha = os.environ["GITHUB_SHA"]
     build = os.environ["BUILD_ID"]
     current = Path("docs/nightly-changelog.md").read_text(encoding="utf-8")
-    if not entries(current):
+    # Empty right after a stable release removed the released entries.
+    if current.strip() and not entries(current):
         raise ValueError("The cumulative changelog must contain concise bullet entries")
     result = subprocess.run(["gh", "api", f"repos/{repository}/releases/latest"],
                             capture_output=True, text=True, encoding="utf-8")
@@ -74,5 +83,16 @@ def main():
     Path("nightly-notes.md").write_text(body, encoding="utf-8")
 
 
+def trim(released_path):
+    """After a stable release: remove its entries from docs/nightly-changelog.md."""
+    path = Path("docs/nightly-changelog.md")
+    released = Path(released_path).read_text(encoding="utf-8")
+    path.write_text(unreleased(path.read_text(encoding="utf-8"), released), encoding="utf-8", newline="\n")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) == 3 and sys.argv[1] == "--trim":
+        trim(sys.argv[2])
+    else:
+        main()

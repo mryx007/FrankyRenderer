@@ -5,7 +5,9 @@ name: Remove Nightlies after stable release
 # its tag. The stable repository's token cannot write here, so this repository
 # checks the public stable release itself.
 # It also sets the source version to the stable version, which the next release
-# expects. That commit is pushed with this workflow's token, which never starts
+# expects, and removes the entries that release contains from
+# docs/nightly-changelog.md, so the changelog lists what came after it. That
+# commit is pushed with this workflow's token, which never starts
 # other workflows, so no new Nightly is built for it.
 on:
   workflow_dispatch:
@@ -39,7 +41,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
-      - name: Set the source version to the stable version
+          fetch-depth: 0
+      - name: Set the source version and remove released changelog entries
         shell: bash
         run: |
           set -euo pipefail
@@ -61,12 +64,23 @@ jobs:
             echo "Could not set all four version fields in $rc"
             exit 1
           fi
-          if git diff --quiet -- "$rc"; then
-            echo "Source version is already $version"
+          # The changelog the stable release was built from (its promoted Nightly commit).
+          promoted=$(gh api -H "Accept: application/vnd.github.raw" \
+            repos/mryx007/FrankyRenderer/contents/.github/last-promoted-nightly.json |
+            python -c "import json, sys; print(json.load(sys.stdin)['source_commit'])")
+          if ! [[ "$promoted" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unexpected promoted commit: $promoted"
+            exit 1
+          fi
+          git show "$promoted:docs/nightly-changelog.md" > "$RUNNER_TEMP/released-changelog.md"
+          python .github/scripts/nightly_notes.py --trim "$RUNNER_TEMP/released-changelog.md"
+          changelog=docs/nightly-changelog.md
+          if git diff --quiet -- "$rc" "$changelog"; then
+            echo "Source version is already $version and the changelog holds no released entries"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Set source version to $version after the stable release [skip actions]" -- "$rc"
+          git commit -m "Set source version to $version and remove its entries from the changelog after the stable release [skip actions]" -- "$rc" "$changelog"
           git push origin HEAD:main
-          echo "Source version set to $version"
+          echo "Source version set to $version; changelog lists the changes after it"
