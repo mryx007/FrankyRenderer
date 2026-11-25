@@ -5,6 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
+"PO-Revision-Date: 2026-11-25 14:37+0000\n"
 "Last-Translator: Hack茶ん <hackjjang@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Korean <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/ko/>\n"
@@ -13,7 +14,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"PO-Revision-Date: 2026-11-25 14:37+0000\n"
 "X-Generator: Weblate 2026.12.dev0\n"
 
 #. Category
@@ -51,8 +51,8 @@ msgid ""
 "Precision of the final output texture. Auto: 8-bit when the display receives "
 "8 bits, otherwise 10-bit."
 msgstr ""
-"최종 출력 텍스처의 정밀도. 자동 : 디스플레이가 8비트를 수신하면 8비트로, "
-"그렇지 않으면 10비트를 사용합니다."
+"최종 출력 텍스처의 정밀도. 자동 : 디스플레이가 8비트를 수신하면 8비트로, 그렇"
+"지 않으면 10비트를 사용합니다."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
@@ -105,7 +105,8 @@ msgstr "디더링 대상 비트 심도"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
-msgstr "실제 출력 정밀도에 맞춰 디더링; '자동(Auto)' 설정 시, 출력 텍스처를 따릅니다."
+msgstr ""
+"실제 출력 정밀도에 맞춰 디더링; '자동(Auto)' 설정 시, 출력 텍스처를 따릅니다."
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
@@ -167,8 +168,8 @@ msgid ""
 "Waveform, histogram, RGB parade, false color and gray ramp, before or after "
 "color mapping, without subtitles."
 msgstr ""
-"파형, 히스토그램, RGB 퍼레이드, 가색상 및 회색조 변화를 색상 매핑 전후에 "
-"자막 없이 보여줍니다."
+"파형, 히스토그램, RGB 퍼레이드, 가색상 및 회색조 변화를 색상 매핑 전후에 자"
+"막 없이 보여줍니다."
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
@@ -190,8 +191,8 @@ msgid ""
 "fullscreen and restores it when leaving fullscreen or stopping."
 msgstr ""
 "전체 화면 모드에서 비디오 프레임 속도에 맞춰 디스플레이 모드를 목록에 표시된 "
-"모드로 전환하고, 전체 화면 모드를 종료하거나 재생을 중지하면 원래 모드로 "
-"복원합니다."
+"모드로 전환하고, 전체 화면 모드를 종료하거나 재생을 중지하면 원래 모드로 복원"
+"합니다."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
@@ -203,8 +204,8 @@ msgid ""
 "Uses the listed mode whose refresh rate is the lowest whole multiple of the "
 "frame rate. Only for this display."
 msgstr ""
-"명시된 모드 중 프레임 속도의 정수 배수 중 가장 작은 새로 고침 빈도를 "
-"사용하는 모드를 사용합니다. 이 디스플레이에만 적용됩니다."
+"명시된 모드 중 프레임 속도의 정수 배수 중 가장 작은 새로 고침 빈도를 사용하"
+"는 모드를 사용합니다. 이 디스플레이에만 적용됩니다."
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
@@ -227,8 +228,8 @@ msgid ""
 "Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, "
 "60."
 msgstr ""
-"2160p23, 2160p24, 2160p50, 2160p60과 같은 디스플레이 모드를 입력하거나, "
-"간단히 23, 24, 60을 입력하세요."
+"2160p23, 2160p24, 2160p50, 2160p60과 같은 디스플레이 모드를 입력하거나, 간단"
+"히 23, 24, 60을 입력하세요."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
@@ -252,7 +253,8 @@ msgstr "빨강 배경"
 #. Setting description (General > Background & Transparency > Background Red)
 msgid ""
 "Red channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
-msgstr "빨강 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
+msgstr ""
+"빨강 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -263,7 +265,8 @@ msgstr "초록 배경"
 msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
-msgstr "초록 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
+msgstr ""
+"초록 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -273,7 +276,8 @@ msgstr "파랑 배경"
 #. Setting description (General > Background & Transparency > Background Blue)
 msgid ""
 "Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
-msgstr "파랑 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
+msgstr ""
+"파랑 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -285,8 +289,8 @@ msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
-"0은 불투명, 1은 투명입니다. 변경 사항은 윈도 바탕 화면/창의 투명도가 아닌, "
-"렌더링된 알파 값에 적용됩니다."
+"0은 불투명, 1은 투명입니다. 변경 사항은 윈도 바탕 화면/창의 투명도가 아닌, 렌"
+"더링된 알파 값에 적용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -342,8 +346,8 @@ msgid ""
 "Composite transparent image regions onto a checkerboard. Default is Off. "
 "Tile colors do not recolor opaque video."
 msgstr ""
-"투명한 이미지 영역을 체크무늬 배경 위에 합성합니다. 기본값은 '끔'입니다. "
-"체크무늬 색상은 불투명한 영상의 색상에 영향을 주지 않습니다."
+"투명한 이미지 영역을 체크무늬 배경 위에 합성합니다. 기본값은 '끔'입니다. 체크"
+"무늬 색상은 불투명한 영상의 색상에 영향을 주지 않습니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -354,8 +358,8 @@ msgstr "밝은 빨강 타일"
 msgid ""
 "Red channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"밝은 체크무늬 타일의 빨강 채널입니다. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"밝은 체크무늬 타일의 빨강 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -366,8 +370,8 @@ msgstr "밝은 초록 타일"
 msgid ""
 "Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"밝은 체크무늬 타일의 초록 채널입니다. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"밝은 체크무늬 타일의 초록 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -378,8 +382,8 @@ msgstr "밝은 파랑 타일"
 msgid ""
 "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"밝은 체크무늬 타일의 블루 채널입니다. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"밝은 체크무늬 타일의 블루 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -390,8 +394,8 @@ msgstr "어두운 빨강 타일"
 msgid ""
 "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"어두운 체크무늬 타일의 빨강 채널입니. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"어두운 체크무늬 타일의 빨강 채널입니. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -402,8 +406,8 @@ msgstr "어두운 초록 타일"
 msgid ""
 "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"어두운 체크무늬 타일의 초 채널입니다. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"어두운 체크무늬 타일의 초 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -414,8 +418,8 @@ msgstr "어두운 파랑 타일"
 msgid ""
 "Blue channel of the dark checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
-"어두운 체크무늬 타일의 파랑 채널입니. 타일 배경과 혼합 기능과 함께 "
-"사용됩니다."
+"어두운 체크무늬 타일의 파랑 채널입니. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
@@ -529,8 +533,8 @@ msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
 msgstr ""
-"이 설정 창의 언어입니다. 자동으로 설정하면 Windows 설정을 따르며, 번역이 "
-"제공되지 않은 항목은 영어로 표시됩니다."
+"이 설정 창의 언어입니다. 자동으로 설정하면 Windows 설정을 따르며, 번역이 제공"
+"되지 않은 항목은 영어로 표시됩니다."
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
@@ -594,8 +598,8 @@ msgstr "반복"
 #. Setting description (Processing > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
 msgstr ""
-"반복 횟수가 많아질수록 밴딩 현상이 심해지지만, 세부적인 부분이 손실될 수 "
-"있습니다."
+"반복 횟수가 많아질수록 밴딩 현상이 심해지지만, 세부적인 부분이 손실될 수 있습"
+"니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
@@ -647,7 +651,8 @@ msgstr "강도"
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
-msgstr "적응형 선명화의 정도입니다. 0으로 설정하면 선명화 효과가 비활성화됩니다."
+msgstr ""
+"적응형 선명화의 정도입니다. 0으로 설정하면 선명화 효과가 비활성화됩니다."
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
@@ -684,8 +689,8 @@ msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
-"자동으로 소스 플래그를 따릅니다. 인터레이스 모션의 필드 순서가 잘못된 "
-"경우에만 다시 정의하십시오."
+"자동으로 소스 플래그를 따릅니다. 인터레이스 모션의 필드 순서가 잘못된 경우에"
+"만 다시 정의하십시오."
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Setting name (Shortcuts > )
@@ -712,8 +717,8 @@ msgid ""
 "Error diffusion costs more GPU time. Large kernels fall back to Blue Noise "
 "at high resolutions."
 msgstr ""
-"오류 확산은 더 많은 GPU 시간을 소모합니다. 커널 크기가 클 경우, "
-"고해상도에서는 블루 노이즈 방식으로 전환됩니다."
+"오류 확산은 더 많은 GPU 시간을 소모합니다. 커널 크기가 클 경우, 고해상도에서"
+"는 블루 노이즈 방식으로 전환됩니다."
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
@@ -804,8 +809,8 @@ msgid ""
 "Aligns the image to the top or bottom. With Protect Burned-in Subtitles, "
 "subtitles in the bars stay visible."
 msgstr ""
-"이미지를 상단이나 하단에 정렬합니다. 자막 보호 기능을 사용하면 자막 막대에 "
-"자막이 계속 표시됩니다."
+"이미지를 상단이나 하단에 정렬합니다. 자막 보호 기능을 사용하면 자막 막대에 자"
+"막이 계속 표시됩니다."
 
 #. Choice (Processing > Detection & Zoom > Vertical Image Position)
 #. Setting name (Shortcuts > )
@@ -839,7 +844,8 @@ msgstr "검은 여백 잘라내기"
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
-msgstr "이미지를 맞추거나 확대하기 전에 활성 이미지에서 감지된 막대를 제거하십시오."
+msgstr ""
+"이미지를 맞추거나 확대하기 전에 활성 이미지에서 감지된 막대를 제거하십시오."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
@@ -880,7 +886,8 @@ msgstr "검은 임계점"
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
-msgstr "검출된 막대의 최대 밝기를 디코딩된 SDR 백색의 백분율로 나타낸 값입니다."
+msgstr ""
+"검출된 막대의 최대 밝기를 디코딩된 SDR 백색의 백분율로 나타낸 값입니다."
 
 #. Category
 #. Category heading
@@ -1004,8 +1011,8 @@ msgid ""
 "Filter the image when reducing video size. Custom copies the selected filter "
 "for editing."
 msgstr ""
-"영상 크기를 줄일 때, 이미지에 필터를 적용합니다. 사용자 지정은 편집을 위해 "
-"선택한 필터를 복사합니다."
+"영상 크기를 줄일 때, 이미지에 필터를 적용합니다. 사용자 지정은 편집을 위해 선"
+"택한 필터를 복사합니다."
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 msgid "Use the same filter as specified for upscaler"
@@ -1043,7 +1050,8 @@ msgstr "평면 업스케일러(크로마/알파)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
-msgstr "이미지 크기 조정 전에 서브샘플링된 크로마 또는 알파 평면을 다시 구성합니다."
+msgstr ""
+"이미지 크기 조정 전에 서브샘플링된 크로마 또는 알파 평면을 다시 구성합니다."
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -1135,9 +1143,9 @@ msgid ""
 "Pictures handed to the display ahead of time. More absorbs render peaks but "
 "adds latency. Automatic adds more only after late pictures."
 msgstr ""
-"이미지는 미리 디스플레이로 전달됩니다. 더 많은 이미지를 처리하면 렌더링 "
-"피크를 흡수하지만 지연 시간이 추가됩니다. 자동 모드는 나중에 처리된 이미지 "
-"이후에만 이미지를 추가합니다."
+"이미지는 미리 디스플레이로 전달됩니다. 더 많은 이미지를 처리하면 렌더링 피크"
+"를 흡수하지만 지연 시간이 추가됩니다. 자동 모드는 나중에 처리된 이미지 이후에"
+"만 이미지를 추가합니다."
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
@@ -1175,8 +1183,8 @@ msgid ""
 "Shows a whole picture instead of a blend when the other would cover less "
 "than this share of a refresh. Fewer double edges; 0 always blends."
 msgstr ""
-"새로 고침의 일부만 보여줄 때, 다른 방식이 전체 그림을 보여주는 대신 일부만 "
-"보여줍니다. 이중 모서리가 적고; 0은 항상 일부만 보여줍니다."
+"새로 고침의 일부만 보여줄 때, 다른 방식이 전체 그림을 보여주는 대신 일부만 보"
+"여줍니다. 이중 모서리가 적고; 0은 항상 일부만 보여줍니다."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
@@ -1188,8 +1196,8 @@ msgid ""
 "Faster downscaling without anti-aliasing. Can cause moire and jagged edges. "
 "Default: Off."
 msgstr ""
-"안티에일리어싱을 적용하지 않아 더 빠르게 다운스케일링을 수행합니다. 모아레 "
-"현상이나 계단 현상이 발생할 수 있습니다. 기본값 : 끔."
+"안티에일리어싱을 적용하지 않아 더 빠르게 다운스케일링을 수행합니다. 모아레 현"
+"상이나 계단 현상이 발생할 수 있습니다. 기본값 : 끔."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
@@ -1201,8 +1209,8 @@ msgid ""
 "Reuses mixed frames after resizing or setting changes. Smoother transitions, "
 "but briefly older quality. Default: Off."
 msgstr ""
-"크기 조정이나 설정 변경 후 혼합 프레임을 다시 사용합니다. 전환은 더 "
-"부드러워지지만, 잠시 동안 이전 품질이 나타날 수 있습니다. 기본값 : 끔."
+"크기 조정이나 설정 변경 후 혼합 프레임을 다시 사용합니다. 전환은 더 부드러워"
+"지지만, 잠시 동안 이전 품질이 나타날 수 있습니다. 기본값 : 끔."
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
@@ -1213,16 +1221,16 @@ msgstr "초고해상도 개선"
 #. Section description (Scaling > RTX Video Super Resolution)
 msgid "Enable Super Resolution in the NVIDIA app first. Quality is set there."
 msgstr ""
-"먼저 엔비디아 앱에서 초고해상도 기능을 활성화하세요. 화질 설정은 해당 "
-"항목에서 조정할 수 있습니다."
+"먼저 엔비디아 앱에서 초고해상도 기능을 활성화하세요. 화질 설정은 해당 항목에"
+"서 조정할 수 있습니다."
 
 #. Setting description (Scaling > RTX Video Super Resolution > RTX Video Super Resolution)
 msgid ""
 "Request AI upscaling through the NVIDIA driver. Requires Super Resolution "
 "enabled in the NVIDIA app."
 msgstr ""
-"엔비디아 드라이버를 통해 AI 업스케일링을 요청합니다. 엔비디아 앱에서 "
-"초고해상도 기능을 활성화해야 합니다."
+"엔비디아 드라이버를 통해 AI 업스케일링을 요청합니다. 엔비디아 앱에서 초고해상"
+"도 기능을 활성화해야 합니다."
 
 #. Section heading (Scaling)
 msgid "Custom Filter Role"
@@ -1270,8 +1278,8 @@ msgid ""
 "Base preset for this custom filter. Its values are inherited until you "
 "change a parameter."
 msgstr ""
-"이 커스텀 필터의 기본 사전 설정입니다. 매개변수를 변경하기 전까지는 해당 "
-"설정값이 그대로 유지됩니다."
+"이 커스텀 필터의 기본 사전 설정입니다. 매개변수를 변경하기 전까지는 해당 설정"
+"값이 그대로 유지됩니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1296,8 +1304,8 @@ msgstr "창"
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window)
 msgid "Window applied to the kernel. Auto inherits it; None removes windowing."
 msgstr ""
-"커널에 창가 적용됩니다. 자동으로 설정하면 자동으로 상속되며, 없음으로 "
-"설정하면 창가 제거됩니다."
+"커널에 창가 적용됩니다. 자동으로 설정하면 자동으로 상속되며, 없음으로 설정하"
+"면 창가 제거됩니다."
 
 #. Setting description (Scaling > Custom: Image Upscaler > Radius)
 #. Setting description (Scaling > Custom: Image Downscaler > Radius)
@@ -1306,8 +1314,8 @@ msgid ""
 "Kernel support radius. Available only for resizable kernels; larger radii "
 "sample more pixels."
 msgstr ""
-"커널 지원 반경. 크기 조절이 가능한 커널에서만 사용할 수 있으며, 반경이 "
-"클수록 더 많은 픽셀을 샘플링합니다."
+"커널 지원 반경. 크기 조절이 가능한 커널에서만 사용할 수 있으며, 반경이 클수"
+"록 더 많은 픽셀을 샘플링합니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1338,8 +1346,8 @@ msgid ""
 "Filter width multiplier. Below 1 sharpens, above 1 softens; 0 uses the "
 "filter default."
 msgstr ""
-"필터 너비 배수입니다. 1보다 낮으면 선명해지고, 1보다 높으면 부드러워집니다. "
-"0으로 설정하면 필터 기본값이 적용됩니다."
+"필터 너비 배수입니다. 1보다 낮으면 선명해지고, 1보다 높으면 부드러워집니다. 0"
+"으로 설정하면 필터 기본값이 적용됩니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1365,7 +1373,8 @@ msgstr "링잉 방지"
 msgid ""
 "Suppress overshoot for this filter. Zero inherits the global anti-ringing "
 "strength."
-msgstr "이 필터의 오버슈트를 억제합니다. 제로는 전역 링잉 방지 기능을 계승합니다."
+msgstr ""
+"이 필터의 오버슈트를 억제합니다. 제로는 전역 링잉 방지 기능을 계승합니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
@@ -1442,7 +1451,8 @@ msgstr "폴라(EWA)"
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Polar (EWA))
 msgid ""
 "Use a two-dimensional EWA filter. Frame mixers always remain one-dimensional."
-msgstr "2차원 EWA 필터를 사용하십시오. 프레임 믹서는 항상 1차원 상태를 유지합니다."
+msgstr ""
+"2차원 EWA 필터를 사용하십시오. 프레임 믹서는 항상 1차원 상태를 유지합니다."
 
 #. Choice (Scaling > Custom: Image Upscaler > Polar (EWA))
 #. Choice (Scaling > Custom: Image Downscaler > Polar (EWA))
@@ -1500,8 +1510,8 @@ msgid ""
 "Enable the picture controls in this section. Neutral values preserve the "
 "original image."
 msgstr ""
-"이 섹션에서 화면 제어 기능을 활성화하세요. 중립적인 값은 원본 이미지를 "
-"유지합니다."
+"이 섹션에서 화면 제어 기능을 활성화하세요. 중립적인 값은 원본 이미지를 유지합"
+"니다."
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
@@ -1564,8 +1574,8 @@ msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
 msgstr ""
-"화이트 밸런스를 따뜻한 색에서 중립적인 색으로 조정하세요. 6500K는 원래의 "
-"화이트 밸런스를 유지합니다."
+"화이트 밸런스를 따뜻한 색에서 중립적인 색으로 조정하세요. 6500K는 원래의 화이"
+"트 밸런스를 유지합니다."
 
 #. Section heading (Color)
 #. Section heading (Profiles)
@@ -1583,8 +1593,8 @@ msgid ""
 "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
 "looking oversaturated."
 msgstr ""
-"P3-D65와 같은 와이드 색역 디스플레이를 네이티브 모드로 사용할 때, 색상이 "
-"지나치게 채도가 높아 보이는 현상을 방지합니다."
+"P3-D65와 같은 와이드 색역 디스플레이를 네이티브 모드로 사용할 때, 색상이 지나"
+"치게 채도가 높아 보이는 현상을 방지합니다."
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
@@ -1661,8 +1671,8 @@ msgstr "SDR 감마 처리"
 msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr ""
-"끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 "
-"디스플레이상에서 이와 같은 감마 특성을 보이게 됩니다."
+"끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 디스플레이상"
+"에서 이와 같은 감마 특성을 보이게 됩니다."
 
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
@@ -1677,8 +1687,8 @@ msgstr "ICC 프로필 파일"
 msgid ""
 "Select the display's ICC or ICM color profile before enabling ICC correction."
 msgstr ""
-"ICC 보정을 활성화하기 전에 디스플레이의 ICC 또는 ICM 색상 프로필을 "
-"선택하십시오."
+"ICC 보정을 활성화하기 전에 디스플레이의 ICC 또는 ICM 색상 프로필을 선택하십시"
+"오."
 
 #. Button (Color > ICC Profile > ICC Profile File)
 #. Button (Color > 3D LUT > LUT File)
@@ -1748,8 +1758,8 @@ msgid ""
 "the folder's only one. Otherwise the LUT above."
 msgstr ""
 "영상 파일 옆에 있는 .cube 파일을 사용합니다. 영상 파일과 이름이 같은 파일을 "
-"우선적으로 선택하며, 그런 파일이 없다면 해당 폴더 내에 유일하게 존재하는 "
-".cube 파일을 사용합니다. 그마저도 없다면 위쪽에 지정된 LUT를 사용합니다."
+"우선적으로 선택하며, 그런 파일이 없다면 해당 폴더 내에 유일하게 존재하"
+"는 .cube 파일을 사용합니다. 그마저도 없다면 위쪽에 지정된 LUT를 사용합니다."
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
@@ -1762,9 +1772,9 @@ msgid ""
 "Conversion replaces color conversion, tone mapping and ICC. Must match the "
 "LUT."
 msgstr ""
-"기본 설정은 SDR 캘리브레이션 LUT를 유지합니다. 정규화는 선형 RGB를 "
-"사용합니다. 변환은 색상 변환, 톤 매핑 및 ICC를 대체합니다. 이때 사용하는 "
-"LUT는 해당 설정과 일치해야 합니다."
+"기본 설정은 SDR 캘리브레이션 LUT를 유지합니다. 정규화는 선형 RGB를 사용합니"
+"다. 변환은 색상 변환, 톤 매핑 및 ICC를 대체합니다. 이때 사용하는 LUT는 해당 "
+"설정과 일치해야 합니다."
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
@@ -1832,9 +1842,9 @@ msgid ""
 "Pass HDR to the display; keep HDR but roll off highlights above the "
 "display's peak, for screens without own tone mapping; or tone map to SDR."
 msgstr ""
-"HDR 신호를 디스플레이로 그대로 전송하거나, 자체 톤 매핑 기능이 없는 "
-"디스플레이의 경우 HDR을 유지하되 디스플레이의 피크 값을 초과하는 하이라이트 "
-"영역은 부드럽게 줄이거나, SDR로 톤 매핑합니다."
+"HDR 신호를 디스플레이로 그대로 전송하거나, 자체 톤 매핑 기능이 없는 디스플레"
+"이의 경우 HDR을 유지하되 디스플레이의 피크 값을 초과하는 하이라이트 영역은 부"
+"드럽게 줄이거나, SDR로 톤 매핑합니다."
 
 #. Choice (HDR > HDR Output > HDR Mode)
 #. Setting name (Shortcuts > )
@@ -1858,7 +1868,8 @@ msgstr "윈도 HDR 전환"
 
 #. Setting description (HDR > HDR Output > Switch Windows HDR)
 msgid "Turns Windows HDR on or off for playback and restores it afterwards."
-msgstr "재생을 위해 윈도 HDR을 켜거나 끄고, 재생이 끝나면 원래 상태로 되돌립니다."
+msgstr ""
+"재생을 위해 윈도 HDR을 켜거나 끄고, 재생이 끝나면 원래 상태로 되돌립니다."
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
@@ -1895,8 +1906,8 @@ msgid ""
 "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
 "reports; on some laptops it follows brightness."
 msgstr ""
-"톤 맵 HDR의 최대 밝기(니트 단위)를 표시합니다. 0은 윈도가 보고하는 값을 "
-"사용합니다. 일부 노트북에서는 밝기를 따릅니다."
+"톤 맵 HDR의 최대 밝기(니트 단위)를 표시합니다. 0은 윈도가 보고하는 값을 사용"
+"합니다. 일부 노트북에서는 밝기를 따릅니다."
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
@@ -1907,7 +1918,8 @@ msgstr "SDR 목표 밝기(니트)"
 msgid ""
 "Target luminance for HDR-to-SDR tone mapping and the SDR reference white in "
 "HDR output."
-msgstr "HDR-to-SDR 톤 매핑을 위한 목표 휘도와 HDR 출력에서 SDR 기준 백색입니다."
+msgstr ""
+"HDR-to-SDR 톤 매핑을 위한 목표 휘도와 HDR 출력에서 SDR 기준 백색입니다."
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
@@ -1919,8 +1931,8 @@ msgid ""
 "Compress source luminance into the output range. Algorithm-specific controls "
 "appear below."
 msgstr ""
-"소스 휘도를 출력 범위 내로 압축합니다. 알고리즘별 제어 옵션은 아래에 "
-"표시됩니다."
+"소스 휘도를 출력 범위 내로 압축합니다. 알고리즘별 제어 옵션은 아래에 표시됩니"
+"다."
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
@@ -2050,6 +2062,16 @@ msgstr ""
 "끔 설정 시 돌비 비전 프로필 7 및 8은 HDR10이나 HLG로 재생됩니다. 프로필 5는 "
 "항상 돌비 비전을 사용합니다."
 
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr ""
+
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"
@@ -2083,8 +2105,8 @@ msgstr "클리핑 표시"
 msgid ""
 "Highlight values outside the target range to help evaluate mapping settings."
 msgstr ""
-"매핑 설정을 평가하는 데 도움이 되도록 대상 범위를 벗어나는 값을 강조 "
-"표시합니다."
+"매핑 설정을 평가하는 데 도움이 되도록 대상 범위를 벗어나는 값을 강조 표시합니"
+"다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
@@ -2094,7 +2116,8 @@ msgstr "평활화 기간"
 #. Setting description (HDR > HDR Peak Detection > Smoothing Period)
 msgid ""
 "Smooth peak measurements over time. Higher values make adaptation slower."
-msgstr "시간에 따른 피크 측정값을 평활화합니다. 값이 클수록 적응 속도가 느려집니다."
+msgstr ""
+"시간에 따른 피크 측정값을 평활화합니다. 값이 클수록 적응 속도가 느려집니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
@@ -2106,8 +2129,8 @@ msgid ""
 "Lower scene-change threshold. Together with High, controls how quickly peak "
 "detection reacts."
 msgstr ""
-"장면 전환 임계값을 낮춥니다. 높음 설정과 함께, 피크 감지가 얼마나 빠르게 "
-"반응할지를 제어합니다."
+"장면 전환 임계값을 낮춥니다. 높음 설정과 함께, 피크 감지가 얼마나 빠르게 반응"
+"할지를 제어합니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
@@ -2128,8 +2151,8 @@ msgid ""
 "Use a brightness percentile instead of the brightest individual pixel. 100 "
 "uses the maximum."
 msgstr ""
-"가장 밝은 개별 픽셀 대신 밝기 백분위수를 사용하세요. 100으로 설정하면 "
-"최댓값이 적용됩니다."
+"가장 밝은 개별 픽셀 대신 밝기 백분위수를 사용하세요. 100으로 설정하면 최댓값"
+"이 적용됩니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
@@ -2152,7 +2175,8 @@ msgstr "니(knee) 적응"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Adaptation)
 msgid "Adapt the knee to scene brightness. Used by ST 2094 and Spline."
-msgstr "장면 밝기에 맞춰 니(knee)를 조절하세요. ST 2094 및 스플라인에서 사용됩니다."
+msgstr ""
+"장면 밝기에 맞춰 니(knee)를 조절하세요. ST 2094 및 스플라인에서 사용됩니다."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
@@ -2182,8 +2206,8 @@ msgid ""
 "Knee used when average scene brightness is unavailable. Keep within "
 "Minimum / Maximum."
 msgstr ""
-"평균 장면 밝기를 사용할 수 없을 때 니(knee) 기능을 사용합니다. 최소값과 "
-"최대값 범위 내로 설정하십시오."
+"평균 장면 밝기를 사용할 수 없을 때 니(knee) 기능을 사용합니다. 최소값과 최대"
+"값 범위 내로 설정하십시오."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
@@ -2228,7 +2252,8 @@ msgstr "스플라인 대비"
 
 #. Setting description (HDR > Tone Mapping Constants > Spline Contrast)
 msgid "Spline contrast around the knee. Only affects the Spline function."
-msgstr "니(knee) 주변의 스플라인 대비입니다. 스플라인 기능에만 영향을 미칩니다."
+msgstr ""
+"니(knee) 주변의 스플라인 대비입니다. 스플라인 기능에만 영향을 미칩니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
