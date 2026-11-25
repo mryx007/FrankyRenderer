@@ -353,6 +353,10 @@ class Renderer final : public CBaseVideoRenderer,
     // Tick of the last scheduled frame presented while running. A repaint
     // during active playback is left to the next scheduled frame.
     std::atomic<uint64_t> lastTimedPresent = 0;
+    // Some sources leave unchanged pictures out, so the next frame can be
+    // seconds away (screen recordings). A deferred repaint then redraws the
+    // current frame itself, at most every StillPictureMs.
+    std::atomic<uint64_t> stillDeferredAt = 0, lastStillRepaint = 0;
     BOOL ScheduleSample(IMediaSample*) override;
     HRESULT ShouldDrawSampleNow(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*) override;
     HRESULT ScheduleOnRefresh(IMediaSample*, REFERENCE_TIME*, REFERENCE_TIME*, HRESULT decided);

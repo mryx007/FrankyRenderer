@@ -92,6 +92,11 @@ static bool interlacedTest = false, bottomFirst = false, weaveTest = false, eosT
 static int mixedFields = 0;
 static bool flushRaceTest = false, rtxTest = false, rtxHdrTest = false;
 static bool frameStepTest = false;
+// Screen recordings (issue 54): unchanged pictures are left out, so frames
+// arrive seconds apart. The pattern source sends two frames while playing,
+// then one every SparseFrame.
+static bool sparseTest = false;
+constexpr REFERENCE_TIME SparseFrame = 80000000;
 static std::atomic<bool> blockSampleTime = false;
 static HANDLE sampleTimeEntered = nullptr, sampleTimeRelease = nullptr;
 static DXGI_FORMAT textureFormat = DXGI_FORMAT_P010;
@@ -715,7 +720,7 @@ class PatternStream final : public CSourceStream
     {
         // The measurement starts after the other checks and needs pictures
         // still playing then: 20 s instead of 3 s.
-        if (index >= (eosTest ? 6u : measureTest ? 600u : 90u))
+        if (index >= (eosTest || sparseTest ? 6u : measureTest ? 600u : 90u))
             return S_FALSE;
         BYTE* bytes = nullptr;
         HRESULT hr = sample->GetPointer(&bytes);
@@ -806,7 +811,10 @@ class PatternStream final : public CSourceStream
             context->Flush();
             ReleaseMutex(mutex);
         }
-        REFERENCE_TIME start = index * 333333LL, stop = start + (mixedFields == 3 ? 166666 : 333333);
+        REFERENCE_TIME start = !sparseTest ? index * 333333LL
+                               : index < 2 ? index * 333333LL
+                                           : (index - 1) * SparseFrame,
+                       stop = start + (mixedFields == 3 ? 166666 : 333333);
         sample->SetTime(&start, &stop);
         sample->SetSyncPoint(TRUE);
         sample->SetActualDataLength(SampleBytes());
@@ -1093,6 +1101,8 @@ int wmain(int argc, wchar_t** argv)
     {
         if (wcscmp(argv[i], L"--frame-step") == 0)
             frameStepTest = true;
+        if (wcscmp(argv[i], L"--sparse") == 0)
+            sparseTest = true;
         if (wcscmp(argv[i], L"--flush-race") == 0)
             flushRaceTest = true;
         if (wcscmp(argv[i], L"--sharpen") == 0)
@@ -1475,7 +1485,7 @@ int wmain(int argc, wchar_t** argv)
     Check(window->put_AutoShow(OAFALSE), "disable autoshow");
     Check(window->put_Visible(OAFALSE), "hide test window");
     Check(window->SetWindowPosition(0, 0, 128, 128), "video size");
-    if (measureTest)
+    if (measureTest || sparseTest)
     {
         Check(window->SetWindowPosition(40, 40, 640, 360), "measurement window size");
         Check(window->put_Visible(OATRUE), "show measurement test window");
@@ -1501,7 +1511,72 @@ int wmain(int argc, wchar_t** argv)
             DispatchMessageW(&msg);
         }
         Check(config->GetStatus(&status), "status");
-    } while (status.rendered < 5 && SUCCEEDED(sourceFailure.load()) && GetTickCount() - start < 10000);
+    } while (status.rendered < (sparseTest ? 2u : 5u) && SUCCEEDED(sourceFailure.load()) &&
+             GetTickCount() - start < 10000);
+    if (sparseTest)
+    {
+        // Issue 54: between frames seconds apart, a resize, Ctrl+J and the
+        // statistics must not wait for the next frame.
+        auto pump = [](DWORD ms)
+        {
+            const DWORD until = GetTickCount() + ms;
+            do
+            {
+                MSG msg;
+                while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+                Sleep(5);
+            } while (GetTickCount() < until);
+        };
+        auto presents = [&]
+        {
+            __int64 count = 0;
+            Check(hostConfig->Flt_GetInt64("placeboStatsSubmissions", &count), "presents");
+            return count;
+        };
+        const HWND video = FindWindowExW(ownerWindow.handle, nullptr, L"PlaceboRendererVideoWindow", nullptr);
+        if (!video || status.rendered < 2)
+        {
+            puts("FAIL no first sparse frame or video window");
+            return 66;
+        }
+        // Resize right after the frame, as in the report: the repaint is first
+        // left to the next frame, which is 8 s away.
+        const auto frames = status.rendered;
+        auto before = presents();
+        Check(window->SetWindowPosition(40, 40, 800, 450), "resize between sparse frames");
+        pump(700);
+        const auto resized = presents() - before;
+        before = presents();
+        PostMessageW(video, StatisticsKey::ActionMessage, WPARAM(Shortcuts::Action::Statistics), 0);
+        pump(700);
+        const auto toggled = presents() - before;
+        before = presents();
+        pump(1500);
+        const auto refreshed = presents() - before;
+        PostMessageW(video, StatisticsKey::ActionMessage, WPARAM(Shortcuts::Action::Statistics), 0);
+        pump(700);
+        before = presents();
+        pump(1000);
+        const auto hidden = presents() - before;
+        Check(config->GetStatus(&status), "status between sparse frames");
+        const bool noFrame = status.rendered == frames;
+        const bool ok = noFrame && resized > 0 && toggled > 0 && refreshed >= 2 && hidden == 0;
+        printf("%s between frames 8 s apart: resize %lld, Ctrl+J %lld, statistics %lld in 1.5 s, hidden "
+               "%lld in 1 s redraws; frames %llu -> %llu\n",
+               ok ? "PASS" : "FAIL",
+               resized,
+               toggled,
+               refreshed,
+               hidden,
+               frames,
+               status.rendered);
+        control->Stop();
+        return ok ? 0 : 67;
+    }
     if (frameStepTest)
     {
         // MPC-HC/BE step with the graph's IVideoFrameStep (Ctrl+Right): the

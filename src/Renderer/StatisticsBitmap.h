@@ -25,6 +25,9 @@ class StatisticsBitmap
     std::wstring requested;
     int width = 0, height = 0, lastViewWidth = 0, lastViewHeight = 0, requestedWidth = 0, requestedHeight = 0,
         requestedTextScale = 0;
+    // Size of the image shown, smaller than width x height while an image
+    // drawn for a larger view waits for its replacement.
+    float shownWidth = 0, shownHeight = 0;
 
   public:
     ~StatisticsBitmap()
@@ -44,14 +47,25 @@ class StatisticsBitmap
         gpu = nullptr;
         requested.clear();
         width = height = lastViewWidth = lastViewHeight = requestedWidth = requestedHeight = requestedTextScale = 0;
+        shownWidth = shownHeight = 0;
     }
 
+    // The shown image was drawn for this view size.
+    bool DrawnFor(int viewWidth, int viewHeight) const
+    {
+        return texture && lastViewWidth == viewWidth && lastViewHeight == viewHeight;
+    }
+
+    // keepOnResize: until the image for a new view size is ready, show the
+    // previous one, made smaller when it no longer fits (statistics while the
+    // window is resized). Otherwise nothing is shown in the meantime.
     bool Update(pl_gpu nextGpu,
                 const std::wstring& text,
                 int viewWidth,
                 int viewHeight,
                 HWND window = nullptr,
-                int textScale = 100)
+                int textScale = 100,
+                bool keepOnResize = false)
     {
         if (gpu != nextGpu)
             Reset();
@@ -101,7 +115,16 @@ class StatisticsBitmap
                 requestedTextScale = textScale;
             }
         }
-        return texture && lastViewWidth == viewWidth && lastViewHeight == viewHeight;
+        shownWidth = float(width);
+        shownHeight = float(height);
+        if (DrawnFor(viewWidth, viewHeight))
+            return true;
+        if (!keepOnResize || !texture || width <= 0 || height <= 0)
+            return false;
+        const float scale = std::min({1.f, float(viewWidth - 16) / float(width), float(viewHeight) / float(height)});
+        shownWidth = float(width) * scale;
+        shownHeight = float(height) * scale;
+        return true;
     }
 
     int Width() const
@@ -126,9 +149,9 @@ class StatisticsBitmap
     void Describe(pl_overlay& overlay, pl_overlay_part& part, const pl_rect2df* picture = nullptr)
     {
         const float x = picture ? std::max(0.f, picture->x0) : 0,
-                    y = picture ? OverlayTop(picture->y0, picture->y1, float(height)) : 0;
+                    y = picture ? OverlayTop(picture->y0, picture->y1, shownHeight) : 0;
         part.src = {0, 0, float(width), float(height)};
-        part.dst = {x, y, x + float(width), y + float(height)};
+        part.dst = {x, y, x + shownWidth, y + shownHeight};
         overlay = {};
         overlay.tex = texture;
         overlay.mode = PL_OVERLAY_NORMAL;

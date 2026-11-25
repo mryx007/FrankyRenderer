@@ -154,4 +154,5 @@
 - Ctrl+J shows a shorter RTX Video line.
 - Fixed interlaced video freezing with deinterlacing when Smooth Motion is off, for files with one sample per field ([#53](https://github.com/mryx007/FrankyRenderer/issues/53)).
 - Field Order Auto now detects a wrong field order from the picture, for broadcast streams that are marked wrong ([#53](https://github.com/mryx007/FrankyRenderer/issues/53)).
+- Fixed screen recordings with few frames: resizing, Ctrl+J and the statistics no longer wait for the next frame ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
 - After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.

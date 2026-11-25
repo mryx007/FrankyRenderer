@@ -30,6 +30,11 @@ constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
 constexpr UINT ApplyPausedDisplayModeMessage = WM_APP + 0x4b5;
 constexpr UINT_PTR ModeTimer = 0x46524d44;
 constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
+constexpr UINT_PTR StillPictureTimer = 0x46525350;
+// A repaint during playback waits this long for the next frame.
+constexpr uint64_t StillPictureMs = 250;
+// The statistics of a still picture during playback refresh at this interval.
+constexpr UINT StillStatisticsMs = 500;
 }
 
 // Pauses the graph while the display resynchronises after a mode change and
@@ -666,6 +671,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
         owner->Repaint("retry timer");
         return 0;
     }
+    if (msg == WM_TIMER && w == StillPictureTimer)
+    {
+        KillTimer(hwnd, StillPictureTimer);
+        // A frame presented since then already shows the change.
+        if (owner->lastTimedPresent.load() == owner->stillDeferredAt.load())
+            owner->Repaint("still picture");
+        return 0;
+    }
     if (msg == ModeCheckMessage)
     {
         // Fullscreen transitions resize several times; check once they settle.
@@ -732,9 +745,9 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == WM_TIMER && w == ShortcutMessageTimer)
     {
         KillTimer(hwnd, ShortcutMessageTimer);
-        // Clear the shortcut message from a paused picture.
-        if (owner->windowState.load() != State_Running)
-            owner->Repaint("shortcut message");
+        // Clear the shortcut message; during playback Repaint leaves this to
+        // the next frame unless that is far away.
+        owner->Repaint("shortcut message");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
@@ -753,10 +766,13 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
     {
         const auto state = owner->windowState.load();
-        // Running playback consumes the bitmap on its next scheduled frame.
-        // Only a paused image needs an additional repaint after text is ready.
+        // Running playback consumes the bitmap on its next scheduled frame;
+        // Repaint redraws it only when that frame is far away.
         if (state == State_Paused && (owner->backend.StatisticsVisible() || owner->settings.imageAnalysis))
             owner->Repaint();
+        else if (state == State_Running && msg == StatisticsRasterizer::ReadyMessage &&
+                 owner->backend.StatisticsVisible())
+            owner->Repaint("statistics");
         return 0;
     }
     if (msg == WM_ERASEBKGND)
@@ -2456,9 +2472,9 @@ void Renderer::ToggleStatistics()
 {
     backend.ShowStatistics(!backend.StatisticsVisible());
     // Running playback shows or hides the overlay with its next scheduled
-    // frame. An extra untimed present here would repeat the current frame,
-    // delay the next one and count as repeats, glitches and drops.
-    if (windowState.load() != State_Running && window && window->WindowExists())
+    // frame (Repaint redraws only when that frame is far away). An extra
+    // untimed present would delay the next frame and count as repeats.
+    if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
@@ -2597,8 +2613,7 @@ void Renderer::RunShortcut(int index)
     if (window && window->WindowExists())
     {
         SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
-        if (windowState.load() != State_Running)
-            Repaint("shortcut");
+        Repaint("shortcut");
     }
 }
 
@@ -2609,10 +2624,22 @@ void Renderer::Repaint(const char* source)
     // extra untimed present here repeats the current frame, takes a vsync from
     // the schedule and makes the following frames late (repeats and drops).
     // After the end of the stream nothing follows, so keep repainting there.
-    if (windowState.load() == State_Running && GetTickCount64() - lastTimedPresent.load() < 250)
+    // Sources that leave unchanged pictures out (screen recordings) can also
+    // go seconds without a frame: the timer then redraws the current one.
+    const bool running = windowState.load() == State_Running;
+    if (running)
     {
-        Trace("Repaint during playback left to the next frame: %s", source);
-        return;
+        const auto now = GetTickCount64(), last = lastTimedPresent.load();
+        const auto since = now - std::max(last, lastStillRepaint.load());
+        if (since < StillPictureMs)
+        {
+            if (strcmp(source, "statistics"))
+                Trace("Repaint during playback left to the next frame: %s", source);
+            stillDeferredAt = last;
+            if (window && window->WindowExists())
+                SetTimer(window->GetWindowHWND(), StillPictureTimer, UINT(StillPictureMs - since) + 16, nullptr);
+            return;
+        }
     }
     // The host can synchronously resize the video while holding this lock.
     // Never block its window thread behind that call; retry the repaint later.
@@ -2642,6 +2669,17 @@ void Renderer::Repaint(const char* source)
         SetTimer(window->GetWindowHWND(), 0x46525950, 16, nullptr);
     if (result != S_OK)
         Trace("Repaint not presented result=%08lX", static_cast<unsigned long>(result));
+    else if (running)
+    {
+        // A still picture during playback: keep its statistics current
+        // until the next frame arrives.
+        lastStillRepaint = GetTickCount64();
+        if (backend.StatisticsVisible() && window && window->WindowExists())
+        {
+            stillDeferredAt = lastTimedPresent.load();
+            SetTimer(window->GetWindowHWND(), StillPictureTimer, StillStatisticsMs, nullptr);
+        }
+    }
 }
 
 void Renderer::NewSegment(REFERENCE_TIME start, double rate)
@@ -3979,7 +4017,7 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
     {
         backend.ShowStatistics(value);
         // As with Ctrl+J: running playback picks up the change on its next frame.
-        if (windowState.load() != State_Running && window && window->WindowExists())
+        if (window && window->WindowExists())
             PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
         return S_OK;
     }

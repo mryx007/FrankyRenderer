@@ -2610,7 +2610,8 @@ struct PlaceboBackend::State
                                         target.planes[0].texture->params.w,
                                         target.planes[0].texture->params.h,
                                         window,
-                                        settings.statisticsTextScale))
+                                        settings.statisticsTextScale,
+                                        true))
             {
                 const int index = target.num_overlays;
                 statisticsBitmap.Describe(overlays[index], parts[index], placement);
