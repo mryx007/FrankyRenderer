@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-05 07:25+0000\n"
-"Last-Translator: Kallan Crémel <kallan-cr@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-26 14:40+0000\n"
+"Last-Translator: Ridou <ridoou@users.noreply.hosted.weblate.org>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/fr/>\n"
 "Language: fr\n"
@@ -14,7 +14,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Generator: Weblate 2026.11.1.dev0\n"
+"X-Generator: Weblate 2026.12.dev0\n"
 
 #. Category
 #. Category heading
@@ -40,10 +40,8 @@ msgid "Background"
 msgstr "Arrière-plan"
 
 #. Tab (General)
-#, fuzzy
-#| msgid "Menu Appearance"
 msgid "Appearance"
-msgstr "Apparence des menus"
+msgstr "Apparence"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
@@ -51,23 +49,17 @@ msgid "Output Texture Format"
 msgstr "Format de texture de sortie"
 
 #. Setting description (General > Output > Output Texture Format)
-#, fuzzy
-#| msgid ""
-#| "Precision of the final output texture. Auto follows the renderer's output "
-#| "selection."
 msgid ""
 "Precision of the final output texture. Auto: 8-bit when the display receives "
 "8 bits, otherwise 10-bit."
 msgstr ""
-"Précision de la texture de sortie finale. Automatique suit la sélection de "
-"sortie du moteur de rendu."
+"Précision de la texture finale de sortie. Auto: 8-bit lorsque l'écran reçoit "
+"8 bits, sinon 10-bit."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-#, fuzzy
-#| msgid "Auto (libplacebo)"
 msgid "Auto (Display)"
-msgstr "Automatique (libplacebo)"
+msgstr "Automatique (Écran)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
@@ -91,7 +83,7 @@ msgstr "Niveaux de sortie RVB"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr "Aligner la plage RVB utilisée par l'écran et le pilote GPU."
+msgstr "Appliquer la gamme RGB utilisée par l'écran et le pilote GPU."
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
@@ -192,11 +184,11 @@ msgstr ""
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
-msgstr ""
+msgstr "Taille des textes des Statistiques (%)"
 
 #. Setting description (General > Image Analysis > Statistics Text Size (%))
 msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
-msgstr ""
+msgstr "Taille des statistiques Ctrl+J. 100 est la taille automatique."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
@@ -1670,6 +1662,24 @@ msgstr "Traitement"
 #. Setting description (Color > Display > SDR Gamma Processing)
 msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
+msgstr ""
+
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+#, fuzzy
+#| msgid "Processing"
+msgid "HDR to SDR Gamma Processing"
+msgstr "Traitement"
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
 msgstr ""
 
 #. Section heading (Color)
