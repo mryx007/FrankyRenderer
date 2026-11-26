@@ -603,11 +603,14 @@ struct PlaceboBackend::State
     pl_tex felPlanes[3] = {};
     std::vector<uint8_t> unpacked;
     ComPtr<ID3D11Texture2D> copy;
-    // CPU memory NV12/P010 for RTX, written here and imported like a decoder texture.
-    // Several, used in turn: writing one never waits for the GPU's copy of the last.
+    // CPU memory NV12/P010 (copy-back decoders), written here outside `lock`
+    // and imported like a decoder texture: copying a 4K picture took up to
+    // 18 ms under `lock`, and presenting the previous one missed its refresh.
+    // Several, used in turn: writing one rarely waits for the GPU's copy of the last.
     ComPtr<ID3D11Texture2D> semiPlanarUploads[3];
     int semiPlanarNext = 0;
     bool semiPlanarUploadTraced = false;
+    std::mutex stagingLock; // the pool above; never taken while waiting for `lock`
     ComPtr<ID3D11DeviceContext> context;
     ComPtr<IDXGIDevice1> latencyDevice;
     UINT originalLatency = 0;
@@ -699,11 +702,26 @@ struct PlaceboBackend::State
 
     // Copies an NV12 or P010 picture from CPU memory into one texture with
     // both planes, as a hardware decoder delivers it.
-    HRESULT StageSemiPlanar(const VideoFrame& frame, const uint8_t* data, int stride, ID3D11Texture2D*& staged)
+    // Called with stagingLock held and without `lock`: device and context are
+    // the caller's own references, so the device cannot go away meanwhile.
+    HRESULT StageSemiPlanar(ID3D11Device* device,
+                            ID3D11DeviceContext* immediate,
+                            const VideoFrame& frame,
+                            const uint8_t* data,
+                            int stride,
+                            ComPtr<ID3D11Texture2D>& staged)
     {
         auto& semiPlanarUpload = semiPlanarUploads[semiPlanarNext];
         semiPlanarNext = (semiPlanarNext + 1) % int(std::size(semiPlanarUploads));
         D3D11_TEXTURE2D_DESC have = {};
+        if (semiPlanarUpload)
+        {
+            // Textures of a previous device cannot be imported.
+            ComPtr<ID3D11Device> owner;
+            semiPlanarUpload->GetDevice(&owner);
+            if (owner.Get() != device)
+                semiPlanarUpload.Reset();
+        }
         if (semiPlanarUpload)
             semiPlanarUpload->GetDesc(&have);
         HRESULT hr = S_OK;
@@ -720,12 +738,20 @@ struct PlaceboBackend::State
             desc.SampleDesc.Count = 1;
             desc.Usage = D3D11_USAGE_STAGING;
             desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            hr = d3d->device->CreateTexture2D(&desc, nullptr, &semiPlanarUpload);
+            hr = device->CreateTexture2D(&desc, nullptr, &semiPlanarUpload);
             if (FAILED(hr))
                 return hr;
         }
+        // A blocking Map would hold the multithreaded context's lock while
+        // the GPU still copies from this texture, and stall presenting too.
         D3D11_MAPPED_SUBRESOURCE mapped = {};
-        hr = context->Map(semiPlanarUpload.Get(), 0, D3D11_MAP_WRITE, 0, &mapped);
+        for (int attempt = 0;; ++attempt)
+        {
+            hr = immediate->Map(semiPlanarUpload.Get(), 0, D3D11_MAP_WRITE, D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped);
+            if (hr != DXGI_ERROR_WAS_STILL_DRAWING || attempt == 1000)
+                break;
+            Sleep(1);
+        }
         if (FAILED(hr))
             return hr;
         const auto out = static_cast<uint8_t*>(mapped.pData);
@@ -737,9 +763,32 @@ struct PlaceboBackend::State
         const auto source = data + size_t(stride) * frame.height;
         for (int y = 0; y < frame.height / 2; ++y)
             memcpy(chroma + size_t(y) * mapped.RowPitch, source + size_t(y) * stride, row);
-        context->Unmap(semiPlanarUpload.Get(), 0);
-        staged = semiPlanarUpload.Get();
+        immediate->Unmap(semiPlanarUpload.Get(), 0);
+        staged = semiPlanarUpload;
         return S_OK;
+    }
+
+    // Writes an NV12/P010 picture from CPU memory into a texture without
+    // holding `lock` for the copy. S_FALSE: another format or layout.
+    HRESULT StageCpuPicture(const VideoFrame& frame, const uint8_t* data, size_t bytes, ComPtr<ID3D11Texture2D>& staged)
+    {
+        if ((frame.format != PixelFormat::P010 && frame.format != PixelFormat::NV12) || frame.bottomUp || !data ||
+            frame.width <= 0 || frame.height <= 0 || (frame.width & 1) || (frame.height & 1) ||
+            frame.stride < MinimumStride(frame.format, frame.width) ||
+            bytes < ImageBytes(frame.format, frame.stride, frame.height))
+            return S_FALSE;
+        ComPtr<ID3D11Device> device;
+        ComPtr<ID3D11DeviceContext> immediate;
+        {
+            std::lock_guard guard(lock);
+            HRESULT hr = Ensure();
+            if (FAILED(hr))
+                return hr;
+            device = d3d->device;
+            immediate = context;
+        }
+        std::lock_guard staging(stagingLock);
+        return StageSemiPlanar(device.Get(), immediate.Get(), frame, data, frame.stride, staged);
     }
 
     void ClearOverlay()
@@ -750,11 +799,15 @@ struct PlaceboBackend::State
         overlayTexture.Reset();
     }
 
-    // Smooth Motion presenting more than two refreshes ahead was requested
-    // explicitly, like a manual frames-in-flight value; queue one more.
+    // Smooth Motion presenting more than two refreshes ahead needs one more
+    // frame in flight than the lead. Automatic may reach the highest lead:
+    // copy-back decoding stalls the GPU for 25-40 ms and needs four.
     int FramesInFlight() const
     {
-        return std::max(settings.maximumFramesInFlight, settings.presentAhead > 2 ? settings.presentAhead + 1 : 0);
+        const int lead = settings.presentAhead   ? settings.presentAhead
+                         : settings.smoothMotion ? PresentLead::Maximum
+                                                 : 0;
+        return std::max(settings.maximumFramesInFlight, lead > 2 ? lead + 1 : 0);
     }
 
     HRESULT ConfigureLatency()
@@ -764,8 +817,8 @@ struct PlaceboBackend::State
         const int requested = FramesInFlight();
         if (!latencyDevice)
         {
-            // Auto must not touch a decoder-owned device. Capture its original
-            // value only when the user first requests a manual override.
+            // Without a deeper queue the device keeps its own value. Capture
+            // the original only when one is first requested.
             if (!requested)
             {
                 ComPtr<IDXGIDevice1> device;
@@ -2955,9 +3008,25 @@ void PlaceboBackend::SetOverlayPainter(OverlayPainter painter, bool inverseAlpha
     s.ClearOverlay();
 }
 
+static void TraceStagedUpload(bool& traced);
+
 HRESULT PlaceboBackend::CaptureUpload(const VideoFrame& frame, const uint8_t* bytes, size_t length, uint64_t& id)
 {
-    return state->Capture([&] { return Upload(frame, bytes, length); }, id);
+    // Write the picture before Capture takes the lock; under it only the
+    // GPU copy of the import remains.
+    ComPtr<ID3D11Texture2D> staged;
+    const bool ready = state->StageCpuPicture(frame, bytes, length, staged) == S_OK;
+    return state->Capture(
+        [&]
+        {
+            if (ready && SUCCEEDED(Import(frame, staged.Get(), 0)))
+            {
+                TraceStagedUpload(state->semiPlanarUploadTraced);
+                return S_OK;
+            }
+            return UploadPlanes(frame, bytes, length);
+        },
+        id);
 }
 
 HRESULT PlaceboBackend::CaptureImport(const VideoFrame& frame, ID3D11Texture2D* texture, UINT slice, uint64_t& id)
@@ -3193,7 +3262,32 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
     return S_OK;
 }
 
+// An NV12 or P010 picture from CPU memory (copy-back decoding) becomes one
+// texture, written without the backend lock and imported as a hardware
+// decoder delivers it; RTX Video reads it as it is (see RtxScaling). Other
+// formats, or when that fails, as planes.
+static void TraceStagedUpload(bool& traced)
+{
+    if (!traced)
+    {
+        traced = true;
+        Trace("NV12/P010 from CPU memory staged outside the render lock and imported as one texture");
+    }
+}
+
 HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, size_t bytes)
+{
+    auto& s = *state;
+    ComPtr<ID3D11Texture2D> staged;
+    if (s.StageCpuPicture(frame, data, bytes, staged) == S_OK && SUCCEEDED(Import(frame, staged.Get(), 0)))
+    {
+        TraceStagedUpload(s.semiPlanarUploadTraced);
+        return S_OK;
+    }
+    return UploadPlanes(frame, data, bytes);
+}
+
+HRESULT PlaceboBackend::UploadPlanes(const VideoFrame& frame, const uint8_t* data, size_t bytes)
 {
     auto& s = *state;
     std::lock_guard guard(s.lock);
@@ -3207,21 +3301,6 @@ HRESULT PlaceboBackend::Upload(const VideoFrame& frame, const uint8_t* data, siz
     HRESULT hr = s.Ensure();
     if (FAILED(hr))
         return hr;
-    // With RTX, an NV12 or P010 picture from CPU memory becomes one texture, as a
-    // hardware decoder delivers it, so the driver can read it as it is (see
-    // RtxScaling). Planes as before if that fails.
-    ID3D11Texture2D* staged = nullptr;
-    if ((frame.format == PixelFormat::P010 || frame.format == PixelFormat::NV12) && !frame.bottomUp &&
-        (s.settings.rtxSuperResolution || s.settings.rtxHdr) &&
-        SUCCEEDED(s.StageSemiPlanar(frame, data, stride, staged)) && SUCCEEDED(Import(frame, staged, 0)))
-    {
-        if (!s.semiPlanarUploadTraced)
-        {
-            s.semiPlanarUploadTraced = true;
-            Trace("NV12/P010 from CPU memory uploaded as one texture for RTX");
-        }
-        return S_OK;
-    }
     if (s.copy)
         s.ClearFrame();
     s.Describe(frame);

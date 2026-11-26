@@ -26,3 +26,4 @@
 - Fixed screen recordings with long gaps between pictures staying black with Smooth Motion on, for example in MPC-BE ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
 - Fixed Dolby Vision videos closing the player with an "Assertion failed" message while shaders were being prepared.
 - Fixed MPC-HC and MPC-BE video frames other than "Touch Window From Inside" (from outside, stretch, normal size, zoom) having no effect with Crop Black Bars; they now show the whole video.
+- Smooth Motion "Present in Advance: Automatic" now goes up to 4 refreshes, fixing repeated refreshes with 4K copy-back decoding.

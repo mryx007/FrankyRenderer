@@ -123,6 +123,9 @@ class PlaceboBackend
 {
     struct State;
     std::unique_ptr<State> state;
+    // CPU memory planes uploaded while the backend is locked (formats other
+    // than NV12/P010, and the fallback when staging is not possible).
+    HRESULT UploadPlanes(const VideoFrame& frame, const uint8_t* data, size_t bytes);
 
   public:
     PlaceboBackend();
