@@ -1534,6 +1534,9 @@ struct PlaceboBackend::State
                 if (colon == std::wstring::npos)
                     continue;
                 const auto label = line.substr(0, colon), value = line.substr(colon + 2);
+                // The output follows below for every video.
+                if (label == L"Output")
+                    continue;
                 if (label == L"Dolby Vision")
                     (value.find(L"processing active") != std::wstring::npos &&
                              value.find(L"not processed") == std::wstring::npos
@@ -1544,7 +1547,16 @@ struct PlaceboBackend::State
                     row(label == L"Source" ? L"Format" : label.c_str()) << value;
             }
         }
-        if (pl_color_space_is_hdr(&description.color))
+        // What the display gets, for every video at the same place.
+        const auto outputRow = [&]
+        {
+            row(L"Output") << (pl_color_space_is_hdr(&output.color)
+                                   ? (output.color.transfer == PL_COLOR_TRC_HLG ? L"HDR/HLG" : L"HDR/PQ")
+                                   : L"SDR");
+        };
+        if (!pl_color_space_is_hdr(&description.color))
+            outputRow();
+        else
         {
             const bool dovi = bool(image.repr.dovi),
                        plus = pl_hdr_metadata_contains(&description.color.hdr, PL_HDR_METADATA_HDR10PLUS);
@@ -1554,6 +1566,7 @@ struct PlaceboBackend::State
                                                                                  : L"HDR10");
             if (plus && !settings.useHdr10Plus)
                 row(L"HDR10+") << L"off";
+            outputRow();
             pl_hdr_metadata measured = {};
             const bool haveMeasured = pl_renderer_get_hdr_metadata(renderer, &measured);
             if ((std::isfinite(description.color.hdr.max_luma) && description.color.hdr.max_luma > 0) || haveMeasured)

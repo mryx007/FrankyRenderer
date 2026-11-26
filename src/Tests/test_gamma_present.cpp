@@ -194,6 +194,22 @@ int main()
     printf("TV levels: %.5f expected %.5f\n", limited, expected);
     Check(std::abs(limited - expected) < 1.5 / 1023, "output gamma keeps TV levels");
 
+    // Ctrl+J names what the display gets for every video, not only for Dolby Vision.
+    s.outputLevels = 0;
+    b.ShowStatistics(true);
+    for (bool hdr : {true, false})
+    {
+        upload(hdr);
+        measure(240, 0);
+        measure(240, 0);
+        const auto text = b.StatisticsSnapshot();
+        printf("statistics %s: output row %s\n",
+               hdr ? "HDR" : "SDR",
+               text.find(L"Output\tSDR") != text.npos ? "SDR" : "missing");
+        Check(text.find(L"Output\tSDR") != text.npos,
+              hdr ? "Ctrl+J shows HDR to SDR as SDR output" : "Ctrl+J shows SDR output");
+    }
+
     b.SetWindow(nullptr);
     DestroyWindow(window);
     puts("PASS display gamma and SDR gamma processing reach exact pure powers on a 10-bit swapchain");
