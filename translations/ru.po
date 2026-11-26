@@ -6,7 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
 "Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Language-Team: Russian <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1558,6 +1559,22 @@ msgstr ""
 #. Setting description (Color > Display > SDR Gamma Processing)
 msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
+msgstr ""
+
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr ""
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
 msgstr ""
 
 #. Section heading (Color)
