@@ -24,6 +24,7 @@ Beispiele aus dem Alltag. Ändere jeweils nur eine Einstellung und vergleiche di
 | Der Fernseher ist für den dunklen Raum auf Gamma 2.4 eingestellt. | [Display-Gamma](#color-management-display-display-gamma) **2.40**. | Der Wert muss zur Einstellung des Fernsehers passen. |
 | OLED-Fernseher mit Display-Gamma **BT.1886**. | [Display-Kontrast](#color-management-display-display-contrast) **0**. | 0 steht für unendlichen Kontrast. |
 | Der Monitor arbeitet mit Gamma 2.2, Filme sollen wie auf einem 2.4-Bildschirm wirken. | [Display-Gamma](#color-management-display-display-gamma) **2.20**, [SDR-Gamma-Verarbeitung](#color-management-display-sdr-gamma-processing) **2.40**. | Dunkle Szenen werden etwas satter. |
+| HDR-Filme auf einem SDR-Monitor sollen im dunklen Raum kräftiger wirken. | [HDR-zu-SDR-Gamma-Verarbeitung](#color-management-display-hdr-to-sdr-gamma-processing) **2.40**, oder **Wie SDR**, um den SDR-Wert zu übernehmen. | Derselbe Wert wie Display-Gamma ändert nichts. |
 | Ein Film soll mit einer eigenen Farb-LUT laufen. | [LUT aus dem Videoordner](#color-management-3d-lut-lut-from-video-folder) **Ein**, **Film.cube** neben **Film.mkv** legen. | [3D-LUT aktivieren](#color-management-3d-lut-enable-3d-lut) muss eingeschaltet sein. |
 
 <a id="color-management-icc-profile"></a>
@@ -63,6 +64,7 @@ Unter **Strg+J** siehst du das Quellgamma und, soweit verfügbar, das Ausgabegam
 | <a id="color-management-display-display-gamma"></a>**Display-Gamma** | Wie der Bildschirm das Signal dekodiert, z. B. 2.4 bei vielen TVs. Wird genutzt, wenn HDR auf SDR umgerechnet wird, und von der SDR-Gamma-Verarbeitung. |
 | <a id="color-management-display-display-contrast"></a>**Display-Kontrast** | Für BT.1886: der gemessene Kontrast des Bildschirms, z. B. 1000 für 1000:1. 0 bedeutet unendlich (OLED), dann entspricht BT.1886 genau 2.40. |
 | <a id="color-management-display-sdr-gamma-processing"></a>**SDR-Gamma-Verarbeitung** | Aus lässt SDR unverändert. Sonst sieht SDR auf dem Bildschirm wie diese Gamma aus. |
+| <a id="color-management-display-hdr-to-sdr-gamma-processing"></a>**HDR-zu-SDR-Gamma-Verarbeitung** | Dasselbe für HDR auf einem SDR-Bildschirm: Das tongemappte Bild sieht wie die gewählte Gamma aus. **Aus** lässt es wie tongemappt, **Wie SDR** folgt der SDR-Gamma-Verarbeitung. |
 
 ---
 

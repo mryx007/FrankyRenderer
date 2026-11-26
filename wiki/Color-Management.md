@@ -24,6 +24,7 @@ Examples from everyday viewing. Change one setting at a time and compare the sam
 | The TV is set to gamma 2.4 for a dark room. | [Display Gamma](#color-management-display-display-gamma) **2.40**. | The value must match the TV's setting. |
 | OLED TV with Display Gamma **BT.1886**. | [Display Contrast](#color-management-display-display-contrast) **0**. | 0 stands for infinite contrast. |
 | The monitor uses gamma 2.2, but movies should look like on a 2.4 display. | [Display Gamma](#color-management-display-display-gamma) **2.20**, [SDR Gamma Processing](#color-management-display-sdr-gamma-processing) **2.40**. | Dark scenes become slightly richer. |
+| HDR movies on an SDR monitor should look richer in a dark room. | [HDR to SDR Gamma Processing](#color-management-display-hdr-to-sdr-gamma-processing) **2.40**, or **Like SDR** to use the SDR value. | The same value as Display Gamma changes nothing. |
 | A movie should play with its own color LUT. | [LUT from Video Folder](#color-management-3d-lut-lut-from-video-folder) **On**, put **Movie.cube** next to **Movie.mkv**. | [Enable 3D LUT](#color-management-3d-lut-enable-3d-lut) must be on. |
 
 <a id="color-management-icc-profile"></a>
@@ -63,6 +64,7 @@ A 3D LUT maps input colors to new colors. With **LUT from Video Folder**, a file
 | <a id="color-management-display-display-gamma"></a>**Display Gamma** | Describes how the display decodes the SDR signal. The menu includes Auto, gamma values from 1.80 to 2.80 and BT.1886. |
 | <a id="color-management-display-display-contrast"></a>**Display Contrast** | Supplies the display contrast ratio used by the BT.1886 calibration curve. The black level affects the shape of that curve. |
 | <a id="color-management-display-sdr-gamma-processing"></a>**SDR Gamma Processing** | Optionally gives SDR material a chosen gamma appearance on the calibrated display. Off retains the ordinary SDR processing route. |
+| <a id="color-management-display-hdr-to-sdr-gamma-processing"></a>**HDR to SDR Gamma Processing** | The same for HDR shown on an SDR display: the tone mapped picture looks like the chosen gamma. **Off** leaves it as tone mapped, **Like SDR** follows SDR Gamma Processing. |
 
 ---
 

@@ -28,6 +28,8 @@ Statistics are grouped into Display, Video, Processing and Performance. Check th
 
 **Render** shows recent average render time. **Present** and **Queue** describe presentation and pending work. The render budget follows the display refresh interval when Smooth Motion is active or the source is faster than the display.
 
+In a window, Windows composes the desktop before the picture reaches the display. **Queue** then also counts what the compositor still holds and can read above its limit; that is no backlog. Occasional repeated refreshes in a window come from the compositor missing a refresh. In full screen they stop once Windows hands the picture straight to the display, which itself can cost one repeat when it switches.
+
 For a 120 fps video on a 60 Hz display without Smooth Motion, the renderer shows one frame per refresh. Ctrl+J reports the displayed rate. Frames omitted to match the display are excluded from the drop count. Watch whether drops continue to rise after resetting the statistics.
 
 **Clock** shows the audio-clock deviation and the estimated interval between repeats or drops caused by drift. The reading takes time to settle and starts over after a seek, playback restart, clock step or a change to Smooth Motion.

@@ -28,6 +28,8 @@ Die Anzeige gliedert sich in Display, Video, Verarbeitung und Leistung. Prüfe A
 
 **Render** zeigt die durchschnittliche Renderzeit der letzten Bilder. **Present** und **Queue** beschreiben die Übergabe an die Anzeige und wartende Bilder. Bei Smooth Motion oder einer Quelle mit höherer Bildrate als der Anzeige gilt ein Bildwiederholintervall als Zeitbudget.
 
+Im Fenster setzt Windows den Desktop zusammen, bevor das Bild den Bildschirm erreicht. **Queue** zählt dann auch mit, was der Compositor noch hält, und kann über dem Limit liegen; das ist kein Stau. Gelegentliche Wiederholungen im Fenster entstehen, wenn der Compositor einen Bildaufbau verpasst. Im Vollbild hören sie auf, sobald Windows das Bild direkt an den Bildschirm gibt; dieses Umschalten selbst kann eine Wiederholung kosten.
+
 Bei **120 fps auf 60 Hz** zeigt FrankyRenderer ohne Smooth Motion ein Bild pro Bildschirmaktualisierung. Strg+J zeigt die tatsächlich dargestellte Bildrate. Die zur Anpassung ausgelassenen Bilder zählen bei den Drops nicht mit. Setze die Statistik zurück und beobachte, ob Drops weiter zunehmen.
 
 **Clock** zeigt die Abweichung der Audiouhr und das geschätzte Intervall zwischen dadurch verursachten Wiederholungen oder Auslassungen. Der Wert braucht kurz zum Einpendeln. Nach einem Sprung im Video, Neustart, einer sprunghaften Zeitkorrektur oder einem Wechsel von Smooth Motion beginnt die Messung erneut.
