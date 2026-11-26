@@ -29,3 +29,5 @@
 - Smooth Motion "Present in Advance: Automatic" now goes up to 4 refreshes, fixing repeated refreshes with 4K copy-back decoding.
 - Added HDR to SDR Gamma Processing: HDR on an SDR display can look like a chosen gamma, like SDR Gamma Processing ([#55](https://github.com/mryx007/FrankyRenderer/issues/55)).
 - Fixed Display Gamma values between the built-in curves (e.g. 2.35) having no effect with peak detection or colour adjustment on.
+- Fewer repeated refreshes right after starting a video with shaders.
+- Fixed occasional repeated refreshes during playback with Smooth Motion.

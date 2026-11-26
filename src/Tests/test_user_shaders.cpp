@@ -237,6 +237,48 @@ int main()
                 KeepDoviMetadata(plain, none);
                 Require(!plain.dovi && !none, "a picture without Dolby Vision keeps none");
                 puts("PASS shader warm-up keeps its own Dolby Vision metadata");
+
+                // A setup warmed up once is skipped at the next start: the
+                // worker's large renders beside starting playback cost about
+                // 50 repeated refreshes.
+                // The job compiled above, described again with one change.
+                const auto keyWith = [&](auto change, const char* build = "build A")
+                {
+                    ShaderWarmupJob other;
+                    other.id = id;
+                    other.adapter = adapterDesc.AdapterLuid;
+                    DescribeWarmupVideo(other, 320, 180);
+                    change(other);
+                    return WarmupKey(other, build);
+                };
+                const auto same = [](ShaderWarmupJob&) {};
+                const uint64_t key = keyWith(same);
+                Require(key && key == WarmupKey(job, "build A"), "the same setup gives the same key");
+                Require(key != keyWith(same, "build B"), "a renderer update warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.config.values[0] += 1; }) != key,
+                        "another shader parameter warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.options += " deband=yes"; }) != key,
+                        "other render parameters warm up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.planes[0].width += 2; }) != key,
+                        "another video size warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.mix = !j.mix; }) != key,
+                        "Smooth Motion on or off warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.sourceColor.hdr.max_luma = 4000; }) == key,
+                        "a file's HDR levels do not change the shader");
+                pl_cache marks = pl_cache_create(&cacheParams);
+                Require(!WarmupMarked(marks, key), "nothing is marked at first");
+                MarkWarmup(marks, key);
+                Require(WarmupMarked(marks, key) && WarmupMarked(marks, key), "a mark stays after it was read");
+                Require(!WarmupMarked(marks, keyWith([](ShaderWarmupJob& j) { j.config.values[0] += 1; })),
+                        "another setup is not marked");
+                std::vector<uint8_t> saved(pl_cache_save(marks, nullptr, 0));
+                pl_cache_save(marks, saved.data(), saved.size());
+                pl_cache reloaded = pl_cache_create(&cacheParams);
+                pl_cache_load(reloaded, saved.data(), saved.size());
+                Require(WarmupMarked(reloaded, key), "the mark is saved with the shader cache");
+                pl_cache_destroy(&reloaded);
+                pl_cache_destroy(&marks);
+                puts("PASS a shader warmed up once for a setup is not warmed up again at the next start");
             }
             // A chain from a package runs as one shader.
             std::filesystem::create_directories(folder / L"shaders");

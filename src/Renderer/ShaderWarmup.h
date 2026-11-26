@@ -83,7 +83,124 @@ struct ShaderWarmupJob
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL(0);
     HWND notify = nullptr;
     HMODULE module = nullptr;
+    uint64_t key = 0; // WarmupKey, marked in the cache once done
 };
+
+// Once a warm-up went through, the shader cache holds everything it compiles.
+// At the next start with the same setup the cache alone suffices; the worker
+// would only render its large pictures again, beside playback that has just
+// started (a present then waited 240 ms: about 50 repeated refreshes). The key
+// covers what the shader text depends on: the shader file and parameters, the
+// render parameters, the planes and formats, and the renderer build: the
+// cache only follows libplacebo's own library, which a renderer update keeps.
+inline uint64_t WarmupKey(const ShaderWarmupJob& job, const std::string& build)
+{
+    uint64_t hash = 0xcbf29ce484222325ULL;
+    const auto bytes = [&](const void* data, size_t size)
+    {
+        for (size_t i = 0; i < size; i++)
+            hash = (hash ^ static_cast<const uint8_t*>(data)[i]) * 0x100000001b3ULL;
+    };
+    const auto value = [&](auto v) { bytes(&v, sizeof(v)); };
+    const auto text = [&](const std::string& s)
+    {
+        value(s.size());
+        bytes(s.data(), s.size());
+    };
+    const auto planes = [&](const std::vector<ShaderWarmupPlane>& list)
+    {
+        value(list.size());
+        for (const auto& p : list)
+        {
+            text(p.format);
+            value(p.width);
+            value(p.height);
+            value(p.components);
+            bytes(p.mapping, sizeof(p.mapping));
+        }
+    };
+    const auto repr = [&](const pl_color_repr& r)
+    {
+        value(r.sys);
+        value(r.levels);
+        value(r.alpha);
+        value(r.bits.sample_depth);
+        value(r.bits.color_depth);
+        value(r.bits.bit_shift);
+    };
+    // Primaries and transfer; the HDR levels of a file do not change the shader.
+    const auto color = [&](const pl_color_space& c)
+    {
+        value(c.primaries);
+        value(c.transfer);
+    };
+    const auto rect = [&](const pl_rect2df& r)
+    {
+        value(r.x0);
+        value(r.y0);
+        value(r.x1);
+        value(r.y1);
+    };
+    text(build);
+    value(job.id);
+    text(LoadUserShaderSource(job.id));
+    value(job.config.enabled);
+    value(job.config.overrides);
+    bytes(job.config.values, sizeof(job.config.values));
+    value(job.antiring);
+    text(job.options);
+    planes(job.planes);
+    repr(job.sourceRepr);
+    color(job.sourceColor);
+    repr(job.targetRepr);
+    color(job.targetColor);
+    text(job.targetFormat);
+    value(job.targetComponents);
+    bytes(job.targetMapping, sizeof(job.targetMapping));
+    value(job.screenWidth);
+    value(job.screenHeight);
+    value(job.mix);
+    planes(job.conversion.sources);
+    planes(job.conversion.targets);
+    repr(job.conversion.sourceRepr);
+    repr(job.conversion.targetRepr);
+    color(job.conversion.sourceColor);
+    color(job.conversion.targetColor);
+    rect(job.conversion.sourceCrop);
+    rect(job.conversion.targetCrop);
+    value(job.conversion.field);
+    value(job.featureLevel);
+    return hash ? hash : 1;
+}
+
+// The mark is a tiny object in the shader cache itself, so it goes away with
+// the cache (a new libplacebo, a deleted cache folder).
+inline uint64_t WarmupMarkKey(uint64_t key)
+{
+    return key ^ 0x5741524d55504f4bULL; // "WARMUPOK"
+}
+
+inline bool WarmupMarked(pl_cache cache, uint64_t key)
+{
+    pl_cache_obj object = {};
+    object.key = WarmupMarkKey(key);
+    if (!cache || !key || !pl_cache_get(cache, &object))
+        return false;
+    pl_cache_set(cache, &object); // get takes it out
+    return true;
+}
+
+inline void MarkWarmup(pl_cache cache, uint64_t key)
+{
+    if (!cache || !key)
+        return;
+    static const uint8_t done = 1;
+    pl_cache_obj object = {};
+    object.key = WarmupMarkKey(key);
+    object.data = const_cast<uint8_t*>(&done);
+    object.size = sizeof(done);
+    pl_cache_set(cache, &object); // copies the data
+}
 
 // A plain 8-bit 4:2:0 BT.709 video of the given size, for a job without a
 // playing setup.

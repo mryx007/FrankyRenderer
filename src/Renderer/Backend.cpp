@@ -186,7 +186,11 @@ struct PlaceboBackend::State
         const auto rtxPass = conversion ? DescribeWarmupConversion(*conversion) : ShaderWarmupJob::Conversion{};
         MONITORINFO monitor = {sizeof(monitor)};
         const bool screen = window && GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor);
-        const auto cache = shaderCache.Snapshot();
+        // Marks are trusted only while the cache has room: near its limit
+        // libplacebo drops old shaders, which a mark would still vouch for.
+        const bool marksValid = pl_cache_size(shaderCache.Handle()) < 40u * 1024 * 1024;
+        std::vector<uint8_t> cache;
+        bool skipped = false;
         for (int id = 0; id < ShaderCount; id++)
         {
             auto& job = warmups[id];
@@ -211,11 +215,23 @@ struct PlaceboBackend::State
             }
             job->mix = mix;
             job->conversion = rtxPass;
-            job->cache = cache;
             job->adapter = AdapterLuid();
             job->featureLevel = d3d ? d3d->device->GetFeatureLevel() : D3D_FEATURE_LEVEL(0);
+            static const std::string build = __DATE__ " " __TIME__;
+            job->key = WarmupKey(*job, build);
             warmupLaunched[id] = true;
             warmupStarted[id] = GetTickCount64();
+            if (marksValid && WarmupMarked(shaderCache.Handle(), job->key))
+            {
+                // Everything is cached: the shader starts with the next picture.
+                job->state = 1;
+                warmupMerged[id] = warmupReported[id] = skipped = true;
+                Trace("Shader warm-up skipped: %s, prepared before for this setup", ShaderCatalog[id].file);
+                continue;
+            }
+            if (cache.empty())
+                cache = shaderCache.Snapshot();
+            job->cache = cache;
             Trace("Shader warm-up start: %s, feature level %x, video %dx%d %s, target %s%s, cache %zu bytes",
                   ShaderCatalog[id].file,
                   unsigned(job->featureLevel),
@@ -227,6 +243,9 @@ struct PlaceboBackend::State
                   job->cache.size());
             StartShaderWarmup(job);
         }
+        // A paused first picture shows the shaders before playback starts.
+        if (skipped && window)
+            PostMessageW(window, WM_PAINT, 0, 0);
     }
 
     LUID AdapterLuid() const
@@ -274,6 +293,7 @@ struct PlaceboBackend::State
             warmupMerged[id] = true;
             shaderCache.Import(job->cache);
             std::vector<uint8_t>().swap(job->cache);
+            MarkWarmup(shaderCache.Handle(), job->key);
             shaderCache.SaveInBackground();
         }
         return true;
@@ -478,9 +498,11 @@ struct PlaceboBackend::State
     {
         // Drift is noticed from scanout latency before the queue deepens; the
         // queue depth remains the safety net when latency feedback is missing.
-        // Refresh-locked ticks already absorb drift and vary by design within
-        // one refresh of their due time, which is not a surplus. Late ticks
-        // are left out before they queue, so only a blocking queue counts.
+        // Refresh-locked ticks cannot build a queue: each has its own refresh,
+        // a surplus tick and a tick after its refresh are left out before they
+        // are presented. Their reported depth also counts what the compositor
+        // and late frame statistics hold (3 to 6 at a lead of one), so leaving
+        // ticks out by it dropped one per second and caused repeats.
         if (presentation.drift.TakeSurplus() && !refreshLead)
         {
             backlog.Reset();
@@ -511,7 +533,7 @@ struct PlaceboBackend::State
         }
         const UINT queued = submitted - shown.PresentCount;
         ++traceQueued[std::min<UINT>(queued, 3)];
-        if (!backlog.Skip(queued, refreshLead ? refreshLead + 2 : 2))
+        if (refreshLead || !backlog.Skip(queued))
             return false;
         Trace("Smooth Motion tick left out: %u presents queued ahead of scanout (total %llu)",
               queued,
