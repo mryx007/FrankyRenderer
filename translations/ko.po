@@ -1050,7 +1050,8 @@ msgstr "평면 업스케일러(채도/알파)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
-msgstr "이미지 크기 조정 전에 서브샘플링된 채도 또는 알파 평면을 다시 구성합니다."
+msgstr ""
+"이미지 크기 조정 전에 서브샘플링된 채도 또는 알파 평면을 다시 구성합니다."
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
@@ -1673,6 +1674,30 @@ msgstr ""
 "끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 디스플레이상"
 "에서 이와 같은 감마 특성을 보이게 됩니다."
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+#, fuzzy
+#| msgid "SDR Gamma Processing"
+msgid "HDR to SDR Gamma Processing"
+msgstr "SDR 감마 처리"
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+#, fuzzy
+#| msgid ""
+#| "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the "
+#| "display."
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+"끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 디스플레이상"
+"에서 이와 같은 감마 특성을 보이게 됩니다."
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr ""
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"
@@ -2070,8 +2095,8 @@ msgstr "HDR10+ 사용"
 msgid ""
 "Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
 msgstr ""
-"끔으로 설정하면 동적 HDR10+ 메타데이터를 무시하고, 선택된 HDR 출력 모드를 "
-"유지합니다."
+"끔으로 설정하면 동적 HDR10+ 메타데이터를 무시하고, 선택된 HDR 출력 모드를 유"
+"지합니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -2253,7 +2278,8 @@ msgstr "스플라인 명암"
 
 #. Setting description (HDR > Tone Mapping Constants > Spline Contrast)
 msgid "Spline contrast around the knee. Only affects the Spline function."
-msgstr "니(knee) 주변의 스플라인 명암입니다. 스플라인 기능에만 영향을 미칩니다."
+msgstr ""
+"니(knee) 주변의 스플라인 명암입니다. 스플라인 기능에만 영향을 미칩니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
@@ -2282,8 +2308,8 @@ msgstr "선형 노출"
 msgid ""
 "Exposure multiplier for Linear and Linear Light tone mapping. 1 is unchanged."
 msgstr ""
-"선형 및 선형 라이트 톤 매핑을 위한 노출 배수입니다. 1은 변경 없음을 "
-"의미합니다."
+"선형 및 선형 라이트 톤 매핑을 위한 노출 배수입니다. 1은 변경 없음을 의미합니"
+"다."
 
 #. Section heading (HDR)
 #. Setting name (HDR > Contrast Recovery)
@@ -2294,8 +2320,8 @@ msgstr "명암 복원"
 #. Setting description (HDR > Contrast Recovery > Contrast Recovery)
 msgid "Recover local contrast lost in tone mapping. 0 disables recovery."
 msgstr ""
-"톤 매핑 과정에서 손실된 로컬 대비를 복구합니다. 0으로 설정하면 복구 기능을 "
-"비활성화합니다."
+"톤 매핑 과정에서 손실된 로컬 대비를 복구합니다. 0으로 설정하면 복구 기능을 비"
+"활성화합니다."
 
 #. Setting name (HDR > Contrast Recovery)
 #. Setting name (Shortcuts > )
@@ -2305,7 +2331,8 @@ msgstr "명암 부드러움"
 #. Setting description (HDR > Contrast Recovery > Contrast Smoothness)
 msgid ""
 "Spatial scale for contrast recovery. Used only when recovery is above 0."
-msgstr "명암 복구를 위한 공간 스케일입니다. 복구 값이 0보다 클 때만 사용됩니다."
+msgstr ""
+"명암 복구를 위한 공간 스케일입니다. 복구 값이 0보다 클 때만 사용됩니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -2321,8 +2348,8 @@ msgstr "지각 데드존"
 msgid ""
 "Protect colors already inside the target gamut from perceptual remapping."
 msgstr ""
-"대상 색역 내에 이미 포함된 색상들이 지각 재매핑의 영향을 받지 않도록 "
-"보호하십시오."
+"대상 색역 내에 이미 포함된 색상들이 지각 재매핑의 영향을 받지 않도록 보호하십"
+"시오."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
@@ -2341,7 +2368,8 @@ msgstr "색도계 감마"
 #. Setting description (HDR > Gamut Mapping Constants > Colorimetric Gamma)
 msgid ""
 "Gamma used for colorimetric clipping; affects Relative and related mapping."
-msgstr "색도 클리핑에 사용되는 감마는 상대 매핑 및 관련 매핑에 영향을 미칩니다."
+msgstr ""
+"색도 클리핑에 사용되는 감마는 상대 매핑 및 관련 매핑에 영향을 미칩니다."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
@@ -2395,8 +2423,8 @@ msgstr "색역 LUT 색조 크기"
 #. Setting description (HDR > Mapping LUT Quality > Gamut LUT Hue Size)
 msgid "Internal gamut LUT resolution along hue. 0 selects the library size."
 msgstr ""
-"색조에 따른 내부 색역 LUT 해상도입니다. 0으로 설정하면 라이브러리 크기가 "
-"적용됩니다."
+"색조에 따른 내부 색역 LUT 해상도입니다. 0으로 설정하면 라이브러리 크기가 적용"
+"됩니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
@@ -2408,8 +2436,8 @@ msgid ""
 "Use tricubic interpolation for the internal gamut LUT; costs additional GPU "
 "work."
 msgstr ""
-"내부 색역 LUT에 삼차 보간을 사용합니다. 이 과정에서 추가적인 GPU 작업이 "
-"소요됩니다."
+"내부 색역 LUT에 삼차 보간을 사용합니다. 이 과정에서 추가적인 GPU 작업이 소요"
+"됩니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
@@ -2418,7 +2446,8 @@ msgstr "톤 매핑 LUT 크기"
 
 #. Setting description (HDR > Mapping LUT Quality > Tone Mapping LUT Size)
 msgid "Internal tone curve lookup resolution. 0 selects the library size."
-msgstr "내부 톤 커브 조회 해상도입니다. 0을 선택하면 라이브러리 크기가 적용됩니다."
+msgstr ""
+"내부 톤 커브 조회 해상도입니다. 0을 선택하면 라이브러리 크기가 적용됩니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -2516,8 +2545,8 @@ msgstr "역 톤 매핑"
 msgid ""
 "Allow expansion of SDR brightness into HDR. Requires a supporting tone curve."
 msgstr ""
-"SDR 밝기를 HDR 영역으로 확장할 수 있도록 합니다. 이를 위해서는 지원되는 톤 "
-"커브가 필요합니다."
+"SDR 밝기를 HDR 영역으로 확장할 수 있도록 합니다. 이를 위해서는 지원되는 톤 커"
+"브가 필요합니다."
 
 #. Setting name (HDR > Expansion & Metadata)
 #. Setting name (Shortcuts > )
@@ -2538,8 +2567,8 @@ msgid ""
 "Default retains automatic Dolby Vision / HDR10+ metadata selection. A manual "
 "choice overrides it."
 msgstr ""
-"기본 설정은 돌비 비전/HDR10+ 메타데이터 자동 선택을 유지합니다. 수동으로 "
-"선택할 경우 해당 설정이 우선 적용됩니다."
+"기본 설정은 돌비 비전/HDR10+ 메타데이터 자동 선택을 유지합니다. 수동으로 선택"
+"할 경우 해당 설정이 우선 적용됩니다."
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
@@ -2586,8 +2615,8 @@ msgid ""
 "Adjust brightness within this HDR zone in stops. Positive values brighten; "
 "negative values darken."
 msgstr ""
-"이 HDR 영역 내에서 밝기를 스톱 단위로 조정합니다. 양수 값은 화면을 밝게 "
-"하고, 음수 값은 어둡게 합니다."
+"이 HDR 영역 내에서 밝기를 스톱 단위로 조정합니다. 양수 값은 화면을 밝게 하"
+"고, 음수 값은 어둡게 합니다."
 
 #. Setting description (HDR > Shadows > Contrast)
 #. Setting description (HDR > Midtones > Contrast)
@@ -2754,8 +2783,8 @@ msgstr "모든 셰이더 비활성화"
 msgid ""
 "Turn off the shader chain while retaining its parameter values and order."
 msgstr ""
-"셰이더 체인의 매개변수 값과 순서는 그대로 유지한 채, 해당 셰이더 체인을 "
-"끕니다."
+"셰이더 체인의 매개변수 값과 순서는 그대로 유지한 채, 해당 셰이더 체인을 끕니"
+"다."
 
 #. Button (Shaders > Chain Controls > Disable All Shaders)
 #. Menu text; keep %d and %s placeholders
@@ -2791,8 +2820,8 @@ msgid ""
 "Adjust Strength for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
-"이 셰이더의 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
-"유지합니다."
+"이 셰이더의 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 그대로 유"
+"지합니다."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
@@ -2839,8 +2868,8 @@ msgid ""
 "Adjust Horizontal Radius for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 가로 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 가로 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2852,8 +2881,8 @@ msgid ""
 "Adjust Vertical Radius for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 수직 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 수직 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2865,8 +2894,8 @@ msgid ""
 "Adjust Strong Edge Low for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더에 대해 강한 경계 하한을 조정하십시오. 기본값은 셰이더 제작자가 "
-"설정한 값을 그대로 유지합니다."
+"이 셰이더에 대해 강한 경계 하한을 조정하십시오. 기본값은 셰이더 제작자가 설정"
+"한 값을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2878,8 +2907,8 @@ msgid ""
 "Adjust Strong Edge High for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더에 대해 강한 경계 상한값을 조정하십시오. 기본값은 셰이더 제작자가 "
-"설정한 값을 그대로 유지합니다."
+"이 셰이더에 대해 강한 경계 상한값을 조정하십시오. 기본값은 셰이더 제작자가 설"
+"정한 값을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2917,8 +2946,8 @@ msgid ""
 "Adjust Dark Halo Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 어두운 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 "
-"값을 그대로 유지합니다."
+"이 셰이더의 어두운 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2930,8 +2959,8 @@ msgid ""
 "Adjust Bright Halo Strength for this shader. The default preserves the "
 "shader author's setting."
 msgstr ""
-"이 셰이더의 밝은 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 "
-"값을 그대로 유지합니다."
+"이 셰이더의 밝은 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
@@ -2972,8 +3001,8 @@ msgid ""
 "Adjust Debug View for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
-"이 셰이더의 디버그 뷰를 조정합니다. 기본값은 셰이더 작성자가 설정한 내용을 "
-"그대로 유지합니다."
+"이 셰이더의 디버그 뷰를 조정합니다. 기본값은 셰이더 작성자가 설정한 내용을 그"
+"대로 유지합니다."
 
 #. Section description (Shaders > Anti-Ringing)
 msgid "Limit ringing introduced by image upscaling."
@@ -2991,8 +3020,8 @@ msgid ""
 "Adjust Sample Taps for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 샘플 탭을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 샘플 탭을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Section description (Shaders > PixelClipper)
 msgid "Limit overshoot during image and chroma scaling."
@@ -3021,8 +3050,8 @@ msgid ""
 "Adjust Chroma Sampling Mode for this shader. The default preserves the "
 "shader author's setting."
 msgstr ""
-"이 셰이더의 채도 샘플링 모드를 조정하세요. 기본값은 셰이더 작성자가 설정한 "
-"값을 그대로 유지합니다."
+"이 셰이더의 채도 샘플링 모드를 조정하세요. 기본값은 셰이더 작성자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
@@ -3034,8 +3063,8 @@ msgid ""
 "Adjust Upscaling Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 업스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 "
-"값을 그대로 유지합니다."
+"이 셰이더의 업스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
@@ -3047,8 +3076,8 @@ msgid ""
 "Adjust Chroma Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 채도 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 채도 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
@@ -3060,12 +3089,13 @@ msgid ""
 "Adjust Downscaling Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더에 대한 다운스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 "
-"설정한 값을 그대로 유지합니다."
+"이 셰이더에 대한 다운스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 설"
+"정한 값을 그대로 유지합니다."
 
 #. Section description (Shaders > KrigBilateral)
 msgid "Reconstruct chroma guided by luma. Requires subsampled YUV input."
-msgstr "휘도에 따라 채도를 다시 구성합니다. 서브샘플링된 YUV 입력이 필요합니다."
+msgstr ""
+"휘도에 따라 채도를 다시 구성합니다. 서브샘플링된 YUV 입력이 필요합니다."
 
 #. Section description (Shaders > CfL Prediction)
 msgid "Predict chroma from luma. Requires subsampled YUV input."
@@ -3081,8 +3111,8 @@ msgid ""
 "Adjust chroma offset x for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 채도 오프셋 x 값을 조정합니다. 기본값은 셰이더 제작자가 설정한 "
-"값을 그대로 유지합니다."
+"이 셰이더의 채도 오프셋 x 값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
@@ -3094,8 +3124,8 @@ msgid ""
 "Adjust chroma offset y for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 채도 오프셋 y 값을 조정하세요. 기본값은 셰이더 제작자의 설정을 "
-"유지합니다."
+"이 셰이더의 채도 오프셋 y 값을 조정하세요. 기본값은 셰이더 제작자의 설정을 유"
+"지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
@@ -3107,8 +3137,8 @@ msgid ""
 "Adjust distance coeff for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 거리 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 거리 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
@@ -3120,8 +3150,8 @@ msgid ""
 "Adjust intensity coeff for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
-"이 셰이더의 강도 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
-"그대로 유지합니다."
+"이 셰이더의 강도 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Section description (Shaders > NLMeans)
 msgid "Reduce luma noise using similar image patches."

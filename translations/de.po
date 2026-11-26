@@ -1721,12 +1721,21 @@ msgstr ""
 "Aus lässt SDR unverändert. Sonst sieht SDR auf dem Bildschirm wie diese "
 "Gamma aus."
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
 msgid "HDR to SDR Gamma Processing"
 msgstr "HDR-zu-SDR-Gamma-Verarbeitung"
 
-msgid "HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like this gamma."
-msgstr "HDR auf einem SDR-Bildschirm: Aus lässt es wie tongemappt, sonst sieht es wie diese Gamma aus."
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+"HDR auf einem SDR-Bildschirm: Aus lässt es wie tongemappt, sonst sieht es "
+"wie diese Gamma aus."
 
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
 msgid "Like SDR"
 msgstr "Wie SDR"
 
