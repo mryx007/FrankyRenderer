@@ -27,3 +27,5 @@
 - Fixed Dolby Vision videos closing the player with an "Assertion failed" message while shaders were being prepared.
 - Fixed MPC-HC and MPC-BE video frames other than "Touch Window From Inside" (from outside, stretch, normal size, zoom) having no effect with Crop Black Bars; they now show the whole video.
 - Smooth Motion "Present in Advance: Automatic" now goes up to 4 refreshes, fixing repeated refreshes with 4K copy-back decoding.
+- Added HDR to SDR Gamma Processing: HDR on an SDR display can look like a chosen gamma, like SDR Gamma Processing ([#55](https://github.com/mryx007/FrankyRenderer/issues/55)).
+- Fixed Display Gamma values between the built-in curves (e.g. 2.35) having no effect with peak detection or colour adjustment on.

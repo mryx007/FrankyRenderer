@@ -90,6 +90,7 @@ struct RenderSettings
     int displayContrast = 0;   // BT.1886 display contrast, 0 = infinite
     int displayPrimaries = 0;  // 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3
     int sdrGammaCurve = 0;     // 0=off, 180-280=pure power x100
+    int hdrSdrGammaCurve = 0;  // HDR tone mapped to SDR: 0=off, 1=like SDR, 180-280=pure power x100
     float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;

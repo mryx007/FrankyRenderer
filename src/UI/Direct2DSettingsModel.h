@@ -921,6 +921,14 @@ inline std::vector<D2DPage> BuildD2DPages(PlaceboSettings& s)
                              L"Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display.");
         sdr.enabled = [&s] { return !s.iccEnabled; };
         g.controls.push_back(std::move(sdr));
+        auto hdrSdr =
+            D2DChoice(s,
+                      L"HDR to SDR Gamma Processing",
+                      &s.hdrSdrGammaCurve,
+                      curves({{0, L"Off"}, {1, L"Like SDR"}}),
+                      L"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like this gamma.");
+        hdrSdr.enabled = [&s] { return !s.iccEnabled; };
+        g.controls.push_back(std::move(hdrSdr));
         auto& c = card(p, L"ICC Profile");
         auto browse = [&s](bool icc, HWND owner)
         {

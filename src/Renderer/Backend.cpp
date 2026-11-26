@@ -106,6 +106,8 @@ struct PlaceboBackend::State
     // gamma: power raising the encoded output to a pure-power display gamma
     // between libplacebo's fixed curves (1 = none).
     int sdrGammaCurve = 0;
+    // HDR to SDR gamma processing in use (statistics), x100.
+    int hdrSdrGammaCurve = 0;
     float outputGamma = 1;
     // SDR on a plain SDR output without gamma processing: the signal reaches
     // the display unchanged (no BT.1886 to sRGB conversion).
@@ -1498,7 +1500,7 @@ struct PlaceboBackend::State
             gamma.transfer = output.color.transfer;
             gamma.hdr = pl_color_transfer_is_hdr(output.color.transfer);
             gamma.icc = settings.iccEnabled;
-            gamma.sdrGamma = sdrGammaCurve;
+            gamma.sdrGamma = sdrGammaCurve ? sdrGammaCurve : hdrSdrGammaCurve;
             gamma.unchanged = sdrUnchanged;
             gamma.displayGamma = settings.displayGammaCurve;
             gamma.displayContrast = settings.displayContrast;
@@ -3194,8 +3196,11 @@ HRESULT PlaceboBackend::SetSettings(const RenderSettings& settings)
         return E_INVALIDARG;
     if ((settings.displayGammaCurve != 0 && settings.displayGammaCurve != 1 &&
          !ValidGammaCurve(settings.displayGammaCurve)) ||
-        (settings.sdrGammaCurve != 0 && !ValidGammaCurve(settings.sdrGammaCurve)) || settings.displayContrast < 0 ||
-        settings.displayContrast > 1000000 || settings.displayPrimaries < 0 || settings.displayPrimaries > 5)
+        (settings.sdrGammaCurve != 0 && !ValidGammaCurve(settings.sdrGammaCurve)) ||
+        (settings.hdrSdrGammaCurve != 0 && settings.hdrSdrGammaCurve != 1 &&
+         !ValidGammaCurve(settings.hdrSdrGammaCurve)) ||
+        settings.displayContrast < 0 || settings.displayContrast > 1000000 || settings.displayPrimaries < 0 ||
+        settings.displayPrimaries > 5)
         return E_INVALIDARG;
     if (!(settings.motionThreshold >= 0 && settings.motionThreshold <= .5f))
         return E_INVALIDARG;
@@ -3853,6 +3858,17 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
                                         : PL_COLOR_HDR_BLACK;
     s.sdrGammaCurve = sdrTarget && !hdrSource ? s.settings.sdrGammaCurve : 0;
     s.sdrUnchanged = sdrTarget && !hdrSource && !s.sdrGammaCurve;
+    // HDR to SDR gamma processing: the tone mapped picture looks like this
+    // gamma instead of the display's own (e.g. darker shadows in a dark room).
+    // Its signal is raised by the ratio after tone mapping, like SDR gamma
+    // processing changes SDR against its unchanged signal.
+    const int hdrSdrCurve = s.settings.hdrSdrGammaCurve == 1 ? s.settings.sdrGammaCurve : s.settings.hdrSdrGammaCurve;
+    s.hdrSdrGammaCurve = sdrTarget && hdrSource && hdrSdrCurve >= 180 ? hdrSdrCurve : 0;
+    if (s.hdrSdrGammaCurve)
+    {
+        const int displayGamma = display >= 180 ? display : display == 1 ? 240 : 220;
+        s.outputGamma *= float(s.hdrSdrGammaCurve) / float(displayGamma);
+    }
 #ifdef PLACEBO_TEST_PRESENT_PIXELS
     if (s.presentColorProbe)
         s.presentColorProbe(target.color);
@@ -3871,7 +3887,7 @@ HRESULT PlaceboBackend::Present(bool holdSwap)
         if (floatDitherBits && s.options && s.options->params.dither_params)
             s.outputDitherDepth = floatDitherBits;
     }
-    s.sdrGammaCurve = 0;
+    s.sdrGammaCurve = s.hdrSdrGammaCurve = 0;
     s.sdrUnchanged = false;
     s.outputGamma = 1;
     QueryPerformanceCounter(&end);

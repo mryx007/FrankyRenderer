@@ -1580,6 +1580,15 @@ msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr "关闭时 SDR 保持不变。否则 SDR 在显示器上呈现为此伽马。"
 
+msgid "HDR to SDR Gamma Processing"
+msgstr "HDR 转 SDR 伽马处理"
+
+msgid "HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like this gamma."
+msgstr "SDR 显示器上的 HDR：关闭时保持色调映射结果，否则呈现为此伽马。"
+
+msgid "Like SDR"
+msgstr "同 SDR"
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"

@@ -66,6 +66,8 @@ struct PlaceboSettings
     int displayPrimaries = 0;
     // SDR gamma processing: 0=off, 180-260 = look like this pure power x100.
     int sdrGammaCurve = 0;
+    // The same for HDR tone mapped to SDR: 0=off, 1=like SDR, 180-280 = pure power x100.
+    int hdrSdrGammaCurve = 0;
     // Smooth Motion oversample mixing: a frame showing for less than this share
     // of a refresh is left out instead of blended (0 = always blend, max .5).
     float motionThreshold = 0;

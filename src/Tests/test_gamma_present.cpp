@@ -142,6 +142,51 @@ int main()
     Check(std::abs(hdr275 - std::pow(hdr28, 2.8 / 2.75)) < 1.5 / 1023, "HDR encoded for a 2.75 display");
     Check(measure(235, 235) == hdr235, "SDR gamma processing leaves HDR alone");
 
+    // HDR to SDR gamma processing (issue #55): the tone mapped picture looks
+    // like the chosen gamma instead of the display's own.
+    const double hdrSrgb = measure(0, 0);
+    s.hdrSdrGammaCurve = 260;
+    const double hdrDark = measure(240, 0), hdrDarkSrgb = measure(0, 0);
+    printf("HDR to SDR as 2.60: display 2.40 %.5f expected %.5f, sRGB display %.5f expected %.5f\n",
+           hdrDark,
+           std::pow(hdr24, 2.6 / 2.4),
+           hdrDarkSrgb,
+           std::pow(hdrSrgb, 2.6 / 2.2));
+    Check(std::abs(hdrDark - std::pow(hdr24, 2.6 / 2.4)) < 1.5 / 1023, "HDR to SDR looks like 2.60 on a 2.40 display");
+    Check(std::abs(hdrDarkSrgb - std::pow(hdrSrgb, 2.6 / 2.2)) < 1.5 / 1023,
+          "HDR to SDR looks like 2.60 on an sRGB display");
+    s.hdrSdrGammaCurve = 240;
+    Check(std::abs(measure(240, 0) - hdr24) < 1.5 / 1023, "the display's own gamma leaves HDR to SDR unchanged");
+    s.hdrSdrGammaCurve = 1;
+    Check(std::abs(measure(240, 260) - hdrDark) < 1.5 / 1023, "Like SDR follows SDR Gamma Processing");
+    Check(measure(240, 0) == hdr24, "Like SDR with SDR Gamma Processing off changes nothing");
+    s.hdrSdrGammaCurve = 260;
+    upload(false);
+    Check(std::abs(measure(240, 0) - v) < 1.5 / 1023, "HDR to SDR gamma processing leaves SDR alone");
+    s.hdrSdrGammaCurve = 0;
+
+    // With peak detection or colour adjustment (both on by default) libplacebo
+    // took the exact gamma for resizing the output and switched it off after
+    // one picture: later changes and in-between display gammas did nothing.
+    s.peakDetect = s.colorAdjustment = true;
+    upload(true);
+    double settled = 0;
+    for (int i = 0; i < 3; i++)
+        settled = measure(240, 0);
+    for (int curve : {280, 200, 260, 220, 280})
+    {
+        s.hdrSdrGammaCurve = curve;
+        const double got = measure(240, 0), want = std::pow(settled, curve / 240.);
+        printf("peak detection, HDR to SDR %d: %.5f expected %.5f\n", curve, got, want);
+        Check(std::abs(got - want) < 1.5 / 1023, "HDR to SDR gamma keeps working with peak detection");
+    }
+    s.hdrSdrGammaCurve = 0;
+    const double display235 = measure(235, 0);
+    printf("peak detection, display 2.35: %.5f expected %.5f\n", display235, std::pow(settled, 2.4 / 2.35));
+    Check(std::abs(display235 - std::pow(settled, 2.4 / 2.35)) < 1.5 / 1023,
+          "display gamma 2.35 keeps working with peak detection");
+    s.peakDetect = s.colorAdjustment = false;
+
     s.outputLevels = 2;
     upload(false);
     const double limited = measure(235, 235);

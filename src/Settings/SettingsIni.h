@@ -93,6 +93,7 @@ template <class F> void Visit(PlaceboSettings& s, F field)
     INI_FIELD(presentAhead);
     INI_FIELD(displayGammaCurve);
     INI_FIELD(sdrGammaCurve);
+    INI_FIELD(hdrSdrGammaCurve);
     INI_FIELD(displayContrast);
     INI_FIELD(displayPrimaries);
     INI_FIELD(motionThreshold);

@@ -1458,6 +1458,20 @@ msgstr ""
 msgid "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr ""
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr ""
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid "HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like this gamma."
+msgstr ""
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr ""
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"

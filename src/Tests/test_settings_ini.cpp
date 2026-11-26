@@ -49,6 +49,7 @@ int wmain()
         original.maximumFramesInFlight = 6;
         original.presentAhead = 3;
         original.sdrGammaCurve = 235;
+        original.hdrSdrGammaCurve = 1;
         original.displayGammaCurve = 1;
         original.displayContrast = 3000;
         original.displayPrimaries = 4;
@@ -85,6 +86,8 @@ int wmain()
         Require(restored.useHdr10Plus == FALSE && PlaceboSettings{}.useHdr10Plus,
                 "Use HDR10+ was lost or is not on by default");
         Require(restored.presentAhead == 3, "Present in advance was lost");
+        Require(restored.hdrSdrGammaCurve == 1 && PlaceboSettings{}.hdrSdrGammaCurve == 0,
+                "HDR to SDR Gamma Processing was lost or is not off by default");
         Require(restored.displayGammaCurve == 1 && restored.sdrGammaCurve == 235 && restored.displayContrast == 3000 &&
                     restored.displayPrimaries == 4,
                 "Display gamma was lost");

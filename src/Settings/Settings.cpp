@@ -176,6 +176,7 @@ static PlaceboSettings Salvage(const PlaceboSettings& loaded)
         FIELD(presentAhead),
         FIELD(displayGammaCurve),
         FIELD(sdrGammaCurve),
+        FIELD(hdrSdrGammaCurve),
         FIELD(displayContrast),
         FIELD(displayPrimaries),
         FIELD(motionThreshold),
@@ -495,6 +496,11 @@ PlaceboSettings LoadSettings(const std::wstring& display)
     }
     size = 4;
     value = 0;
+    if (key.Query(L"HdrSdrGammaCurve", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
+        type == REG_DWORD && size == 4 && (value <= 1 || ValidGammaCurve(static_cast<int>(value))))
+        settings.hdrSdrGammaCurve = static_cast<int>(value);
+    size = 4;
+    value = 0;
     if (key.Query(L"OutputFormat", &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS &&
         type == REG_DWORD && size == 4 && value < std::size(OutputChoices))
         settings.outputFormat = static_cast<int>(value);
@@ -565,8 +571,9 @@ HRESULT ValidateSettings(const PlaceboSettings& s)
     if (s.presentAhead < 0 || s.presentAhead > 4)
         return E_INVALIDARG;
     if ((s.displayGammaCurve != 0 && s.displayGammaCurve != 1 && !ValidGammaCurve(s.displayGammaCurve)) ||
-        (s.sdrGammaCurve != 0 && !ValidGammaCurve(s.sdrGammaCurve)) || s.displayContrast < 0 ||
-        s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
+        (s.sdrGammaCurve != 0 && !ValidGammaCurve(s.sdrGammaCurve)) ||
+        (s.hdrSdrGammaCurve != 0 && s.hdrSdrGammaCurve != 1 && !ValidGammaCurve(s.hdrSdrGammaCurve)) ||
+        s.displayContrast < 0 || s.displayContrast > 1000000 || s.displayPrimaries < 0 || s.displayPrimaries > 5)
         return E_INVALIDARG;
     if ((s.imageAnalysis != FALSE && s.imageAnalysis != TRUE) || s.statisticsTextScale < 50 ||
         s.statisticsTextScale > 200)
@@ -656,6 +663,7 @@ RenderSettings BackendSettings(const PlaceboSettings& s)
     out.presentAhead = s.presentAhead;
     out.displayGammaCurve = s.displayGammaCurve;
     out.sdrGammaCurve = s.sdrGammaCurve;
+    out.hdrSdrGammaCurve = s.hdrSdrGammaCurve;
     out.displayContrast = s.displayContrast;
     out.displayPrimaries = s.displayPrimaries;
     out.motionThreshold = s.motionThreshold;
@@ -854,6 +862,7 @@ static HRESULT WriteSettings(const PlaceboSettings& s)
     save(L"PresentAhead", REG_DWORD, &s.presentAhead, 4);
     save(L"DisplayGammaCurve", REG_DWORD, &s.displayGammaCurve, 4);
     save(L"SdrGammaCurve", REG_DWORD, &s.sdrGammaCurve, 4);
+    save(L"HdrSdrGammaCurve", REG_DWORD, &s.hdrSdrGammaCurve, 4);
     save(L"DisplayContrast", REG_DWORD, &s.displayContrast, 4);
     save(L"DisplayPrimaries", REG_DWORD, &s.displayPrimaries, 4);
     save(L"OutputFormat", REG_DWORD, &s.outputFormat, 4);
