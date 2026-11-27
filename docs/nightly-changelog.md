@@ -31,3 +31,4 @@
 - Fixed Display Gamma values between the built-in curves (e.g. 2.35) having no effect with peak detection or colour adjustment on.
 - Fewer repeated refreshes right after starting a video with shaders.
 - Fixed occasional repeated refreshes during playback with Smooth Motion.
+- Added Korean as a menu language.

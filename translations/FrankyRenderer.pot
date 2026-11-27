@@ -3332,71 +3332,71 @@ msgstr ""
 msgid "Switches on or off; each press changes it."
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Ctrl"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Alt"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Shift"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Space"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Enter"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Tab"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Backspace"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Left"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Right"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Up"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Down"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Page Up"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Page Down"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Home"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: End"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Insert"
 msgstr ""
 
-#. Menu text; keep %d and %s placeholders
+#. Keyboard key: translate only the key's name, without "Key name:" (German "Strg" for Ctrl)
 msgid "Key name: Delete"
 msgstr ""
 

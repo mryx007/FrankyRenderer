@@ -4772,7 +4772,10 @@ std::vector<std::pair<std::wstring, std::wstring>> Direct2DSettingsHost::Transla
         }
     }
     for (const auto* text : MenuTexts)
-        add(text, L"Menu text; keep %d and %s placeholders");
+        add(text,
+            std::wstring_view(text).starts_with(L"Key name: ")
+                ? L"Keyboard key: translate only the key's name, without \"Key name:\" (German \"Strg\" for Ctrl)"
+                : L"Menu text; keep %d and %s placeholders");
     for (size_t i = 0; i < std::size(QualityPresetNames); ++i)
     {
         add(QualityPresetNames[i], L"Quality preset (header)");
