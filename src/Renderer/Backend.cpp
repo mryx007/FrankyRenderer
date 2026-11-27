@@ -1415,8 +1415,6 @@ struct PlaceboBackend::State
         };
         const auto row = [&](const wchar_t* label) -> std::wostream& { return text << L"\n"
                                                                                    << label << L'\t'; };
-        const auto colored = [&](const wchar_t* label, wchar_t color) -> std::wostream&
-        { return row(label) << L'\x02' << color; };
         constexpr wchar_t dot[] = L" · ", arrow[] = L" → ";
 
         heading(L"Display");
@@ -1529,8 +1527,7 @@ struct PlaceboBackend::State
             row(L"Gamma") << StatisticsGamma::Text(description.color.transfer, gamma);
         }
         {
-            // Dolby Vision status lines "Name: value" become rows; the
-            // processing state is yellow unless active.
+            // Dolby Vision status lines "Name: value" become rows, without colour.
             std::wostringstream dv;
             // Dolby Vision switched off: the picture plays as its HDR10 or HLG
             // base layer, and the file's profile is named, without colour.
@@ -1559,14 +1556,7 @@ struct PlaceboBackend::State
                 // The output follows below for every video.
                 if (label == L"Output")
                     continue;
-                if (label == L"Dolby Vision")
-                    (value.find(L"processing active") != std::wstring::npos &&
-                             value.find(L"not processed") == std::wstring::npos
-                         ? row(L"Dolby Vision")
-                         : colored(L"Dolby Vision", L'y'))
-                        << value;
-                else
-                    row(label == L"Source" ? L"Format" : label.c_str()) << value;
+                row(label == L"Source" ? L"Format" : label.c_str()) << value;
             }
         }
         // What the display gets, for every video at the same place.
@@ -1698,7 +1688,7 @@ struct PlaceboBackend::State
             if (!shaders.empty())
                 finishRow();
             if (!userShaderMessage.empty())
-                colored(L"Shaders", L'y') << userShaderMessage;
+                row(L"Shaders") << userShaderMessage;
         }
         row(L"Sharpening") << L"adaptive sharpen "
                            << (sharpenState == 1   ? L"on"
