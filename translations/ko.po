@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-26 14:40+0000\n"
+"PO-Revision-Date: 2026-11-27 03:50+0000\n"
 "Last-Translator: Hack茶ん <hackjjang@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Korean <https://hosted.weblate.org/projects/frankyrenderer/"
 "settings-menu/ko/>\n"
@@ -1676,27 +1676,21 @@ msgstr ""
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
-#, fuzzy
-#| msgid "SDR Gamma Processing"
 msgid "HDR to SDR Gamma Processing"
-msgstr "SDR 감마 처리"
+msgstr "HDR에서 SDR로의 감마 처리"
 
 #. Setting description (Color > Display > HDR to SDR Gamma Processing)
-#, fuzzy
-#| msgid ""
-#| "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the "
-#| "display."
 msgid ""
 "HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
 "this gamma."
 msgstr ""
-"끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 디스플레이상"
-"에서 이와 같은 감마 특성을 보이게 됩니다."
+"SDR 디스플레이에서의 HDR 설정 : 끔으로 두면 톤 매핑이 적용된 상태로 "
+"유지되지만, 그렇지 않은 경우에는 이런 감마 특성을 보이게 됩니다."
 
 #. Choice (Color > Display > HDR to SDR Gamma Processing)
 #. Setting name (Shortcuts > )
 msgid "Like SDR"
-msgstr ""
+msgstr "SDR처럼"
 
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
@@ -3167,86 +3161,100 @@ msgid ""
 "Adjust Reference Mode for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 참조 모드를 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Bilateral Denoise)
 msgid "Edge-aware luma noise reduction."
-msgstr ""
+msgstr "가장자리 정보를 고려한 휘도 노이즈 저감."
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shortcuts > )
 msgid "SS (SS)"
-msgstr ""
+msgstr "SS(SS)"
 
 #. Setting description (Shaders > Bilateral Denoise > SS (SS))
 msgid ""
 "Adjust SS for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대해 SS를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SR (SR)"
-msgstr ""
+msgstr "SR(SR)"
 
 #. Setting description (Shaders > Bilateral Denoise > SR (SR))
 #. Setting description (Shaders > hdeband > SR (SR))
 msgid ""
 "Adjust SR for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 SR을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Chroma Denoise)
 msgid "Reduce color noise."
-msgstr ""
+msgstr "색 노이즈를 줄이세요."
 
 #. Setting name (Shaders > Chroma Denoise)
 #. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
-msgstr ""
+msgstr "임계값(THR)"
 
 #. Setting description (Shaders > Chroma Denoise > Threshold (THR))
 msgid ""
 "Adjust Threshold for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Section description (Shaders > hdeband)
 msgid "Reduce banding in smooth gradients."
-msgstr ""
+msgstr "부드러운 그라데이션에서 밴딩 현상을 줄입니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "S (S)"
-msgstr ""
+msgstr "S(S)"
 
 #. Setting description (Shaders > hdeband > S (S))
 msgid ""
 "Adjust S for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 S 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SI (SI)"
-msgstr ""
+msgstr "SI(SI)"
 
 #. Setting description (Shaders > hdeband > SI (SI))
 msgid ""
 "Adjust SI for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 SI 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SW (SW)"
-msgstr ""
+msgstr "SW(SW)"
 
 #. Setting description (Shaders > hdeband > SW (SW))
 msgid ""
 "Adjust SW for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 SW를 조정하십시오. 기본값은 셰이더 작성자의 설정을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "Radius (RADIUS)"
-msgstr ""
+msgstr "라디우스(RADIUS)"
 
 #. Setting description (Shaders > hdeband > Radius (RADIUS))
 #. Setting description (Shaders > Guided Detail Enhance > Radius (RAD))
@@ -3255,763 +3263,829 @@ msgid ""
 "Adjust Radius for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 라디우스(Radius)을 조정합니다. 기본값은 셰이더 제작자가 설정한 "
+"값을 그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SPARSITY (SPARSITY)"
-msgstr ""
+msgstr "스파시티(SPARSITY)"
 
 #. Setting description (Shaders > hdeband > SPARSITY (SPARSITY))
 msgid ""
 "Adjust SPARSITY for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 스파시티 값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "DIRECTIONS (DIRECTIONS)"
-msgstr ""
+msgstr "이용 안내(DIRECTIONS)"
 
 #. Setting description (Shaders > hdeband > DIRECTIONS (DIRECTIONS))
 msgid ""
 "Adjust DIRECTIONS for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 이용 안내를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "RUN START (RUN_START)"
-msgstr ""
+msgstr "실행 시작(RUN_START)"
 
 #. Setting description (Shaders > hdeband > RUN START (RUN_START))
 msgid ""
 "Adjust RUN START for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 실행 시작 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "TOLERANCE (TOLERANCE)"
-msgstr ""
+msgstr "허용 오차(TOLERANCE)"
 
 #. Setting description (Shaders > hdeband > TOLERANCE (TOLERANCE))
 msgid ""
 "Adjust TOLERANCE for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 허용 오차를 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > neo-f3kdb)
 msgid "Reduce gradient banding with adjustable thresholds and grain."
-msgstr ""
+msgstr "조절 가능한 임계값과 그레인을 사용하여 그라데이션 밴딩을 줄이세요."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "RANGE (RANGE)"
-msgstr ""
+msgstr "범위(RANGE)"
 
 #. Setting description (Shaders > neo-f3kdb > RANGE (RANGE))
 msgid ""
 "Adjust RANGE for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 범위 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Grain (GRAIN)"
-msgstr ""
+msgstr "그레인(GRAIN)"
 
 #. Setting description (Shaders > neo-f3kdb > Grain (GRAIN))
 msgid ""
 "Adjust Grain for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 그레인을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "GRAD (GRAD)"
-msgstr ""
+msgstr "GRAD(GRAD)"
 
 #. Setting description (Shaders > neo-f3kdb > GRAD (GRAD))
 msgid ""
 "Adjust GRAD for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 대한 GRAD를 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Average Threshold (THR_AVG)"
-msgstr ""
+msgstr "평균 임계값(THR_AVG)"
 
 #. Setting description (Shaders > neo-f3kdb > Average Threshold (THR_AVG))
 msgid ""
 "Adjust Average Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 평균 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Maximum Threshold (THR_MAX)"
-msgstr ""
+msgstr "최대 임계값(THR_MAX)"
 
 #. Setting description (Shaders > neo-f3kdb > Maximum Threshold (THR_MAX))
 msgid ""
 "Adjust Maximum Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 최대 임계값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Middle Threshold (THR_MID)"
-msgstr ""
+msgstr "중간 임계값(THR_MID)"
 
 #. Setting description (Shaders > neo-f3kdb > Middle Threshold (THR_MID))
 msgid ""
 "Adjust Middle Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 중간 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Combined Threshold (THR_ALL)"
-msgstr ""
+msgstr "통합 임계값(THR_ALL)"
 
 #. Setting description (Shaders > neo-f3kdb > Combined Threshold (THR_ALL))
 msgid ""
 "Adjust Combined Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 통합 임계값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "AB (AB)"
-msgstr ""
+msgstr "AB(AB)"
 
 #. Setting description (Shaders > neo-f3kdb > AB (AB))
 msgid ""
 "Adjust AB for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 AB 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "AM (AM)"
-msgstr ""
+msgstr "AM(AM)"
 
 #. Setting description (Shaders > neo-f3kdb > AM (AM))
 msgid ""
 "Adjust AM for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 AM 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Guided Detail Enhance)
 msgid "Enhance detail with guided filtering."
-msgstr ""
+msgstr "가이드 필터링으로 디테일을 향상시키세요."
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Radius (RAD)"
-msgstr ""
+msgstr "라디우스(RAD)"
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shortcuts > )
 msgid "Regularization (EPS)"
-msgstr ""
+msgstr "정규화(EPS)"
 
 #. Setting description (Shaders > Guided Detail Enhance > Regularization (EPS))
 msgid ""
 "Adjust Regularization for this shader. The default preserves the shader "
 "author's setting."
-msgstr ""
+msgstr "이 셰이더의 정규화를 조정합니다. 기본값은 셰이더 작성자의 설정을 유지합니다."
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shortcuts > )
 msgid "Subsampling (SUBSAM)"
-msgstr ""
+msgstr "하위 표본 추출(SUBSAM)"
 
 #. Setting description (Shaders > Guided Detail Enhance > Subsampling (SUBSAM))
 msgid ""
 "Adjust Subsampling for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더에 대한 하위 표본 추출을 조정합니다. 기본값은 셰이더 작성자가 "
+"설정한 값을 그대로 유지합니다."
 
 #. Section description (Shaders > Clarity)
 msgid "Adjust local contrast in dark and bright areas."
-msgstr ""
+msgstr "어두운 영역과 밝은 영역의 국부 대비를 조정합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "SHIFT (SHIFT)"
-msgstr ""
+msgstr "시프트(SHIFT)"
 
 #. Setting description (Shaders > Clarity > SHIFT (SHIFT))
 msgid ""
 "Adjust SHIFT for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 시프트 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Shadow Strength (STRD)"
-msgstr ""
+msgstr "음영 강도(STRD)"
 
 #. Setting description (Shaders > Clarity > Shadow Strength (STRD))
 msgid ""
 "Adjust Shadow Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 음영 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Highlight Strength (STRL)"
-msgstr ""
+msgstr "강조 강도(STRL)"
 
 #. Setting description (Shaders > Clarity > Highlight Strength (STRL))
 msgid ""
 "Adjust Highlight Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 강조 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "BM (BM)"
-msgstr ""
+msgstr "BM(BM)"
 
 #. Setting description (Shaders > Clarity > BM (BM))
 msgid ""
 "Adjust BM for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 BM 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "CD (CD)"
-msgstr ""
+msgstr "CD(CD)"
 
 #. Setting description (Shaders > Clarity > CD (CD))
 msgid ""
 "Adjust CD for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞춰 CD를 조정하십시오. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "CL (CL)"
-msgstr ""
+msgstr "CL(CL)"
 
 #. Setting description (Shaders > Clarity > CL (CL))
 msgid ""
 "Adjust CL for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더의 CL을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Section description (Shaders > FSRCNNX 2x)
 msgid "Neural 2x upscaling. Activates only when enlargement is sufficient."
-msgstr ""
+msgstr "신경망 기반 2배 업스케일링입니다. 충분한 확대가 필요한 경우에만 활성화됩니다."
 
 #. Section description (Shaders > AiUpscale Photo 2x)
 msgid "Photo-oriented neural 2x upscaling."
-msgstr ""
+msgstr "사진 중심의 신경망 기반 2배 업스케일링입니다."
 
 #. Setting name (Shaders > AiUpscale Photo 2x)
 #. Setting name (Shortcuts > )
 msgid "Sharpen (SHARP)"
-msgstr ""
+msgstr "선명도(SHARP)"
 
 #. Setting description (Shaders > AiUpscale Photo 2x > Sharpen (SHARP))
 msgid ""
 "Adjust Sharpen for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 대한 선명도를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > RAVU Zoom AR R2)
 msgid "Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom."
-msgstr ""
+msgstr "링잉 방지 기능을 갖춘 적응형 업스케일링입니다. 라디우스 2, 가장 빠른 RAVU 줌."
 
 #. Section description (Shaders > RAVU Zoom R3)
 msgid "Adaptive upscaling with radius 3. More detail than R2, slower."
 msgstr ""
+"라디우스 3를 사용한 적응형 업스케일링입니다. R2보다 더 자세한 정보를 "
+"제공하지만 속도는 느립니다."
 
 #. Section description (Shaders > RAVU Zoom AR R3)
 msgid "Radius 3 with anti-ringing. Highest RAVU quality, slowest."
 msgstr ""
+"링잉 방지 기능이 적용된 라디우스 3입니다. 최고 수준의 RAVU 품질을 "
+"제공하지만, 속도는 가장 느립니다."
 
 #. Section description (Shaders > Anime4K CNN 2x M)
 msgid "For 2D animation. Neural 2x upscaling."
-msgstr ""
+msgstr "2D 애니메이션용입니다. 신경망 기반 2배 업스케일링입니다."
 
 #. Section description (Shaders > ArtCNN C4F16)
 msgid "For 2D animation. Initial shader compilation can take several seconds."
-msgstr ""
+msgstr "2D 애니메이션의 경우, 초기 셰이더 컴파일에 수 초 걸릴 수 있습니다."
 
 #. Section description (Shaders > CuNNy 2x12 DS)
 msgid "For 2D animation. Neural 2x upscaling with denoising."
 msgstr ""
+"2D 애니메이션용입니다. 노이즈 제거 기능이 포함된 신경망 기반 2배 "
+"업스케일링입니다."
 
 #. Section description (Shaders > SSimDownscaler)
 msgid ""
 "Refine image downscaling. Requires a smaller output size; works best with "
 "Mitchell as downscaler."
 msgstr ""
+"이미지 다운스케일링을 개선합니다. 더 작은 출력 크기가 필요하며, "
+"다운스케일러로 미첼을 사용할 때 가장 효과적입니다."
 
 #. Setting name (Shaders > SSimDownscaler)
 #. Setting name (Shortcuts > )
 msgid "Oversharp (THR)"
-msgstr ""
+msgstr "오버샤프(THR)"
 
 #. Setting description (Shaders > SSimDownscaler > Oversharp (THR))
 msgid "Extra sharpening on top of SSIM. 0 is the author's default."
 msgstr ""
+"SSIM에 더해 추가적인 선명도 향상을 적용합니다. 0은 제작자가 설정한 "
+"기본값입니다."
 
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
-msgstr ""
+msgstr "세부 정보를 보존하는 축소입니다. 더 작은 출력 크기가 필요합니다."
 
 #. Setting name (Shaders > DPID)
 #. Setting name (Shortcuts > )
 msgid "LBD (LBD)"
-msgstr ""
+msgstr "LBD(LBD)"
 
 #. Setting description (Shaders > DPID > LBD (LBD))
 msgid ""
 "Adjust LBD for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 맞춰 LBD를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Category
 #. Category heading
 msgid "Profiles"
-msgstr ""
+msgstr "프로필"
 
 #. Category description
 msgid "Different settings for videos from chosen folders."
-msgstr ""
+msgstr "선택한 폴더 내의 영상들에 대해 서로 다른 설정을 적용합니다."
 
 #. Tab (Profiles)
 #. Menu text; keep %d and %s placeholders
 msgid "Main"
-msgstr ""
+msgstr "메인"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 #. Menu text; keep %d and %s placeholders
 msgid "Profile"
-msgstr ""
+msgstr "프로필"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Folders"
-msgstr ""
+msgstr "폴더"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Displays"
-msgstr ""
+msgstr "디스플레이"
 
 #. Setting name (Profiles > Display)
 msgid "Same Settings on All Displays"
-msgstr ""
+msgstr "모든 디스플레이에 동일한 설정 적용"
 
 #. Setting description (Profiles > Display > Same Settings on All Displays)
 msgid ""
 "Changes apply to every display. Off: each keeps them and can be changed "
 "alone."
 msgstr ""
+"변경 사항이 모든 디스플레이에 적용됩니다. 끔 : 각자 설정을 유지하며 "
+"개별적으로 변경할 수 있습니다."
 
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
 msgstr ""
+"프로필이 없는 영상에 대한 기본 설정입니다. 디스플레이마다 각각 별도의 설정이 "
+"있습니다."
 
 #. Setting name (Profiles > Display)
 msgid "Display Name"
-msgstr ""
+msgstr "디스플레이 이름"
 
 #. Input error (Profiles > Display > Display Name)
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a display name (1 to 80 characters)."
-msgstr ""
+msgstr "표시 이름을 입력하세요. (1~80자)"
 
 #. Section heading (Profiles)
 msgid "Settings File"
-msgstr ""
+msgstr "설정 파일"
 
 #. Setting name (Profiles > Settings File)
 msgid "Settings Folder"
-msgstr ""
+msgstr "설정 폴더"
 
 #. Setting description (Profiles > Settings File > Settings Folder)
 msgid "Opens the folder with Settings.ini."
-msgstr ""
+msgstr "Settings.ini 파일이 들어 있는 폴더를 엽니다."
 
 #. Button (Profiles > Settings File > Settings Folder)
 msgid "Open"
-msgstr ""
+msgstr "열기"
 
 #. Setting name (Profiles > Settings File)
 msgid "Import Settings"
-msgstr ""
+msgstr "설정 가져오기"
 
 #. Setting description (Profiles > Settings File > Import Settings)
 msgid "Loads settings from an INI file."
-msgstr ""
+msgstr "INI 파일에서 설정을 불러옵니다."
 
 #. Button (Profiles > Settings File > Import Settings)
 msgid "Import"
-msgstr ""
+msgstr "가져오기"
 
 #. Setting name (Profiles > Settings File)
 msgid "Export Settings"
-msgstr ""
+msgstr "설정 내보내기"
 
 #. Setting description (Profiles > Settings File > Export Settings)
 msgid "Saves settings to an INI file."
-msgstr ""
+msgstr "설정을 INI 파일에 저장합니다."
 
 #. Button (Profiles > Settings File > Export Settings)
 msgid "Export"
-msgstr ""
+msgstr "내보내기"
 
 #. Setting name (Profiles > Profile)
 msgid "Name"
-msgstr ""
+msgstr "이름"
 
 #. Setting description (Profiles > Profile > Name)
 msgid "Up to 60 characters."
-msgstr ""
+msgstr "최대 60자까지 입력 가능합니다."
 
 #. Input error (Profiles > Profile > Name)
 msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr ""
+msgstr "사용 중이지 않은 프로필 이름을 입력하세요. (1~60자)"
 
 #. Setting name (Profiles > Folders)
 msgid "Add Folder"
-msgstr ""
+msgstr "폴더 추가"
 
 #. Setting description (Profiles > Folders > Add Folder)
 msgid ""
 "Videos in these folders and their subfolders use this profile; when folders "
 "are nested, the closest one wins."
 msgstr ""
+"이 폴더와 하위 폴더에 있는 영상들은 이 프로필을 사용합니다. 폴더가 중첩된 "
+"경우, 가장 가까운 폴더의 설정이 적용됩니다."
 
 #. Button (Profiles > Folders > Add Folder)
 msgid "Choose…"
-msgstr ""
+msgstr "선택…"
 
 #. Setting name (Profiles > Displays)
 msgid "All Displays"
-msgstr ""
+msgstr "모든 디스플레이"
 
 #. Setting description (Profiles > Displays > All Displays)
 msgid "Off: only on the displays switched on below."
-msgstr ""
+msgstr "끔 : 아래에서 켜진 디스플레이에만 적용됩니다."
 
 #. Section heading (Profiles)
 #. Setting name (Profiles > New Profile)
 msgid "New Profile"
-msgstr ""
+msgstr "새 프로필"
 
 #. Section description (Profiles > New Profile)
 msgid ""
 "Own settings for videos from chosen folders, e.g. other scaling for anime."
 msgstr ""
+"선택한 폴더 내의 영상에 대해 개별 설정을 지정할 수 있음, 예 : 애니메이션의 "
+"경우 다른 스케일링 방식 적용"
 
 #. Setting description (Profiles > New Profile > New Profile)
 msgid "Adds a profile with neutral settings in its own tab."
-msgstr ""
+msgstr "중립적인 설정이 적용된 프로필을 별도의 탭에 추가합니다."
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
-msgstr ""
+msgstr "만들기"
 
 #. Category
 #. Category heading
 msgid "Shortcuts"
-msgstr ""
+msgstr "바로 가기"
 
 #. Category description
 msgid ""
 "Keys for the playing video. Open a group, click a field and press the keys."
-msgstr ""
+msgstr "영상 재생 관련 키입니다. 그룹을 열고 필드를 클릭한 다음, 해당 키를 누르세요."
 
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shortcuts"
-msgstr ""
+msgstr "바로 가기 초기화"
 
 #. Setting name (Shortcuts > )
 msgid "Renderer"
-msgstr ""
+msgstr "렌더러"
 
 #. Setting name (Shortcuts > )
 msgid "Statistics"
-msgstr ""
+msgstr "통계"
 
 #. Setting description (Shortcuts >  > Statistics)
 msgid "Shows or hides the statistics."
-msgstr ""
+msgstr "통계 정보를 표시하거나 숨깁니다."
 
 #. Setting name (Shortcuts > )
 msgid "All Shaders Off / Back On"
-msgstr ""
+msgstr "모든 셰이더 끔/ 다시 켬"
 
 #. Setting description (Shortcuts >  > All Shaders Off / Back On)
 msgid "Turns all shaders off; pressed again, back on."
-msgstr ""
+msgstr "모든 셰이더를 끕니다. 다시 누르면 다시 켜집니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next Quality Preset"
-msgstr ""
+msgstr "다음 품질 사전 설정"
 
 #. Setting description (Shortcuts >  > Next Quality Preset)
 msgid "Switches to the next quality preset."
-msgstr ""
+msgstr "다음 음질 사전 설정으로 전환합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next Profile"
-msgstr ""
+msgstr "다음 프로필"
 
 #. Setting description (Shortcuts >  > Next Profile)
 msgid "Switches this file to the next profile."
-msgstr ""
+msgstr "이 파일을 다음 프로필로 전환합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Reset Picture Controls"
-msgstr ""
+msgstr "화면 설정 초기화"
 
 #. Setting description (Shortcuts >  > Reset Picture Controls)
 msgid "Sets brightness, contrast, saturation and gamma back to neutral."
-msgstr ""
+msgstr "밝기, 대비, 채도 및 감마 값을 기본값으로 되돌립니다."
 
 #. Setting name (Shortcuts > )
 msgid "Reset Statistics"
-msgstr ""
+msgstr "통계 초기화"
 
 #. Setting description (Shortcuts >  > Reset Statistics)
 msgid "Counters, averages and peaks start from zero."
-msgstr ""
+msgstr "카운터, 평균 및 최고값은 모두 0에서 시작합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next"
-msgstr ""
+msgstr "다음"
 
 #. Setting description (Shortcuts >  > Next)
 msgid "Next value; after the last one, the first again."
-msgstr ""
+msgstr "다음 값; 마지막 것을 보고 나니 다시 첫 번째 것이 되었다."
 
 #. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
-msgstr ""
+msgstr "정확히 이 값을 설정합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Increase"
-msgstr ""
+msgstr "증가"
 
 #. Setting description (Shortcuts >  > Increase)
 msgid "Raises the value by %s."
-msgstr ""
+msgstr "값을 %s만큼 높입니다."
 
 #. Setting name (Shortcuts > )
 msgid "Decrease"
-msgstr ""
+msgstr "감소"
 
 #. Setting description (Shortcuts >  > Decrease)
 msgid "Lowers the value by %s."
-msgstr ""
+msgstr "값을 %s만큼 낮춥니다."
 
 #. Setting description (Shortcuts >  > Image Analysis)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
 #. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
-msgstr ""
+msgstr "켜거나 끄면; 누를 때마다 상태가 바뀝니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Ctrl"
-msgstr ""
+msgstr "키 이름 : Ctrl"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Alt"
-msgstr ""
+msgstr "키 이름 : Alt"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Shift"
-msgstr ""
+msgstr "키 이름 : Shift"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Space"
-msgstr ""
+msgstr "키 이름 : Space"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Enter"
-msgstr ""
+msgstr "키 이름 : Enter"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Tab"
-msgstr ""
+msgstr "키 이름 : Tab"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Backspace"
-msgstr ""
+msgstr "키 이름 : Backsapce"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Left"
-msgstr ""
+msgstr "Key name : Left"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Right"
-msgstr ""
+msgstr "키 이름 : Right"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Up"
-msgstr ""
+msgstr "키 이름 : Up"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Down"
-msgstr ""
+msgstr "키 이름 : Down"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Page Up"
-msgstr ""
+msgstr "키 이름 : Page Up"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Page Down"
-msgstr ""
+msgstr "키 이름 : Page Down"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Home"
-msgstr ""
+msgstr "키 이름 : Home"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: End"
-msgstr ""
+msgstr "키 이름 : End"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Insert"
-msgstr ""
+msgstr "키 이름 : insert"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Delete"
-msgstr ""
+msgstr "키 이름 : Delete"
 
 #. Menu text; keep %d and %s placeholders
 msgid "not available"
-msgstr ""
+msgstr "사용할 수 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Press the keys…"
-msgstr ""
+msgstr "키를 누르세요…"
 
 #. Menu text; keep %d and %s placeholders
 msgid "%s is already used by \"%s\"."
-msgstr ""
+msgstr "%s은(는) 이미 \"%s\"에서 사용 중입니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Quality"
-msgstr ""
+msgstr "품질"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Custom"
-msgstr ""
+msgstr "커스텀"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset"
-msgstr ""
+msgstr "초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Smooth Motion"
-msgstr ""
+msgstr "부드러운 모션"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Black Bar Detection"
-msgstr ""
+msgstr "검은 막대 감지"
 
 #. Menu text; keep %d and %s placeholders
 msgid "LUT"
-msgstr ""
+msgstr "LUT"
 
 #. Menu text; keep %d and %s placeholders
 msgid "No LUT in the video folder"
-msgstr ""
+msgstr "영상 폴더에 LUT 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Several LUTs in the video folder"
-msgstr ""
+msgstr "영상 폴더 내의 여러 LUT"
 
 #. Menu text; keep %d and %s placeholders
 msgid "LUT in the video folder unreadable"
-msgstr ""
+msgstr "영상 폴더 내의 LUT를 읽을 수 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
-msgstr ""
+msgstr "%sp에서 이 디스플레이는 %s Hz를 제공합니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "No 23 or 24 Hz mode, so films cannot switch here."
-msgstr ""
+msgstr "23Hz나 24Hz 모드가 없기 때문에 영상 재생 시, 해당 모드로 전환할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
-msgstr ""
+msgstr "기타 해상도 : %s."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Delete profile?"
-msgstr ""
+msgstr "프로필을 삭제하시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "\"%s\" and its settings will be removed."
-msgstr ""
+msgstr "\"%s\" 및 해당 설정이 제거됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Cancel"
-msgstr ""
+msgstr "취소"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Delete"
-msgstr ""
+msgstr "삭제"
 
 #. Menu text; keep %d and %s placeholders
 msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr ""
+"메뉴에 이제 \"%s\"가 표시됩니다. 모든 페이지의 변경 사항은 프로필에 "
+"반영됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset all settings of the profile \"%s\" to neutral values?"
-msgstr ""
+msgstr "프로필 \"%s\"의 모든 설정을 중립적인 값으로 초기화하시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "The profile has neutral settings again."
-msgstr ""
+msgstr "프로필 설정이 다시 중립으로 돌아왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
-msgstr ""
+msgstr "이 폴더는 이미 “%s” 프로필에 속해 있습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not save the profile."
-msgstr ""
+msgstr "프로필을 저장할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Your own settings."
-msgstr ""
+msgstr "사용자 본인의 설정입니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "None saved yet."
-msgstr ""
+msgstr "아직 저장된 항목이 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Rename"
-msgstr ""
+msgstr "이름 변경"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Page"
-msgstr ""
+msgstr "페이지 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
-msgstr ""
+msgstr "셰이더 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Input"
-msgstr ""
+msgstr "입력"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Luma"
-msgstr ""
+msgstr "루마"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Chroma"
@@ -4019,174 +4093,176 @@ msgstr "채도"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Image"
-msgstr ""
+msgstr "이미지"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Before Scaling"
-msgstr ""
+msgstr "확장 전"
 
 #. Menu text; keep %d and %s placeholders
 msgid "After Scaling"
-msgstr ""
+msgstr "확장 후"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Saved"
-msgstr ""
+msgstr "저장됨"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Save (%d)"
-msgstr ""
+msgstr "저장(%d)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search settings"
-msgstr ""
+msgstr "검색 설정"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search Results"
-msgstr ""
+msgstr "검색 결과"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Matching settings for: \"%s\""
-msgstr ""
+msgstr "다음 항목에 대한 설정 일치 : \"%s\""
 
 #. Menu text; keep %d and %s placeholders
 msgid "No settings matching this term found."
-msgstr ""
+msgstr "이 용어와 일치하는 설정을 찾을 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Settings saved."
-msgstr ""
+msgstr "설정이 저장되었습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not save settings."
-msgstr ""
+msgstr "설정을 저장할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Select an ICC profile file first."
-msgstr ""
+msgstr "먼저 ICC 프로파일 파일을 선택하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Select a 3D LUT file first."
-msgstr ""
+msgstr "먼저 3D LUT 파일을 선택하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Value or combination is outside the supported range."
-msgstr ""
+msgstr "값 또는 조합이 지원되는 범위를 벗어났습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not open the INI file dialog."
-msgstr ""
+msgstr "INI 파일 대화 상자를 열 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings exported."
-msgstr ""
+msgstr "모든 설정이 내보내졌습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings imported."
-msgstr ""
+msgstr "모든 설정을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Replace all settings with the ones in this file?"
-msgstr ""
+msgstr "모든 설정을 이 파일에 있는 설정으로 바꾸시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All display profiles imported."
-msgstr ""
+msgstr "모든 디스플레이 프로필을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "INI imported. Select Save to keep it."
-msgstr ""
+msgstr "INI를 가져왔습니다. 저장하여 보관하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "INI settings imported."
-msgstr ""
+msgstr "INI 설정을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not apply INI settings. Check external ICC and LUT files."
-msgstr ""
+msgstr "INI 설정을 적용할 수 없습니다. 외부 ICC 및 LUT 파일을 확인하십시오."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not read display profiles."
-msgstr ""
+msgstr "디스플레이 프로필을 읽을 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a number within the supported range."
-msgstr ""
+msgstr "지원되는 범위 내의 숫자를 입력하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured"
-msgstr ""
+msgstr "측정"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measuring…"
-msgstr ""
+msgstr "측정 중…"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measure this PC"
-msgstr ""
+msgstr "이 PC 측정하기"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Picks the best settings for this PC."
-msgstr ""
+msgstr "이 PC에 가장 적합한 설정을 선택합니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "측정값 : %s(%.1f / %.1f ms)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: same as %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "측정값 : %s와 동일(%.1f / %.1f ms)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not measure this display."
-msgstr ""
+msgstr "이 디스플레이는 측정할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measurement failed."
-msgstr ""
+msgstr "측정에 실패했습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset All"
-msgstr ""
+msgstr "모두 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Range"
-msgstr ""
+msgstr "범위"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
-msgstr ""
+msgstr "바로가기를 모두 제거하시겠습니까? Ctrl+J를 누르면 통계 정보가 표시됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid ""
 "Reset all settings for this display to their defaults? Theme and language "
 "stay."
 msgstr ""
+"이 디스플레이의 모든 설정을 기본값으로 다시 설정하시겠습니까? 테마와 언어는 "
+"그대로 유지됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings reset to defaults."
-msgstr ""
+msgstr "모든 설정이 기본값으로 다시 설정되었습니다."
 
 #. Quality preset (header)
 msgid "Fast"
-msgstr ""
+msgstr "빠름"
 
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
-msgstr ""
+msgstr "내장 그래픽 성능이 약한 경우."
 
 #. Quality preset (header)
 msgid "Default"
-msgstr ""
+msgstr "기본값"
 
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
-msgstr ""
+msgstr "균형 잡힌 설정입니다. 대부분의 PC에서 문제없이 작동합니다."
 
 #. Quality preset (header)
 msgid "High Quality"
-msgstr ""
+msgstr "고품질"
 
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
-msgstr ""
+msgstr "가장 화질이 선명합니다. 외장 그래픽용입니다."
