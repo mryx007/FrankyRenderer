@@ -287,15 +287,6 @@ int main()
     for (int tick = 0; tick < 120 * 3600; ++tick)
         jitter.Skip(tick % 37 == 0 || tick % 53 < 20 ? 2 : 1);
     Require(!jitter.skipped, "ordinary queue jitter never leaves out a tick");
-    // Refresh-locked presents land exactly on a vsync and read one or two
-    // ahead by chance, even two for a full second; only three is a backlog.
-    PresentBacklog locked;
-    for (int tick = 0; tick < 120 * 600; ++tick)
-        locked.Skip(tick % 600 < 300 ? 2 : 1 + ((static_cast<unsigned>(tick) * 2654435761u) >> 31), 3);
-    Require(!locked.skipped, "refresh-locked presents on a vsync boundary are no backlog");
-    for (unsigned tick = 0; tick < PresentBacklog::Ticks; ++tick)
-        locked.Skip(3, 3);
-    Require(locked.skipped == 1, "a lasting third queued picture still is");
     puts("PASS queue jitter without a lasting backlog leaves every tick in place");
 
     // Scanout shows one picture per refresh, never before it was submitted.

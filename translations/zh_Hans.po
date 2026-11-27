@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"PO-Revision-Date: 2026-11-19 05:51+0000\n"
-"Last-Translator: Maowei <362904066@users.noreply.hosted.weblate.org>\n"
+"PO-Revision-Date: 2026-11-20 23:53+0000\n"
+"Last-Translator: HMPT <hmpt@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/frankyrenderer/settings-menu/zh_Hans/>\n"
 "Language: zh_Hans\n"
@@ -48,14 +48,14 @@ msgstr "输出纹理格式"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
-"Precision of the final output texture. Auto follows the renderer's output "
-"selection."
-msgstr "最终输出纹理的精度。自动模式下跟随渲染器的输出选择。"
+"Precision of the final output texture. Auto: 8-bit when the display receives "
+"8 bits, otherwise 10-bit."
+msgstr "最终输出纹理的精度。自动：显示器接收 8 位时使用 8 位，否则使用 10 位。"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-msgid "Auto (libplacebo)"
-msgstr "自动 (libplacebo)"
+msgid "Auto (Display)"
+msgstr "自动 (显示器)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
@@ -877,7 +877,7 @@ msgstr "放大视频时重建图像细节。\"自定义\"将复制所选滤镜�
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Use the renderer's default filter."
-msgstr "使用渲染器的默认滤镜。"
+msgstr "使用渲染器的默认滤镜"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 msgid "No filter, only use basic GPU texture sampling"
@@ -887,7 +887,7 @@ msgstr "不使用滤镜，仅使用基础 GPU 纹理采样"
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Configure a custom filter using the controls below."
-msgstr "使用下方控件配置自定义滤镜。"
+msgstr "使用下方控件配置自定义滤镜"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
@@ -1580,6 +1580,22 @@ msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr "关闭时 SDR 保持不变。否则 SDR 在显示器上呈现为此伽马。"
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr "HDR 转 SDR 伽马处理"
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr "SDR 显示器上的 HDR：关闭时保持色调映射结果，否则呈现为此伽马。"
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr "同 SDR"
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"
@@ -1958,6 +1974,16 @@ msgid ""
 msgstr ""
 "关闭时将杜比视界配置文件 7 和 8 作为 HDR10 或 HLG 播放。配置文件 5 始终使用杜"
 "比视界。"
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr "使用 HDR10+"
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr "关闭时忽略动态 HDR10+ 元数据，并保持所选的 HDR 输出模式。"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -3359,9 +3385,9 @@ msgid "Different settings for videos from chosen folders."
 msgstr "为所选文件夹中的视频使用不同的设置。"
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
-msgstr "默认值"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "主配置"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
@@ -3489,8 +3515,8 @@ msgid ""
 msgstr "为所选文件夹中的视频提供单独的设置，例如为动画使用不同的缩放。"
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr "在单独的标签页中添加一个空配置文件。"
+msgid "Adds a profile with neutral settings in its own tab."
+msgstr "在单独的标签页中添加一个使用中性设置的配置文件。"
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
@@ -3571,7 +3597,7 @@ msgstr "下一个值"
 msgid "Next value; after the last one, the first again."
 msgstr "下一个值；最后一个之后回到第一个。"
 
-#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
@@ -3748,12 +3774,12 @@ msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr "菜单现在显示“%s”。所有页面上的更改都会保存到此配置文件。"
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr "删除配置文件“%s”的所有设置？之后它将与默认值相同。"
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
+msgstr "将配置文件“%s”的所有设置重置为中性值？"
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr "配置文件已恢复为与默认值相同。"
+msgid "The profile has neutral settings again."
+msgstr "配置文件已恢复为中性设置。"
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
@@ -3952,6 +3978,10 @@ msgstr "快速"
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
 msgstr "适用于性能较弱的集成显卡。"
+
+#. Quality preset (header)
+msgid "Default"
+msgstr "默认值"
 
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."

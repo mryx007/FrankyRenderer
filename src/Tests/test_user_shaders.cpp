@@ -189,7 +189,7 @@ int main()
             {
                 // A worker device compiles the shader; its cache reaches this device.
                 ShaderWarmupJob job;
-                job.source = LoadUserShaderSource(id);
+                job.id = id;
                 Microsoft::WRL::ComPtr<IDXGIDevice> dxgi;
                 Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
                 DXGI_ADAPTER_DESC adapterDesc = {};
@@ -197,13 +197,88 @@ int main()
                             SUCCEEDED(dxgi->GetAdapter(&adapter)) && SUCCEEDED(adapter->GetDesc(&adapterDesc)),
                         "adapter of the playing device");
                 job.adapter = adapterDesc.AdapterLuid;
-                job.width = 320;
-                job.height = 180;
+                DescribeWarmupVideo(job, 320, 180);
                 Require(WarmUpShader(job) && !job.cache.empty(), "a worker device compiles the shader");
                 auto cacheParams = pl_cache_default_params;
                 pl_cache cache = pl_cache_create(&cacheParams);
                 Require(pl_cache_load(cache, job.cache.data(), job.cache.size()) > 0, "its cache can be loaded");
                 pl_cache_destroy(&cache);
+                // A Dolby Vision picture: the worker runs after the picture and
+                // its metadata are gone. libplacebo read the freed metadata and
+                // stopped on "comp->num_pivots >= 2 && comp->num_pivots <= 9".
+                ShaderWarmupJob dv;
+                dv.id = id;
+                dv.adapter = adapterDesc.AdapterLuid;
+                DescribeWarmupVideo(dv, 320, 180);
+                dv.planes = {{"r16", 320, 180, 1, {PL_CHANNEL_Y}},
+                             {"rg16", 160, 90, 2, {PL_CHANNEL_CB, PL_CHANNEL_CR}}};
+                auto picture = std::make_unique<pl_dovi_metadata>();
+                picture->nonlinear = picture->linear = pl_matrix3x3_identity;
+                for (auto& comp : picture->comp)
+                {
+                    comp.num_pivots = 2;
+                    comp.pivots[1] = 1023.f / 1024.f;
+                    comp.poly_coeffs[0][1] = 1.f;
+                }
+                dv.sourceRepr = pl_color_repr_uhdtv;
+                dv.sourceRepr.sys = PL_COLOR_SYSTEM_DOLBYVISION;
+                dv.sourceRepr.dovi = picture.get();
+                dv.sourceColor = pl_color_space_hdr10;
+                KeepDoviMetadata(dv.sourceRepr, dv.sourceDovi);
+                // The picture moves on: its metadata change, then go.
+                for (auto& comp : picture->comp)
+                    comp.num_pivots = 200;
+                picture.reset();
+                Require(dv.sourceRepr.dovi && dv.sourceRepr.dovi->comp[0].num_pivots == 2,
+                        "the job keeps its own Dolby Vision metadata");
+                Require(WarmUpShader(dv), "a worker device prepares the shader for a Dolby Vision picture");
+                pl_color_repr plain = pl_color_repr_sdtv;
+                std::shared_ptr<const pl_dovi_metadata> none;
+                KeepDoviMetadata(plain, none);
+                Require(!plain.dovi && !none, "a picture without Dolby Vision keeps none");
+                puts("PASS shader warm-up keeps its own Dolby Vision metadata");
+
+                // A setup warmed up once is skipped at the next start: the
+                // worker's large renders beside starting playback cost about
+                // 50 repeated refreshes.
+                // The job compiled above, described again with one change.
+                const auto keyWith = [&](auto change, const char* build = "build A")
+                {
+                    ShaderWarmupJob other;
+                    other.id = id;
+                    other.adapter = adapterDesc.AdapterLuid;
+                    DescribeWarmupVideo(other, 320, 180);
+                    change(other);
+                    return WarmupKey(other, build);
+                };
+                const auto same = [](ShaderWarmupJob&) {};
+                const uint64_t key = keyWith(same);
+                Require(key && key == WarmupKey(job, "build A"), "the same setup gives the same key");
+                Require(key != keyWith(same, "build B"), "a renderer update warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.config.values[0] += 1; }) != key,
+                        "another shader parameter warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.options += " deband=yes"; }) != key,
+                        "other render parameters warm up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.planes[0].width += 2; }) != key,
+                        "another video size warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.mix = !j.mix; }) != key,
+                        "Smooth Motion on or off warms up again");
+                Require(keyWith([](ShaderWarmupJob& j) { j.sourceColor.hdr.max_luma = 4000; }) == key,
+                        "a file's HDR levels do not change the shader");
+                pl_cache marks = pl_cache_create(&cacheParams);
+                Require(!WarmupMarked(marks, key), "nothing is marked at first");
+                MarkWarmup(marks, key);
+                Require(WarmupMarked(marks, key) && WarmupMarked(marks, key), "a mark stays after it was read");
+                Require(!WarmupMarked(marks, keyWith([](ShaderWarmupJob& j) { j.config.values[0] += 1; })),
+                        "another setup is not marked");
+                std::vector<uint8_t> saved(pl_cache_save(marks, nullptr, 0));
+                pl_cache_save(marks, saved.data(), saved.size());
+                pl_cache reloaded = pl_cache_create(&cacheParams);
+                pl_cache_load(reloaded, saved.data(), saved.size());
+                Require(WarmupMarked(reloaded, key), "the mark is saved with the shader cache");
+                pl_cache_destroy(&reloaded);
+                pl_cache_destroy(&marks);
+                puts("PASS a shader warmed up once for a setup is not warmed up again at the next start");
             }
             // A chain from a package runs as one shader.
             std::filesystem::create_directories(folder / L"shaders");

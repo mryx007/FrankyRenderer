@@ -1,135 +1,34 @@
-- Added: Dolby Vision Profile 5 and 8 metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's built-in decoder), instead of falling back to HDR10.
-- Added: HDR10 and HDR10+ metadata is now applied even when the player's decoder does not pass it on (for example PotPlayer's CUDA decoder), including the HDR10+ tone-mapping curve.
-- Added display mode switching in fullscreen like madVR. Each display profile has its own list of allowed modes (for example 2160p23, 2160p24, 2160p50, 2160p60), the original mode is restored when leaving fullscreen or stopping, and playback can pause for an adjustable time while the TV resynchronises (General & Presentation > Display Mode).
-- Added HDR mode "Tone Map HDR to Display Peak": keeps HDR output but rolls off highlights above the display's peak, for monitors and laptops that do not tone map themselves. The target is "HDR Target Peak", or the peak Windows reports for the display when set to 0 ([#6](https://github.com/mryx007/FrankyRenderer/issues/6)).
-- Added a new settings UI with themes.
-- Added translations for the settings menu (Weblate). Language choice under General > Themes.
-- Added a quality preset (Fast / Default / High Quality) in the settings header, or "Measure this PC" to pick the best settings for the display's GPU, including active shaders, Adaptive Sharpen and Smooth Motion.
-- Added a Reset All button in the settings header.
-- Added shaders: RAVU Zoom R3 and RAVU Zoom AR R3.
-- Added XySubFilter support.
-- Added RTX Video HDR for SDR videos (NVIDIA RTX, Windows HDR on).
-- Added Smooth Motion setting "Present in Advance" (Scaling > Filters), like madVR's "present several frames in advance": 1 to 4 refreshes, or Automatic. Automatic keeps the lowest latency (one refresh) and only presents further ahead after pictures actually miss their refresh, then returns to one after a quiet minute.
-- Added Smooth Motion setting "Oversample Threshold" (Scaling > Filters): shows a whole picture instead of a blend when the other picture would cover only a small share of a refresh, for fewer double edges on motion. 0 keeps the previous behaviour.
-- Added menu languages: German and Chinese (Simplified).
-- Added profiles. Videos from folders you choose can get their own settings, for example a different upscaler for anime. A profile can change any setting in the menu.<br>• Click "+" on the Profiles page to create a profile, then add one or more folders. Videos in these folders use the profile, all other videos use your normal settings ("Default").<br>• At the top of the menu, next to Quality, choose which profile you want to change. All pages then change that profile.<br>• A profile only remembers what you change in it. Everything else comes from Default.<br>• Ctrl+J shows which profile a video uses.<br>• Choosing the display whose normal settings the menu shows is on the Profiles page.
-- Added display settings (Color > Calibration): "Display Gamut" maps colours into a wide-gamut display's native gamut (BT.709, SMPTE C, EBU / PAL, BT.2020, DCI-P3 (DCI white) or P3-D65 (Display P3)) so they do not look oversaturated. "Display Gamma" tells the renderer how the display decodes the signal (Auto, 1.80 to 2.80 in steps of 0.05, or BT.1886 with the display's measured contrast) and is used when HDR is tone mapped to SDR. "SDR Gamma Processing" can make SDR look like a chosen gamma (1.80 to 2.80 in steps of 0.05) on that display; when it is off, SDR stays as before.
-- Added switch "Same Settings on All Displays" (Profiles > Default): copies the chosen display's settings to all displays and keeps them equal while on. Turned off, every display keeps those settings and can be changed alone again.
-- Added keyboard shortcuts (new Shortcuts page). Every menu setting can get a key: switch it on or off, go to its next value or a chosen one, or raise and lower a number. Each row says what a key press does. The list follows the menu (General, Processing, Scaling, Color, HDR, Shaders, where every shader can be switched on or off); a closed group shows how many keys it holds. Renderer actions: statistics, all shaders off for comparison, next quality preset or profile, reset picture controls and reset statistics. A short message in the picture confirms each key. Only Ctrl+J is assigned by default.
-- Fixed the reset buttons in the settings header: they now look like the tabs beside them, and the Profiles page no longer shows them.
-- Fixed wasted space in the settings menu: rows, section headings and the gaps between sections are smaller, a number's range is a small label after its name, and long descriptions are shorter, so more settings fit without scrolling.
-- Fixed stutter and brief mixed pictures with RTX Video Super Resolution when black bar detection adjusts the picture.
-- Fixed coloured ghost images from older pictures with RTX Video Super Resolution and Smooth Motion on 10-bit video. Decoder pictures now go to the NVIDIA driver directly, and Ctrl+J shows the driver as the chroma scaler.
-- Fixed stutter with RTX Video Super Resolution and Smooth Motion on HDR10+ video: changing metadata no longer rebuilds the driver's processor.
-- Fixed the RTX Video switches acting while the feature is off in the NVIDIA app: the renderer now uses its own scaling then, and Ctrl+J shows "off in the NVIDIA app".
-- Fixed a black picture with sound when a filter such as VapourSynth Filter (used by SVP) reconnects to the renderer during playback, for example after loading a new script.
-- Fixed AviSynth sources being reopened by Dolby Vision probing ([#2](https://github.com/mryx007/FrankyRenderer/issues/2)).
-- Fixed cropped screenshots and "Save displayed image" errors in MPC-BE.
-- Fixed settings changed before playback not applying to the display profile ([#3](https://github.com/mryx007/FrankyRenderer/issues/3)).
-- Fixed the search box in the settings menu changing its font when typing ends.
-- Fixed shaders found in the settings search having no on/off switch.
-- Fixed shortcut messages using the Windows language instead of the menu language until the settings menu had been opened.
-- Fixed RTX Video Super Resolution switching off together with RTX Video HDR when the driver refused HDR.
-- Fixed a brief white properties window when opening the settings menu in MPC-BE.
-- Fixed regular single frame drops during playback, most noticeable with Smooth Motion.
-- Fixed bursts of dropped frames when switching to fullscreen or another display, resizing the window or toggling statistics with Ctrl+J.
-- Fixed missing frames after Stop and Play or a decoder change.
-- Fixed the first picture being shown twice after starting playback or seeking while paused.
-- Fixed failed rendering and screenshots of interlaced video with hardware decoding at native size on some systems.
-- Fixed settings previewed in an open settings dialog staying active after the player closed unexpectedly; they are now reverted on the next start.
-- Fixed one invalid stored setting resetting the whole display profile.
-- Fixed a possible crash when the player closes the settings while a list or file dialog is open.
-- Fixed Dolby Vision Profile 7 on UHD Blu-ray: the enhancement layer is now used when playing a BDMV `.m2ts` clip or `.mpls` playlist, which carry no Dolby Vision descriptor ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
-- Fixed the Dolby Vision status for Profile 7 discs that are flagged as FEL but add no residual: they are now shown as MEL processing instead of "FEL not processed" ([#5](https://github.com/mryx007/FrankyRenderer/issues/5)).
-- Fixed a washed-out picture with "Prefer 16-bit Float" output when Windows HDR is off: SDR white was written above the display's white level and clipped.
-- Fixed end credits being detected as black bars and cropped.
-- Fixed Smooth Motion slowly falling behind during long playback: render peaks above 100 % in the statistics, blocking presents and dropped frames that only went away after pausing. The audio clock and the display drift apart, and surplus pictures piled up in the display queue. Smooth Motion now presents every picture on its own display refresh and leaves out or repeats a single interpolated picture when the clocks drift.
-- Fixed SSIM Downscaler, AMD CAS, Anti-Ringing and PixelClipper being skipped with "Prefer 16-bit Float" output ("output-stage shaders bypassed for linear scRGB"). They run during scaling, before the output conversion, and now work the same as with 10-bit output.
-- Fixed two settings menu icons shown as empty boxes on Windows 10 ([#10](https://github.com/mryx007/FrankyRenderer/issues/10)). The sidebar now uses icons that every Windows 10 and 11 version has, with new icons for Processing, Scaling and Shaders.
-- Fixed SSimDownscaler oversharpening with visible ringing, especially at strong downscaling: it now uses igv's original shader instead of the PlayKit variant and downscales in gamma light as recommended for mpv. Mitchell works best as the base downscaler.
-- Fixed double edges on moving objects in a paused picture with Smooth Motion: paused and redrawn pictures now show the current frame instead of the last blend of two frames.
-- Fixed the menu not following a Chinese Windows display language (zh-CN and similar now find the Simplified Chinese translation).
-- Fixed the "Allowed Modes" description and the list of display modes under it staying in English in translated menus.
-- Fixed the Ctrl+J statistics dropping frames: updating the overlay stalled rendering for about 14 ms four times a second.
-- Fixed text fields changing their font while typing.
-- Fixed an upside-down picture with RGB32 video that a decoder or filter marks as BI_BITFIELDS ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
-- Fixed Chinese menu text mixing bold and thin characters: the menu now lays out text in the menu language, so all characters use Microsoft YaHei UI ([#17](https://github.com/mryx007/FrankyRenderer/issues/17)).
-- Fixed the highlight in the settings menu staying in place while scrolling with the mouse wheel; it now follows the control under the mouse.
-- Fixed RTX Video Super Resolution output being scaled again by a fraction of a pixel when the picture did not fill whole pixels; it is now shown 1:1, slightly sharper and with less GPU work.
-- Fixed occasional broken pictures, brief lines when switching to fullscreen and GPU spikes with RTX Video Super Resolution ([#19](https://github.com/mryx007/FrankyRenderer/issues/19)): like MPC Video Renderer, the driver now writes each frame straight into its own reused texture, RTX starts only once its input is complete, each video frame keeps its own frame number, and a newly created RTX processor gets a warm-up frame.
-- Fixed an upside-down picture with DirectVobSub (VSFilter) and other filters that pass RGB video: like MPC Video Renderer, the renderer now asks them for top-down rows ([#16](https://github.com/mryx007/FrankyRenderer/issues/16)).
-- Fixed settings changes not applying to the playing video when PotPlayer's Preferences > Video renderer settings were used; they now apply at once like from the right-click menu ([#20](https://github.com/mryx007/FrankyRenderer/issues/20)).
-- Ctrl+J shows "Image: RTX Super Resolution" when RTX did the upscaling and "native size" when the video needs no scaling, instead of "1:1 (scaler bypassed)".
-- One native package for MPC-BE and [PotPlayer 261030 Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe) with native FrankyRenderer support; removed the MPC Video Renderer compatibility registration.
-- Number fields in the settings menu now apply with Enter, Tab or when leaving the field; Escape restores the previous value.
-- Faster live preview while dragging sliders with an ICC profile or 3D LUT enabled.
-- Settings menu: Reset Shader resets only the selected shader; clearer messages for missing ICC/LUT files and other small fixes.
-- Smaller download (about 16 MB instead of 20 MB): FFmpeg is now built with only what Dolby Vision processing needs (HEVC decoding and MKV/MP4/TS reading).
-- Clearer Ctrl+J statistics: grouped into Display, Video, Processing and Performance with aligned columns, and colour for render load, drops and Dolby Vision. Render time is now shown against the time available per picture, and the box no longer changes size while the numbers change.
-- Quality selector shows "Measured" after a measurement and "Custom" as soon as any setting changes. "Custom" is always the last entry and brings back your own settings after you tried a preset.
-- The player stays usable while the settings menu is open: pause, seek or switch to fullscreen and compare settings live. The menu closes itself when the player opens another file or closes, and opening it again brings the open menu forward.
-- Menu languages are now included only when fully translated (previously from 95%).
-- "Render peak 5s" in Ctrl+J is now coloured only when pictures were actually lost; a slow picture the display queue absorbed shows as "absorbed by queue". In the Drops row only counts above zero are coloured.
-- Settings menu buttons and text fields use the same font size as the choice boxes.
-- Cancel in the settings menu now also restores profiles: their settings, folders, displays and names, and profiles added or deleted.
-- Choice lists in the settings menu are only as wide as their text.
-- Ctrl+J shows "Default" instead of "none" when a video uses no profile.
-- Shader settings that only know 0 or 1 (e.g. SHARP in AiUpscale) are now on/off switches instead of number fields.
-- Shaders are switched on only in the shader list; the extra "Enabled" switch in each shader's settings is gone. Reset Shader now resets only its settings.
-- Updated FFmpeg to the latest LAV-maintained version (4 November 2026), including newer HEVC decoding and fixes for Dolby Vision metadata and RPU parsing.
-- Updated libplacebo with fixes made after version 7.387.0: more accurate colour conversion for PQ, HLG and the black level, ICC profiles without a brightness value, and a Smooth Motion queue fix.
-- Settings menu: the tabs no longer run into the Reset buttons in translated menus, there is more space and a thin line below the top bar, even spacing between the buttons at the top, narrower choice lists, and the search box no longer shows the Ctrl+F hint.
-- Made the statistics colours subtler: normal values are white, yellow and red only mark problems and are softer.
-- Fixed RTX Video HDR being refused for small videos on some graphics cards. If the driver still refuses it, Ctrl+J shows where it failed.
-- Added "Switch Windows HDR" (HDR & Color Mapping > HDR Output), off by default: the renderer can turn Windows HDR on for HDR videos and off for SDR videos, always or only in fullscreen, and restores it afterwards. Colours then stay right in a window and under the player's controls. It stays on for SDR videos using RTX Video HDR.
-- Added your own shaders: mpv-format files (.glsl, .hook) placed in shaders\Custom beside the renderer appear on the Shaders page, with their settings. Shader packs with an mpv input.conf, such as Anime4K, show one entry per mode: unpack the whole archive there.
-- Built-in shaders you do not need can be deleted from shaders\PlayKit; they leave the list.
-- The shader list is now alphabetical, and Chain Position counts only the shaders that are switched on.
-- Long lists of active shaders now wrap in the Ctrl+J statistics.
-- Added Diagnostics (General & Presentation): switch on Diagnostic Log, restart the player and reproduce the problem. Save Report then puts a text file on the desktop to attach to a bug report. The log covers one start of the player and turns itself off; nothing is recorded otherwise.
-- Added ten error diffusion methods to Dithering > Algorithm. They need more GPU time, and large ones fall back to Blue Noise at high resolutions.
-- Added the Clamped Mitchell frame mixer for Smooth Motion. Oversample Threshold is now greyed out for mixers it does not apply to.
-- Removed "Keep a Stable Zoom": a logo without black bars at the start could keep the bars of the whole film from being detected.
-- The Ctrl+J statistics now sit directly at the left edge.
-- MPC-HC supports FrankyRenderer from version 2.8.5.14: choose it under Options > Playback > Output.
-- Shaders that take long to compile no longer freeze the picture: the video keeps playing without them while they are prepared in the background, and they switch on when ready. The statistics show them as preparing meanwhile.
-- The shaders folder of the package now only holds PlayKit and Custom.
-- Removed "Clipping Protection": it silently replaced the chosen tone mapping function with Spline. For the same result, switch on Enable Peak Detection and choose Spline, or Auto for HDR10+ videos.
-- Fixed the aspect ratio override, stretching and zoom of MPC-HC and MPC-BE having no effect: the renderer now draws into the video area the player sets.
-- Fixed the statistics changing their text size when pausing, playing or seeking.
-- Fixed a short stutter after seeking with Smooth Motion.
-- Shaders now run in an automatic order (cleanup, scaling, sharpening). Turn off Automatic Order to set it yourself.
-- Settings menu: wider scroll bars; the shader list no longer highlights the selected shader.
-- Fixed no picture and no sound with Smooth Motion on some TV streams such as multicast IPTV ([#24](https://github.com/mryx007/FrankyRenderer/issues/24)).
-- Added "LUT from Video Folder" (Color > 3D LUT): uses a .cube file next to the video ([#25](https://github.com/mryx007/FrankyRenderer/issues/25)).
-- Ctrl+J shows custom scalers in detail instead of only "custom".
-- Custom scalers: Kernel and Starting Filter no longer offer "none"; rejected settings now show a message.
-- Black bar detection only crops bars at the top and bottom; dark sides of a scene no longer zoom in.
-- Ctrl+J: "Render" shows a recent average instead of a 5-second peak.
-- Added "Remember Last Page" (General > Appearance, formerly Themes): the settings window reopens where it was closed.
-- Fixed stretched subtitles in MPC-BE when the window size does not change after opening ([#28](https://github.com/mryx007/FrankyRenderer/issues/28)).
-- Better performance: less CPU work per frame (RTX Video, HDR displays, software decoding) and a smoother settings menu.
-- Added "Statistics Text Size" (General > Image Analysis): makes the Ctrl+J statistics larger or smaller, per display ([#30](https://github.com/mryx007/FrankyRenderer/issues/30)).
-- Added SSimDownscaler_AR (Shaders): SSimDownscaler with anti-ringing at hard edges, controlled by Global Anti-Ringing. SSimDownscaler's THR is now called Oversharp.
-- Fixed Ctrl+J showing deinterlacing as off with RTX Video HDR; it says "off (settings)" when deinterlacing is switched off ([#31](https://github.com/mryx007/FrankyRenderer/issues/31)).
-- Changed: settings are saved in %APPDATA%\FrankyRenderer\Settings.ini, created automatically on the first change; open folder, import and export are on the Profiles page ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
-- Changed: Install.cmd and Uninstall.cmd are plain batch files; /s runs them silently ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
-- Added the version beside the name in the settings window ([#33](https://github.com/mryx007/FrankyRenderer/issues/33)).
-- Changed: Ctrl+J statistics and image analysis sit on the picture, never in black bars, like madVR.
-- Changed: Settings.ini also holds the content profiles and Custom quality; Export saves this file and Import replaces all settings with it.
-- Added Backup Settings.cmd and Import Settings.cmd: they save the settings as Settings.ini in the install folder and take them from there.
-- Added the source gamma and the gamma the display gets to the Ctrl+J statistics ([#34](https://github.com/mryx007/FrankyRenderer/issues/34)).
-- Fixed Ctrl+J for videos faster than the display (120 fps on 60 Hz): frames the display cannot show no longer count as dropped, and the render budget is one refresh ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
-- Added the GPU the renderer uses to the Ctrl+J statistics and the diagnostic report ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
-- Fixed stutter for videos faster than the display (120 fps on 60 Hz): one frame per refresh, and Ctrl+J shows how many fps are shown ([#36](https://github.com/mryx007/FrankyRenderer/issues/36)).
-- Changed: the shader cache is in %LOCALAPPDATA%\FrankyRenderer\Cache; an existing one moves there once. Uninstall.cmd removes it when deleting the settings.
-- Added a Clock row to the Ctrl+J statistics, like madVR: how far the audio clock deviates and how often a frame repeats or drops because of it.
-- Improved frame timing without Smooth Motion.
-- Fixed a slanted, broken picture with some software decoders when the video width is not a multiple of 16 (for example 854×480).
-- Added "Use Dolby Vision" (HDR): off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. On by default.
-- Added "Vertical Image Position" (Black Bars & Zoom): center, bottom or top; subtitles in cropped bars stay visible.
-- Fixed stutter with Smooth Motion at a matching frame rate and after the display mode change.
-- Fixed the player's playback speed being ignored ([#43](https://github.com/mryx007/FrankyRenderer/issues/43)).
-- Changed: black bars are detected once and then only grow.
-- Fixed frame stepping (Ctrl+Right / Ctrl+Left) in MPC-HC and MPC-BE.
-- After updating from 1.2.1 or older, run Install.cmd once as administrator: it removes the old setup.ps1 and registration-backup.
+- Changed: a new profile takes no settings from Main and starts fresh with the built-in settings; "Default" is now called "Main" ([#45](https://github.com/mryx007/FrankyRenderer/issues/45)). Existing profiles stay as they are. If you have a profile called "Main", rename it before updating.
+- Fixed 16-bit float output looking darker than 8/10-bit with Windows HDR on, and its slightly grey black.
+- Fixed 16-bit float output ignoring Display Gamma, Display Gamut, SDR Gamma Processing and RGB levels, and showing HDR colours less saturated.
+- Changed: Output Texture Format "Auto (Display)" uses 8-bit when the display receives 8 bits, so the renderer dithers instead of the GPU driver.
+- Fixed 16-bit float output not being dithered; it now dithers to the bit depth the display receives.
+- Fixed DVD line 21 caption dots keeping the top black bar visible.
+- Fixed Tone Mapping Metadata "Auto (Metadata)" not using the automatic HDR10+ / Dolby Vision selection once chosen in the menu.
+- Fixed SDR shadows being too dark without SDR Gamma Processing ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed a new Starting Filter keeping the previous custom scaler values; Ctrl+J shows radius and blur ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed RTX Super Resolution making SDR slightly too dark; SDR is now upscaled in 10 bits ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed a black picture after switching from FrankyRenderer to another renderer in PotPlayer ([#48](https://github.com/mryx007/FrankyRenderer/issues/48)).
+- Fixed subtitles in the black bars stacking up with 16-bit float output ([#47](https://github.com/mryx007/FrankyRenderer/issues/47)).
+- RTX Super Resolution now also sharpens HDR video that does not arrive as P010.
+- Fewer dropped frames when entering full screen, showing player panels or resizing the window ([#49](https://github.com/mryx007/FrankyRenderer/issues/49)).
+- Fixed playback freezing for seconds when a large shader such as ArtCNN switches on in full screen.
+- The shader cache is now saved during playback, not only when the player closes.
+- Ctrl+J names the scalers as in the menu ("Downscaler: …") and lists the shaders right below the image scaler ([#50](https://github.com/mryx007/FrankyRenderer/issues/50)).
+- Fixed "Macrovision Error" when opening a DVD or DVD folder in MPC-HC and MPC-BE.
+- Fixed shaders such as denoising, debanding and chroma shaders doing nothing with RTX Video HDR or Super Resolution ([#51](https://github.com/mryx007/FrankyRenderer/issues/51)).
+- Ctrl+J shows a shorter RTX Video line.
+- Fixed interlaced video freezing with deinterlacing when Smooth Motion is off, for files with one sample per field ([#53](https://github.com/mryx007/FrankyRenderer/issues/53)).
+- Field Order Auto now detects a wrong field order from the picture, for broadcast streams that are marked wrong ([#53](https://github.com/mryx007/FrankyRenderer/issues/53)).
+- Fixed screen recordings with few frames: resizing, Ctrl+J and the statistics no longer wait for the next frame ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
+- Added "Use HDR10+" (HDR > HDR Output): off plays HDR10+ videos as HDR10.
+- Fixed RGB videos such as screen recordings keeping their first size and position in MPC-HC and MPC-BE when the window or video frame changes ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
+- Fixed screen recordings with long gaps between pictures staying black with Smooth Motion on, for example in MPC-BE ([#54](https://github.com/mryx007/FrankyRenderer/issues/54)).
+- Fixed Dolby Vision videos closing the player with an "Assertion failed" message while shaders were being prepared.
+- Fixed MPC-HC and MPC-BE video frames other than "Touch Window From Inside" (from outside, stretch, normal size, zoom) having no effect with Crop Black Bars; they now show the whole video.
+- Smooth Motion "Present in Advance: Automatic" now goes up to 4 refreshes, fixing repeated refreshes with 4K copy-back decoding.
+- Added HDR to SDR Gamma Processing: HDR on an SDR display can look like a chosen gamma, like SDR Gamma Processing ([#55](https://github.com/mryx007/FrankyRenderer/issues/55)).
+- Fixed Display Gamma values between the built-in curves (e.g. 2.35) having no effect with peak detection or colour adjustment on.
+- Fewer repeated refreshes right after starting a video with shaders.
+- Fixed occasional repeated refreshes during playback with Smooth Motion.
+- Added Korean as a menu language.

@@ -3,6 +3,7 @@
 #include "Renderer/ClockStatistics.h"
 #include "Renderer/StatisticsGamma.h"
 #include <libplacebo/d3d11.h>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -77,6 +78,8 @@ static void CheckGamma()
     using namespace StatisticsGamma;
     Output sdr;
     sdr.transfer = PL_COLOR_TRC_SRGB;
+    Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output sRGB", "SDR converted to the output");
+    sdr.unchanged = true;
     Check(Text(PL_COLOR_TRC_BT_1886, sdr) == L"source BT.1886 → output unchanged", "SDR without gamma settings");
     auto processed = sdr;
     processed.sdrGamma = 240;
@@ -263,6 +266,30 @@ int main()
               "GPU texture dimensions and left margin");
         Check(!bitmap.Update(d3d->gpu, L"statistics", 640, 360), "old viewport is not displayed after resize");
         Check(update(640, 360), "replacement viewport uploaded");
+        {
+            // Statistics while the window is resized (issue 54): the previous
+            // image stays until the new one is ready, made smaller to fit.
+            Check(bitmap.Update(d3d->gpu, L"statistics", 1280, 720, nullptr, 100, true) && !bitmap.DrawnFor(1280, 720),
+                  "previous statistics stay while a larger view is drawn");
+            bitmap.Describe(overlay, part);
+            Check(part.dst.x1 - part.dst.x0 == part.src.x1 && part.dst.y1 - part.dst.y0 == part.src.y1,
+                  "previous statistics keep their size when they fit");
+            Check(bitmap.Update(d3d->gpu, L"statistics", 40, 20, nullptr, 100, true) && !bitmap.DrawnFor(40, 20),
+                  "previous statistics stay while a smaller view is drawn");
+            bitmap.Describe(overlay, part);
+            const float shownW = part.dst.x1 - part.dst.x0, shownH = part.dst.y1 - part.dst.y0;
+            Check(shownW > 0 && shownW <= 24.01f && shownH > 0 && shownH <= 20.01f &&
+                      std::abs(shownW / shownH - part.src.x1 / part.src.y1) < .01f,
+                  "previous statistics shrink evenly to fit the smaller view");
+            const auto until = GetTickCount64() + 3000;
+            while (!bitmap.DrawnFor(40, 20) && GetTickCount64() < until)
+            {
+                bitmap.Update(d3d->gpu, L"statistics", 40, 20, nullptr, 100, true);
+                Sleep(1);
+            }
+            Check(bitmap.DrawnFor(40, 20), "statistics for the new view replace the previous ones");
+            puts("PASS statistics stay visible while the window is resized");
+        }
         bitmap.Reset();
         Check(update(1280, 720), "GPU reset supports another image");
     }

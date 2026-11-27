@@ -309,6 +309,52 @@ int main()
         show(scope, 3);
         Require(equal(detector.ContentBounds(3840, 2160), corrected), "a new file measures again");
     }
+    {
+        // DVD line 21 captions: a dotted data line on the outermost rows above
+        // a letterboxed film is no subtitle, the top bar is still cropped.
+        // Text inside a bar (not touching the edge) is still protected.
+        constexpr int width = 720, height = 480;
+        auto picture = [&](int dataRows, bool text)
+        {
+            std::vector<uint8_t> pixels(size_t(width) * height * 4, 0);
+            for (int y = 0; y < height; ++y)
+                for (int x = 0; x < width; ++x)
+                {
+                    uint8_t* p = &pixels[(size_t(y) * width + x) * 4];
+                    p[3] = 255;
+                    if (y >= 60 && y < height - 60)
+                        p[0] = p[1] = p[2] = uint8_t(80 + (x * 7 + y * 3) % 120);
+                    if (y < dataRows)
+                        p[0] = p[1] = p[2] = (x / 13) % 2 ? 180 : 16;
+                    if (text && y >= height - 40 && y < height - 30 && x >= 200 && x < 520 && x % 6 < 4)
+                        p[0] = p[1] = p[2] = 230;
+                }
+            return pixels;
+        };
+        BlackBarSettings settings;
+        settings.enabled = TRUE;
+        settings.keepSubtitles = TRUE;
+        for (int dataRows : {1, 2})
+        {
+            BlackBarDetector detector;
+            const auto pixels = picture(dataRows, false);
+            for (int sample = 0; sample < 6; ++sample)
+                detector.Observe(pixels.data(), width, height, width * 4, width, height, settings, sample * 400);
+            const auto shown = detector.Bounds(width, height);
+            Require(detector.measured && !detector.subtitleProtection && shown.top > 40 && shown.bottom < height - 40,
+                    "line 21 caption dots on the top rows do not keep the top bar");
+        }
+        BlackBarDetector detector;
+        const auto captions = picture(2, true);
+        for (int sample = 0; sample < 6; ++sample)
+            detector.Observe(captions.data(), width, height, width * 4, width, height, settings, sample * 400);
+        const auto shown = detector.Bounds(width, height);
+        const auto crop = detector.ContentBounds(width, height);
+        Require(detector.subtitleProtection && shown.bottom >= height - 32 && shown.bottom > crop.bottom + 20 &&
+                    shown.top == crop.top,
+                "subtitles in the bottom bar are still shown, line 21 dots are not");
+    }
+    puts("PASS line 21 captions on the outermost rows are no subtitles; subtitles in a bar are still shown");
     puts("PASS black bars: measured once, a stable correction only in the first 30 s of playback, dark scenes never "
          "tighten, IMAX opens and stays open, seeks keep the crop, subtitles show their bar without moving the crop, "
          "edge noise is no text");

@@ -90,12 +90,14 @@ struct RenderSettings
     int displayContrast = 0;   // BT.1886 display contrast, 0 = infinite
     int displayPrimaries = 0;  // 0=auto (BT.709), 1=SMPTE C, 2=EBU/PAL, 3=BT.2020, 4=DCI-P3, 5=Display P3
     int sdrGammaCurve = 0;     // 0=off, 180-280=pure power x100
+    int hdrSdrGammaCurve = 0;  // HDR tone mapped to SDR: 0=off, 1=like SDR, 180-280=pure power x100
     float motionThreshold = 0;
     bool adaptiveSharpen = false;
     float sharpenStrength = .5f;
     bool smoothMotion = false;
     bool rtxSuperResolution = false, rtxHdr = false;
     bool useDolbyVision = true; // statistics: Dolby Vision left out by the setting
+    bool useHdr10Plus = true;
     bool imageAnalysis = false;
     int statisticsTextScale = 100; // statistics text size in percent of the automatic size
     std::optional<ScalingSettings> scaling;
@@ -122,6 +124,9 @@ class PlaceboBackend
 {
     struct State;
     std::unique_ptr<State> state;
+    // CPU memory planes uploaded while the backend is locked (formats other
+    // than NV12/P010, and the fallback when staging is not possible).
+    HRESULT UploadPlanes(const VideoFrame& frame, const uint8_t* data, size_t bytes);
 
   public:
     PlaceboBackend();
@@ -167,6 +172,8 @@ class PlaceboBackend
 #endif
     bool PaintLoadingBackground(HDC dc);
     void SetGeometry(const RECT& source, const RECT& target);
+    // The video window size the player set (IVideoWindow::SetWindowPosition).
+    void SetHostWindowSize(int width, int height);
     HRESULT SetRotation(int degrees);
     int Rotation() const;
     void SetFlip(bool mirror);
@@ -189,6 +196,15 @@ class PlaceboBackend
     void ShowStatistics(bool enabled);
     // The decoder marks the video as interlaced, whether or not it is deinterlaced.
     void SetSourceInterlaced(bool interlaced);
+    // Field order measured from the picture while deinterlacing: 0 unknown,
+    // 1 top field first, 2 bottom field first (FieldOrderAnalysis.h).
+    int DetectedFieldOrder() const;
+    // Measures two captured frames now (while the order is unknown), before
+    // they are shown.
+    void MeasureFieldOrder(uint64_t current, uint64_t next);
+    // The statistics show a field order taken from the picture against the flags.
+    void SetFieldOrderCorrected(int order);
+    int FieldOrderCorrected() const;
     // Short text in the picture for about two seconds, e.g. after a shortcut.
     void ShowMessage(const std::wstring& text);
     bool StatisticsVisible() const;

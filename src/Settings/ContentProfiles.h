@@ -9,7 +9,7 @@
 //   Renderer.smoothMotion=0
 //
 // A profile only stores what differs from the display's normal settings
-// ("Default"), as "Section.key" lines of the settings backup. The folder
+// ("Main"), as "Section.key" lines of the settings backup. The folder
 // decides: a folder belongs to one profile, includes its subfolders, and the
 // folder closest to the file wins. Without monitors the profile applies on
 // every display, otherwise only on the listed ones. While the menu shows
@@ -34,8 +34,8 @@ struct Profile
     SettingsIni::Entries overrides;
 };
 
-// Shown for the normal settings in the menu and in a forced choice.
-inline constexpr const wchar_t* DefaultName = L"Default";
+// The normal settings ("Main") in the menu and in a forced choice.
+inline constexpr const wchar_t* DefaultName = L"Main";
 
 // Lower case, backslashes and a trailing separator, so "D:\Anime" does not
 // also match "D:\Anime2".
@@ -325,7 +325,7 @@ inline void PublishPlaying(const std::wstring& file, const std::wstring& automat
     state.automatic = automatic;
 }
 
-// The profile the playing video gets by its folder; empty for Default.
+// The profile the playing video gets by its folder; empty for Main.
 inline std::wstring PlayingProfile()
 {
     auto& state = Shared();
@@ -399,6 +399,15 @@ inline SettingsIni::Entries Differences(const PlaceboSettings& base, const Place
         if (const auto found = before.find(key); found == before.end() || found->second != value)
             out.emplace(key, value);
     return out;
+}
+
+// What a new profile stores: the built-in value of every setting in which
+// Main differs from it, so it starts as after a fresh install.
+inline SettingsIni::Entries Neutral(const PlaceboSettings& main)
+{
+    PlaceboSettings fresh;
+    wcscpy_s(fresh.displayProfile, main.displayProfile);
+    return Differences(main, fresh);
 }
 
 } // namespace ContentProfiles

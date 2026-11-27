@@ -66,6 +66,8 @@ struct PlaceboSettings
     int displayPrimaries = 0;
     // SDR gamma processing: 0=off, 180-260 = look like this pure power x100.
     int sdrGammaCurve = 0;
+    // The same for HDR tone mapped to SDR: 0=off, 1=like SDR, 180-280 = pure power x100.
+    int hdrSdrGammaCurve = 0;
     // Smooth Motion oversample mixing: a frame showing for less than this share
     // of a refresh is left out instead of blended (0 = always blend, max .5).
     float motionThreshold = 0;
@@ -75,6 +77,7 @@ struct PlaceboSettings
     // Dolby Vision Profile 7 and 8 with an HDR10 or HLG base layer: off plays
     // the base layer as HDR10 or HLG. Profile 5 always uses Dolby Vision.
     BOOL useDolbyVision = TRUE;
+    BOOL useHdr10Plus = TRUE;
     BOOL imageAnalysis = FALSE;
     // Ctrl+J statistics text size in percent of the automatic size (50-200).
     int statisticsTextScale = 100;

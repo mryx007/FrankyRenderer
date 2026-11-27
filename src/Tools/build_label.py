@@ -5,7 +5,8 @@
 Stable releases show the version alone (an empty label), Nightlies
 "Nightly <build id>" and every other build "Test <UTC time> <commit>", with
 "+" when the commit has uncommitted changes. The release workflows set
-FRANKY_CHANNEL and FRANKY_BUILD_ID.
+FRANKY_CHANNEL and FRANKY_BUILD_ID; a build on GitHub in the stable repository
+is stable without them, so its workflow cannot get this wrong.
 """
 import datetime
 import os
@@ -14,6 +15,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+STABLE_REPOSITORY = "mryx007/FrankyRenderer"
 
 
 def git(*arguments):
@@ -25,6 +27,8 @@ def git(*arguments):
 
 def label():
     channel = os.environ.get("FRANKY_CHANNEL", "")
+    if not channel and os.environ.get("GITHUB_REPOSITORY") == STABLE_REPOSITORY:
+        channel = "stable"
     if channel == "stable":
         return ""
     if channel == "nightly":

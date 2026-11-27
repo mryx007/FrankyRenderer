@@ -1,14 +1,18 @@
 // SDR video on a 16-bit float swapchain. The swapchain is scRGB (linear,
 // 1.0 = 80 nits). With Windows HDR off, the desktop shows scRGB 1.0 as the
 // display's white, so SDR white must be written as 1.0; with Windows HDR on,
-// SDR white is written at 203 nits (scRGB 203 / 80).
+// SDR white is written at Windows' SDR content brightness, as Windows shows
+// an integer SDR output (scRGB white / 80).
 #include "Renderer/Backend.h"
+#include "Renderer/SdrWhiteLevel.h"
+#include <d3d11_1.h>
 #include <DirectXPackedVector.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 using Microsoft::WRL::ComPtr;
 
 static void Check(bool ok, const char* text)
@@ -65,6 +69,7 @@ int main()
             data[y * 64 + x] = x < 32 ? 235 : 16;
     Check(SUCCEEDED(b.Upload(f, data.data(), data.size())), "SDR source");
     bool advancedColor = false;
+    float windowsWhite = 0;
     float white = -1, black = -1;
     DXGI_FORMAT presented = DXGI_FORMAT_UNKNOWN;
     b.SetPresentProbeForTest(
@@ -106,12 +111,15 @@ int main()
                 ComPtr<IDXGIOutput6> output6;
                 DXGI_OUTPUT_DESC1 desc = {};
                 if (SUCCEEDED(output.As(&output6)) && SUCCEEDED(output6->GetDesc1(&desc)) && desc.Monitor == monitor)
+                {
                     advancedColor = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    windowsWhite = SdrWhiteLevel::Nits(desc.DeviceName);
+                }
             }
         });
     Check(SUCCEEDED(b.Present()), "present");
     Check(presented == DXGI_FORMAT_R16G16B16A16_FLOAT, "16-bit float swapchain");
-    const float expected = advancedColor ? 203.f / 80.f : 1.f;
+    const float expected = !advancedColor ? 1.f : (windowsWhite > 0 ? windowsWhite : 203.f) / 80.f;
     printf("Windows HDR %s: SDR white %.4f (expected %.4f), black %.4f\n",
            advancedColor ? "on" : "off",
            white,
@@ -120,6 +128,63 @@ int main()
     Check(std::abs(white - expected) < .02f * expected, "SDR white level on the scRGB swapchain");
     Check(std::abs(black) < .005f, "SDR black level");
     puts("PASS 16-bit float output keeps SDR white and black levels");
+
+    // Issue #47: host subtitles in the black bars must not stay from frame to
+    // frame. A letterboxed video (64x16); the painter draws a white block in
+    // the bottom bar at a new column every frame.
+    {
+        int column = 0;
+        b.SetOverlayPainter(
+            [&](ID3D11Device*, ID3D11DeviceContext* context, int, int h, const RECT&)
+            {
+                ComPtr<ID3D11RenderTargetView> view;
+                context->OMGetRenderTargets(1, &view, nullptr);
+                ComPtr<ID3D11DeviceContext1> context1;
+                if (!view || FAILED(context->QueryInterface(IID_PPV_ARGS(&context1))))
+                    return E_FAIL;
+                const float white[4] = {1, 1, 1, 1};
+                const D3D11_RECT block = {LONG(column * 16 + 2), LONG(h - 12), LONG(column * 16 + 14), LONG(h - 4)};
+                context1->ClearView(view.Get(), white, &block, 1);
+                return S_OK;
+            });
+        float lit[4] = {};
+        b.SetPresentProbeForTest(
+            [&](ID3D11Texture2D* texture)
+            {
+                ComPtr<ID3D11Device> device;
+                texture->GetDevice(&device);
+                ComPtr<ID3D11DeviceContext> context;
+                device->GetImmediateContext(&context);
+                D3D11_TEXTURE2D_DESC d;
+                texture->GetDesc(&d);
+                d.Usage = D3D11_USAGE_STAGING;
+                d.BindFlags = 0;
+                d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+                d.MiscFlags = 0;
+                ComPtr<ID3D11Texture2D> staging;
+                Check(SUCCEEDED(device->CreateTexture2D(&d, nullptr, &staging)), "bar capture texture");
+                context->CopyResource(staging.Get(), texture);
+                D3D11_MAPPED_SUBRESOURCE map = {};
+                Check(SUCCEEDED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &map)), "bar capture pixels");
+                const auto* row = reinterpret_cast<const uint16_t*>(static_cast<const uint8_t*>(map.pData) +
+                                                                    map.RowPitch * (d.Height - 8));
+                for (int c = 0; c < 4; c++)
+                    lit[c] = DirectX::PackedVector::XMConvertHalfToFloat(row[(c * 16 + 8) * 4 + 1]);
+                context->Unmap(staging.Get(), 0);
+            });
+        VideoFrame wide = f;
+        wide.height = 16;
+        std::vector<uint8_t> letterbox(64 * 16 * 3 / 2, 128);
+        for (column = 0; column < 4; column++)
+        {
+            Check(SUCCEEDED(b.Upload(wide, letterbox.data(), letterbox.size())), "letterboxed source");
+            Check(SUCCEEDED(b.Present()), "present with subtitles");
+            for (int c = 0; c < 4; c++)
+                Check((lit[c] > .1f) == (c == column), "only the current subtitle shows in the black bar");
+        }
+        b.SetOverlayPainter({});
+        puts("PASS subtitles in the black bars do not stay from frame to frame (#47)");
+    }
     DestroyWindow(window);
     return 0;
 }

@@ -6,7 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
 "Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Language-Team: Russian <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -46,13 +47,13 @@ msgstr ""
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
-"Precision of the final output texture. Auto follows the renderer's output "
-"selection."
+"Precision of the final output texture. Auto: 8-bit when the display receives "
+"8 bits, otherwise 10-bit."
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-msgid "Auto (libplacebo)"
+msgid "Auto (Display)"
 msgstr ""
 
 #. Choice (General > Output > Output Texture Format)
@@ -1560,6 +1561,22 @@ msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr ""
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr ""
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr ""
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"
@@ -1925,6 +1942,16 @@ msgstr ""
 msgid ""
 "Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always "
 "uses Dolby Vision."
+msgstr ""
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr ""
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
 msgstr ""
 
 #. Section heading (HDR)
@@ -3327,8 +3354,8 @@ msgid "Different settings for videos from chosen folders."
 msgstr ""
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
 msgstr ""
 
 #. Tab (Profiles)
@@ -3455,7 +3482,7 @@ msgid ""
 msgstr ""
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
+msgid "Adds a profile with neutral settings in its own tab."
 msgstr ""
 
 #. Button (Profiles > New Profile > New Profile)
@@ -3537,7 +3564,7 @@ msgstr ""
 msgid "Next value; after the last one, the first again."
 msgstr ""
 
-#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
@@ -3714,11 +3741,11 @@ msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
+msgid "The profile has neutral settings again."
 msgstr ""
 
 #. Menu text; keep %d and %s placeholders
@@ -3917,6 +3944,10 @@ msgstr ""
 
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
+msgstr ""
+
+#. Quality preset (header)
+msgid "Default"
 msgstr ""
 
 #. Quality preset description (header)

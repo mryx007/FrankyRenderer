@@ -5,1190 +5,1256 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: FrankyRenderer\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-11-27 03:50+0000\n"
+"Last-Translator: Hack茶ん <hackjjang@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Korean <https://hosted.weblate.org/projects/frankyrenderer/"
+"settings-menu/ko/>\n"
 "Language: ko\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.12.dev0\n"
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "General"
-msgstr ""
+msgstr "일반"
 
 #. Category description
 msgid ""
 "Output precision, display mode switching, background and image analysis."
-msgstr ""
+msgstr "출력 정밀도, 표시 모드 전환, 배경 및 이미지 분석."
 
 #. Tab (General)
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Output"
-msgstr ""
+msgstr "출력"
 
 #. Tab (General)
 msgid "Background"
-msgstr ""
+msgstr "배경"
 
 #. Tab (General)
 msgid "Appearance"
-msgstr ""
+msgstr "외관"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Output Texture Format"
-msgstr ""
+msgstr "출력 텍스처 형식"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
-"Precision of the final output texture. Auto follows the renderer's output "
-"selection."
+"Precision of the final output texture. Auto: 8-bit when the display receives "
+"8 bits, otherwise 10-bit."
 msgstr ""
+"최종 출력 텍스처의 정밀도. 자동 : 디스플레이가 8비트를 수신하면 8비트로, 그렇"
+"지 않으면 10비트를 사용합니다."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-msgid "Auto (libplacebo)"
-msgstr ""
+msgid "Auto (Display)"
+msgstr "자동(디스플레이)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "8-bit Integer (SDR)"
-msgstr ""
+msgstr "8비트 정수(SDR)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Prefer 10-bit Integer"
-msgstr ""
+msgstr "10비트 정수 선호"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
 msgid "Prefer 16-bit Float"
-msgstr ""
+msgstr "16비트 부동소수점 선호"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "RGB Output Levels"
-msgstr ""
+msgstr "RGB 출력 레벨"
 
 #. Setting description (General > Output > RGB Output Levels)
 msgid "Match the RGB range used by the display and GPU driver."
-msgstr ""
+msgstr "디스플레이와 GPU 드라이버에서 사용하는 RGB 범위를 일치시키십시오."
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "Auto (Output)"
-msgstr ""
+msgstr "자동(출력)"
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "PC Levels (0–255)"
-msgstr ""
+msgstr "PC 레벨(0–255)"
 
 #. Choice (General > Output > RGB Output Levels)
 #. Setting name (Shortcuts > )
 msgid "TV Levels (16–235)"
-msgstr ""
+msgstr "TV 레벨(16–235)"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Dither Target Bit Depth"
-msgstr ""
+msgstr "디더링 대상 비트 심도"
 
 #. Setting description (General > Output > Dither Target Bit Depth)
 msgid "Dither to the actual output precision; Auto follows the output texture."
 msgstr ""
+"실제 출력 정밀도에 맞춰 디더링; '자동(Auto)' 설정 시, 출력 텍스처를 따릅니다."
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "Auto (Output Texture)"
-msgstr ""
+msgstr "자동(출력 텍스처)"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "4 Bit"
-msgstr ""
+msgstr "4비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "5 Bit"
-msgstr ""
+msgstr "5비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "6 Bit"
-msgstr ""
+msgstr "6비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "8 Bit"
-msgstr ""
+msgstr "8비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "10 Bit"
-msgstr ""
+msgstr "10비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "12 Bit"
-msgstr ""
+msgstr "12비트"
 
 #. Choice (General > Output > Dither Target Bit Depth)
 #. Setting name (Shortcuts > )
 msgid "16 Bit"
-msgstr ""
+msgstr "16비트"
 
 #. Setting name (General > Output)
 #. Setting name (Shortcuts > )
 msgid "Max Frames in Flight"
-msgstr ""
+msgstr "동시 처리 프레임 수"
 
 #. Setting description (General > Output > Max Frames in Flight)
 msgid "0 retains the device default. More buffering increases latency."
-msgstr ""
+msgstr "0은 기기 기본값을 유지합니다. 버퍼링을 늘리면 지연 시간이 증가합니다."
 
 #. Section heading (General)
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Image Analysis"
-msgstr ""
+msgstr "이미지 분석"
 
 #. Setting description (General > Image Analysis > Image Analysis)
 msgid ""
 "Waveform, histogram, RGB parade, false color and gray ramp, before or after "
 "color mapping, without subtitles."
 msgstr ""
+"파형, 히스토그램, RGB 퍼레이드, 가색상 및 회색조 변화를 색상 매핑 전후에 자"
+"막 없이 보여줍니다."
 
 #. Setting name (General > Image Analysis)
 #. Setting name (Shortcuts > )
 msgid "Statistics Text Size (%)"
-msgstr ""
+msgstr "통계 글자 크기(%)"
 
 #. Setting description (General > Image Analysis > Statistics Text Size (%))
 msgid "Size of the Ctrl+J statistics. 100 is the automatic size."
-msgstr ""
+msgstr "Ctrl+J 통계의 크기입니다. 100은 자동 크기입니다."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Display Mode"
-msgstr ""
+msgstr "표시 모드"
 
 #. Section description (General > Display Mode)
 msgid ""
 "Switches the display to a listed mode matching the video frame rate in "
 "fullscreen and restores it when leaving fullscreen or stopping."
 msgstr ""
+"전체 화면 모드에서 비디오 프레임 속도에 맞춰 디스플레이 모드를 목록에 표시된 "
+"모드로 전환하고, 전체 화면 모드를 종료하거나 재생을 중지하면 원래 모드로 복원"
+"합니다."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
 msgid "Switch Display Mode in Fullscreen"
-msgstr ""
+msgstr "전체 화면에서 디스플레이 모드 전환"
 
 #. Setting description (General > Display Mode > Switch Display Mode in Fullscreen)
 msgid ""
 "Uses the listed mode whose refresh rate is the lowest whole multiple of the "
 "frame rate. Only for this display."
 msgstr ""
+"명시된 모드 중 프레임 속도의 정수 배수 중 가장 작은 새로 고침 빈도를 사용하"
+"는 모드를 사용합니다. 이 디스플레이에만 적용됩니다."
 
 #. Setting name (General > Display Mode)
 msgid "Allowed Modes"
-msgstr ""
+msgstr "허용된 모드"
 
 #. Setting description (General > Display Mode > Allowed Modes)
 msgid ""
 "Comma-separated, e.g. 2160p23, or just 23 to keep the resolution. 23, 29 and "
 "59 mean 23.976, 29.97 and 59.94 Hz."
 msgstr ""
+"쉼표로 구분, 2160p23 또는 해상도를 유지하기 위해 그냥 23으로 하세요. 23, 29, "
+"59는 각각 23.976, 29.97, 59.94Hz를 의미합니다."
 
 #. Input hint (General > Display Mode > Allowed Modes)
 msgid "e.g. 2160p23, 2160p24, 2160p60"
-msgstr ""
+msgstr "예 : 2160p23, 2160p24, 2160p60"
 
 #. Input error (General > Display Mode > Allowed Modes)
 msgid ""
 "Enter display modes like 2160p23, 2160p24, 2160p50, 2160p60 or just 23, 24, "
 "60."
 msgstr ""
+"2160p23, 2160p24, 2160p50, 2160p60과 같은 디스플레이 모드를 입력하거나, 간단"
+"히 23, 24, 60을 입력하세요."
 
 #. Setting name (General > Display Mode)
 #. Setting name (Shortcuts > )
 msgid "Pause After Switching (seconds)"
-msgstr ""
+msgstr "전환 후 대기 시간(초)"
 
 #. Setting description (General > Display Mode > Pause After Switching (seconds))
 msgid "Pauses playback while the display resynchronises after a mode change."
-msgstr ""
+msgstr "모드 변경 후 디스플레이가 다시 동기화되는 동안 재생을 일시 중지합니다."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Background & Transparency"
-msgstr ""
+msgstr "배경 및 투명도"
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Red"
-msgstr ""
+msgstr "빨강 배경"
 
 #. Setting description (General > Background & Transparency > Background Red)
 msgid ""
 "Red channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
+"빨강 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Green"
-msgstr ""
+msgstr "초록 배경"
 
 #. Setting description (General > Background & Transparency > Background Green)
 msgid ""
 "Green channel for uncovered borders and transparent pixels. RGB range: 0 to "
 "1."
 msgstr ""
+"초록 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Blue"
-msgstr ""
+msgstr "파랑 배경"
 
 #. Setting description (General > Background & Transparency > Background Blue)
 msgid ""
 "Blue channel for uncovered borders and transparent pixels. RGB range: 0 to 1."
 msgstr ""
+"파랑 채널은 가려지지 않은 테두리와 투명한 픽셀을 나타냅니다. RGB 범위 : 0~1."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Background Transparency"
-msgstr ""
+msgstr "배경 투명도"
 
 #. Setting description (General > Background & Transparency > Background Transparency)
 msgid ""
 "0 is opaque; 1 is transparent. Changes rendered alpha, not Windows desktop/"
 "window transparency."
 msgstr ""
+"0은 불투명, 1은 투명입니다. 변경 사항은 윈도 바탕 화면/창의 투명도가 아닌, 렌"
+"더링된 알파 값에 적용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Corner Rounding"
-msgstr ""
+msgstr "모서리 둥글게"
 
 #. Setting description (General > Background & Transparency > Corner Rounding)
 msgid ""
 "Relative amount of rounded video corners. 0 keeps square corners; 1 applies "
 "the maximum rounding."
 msgstr ""
+"영상 모서리가 둥글게 처리된 정도입니다. 0은 모서리를 직각으로 유지하며, 1은 "
+"최대한 둥글게 만듭니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Skip Target Clearing"
-msgstr ""
+msgstr "대상 정리 건너뛰기"
 
 #. Setting description (General > Background & Transparency > Skip Target Clearing)
 msgid ""
 "Skips clearing the borders around the picture. Old pixels may remain there. "
 "Default: Off."
 msgstr ""
+"이미지 주변의 테두리를 지우는 과정을 건너뜁니다. 이 경우 기존 픽셀이 그대로 "
+"남아 있을 수 있습니다. 기본값 : 끔."
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "Default (Off)"
-msgstr ""
+msgstr "기본값(끔)"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Processing > Deinterlacing > Algorithm)
 msgid "Off"
-msgstr ""
+msgstr "끔"
 
 #. Choice (General > Background & Transparency > Skip Target Clearing)
 #. Choice (General > Background & Transparency > Blend Against Tiles)
 #. Choice (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid "On"
-msgstr ""
+msgstr "켬"
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Blend Against Tiles"
-msgstr ""
+msgstr "타일 배경과 혼합"
 
 #. Setting description (General > Background & Transparency > Blend Against Tiles)
 msgid ""
 "Composite transparent image regions onto a checkerboard. Default is Off. "
 "Tile colors do not recolor opaque video."
 msgstr ""
+"투명한 이미지 영역을 체크무늬 배경 위에 합성합니다. 기본값은 '끔'입니다. 체크"
+"무늬 색상은 불투명한 영상의 색상에 영향을 주지 않습니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Red"
-msgstr ""
+msgstr "밝은 빨강 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Red)
 msgid ""
 "Red channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"밝은 체크무늬 타일의 빨강 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Green"
-msgstr ""
+msgstr "밝은 초록 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Green)
 msgid ""
 "Green channel of the light checkerboard tiles. Used with Blend Against Tiles."
 msgstr ""
+"밝은 체크무늬 타일의 초록 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니"
+"다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Light Tile Blue"
-msgstr ""
+msgstr "밝은 파랑 타일"
 
 #. Setting description (General > Background & Transparency > Light Tile Blue)
 msgid ""
 "Blue channel of the light checkerboard tiles. Used with Blend Against Tiles."
-msgstr ""
+msgstr "밝은 체크무늬 타일의 파랑 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Red"
-msgstr ""
+msgstr "어두운 빨강 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Red)
 msgid ""
 "Red channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr ""
+msgstr "어두운 체크무늬 타일의 빨강 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Green"
-msgstr ""
+msgstr "어두운 초록 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Green)
 msgid ""
 "Green channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr ""
+msgstr "어두운 체크무늬 타일의 초록 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Dark Tile Blue"
-msgstr ""
+msgstr "어두운 파랑 타일"
 
 #. Setting description (General > Background & Transparency > Dark Tile Blue)
 msgid ""
 "Blue channel of the dark checkerboard tiles. Used with Blend Against Tiles."
-msgstr ""
+msgstr "어두운 체크무늬 타일의 파랑 채널입니다. 타일 배경과 혼합 기능과 함께 사용됩니다."
 
 #. Setting name (General > Background & Transparency)
 #. Setting name (Shortcuts > )
 msgid "Tile Size (pixels)"
-msgstr ""
+msgstr "타일 크기(픽셀)"
 
 #. Setting description (General > Background & Transparency > Tile Size (pixels))
 msgid ""
 "Checkerboard repeat size in output pixels. Default: 32; manual range: 2 to "
 "256."
 msgstr ""
+"출력 픽셀 단위의 체커보드 반복 크기입니다. 기본값 : 32; 수동 설정 범위 : "
+"2~256."
 
 #. Section heading (General)
 #. Setting name (Shortcuts > )
 msgid "Diagnostics"
-msgstr ""
+msgstr "진단"
 
 #. Setting name (General > Diagnostics)
 msgid "Diagnostic Log"
-msgstr ""
+msgstr "진단 로그"
 
 #. Setting description (General > Diagnostics > Diagnostic Log)
 msgid ""
 "Records the next start of the player for a bug report, then turns itself off."
-msgstr ""
+msgstr "버그 보고를 위해 플레이어의 다음 시작을 기록한 후 자동으로 꺼집니다."
 
 #. Setting name (General > Diagnostics)
 msgid "Save Report"
-msgstr ""
+msgstr "보고서 저장"
 
 #. Setting description (General > Diagnostics > Save Report)
 msgid "Saves a report for a bug report on the desktop."
-msgstr ""
+msgstr "버그 보고서를 바탕 화면에 저장합니다."
 
 #. Button (General > Diagnostics > Save Report)
 msgid "Save"
-msgstr ""
+msgstr "저장"
 
 #. Section heading (General)
 msgid "Menu Appearance"
-msgstr ""
+msgstr "메뉴 모양"
 
 #. Section description (General > Menu Appearance)
 msgid "Look and behaviour of this settings window. Applies immediately."
-msgstr ""
+msgstr "이 설정 창의 모양과 작동 방식입니다. 변경 사항은 즉시 적용됩니다."
 
 #. Setting name (General > Menu Appearance)
 msgid "Theme"
-msgstr ""
+msgstr "테마"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Indigo"
-msgstr ""
+msgstr "인디고"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Graphite"
-msgstr ""
+msgstr "석묵"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Midnight"
-msgstr ""
+msgstr "미드나이트"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Ocean"
-msgstr ""
+msgstr "오션"
 
 #. Choice (General > Menu Appearance > Theme)
 msgid "Light"
-msgstr ""
+msgstr "라이트"
 
 #. Setting name (General > Menu Appearance)
 msgid "Accent Color"
-msgstr ""
+msgstr "강조색"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Violet"
-msgstr ""
+msgstr "바이올렛"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Blue"
-msgstr ""
+msgstr "파랑"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Teal"
-msgstr ""
+msgstr "청록"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Green"
-msgstr ""
+msgstr "초록"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Orange"
-msgstr ""
+msgstr "주황"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Pink"
-msgstr ""
+msgstr "분홍"
 
 #. Choice (General > Menu Appearance > Accent Color)
 msgid "Windows"
-msgstr ""
+msgstr "윈도"
 
 #. Setting name (General > Menu Appearance)
 msgid "Language"
-msgstr ""
+msgstr "언어"
 
 #. Setting description (General > Menu Appearance > Language)
 msgid ""
 "Language of this settings window. Automatic follows Windows; missing "
 "translations show English."
 msgstr ""
+"이 설정 창의 언어입니다. 자동으로 설정하면 Windows 설정을 따르며, 번역이 제공"
+"되지 않은 항목은 영어로 표시됩니다."
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "Automatic (Windows)"
-msgstr ""
+msgstr "자동(윈도)"
 
 #. Choice (General > Menu Appearance > Language)
 #. Menu text; keep %d and %s placeholders
 msgid "English"
-msgstr ""
+msgstr "영어"
 
 #. Setting name (General > Menu Appearance)
 msgid "Remember Last Page"
-msgstr ""
+msgstr "마지막 페이지 기억하기"
 
 #. Setting description (General > Menu Appearance > Remember Last Page)
 msgid "Opens this window on the page you left."
-msgstr ""
+msgstr "이 창을 마지막으로 열었던 페이지로 다시 엽니다."
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "Processing"
-msgstr ""
+msgstr "처리"
 
 #. Category description
 msgid "Image cleanup, field processing, dithering and black bar handling."
-msgstr ""
+msgstr "이미지 정제, 필드 처리, 디더링 및 검은 테두리 처리."
 
 #. Tab (Processing)
 msgid "Image Cleanup"
-msgstr ""
+msgstr "이미지 정리"
 
 #. Tab (Processing)
 msgid "Deinterlacing & Dithering"
-msgstr ""
+msgstr "인터레이스 제거 및 디더링"
 
 #. Tab (Processing)
 msgid "Black Bars / Zoom"
-msgstr ""
+msgstr "검은 테두리 / 확대"
 
 #. Section heading (Processing)
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Debanding"
-msgstr ""
+msgstr "밴드 제거"
 
 #. Setting description (Processing > Debanding > Debanding)
 msgid ""
 "Reduce visible steps in smooth gradients. Excessive settings can remove fine "
 "detail."
 msgstr ""
+"부드러운 그라디언트에서 눈에 띄는 계단 현상을 줄이세요. 과도한 설정은 미세한 "
+"디테일을 제거할 수 있습니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Iterations"
-msgstr ""
+msgstr "반복"
 
 #. Setting description (Processing > Debanding > Iterations)
 msgid "More iterations remove stronger banding; may lose detail."
-msgstr ""
+msgstr "반복 횟수가 많을수록 더 강한 밴딩을 제거하지만, 세부 묘사가 손실될 수 있습니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Threshold"
-msgstr ""
+msgstr "임계값"
 
 #. Setting description (Processing > Debanding > Threshold)
 msgid "Difference threshold for detecting banding."
-msgstr ""
+msgstr "밴딩을 감지하기 위한 차이 임계값입니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 msgid "Radius"
-msgstr ""
+msgstr "반경"
 
 #. Setting description (Processing > Debanding > Radius)
 msgid "Search radius in pixels."
-msgstr ""
+msgstr "픽셀 단위의 검색 반경입니다."
 
 #. Setting name (Processing > Debanding)
 #. Setting name (Shortcuts > )
 msgid "Grain"
-msgstr ""
+msgstr "그레인"
 
 #. Setting description (Processing > Debanding > Grain)
 msgid "Grain added after debanding."
-msgstr ""
+msgstr "밴드 제거 후 추가되는 그레인입니다."
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "Adaptive Sharpen"
-msgstr ""
+msgstr "적응형 선명화"
 
 #. Setting name (Processing > Adaptive Sharpen)
 #. Setting name (Shortcuts > )
 msgid "Enhance Edges and Details"
-msgstr ""
+msgstr "가장자리 및 세부 사항 강화"
 
 #. Setting description (Processing > Adaptive Sharpen > Enhance Edges and Details)
 msgid "Apply adaptive sharpening with built-in anti-ringing."
-msgstr ""
+msgstr "내장된 잔상 방지 기능이 있는 적응형 선명도 조정 기능을 적용하십시오."
 
 #. Setting name (Processing > Adaptive Sharpen)
 #. Setting name (Shortcuts > )
 msgid "Strength"
-msgstr ""
+msgstr "강도"
 
 #. Setting description (Processing > Adaptive Sharpen > Strength)
 msgid "Amount of adaptive sharpening. 0 disables the sharpening effect."
 msgstr ""
+"적응형 선명화의 정도입니다. 0으로 설정하면 선명화 효과가 비활성화됩니다."
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
 msgid "Deinterlacing"
-msgstr ""
+msgstr "인터레이스 제거"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Processing > Dithering)
 #. Setting name (Shortcuts > )
 msgid "Algorithm"
-msgstr ""
+msgstr "알고리즘"
 
 #. Setting description (Processing > Deinterlacing > Algorithm)
 msgid "Choose the processing method. Off bypasses this processing stage."
-msgstr ""
+msgstr "처리 방법을 선택하십시오. 끄면 이 처리 단계를 건너뜁니다."
 
 #. Choice (Processing > Deinterlacing > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Bwdif"
-msgstr ""
+msgstr "Bwdif"
 
 #. Choice (Processing > Deinterlacing > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Yadif"
-msgstr ""
+msgstr "Yadif"
 
 #. Setting name (Processing > Deinterlacing)
 #. Setting name (Shortcuts > )
 msgid "Field Order"
-msgstr ""
+msgstr "필드 순서"
 
 #. Setting description (Processing > Deinterlacing > Field Order)
 msgid ""
 "Auto follows source flags. Override only if interlaced motion has the wrong "
 "field order."
 msgstr ""
+"자동으로 소스 플래그를 따릅니다. 인터레이스 모션의 필드 순서가 잘못된 경우에"
+"만 다시 정의하십시오."
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Setting name (Shortcuts > )
 msgid "Auto (Source Flags)"
-msgstr ""
+msgstr "자동(소스 플래그)"
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Setting name (Shortcuts > )
 msgid "Top Field First"
-msgstr ""
+msgstr "상위 필드 우선"
 
 #. Choice (Processing > Deinterlacing > Field Order)
 #. Setting name (Shortcuts > )
 msgid "Bottom Field First"
-msgstr ""
+msgstr "하위 필드 우선"
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
 msgid "Dithering"
-msgstr ""
+msgstr "디더링"
 
 #. Setting description (Processing > Dithering > Algorithm)
 msgid ""
 "Error diffusion costs more GPU time. Large kernels fall back to Blue Noise "
 "at high resolutions."
 msgstr ""
+"오류 확산은 더 많은 GPU 시간을 소모합니다. 커널 크기가 클 경우, 고해상도에서"
+"는 블루 노이즈 방식으로 전환됩니다."
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Blue Noise (recommended)"
-msgstr ""
+msgstr "블루 노이즈(권장)"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Ordered Dithering"
-msgstr ""
+msgstr "순차 디더링"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Random Dithering"
-msgstr ""
+msgstr "무작위 디더링"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Simple"
-msgstr ""
+msgstr "오류 확산 : 단순"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: False Floyd-Steinberg"
-msgstr ""
+msgstr "오류 확산 : 변형 플로이드-스타인버그"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra Lite"
-msgstr ""
+msgstr "오류 확산 : 시에라 라이트"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Floyd-Steinberg"
-msgstr ""
+msgstr "오류 확산 : 플로이드-스타인버그"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Atkinson"
-msgstr ""
+msgstr "오류 확산 : 앳킨슨"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Jarvis-Judice-Ninke"
-msgstr ""
+msgstr "오류 확산 : Jarvis-Judice-Ninke"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Stucki"
-msgstr ""
+msgstr "오류 확산 : 스터키"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Burkes"
-msgstr ""
+msgstr "오류 확산 : 버크스"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra 2"
-msgstr ""
+msgstr "오류 확산 : 시에라2"
 
 #. Choice (Processing > Dithering > Algorithm)
 #. Setting name (Shortcuts > )
 msgid "Error Diffusion: Sierra 3"
-msgstr ""
+msgstr "오류 확산 : 시에라3"
 
 #. Setting name (Processing > Dithering)
 #. Setting name (Shortcuts > )
 msgid "Change Dither for Every Frame"
-msgstr ""
+msgstr "프레임마다 디더링 변경"
 
 #. Setting description (Processing > Dithering > Change Dither for Every Frame)
 msgid "Vary the dither pattern over time instead of keeping a static pattern."
-msgstr ""
+msgstr "고정된 패턴을 유지하는 대신 시간에 따라 디더링 패턴을 변화시키세요."
 
 #. Section heading (Processing)
 #. Setting name (Shortcuts > )
 msgid "Detection & Zoom"
-msgstr ""
+msgstr "탐지 및 확대"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Vertical Image Position"
-msgstr ""
+msgstr "수직 이미지 위치"
 
 #. Setting description (Processing > Detection & Zoom > Vertical Image Position)
 msgid ""
 "Aligns the image to the top or bottom. With Protect Burned-in Subtitles, "
 "subtitles in the bars stay visible."
 msgstr ""
+"이미지를 상단이나 하단에 정렬합니다. 자막 보호 기능을 사용하면 자막 막대에 자"
+"막이 계속 표시됩니다."
 
 #. Choice (Processing > Detection & Zoom > Vertical Image Position)
 #. Setting name (Shortcuts > )
 msgid "Center"
-msgstr ""
+msgstr "중앙"
 
 #. Choice (Processing > Detection & Zoom > Vertical Image Position)
 #. Setting name (Shortcuts > )
 msgid "Bottom"
-msgstr ""
+msgstr "하단"
 
 #. Choice (Processing > Detection & Zoom > Vertical Image Position)
 #. Setting name (Shortcuts > )
 msgid "Top"
-msgstr ""
+msgstr "상단"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Detect Hardcoded Black Bars"
-msgstr ""
+msgstr "하드코딩된 검은 막대 감지"
 
 #. Setting description (Processing > Detection & Zoom > Detect Hardcoded Black Bars)
 msgid "Analyze decoded pixels to find bars encoded into the video."
-msgstr ""
+msgstr "디코딩된 픽셀을 분석하여 영상에 인코딩된 막대를 찾습니다."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Crop Black Bars"
-msgstr ""
+msgstr "검은 여백 잘라내기"
 
 #. Setting description (Processing > Detection & Zoom > Crop Black Bars)
 msgid ""
 "Remove detected bars from the active image before fitting or zooming it."
 msgstr ""
+"이미지를 맞추거나 확대하기 전에 활성 이미지에서 감지된 막대를 제거하십시오."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Protect Burned-in Subtitles"
-msgstr ""
+msgstr "고정 자막 보호"
 
 #. Setting description (Processing > Detection & Zoom > Protect Burned-in Subtitles)
 msgid "Temporarily restore bars if they contain visible content."
-msgstr ""
+msgstr "막대에 표시할 내용이 있는 경우, 해당 막대를 일시적으로 복원합니다."
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Zoom Mode"
-msgstr ""
+msgstr "확대 모드"
 
 #. Setting description (Processing > Detection & Zoom > Zoom Mode)
 msgid ""
 "Fit keeps all active content. Fill covers the output and can crop image "
 "content."
 msgstr ""
+"맞춤은 모든 활성 콘텐츠를 유지합니다. 채우기 기능은 출력 내용을 덮고 이미지 "
+"내용을 자를 수 있습니다."
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
 #. Setting name (Shortcuts > )
 msgid "Fit (Keep All Content)"
-msgstr ""
+msgstr "맞춤(모든 콘텐츠 유지)"
 
 #. Choice (Processing > Detection & Zoom > Zoom Mode)
 #. Setting name (Shortcuts > )
 msgid "Fill (May Crop Content)"
-msgstr ""
+msgstr "채우기(콘텐츠가 잘릴 수 있음)"
 
 #. Setting name (Processing > Detection & Zoom)
 #. Setting name (Shortcuts > )
 msgid "Black Threshold"
-msgstr ""
+msgstr "검은 임계점"
 
 #. Setting description (Processing > Detection & Zoom > Black Threshold)
 msgid "Maximum detected bar brightness, as a percentage of decoded SDR white."
 msgstr ""
+"검출된 막대의 최대 밝기를 디코딩된 SDR 백색의 백분율로 나타낸 값입니다."
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "Scaling"
-msgstr ""
+msgstr "스케일링"
 
 #. Category description
 msgid ""
 "Built-in scaling filters, RTX Video Super Resolution and custom filters."
-msgstr ""
+msgstr "내장 스케일링 필터, RTX Video Super Resolution 및 커스텀 필터입니다."
 
 #. Tab (Scaling)
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Filters"
-msgstr ""
+msgstr "필터"
 
 #. Tab (Scaling)
 msgid "Custom Filters"
-msgstr ""
+msgstr "커스텀 필터"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Image Upscaler"
-msgstr ""
+msgstr "이미지 업스케일러"
 
 #. Setting description (Scaling > Filters > Image Upscaler)
 msgid ""
 "Reconstruct image detail when enlarging video. Custom copies the selected "
 "filter for editing."
 msgstr ""
+"영상 확대 시, 이미지 세부 정보를 다시 구성합니다. 사용자 지정은 편집을 위해 "
+"선택한 필터를 복사합니다."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Use the renderer's default filter."
-msgstr ""
+msgstr "렌더러의 기본 필터를 사용하세요."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 msgid "No filter, only use basic GPU texture sampling"
-msgstr ""
+msgstr "필터 없음, 기본적인 GPU 텍스처 샘플링만 사용"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Configure a custom filter using the controls below."
-msgstr ""
+msgstr "아래의 제어 항목을 사용하여 커스텀 필터를 구성하세요."
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Nearest-neighbour (box) sampling (very fast)"
-msgstr ""
+msgstr "최근린(박스) 샘플링(매우 빠름)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Bilinear sampling (very fast)"
-msgstr ""
+msgstr "이선형 샘플링(매우 빠름)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Aspect-ratio preserving nearest neighbour sampling (very fast)"
-msgstr ""
+msgstr "화면비 유지 최근린 샘플링(매우 빠름)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Bicubic interpolation (fast)"
-msgstr ""
+msgstr "3차 보간법(빠름)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Gaussian smoothing (fast)"
-msgstr ""
+msgstr "가우시안 평활화(빠름)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Catmull-Rom cubic spline"
-msgstr ""
+msgstr "캣멀-롬 3차 스플라인"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Lanczos reconstruction"
-msgstr ""
+msgstr "란초스 재구성"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "EWA Lanczos (Jinc) reconstruction (slow)"
-msgstr ""
+msgstr "EWA 란초스(Jinc) 재구성(느림)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Sharpened version of ewa_lanczos (slow)"
-msgstr ""
+msgstr "ewa_lanczos의 선명도 향상 버전(느림)"
 
 #. Choice description (Scaling > Filters > Image Upscaler)
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Upscaler > Starting Filter)
 msgid "Very sharp version of ewa_lanczos, with anti-ringing (very slow)"
-msgstr ""
+msgstr "링잉 방지 기능이 적용된 매우 선명한 ewa_lanczos 버전(매우 느림)"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Image Downscaler"
-msgstr ""
+msgstr "이미지 다운스케일러"
 
 #. Setting description (Scaling > Filters > Image Downscaler)
 msgid ""
 "Filter the image when reducing video size. Custom copies the selected filter "
 "for editing."
 msgstr ""
+"영상 크기를 줄일 때, 이미지에 필터를 적용합니다. 사용자 지정은 편집을 위해 선"
+"택한 필터를 복사합니다."
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 msgid "Use the same filter as specified for upscaler"
-msgstr ""
+msgstr "업스케일러에 지정된 것과 동일한 필터를 사용"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Box averaging (very fast)"
-msgstr ""
+msgstr "박스 평균화(매우 빠름)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Hermite-weighted averaging (fast)"
-msgstr ""
+msgstr "헤르미트 가중 평균(빠름)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Bilinear (triangle) averaging (fast)"
-msgstr ""
+msgstr "쌍선형(삼각형) 평균화(빠름)"
 
 #. Choice description (Scaling > Filters > Image Downscaler)
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 #. Choice description (Scaling > Custom: Image Downscaler > Starting Filter)
 msgid "Mitchell-Netravalia cubic spline"
-msgstr ""
+msgstr "미첼-네트라발리아 3차 스플라인"
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Upscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "평면 업스케일러(채도/알파)"
 
 #. Setting description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 msgid "Reconstruct subsampled chroma or alpha planes before image scaling."
 msgstr ""
+"이미지 크기 조정 전에 서브샘플링된 채도 또는 알파 평면을 다시 구성합니다."
 
 #. Choice description (Scaling > Filters > Plane Upscaler (Chroma / Alpha))
 #. Choice description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Use the corresponding image scaling filter."
-msgstr ""
+msgstr "해당 이미지 크기 조정 필터를 사용하십시오."
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Plane Downscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "평면 다운스케일러(채도/알파)"
 
 #. Setting description (Scaling > Filters > Plane Downscaler (Chroma / Alpha))
 msgid "Filter chroma or alpha planes when reducing their resolution."
-msgstr ""
+msgstr "해상도를 낮출 때 채도 또는 알파 평면을 필터링합니다."
 
 #. Setting name (Scaling > Filters)
 #. Choice (Scaling > Custom Filter Role > Role)
 #. Setting name (Shortcuts > )
 msgid "Frame Mixer"
-msgstr ""
+msgstr "프레임 믹서"
 
 #. Setting description (Scaling > Filters > Frame Mixer)
 msgid ""
 "Temporal filter used by Smooth Motion. It combines frames rather than adding "
 "image detail."
 msgstr ""
+"부드러운 모션에서 사용되는 시간 필터입니다. 이미지 세부 정보를 추가하는 대신 "
+"프레임을 결합합니다."
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 msgid "Disable frame mixing, show nearest frame to target PTS"
-msgstr ""
+msgstr "프레임 혼합 비활성화, 대상 PTS에 가장 가까운 프레임 표시"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Oversampling, only mix edge frames while preserving FPS"
-msgstr ""
+msgstr "오버샘플링, FPS는 유지하면서 경계 프레임들만 혼합"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Hermite-weighted frame mixing"
-msgstr ""
+msgstr "에르미트 가중 프레임 혼합"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Linear frame mixing"
-msgstr ""
+msgstr "선형 프레임 혼합"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Cubic B-spline frame mixing"
-msgstr ""
+msgstr "큐빅 B-스플라인 프레임 혼합"
 
 #. Choice description (Scaling > Filters > Frame Mixer)
 #. Choice description (Scaling > Custom: Frame Mixer > Starting Filter)
 msgid "Clamped Mitchell spline frame mixing"
-msgstr ""
+msgstr "고정된 미첼 스플라인 프레임 혼합"
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Global Anti-Ringing"
-msgstr ""
+msgstr "전역 링잉 방지"
 
 #. Setting description (Scaling > Filters > Global Anti-Ringing)
 msgid "Suppress overshoot around edges."
-msgstr ""
+msgstr "가장자리 주변의 오버슈트를 억제합니다."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Enable Smooth Motion"
-msgstr ""
+msgstr "부드러운 모션 활성화"
 
 #. Setting description (Scaling > Filters > Enable Smooth Motion)
 msgid ""
 "Blend video frames to reduce judder when video and display refresh rates "
 "differ."
 msgstr ""
+"영상 프레임들을 혼합하여, 영상과 디스플레이의 재생률이 다를 때 발생하는 화면 "
+"끊김 현상을 줄입니다."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Present in Advance"
-msgstr ""
+msgstr "미리 표시"
 
 #. Setting description (Scaling > Filters > Present in Advance)
 msgid ""
 "Pictures handed to the display ahead of time. More absorbs render peaks but "
 "adds latency. Automatic adds more only after late pictures."
-msgstr ""
+msgstr "디스플레이에 미리 넘겨 두는 이미지 수입니다. 많을수록 렌더링 피크를 흡수하지만 지연 시간이 늘어납니다. 자동은 늦은 이미지가 생긴 후에만 늘립니다."
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "Automatic"
-msgstr ""
+msgstr "자동"
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
 msgid "1 Refresh"
-msgstr ""
+msgstr "1회 새로 고침"
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
 msgid "2 Refreshes"
-msgstr ""
+msgstr "2회 새로 고침"
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
 msgid "3 Refreshes"
-msgstr ""
+msgstr "3회 새로 고침"
 
 #. Choice (Scaling > Filters > Present in Advance)
 #. Setting name (Shortcuts > )
 msgid "4 Refreshes"
-msgstr ""
+msgstr "4회 새로 고침"
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Oversample Threshold"
-msgstr ""
+msgstr "오버샘플 임계값"
 
 #. Setting description (Scaling > Filters > Oversample Threshold)
 msgid ""
 "Shows a whole picture instead of a blend when the other would cover less "
 "than this share of a refresh. Fewer double edges; 0 always blends."
-msgstr ""
+msgstr "다른 프레임이 새로 고침의 이 비율보다 적게 차지하면 혼합 대신 한 프레임 전체를 표시합니다. 이중 윤곽이 줄어들며, 0은 항상 혼합합니다."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Skip Downscale Anti-Aliasing"
-msgstr ""
+msgstr "다운스케일 안티에일리어싱 건너뛰기"
 
 #. Setting description (Scaling > Filters > Skip Downscale Anti-Aliasing)
 msgid ""
 "Faster downscaling without anti-aliasing. Can cause moire and jagged edges. "
 "Default: Off."
 msgstr ""
+"안티에일리어싱을 적용하지 않아 더 빠르게 다운스케일링을 수행합니다. 모아레 현"
+"상이나 계단 현상이 발생할 수 있습니다. 기본값 : 끔."
 
 #. Setting name (Scaling > Filters)
 #. Setting name (Shortcuts > )
 msgid "Preserve Frame Mixer Cache"
-msgstr ""
+msgstr "프레임 믹서 캐시 유지"
 
 #. Setting description (Scaling > Filters > Preserve Frame Mixer Cache)
 msgid ""
 "Reuses mixed frames after resizing or setting changes. Smoother transitions, "
 "but briefly older quality. Default: Off."
 msgstr ""
+"크기 조정이나 설정 변경 후 혼합 프레임을 다시 사용합니다. 전환은 더 부드러워"
+"지지만, 잠시 동안 이전 품질이 나타날 수 있습니다. 기본값 : 끔."
 
 #. Section heading (Scaling)
 #. Setting name (Scaling > RTX Video Super Resolution)
 #. Setting name (Shortcuts > )
 msgid "RTX Video Super Resolution"
-msgstr ""
+msgstr "RTX Video Super Resolution"
 
 #. Section description (Scaling > RTX Video Super Resolution)
 msgid "Enable Super Resolution in the NVIDIA app first. Quality is set there."
 msgstr ""
+"먼저 엔비디아 앱에서 초고해상도 기능을 활성화하세요. 화질 설정은 해당 항목에"
+"서 조정할 수 있습니다."
 
 #. Setting description (Scaling > RTX Video Super Resolution > RTX Video Super Resolution)
 msgid ""
 "Request AI upscaling through the NVIDIA driver. Requires Super Resolution "
 "enabled in the NVIDIA app."
 msgstr ""
+"엔비디아 드라이버를 통해 AI 업스케일링을 요청합니다. 엔비디아 앱에서 초고해상"
+"도 기능을 활성화해야 합니다."
 
 #. Section heading (Scaling)
 msgid "Custom Filter Role"
-msgstr ""
+msgstr "커스텀 필터 역할"
 
 #. Section description (Scaling > Custom Filter Role)
 msgid "The custom filter settings below apply to the selected scaler role."
-msgstr ""
+msgstr "아래의 커스텀 필터 설정은 선택된 스케일러 역할에 적용됩니다."
 
 #. Setting name (Scaling > Custom Filter Role)
 msgid "Role"
-msgstr ""
+msgstr "역할"
 
 #. Setting description (Scaling > Custom Filter Role > Role)
 msgid "Scaler role whose custom filter is edited."
-msgstr ""
+msgstr "커스텀 필터가 편집된 스케일러 역할입니다."
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Image Upscaler"
-msgstr ""
+msgstr "커스텀 : 이미지 업스케일러"
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Enable Custom Settings"
-msgstr ""
+msgstr "사용자 지정 설정 활성화"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Enable Custom Settings)
 #. Setting description (Scaling > Custom: Image Downscaler > Enable Custom Settings)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Enable Custom Settings)
 msgid "Use custom filter settings based on the starting filter."
-msgstr ""
+msgstr "시작 필터를 기반으로 커스텀 필터 설정을 사용합니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Starting Filter"
-msgstr ""
+msgstr "시작 필터"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Starting Filter)
 #. Setting description (Scaling > Custom: Image Downscaler > Starting Filter)
@@ -1197,30 +1263,32 @@ msgid ""
 "Base preset for this custom filter. Its values are inherited until you "
 "change a parameter."
 msgstr ""
+"이 커스텀 필터의 기본 사전 설정입니다. 매개변수를 변경하기 전까지는 해당 설정"
+"값이 그대로 유지됩니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel"
-msgstr ""
+msgstr "커널"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Kernel)
 msgid "Reconstruction function. Auto inherits the starting filter's kernel."
-msgstr ""
+msgstr "재구성 함수. 시작 필터의 커널을 자동으로 상속받습니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Window"
-msgstr ""
+msgstr "창"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window)
 #. Setting description (Scaling > Custom: Image Downscaler > Window)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Window)
 msgid "Window applied to the kernel. Auto inherits it; None removes windowing."
-msgstr ""
+msgstr "커널에 적용되는 창 함수입니다. 자동은 시작 필터의 것을 상속하고, 없음은 창 함수를 제거합니다."
 
 #. Setting description (Scaling > Custom: Image Upscaler > Radius)
 #. Setting description (Scaling > Custom: Image Downscaler > Radius)
@@ -1229,12 +1297,14 @@ msgid ""
 "Kernel support radius. Available only for resizable kernels; larger radii "
 "sample more pixels."
 msgstr ""
+"커널 지원 반경. 크기 조절이 가능한 커널에서만 사용할 수 있으며, 반경이 클수"
+"록 더 많은 픽셀을 샘플링합니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Clamp"
-msgstr ""
+msgstr "클램프"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Clamp)
 #. Setting description (Scaling > Custom: Image Downscaler > Clamp)
@@ -1243,12 +1313,14 @@ msgid ""
 "Suppress negative filter weights to reduce ringing. Higher values soften the "
 "result."
 msgstr ""
+"링잉 현상을 줄이려면 네거티브 필터 가중치를 억제하십시오. 값이 클수록 결과가 "
+"더 부드러워집니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Blur"
-msgstr ""
+msgstr "흐림"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Blur)
 #. Setting description (Scaling > Custom: Image Downscaler > Blur)
@@ -1257,24 +1329,26 @@ msgid ""
 "Filter width multiplier. Below 1 sharpens, above 1 softens; 0 uses the "
 "filter default."
 msgstr ""
+"필터 너비 배수입니다. 1보다 낮으면 선명해지고, 1보다 높으면 부드러워집니다. 0"
+"으로 설정하면 필터 기본값이 적용됩니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Taper"
-msgstr ""
+msgstr "테이퍼"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Taper)
 #. Setting description (Scaling > Custom: Image Downscaler > Taper)
 #. Setting description (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Taper)
 msgid "Flatten the center of the reconstruction kernel."
-msgstr ""
+msgstr "재구성 커널의 중심을 평평하게 만듭니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Anti-Ringing"
-msgstr ""
+msgstr "링잉 방지"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Anti-Ringing)
 #. Setting description (Scaling > Custom: Image Downscaler > Anti-Ringing)
@@ -1283,12 +1357,13 @@ msgid ""
 "Suppress overshoot for this filter. Zero inherits the global anti-ringing "
 "strength."
 msgstr ""
+"이 필터의 오버슈트를 억제합니다. 제로는 전역 링잉 방지 기능을 계승합니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel Parameter 1"
-msgstr ""
+msgstr "커널 매개변수1"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 1)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 1)
@@ -1297,12 +1372,14 @@ msgid ""
 "First kernel-specific parameter. Available only when the selected kernel "
 "supports it."
 msgstr ""
+"첫 번째 커널별 매개변수입니다. 선택한 커널이 이를 지원하는 경우에만 사용할 "
+"수 있습니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Kernel Parameter 2"
-msgstr ""
+msgstr "커널 매개변수2"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Kernel Parameter 2)
 #. Setting description (Scaling > Custom: Image Downscaler > Kernel Parameter 2)
@@ -1311,12 +1388,14 @@ msgid ""
 "Second kernel-specific parameter. Available only when the selected kernel "
 "supports it."
 msgstr ""
+"두 번째 커널별 매개변수입니다. 선택한 커널이 이를 지원하는 경우에만 사용할 "
+"수 있습니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Window Parameter 1"
-msgstr ""
+msgstr "창 매개변수1"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window Parameter 1)
 #. Setting description (Scaling > Custom: Image Downscaler > Window Parameter 1)
@@ -1325,12 +1404,14 @@ msgid ""
 "First window-specific parameter. Available only when the selected window "
 "supports it."
 msgstr ""
+"첫 번째 창 관련 매개변수입니다. 선택한 창이 이를 지원하는 경우에만 사용할 수 "
+"있습니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Window Parameter 2"
-msgstr ""
+msgstr "창 매개변수2"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Window Parameter 2)
 #. Setting description (Scaling > Custom: Image Downscaler > Window Parameter 2)
@@ -1339,12 +1420,14 @@ msgid ""
 "Second window-specific parameter. Available only when the selected window "
 "supports it."
 msgstr ""
+"두 번째 창 관련 매개변수입니다. 선택한 창이 이를 지원하는 경우에만 사용할 수 "
+"있습니다."
 
 #. Setting name (Scaling > Custom: Image Upscaler)
 #. Setting name (Scaling > Custom: Image Downscaler)
 #. Setting name (Scaling > Custom: Plane Upscaler (Chroma / Alpha))
 msgid "Polar (EWA)"
-msgstr ""
+msgstr "폴라(EWA)"
 
 #. Setting description (Scaling > Custom: Image Upscaler > Polar (EWA))
 #. Setting description (Scaling > Custom: Image Downscaler > Polar (EWA))
@@ -1352,299 +1435,337 @@ msgstr ""
 msgid ""
 "Use a two-dimensional EWA filter. Frame mixers always remain one-dimensional."
 msgstr ""
+"2차원 EWA 필터를 사용하십시오. 프레임 믹서는 항상 1차원 상태를 유지합니다."
 
 #. Choice (Scaling > Custom: Image Upscaler > Polar (EWA))
 #. Choice (Scaling > Custom: Image Downscaler > Polar (EWA))
 #. Choice (Scaling > Custom: Plane Upscaler (Chroma / Alpha) > Polar (EWA))
 msgid "Inherit Starting Filter"
-msgstr ""
+msgstr "시작 필터 상속"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Image Downscaler"
-msgstr ""
+msgstr "커스텀 : 이미지 다운스케일러"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Upscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "커스텀 : 평면 업스케일러(채도/알파)"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Plane Downscaler (Chroma / Alpha)"
-msgstr ""
+msgstr "커스텀 : 평면 다운스케일러(채도/알파)"
 
 #. Section heading (Scaling)
 #. Setting name (Shortcuts > )
 msgid "Custom: Frame Mixer"
-msgstr ""
+msgstr "커스텀 : 프레임 믹서"
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "Color"
-msgstr ""
+msgstr "색상"
 
 #. Category description
 msgid "Picture controls and display calibration."
-msgstr ""
+msgstr "화면 설정 및 디스플레이 보정입니다."
 
 #. Tab (Color)
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "Picture Controls"
-msgstr ""
+msgstr "화면 제어"
 
 #. Tab (Color)
 msgid "Calibration"
-msgstr ""
+msgstr "보정"
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Enable Color Adjustment"
-msgstr ""
+msgstr "색상 조정 활성화"
 
 #. Setting description (Color > Picture Controls > Enable Color Adjustment)
 msgid ""
 "Enable the picture controls in this section. Neutral values preserve the "
 "original image."
 msgstr ""
+"이 섹션에서 화면 제어 기능을 활성화하세요. 중립적인 값은 원본 이미지를 유지합"
+"니다."
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Brightness"
-msgstr ""
+msgstr "명도"
 
 #. Setting description (Color > Picture Controls > Brightness)
 msgid "Offset the picture's brightness. 0 preserves the original level."
-msgstr ""
+msgstr "사진의 밝기를 조정합니다. 0으로 설정하면 원래 밝기가 유지됩니다."
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (HDR > Shadows)
 #. Setting name (HDR > Midtones)
 msgid "Contrast"
-msgstr ""
+msgstr "명암"
 
 #. Setting description (Color > Picture Controls > Contrast)
 msgid "Scale the spread between dark and bright values. 1 is unchanged."
-msgstr ""
+msgstr "어두운 값과 밝은 값 사이의 간격을 조정합니다. 1은 변경되지 않았습니다."
 
 #. Setting name (Color > Picture Controls)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (HDR > Shadows)
 msgid "Saturation"
-msgstr ""
+msgstr "채도"
 
 #. Setting description (Color > Picture Controls > Saturation)
 msgid ""
 "Scale color intensity. 0 removes color; 1 preserves the original saturation."
 msgstr ""
+"색상 강도를 조절합니다. 0으로 설정하면 색상이 제거되고, 1로 설정하면 원래의 "
+"채도가 유지됩니다."
 
 #. Setting name (Color > Picture Controls)
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Gamma"
-msgstr ""
+msgstr "감마"
 
 #. Setting description (Color > Picture Controls > Gamma)
 msgid "Change the picture's tonal response. 1 preserves the original gamma."
-msgstr ""
+msgstr "이미지의 톤 응답을 변경합니다. 1은 원래 감마 값을 유지합니다."
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Hue (degrees)"
-msgstr ""
+msgstr "색조(도)"
 
 #. Setting description (Color > Picture Controls > Hue (degrees))
 msgid "Rotate chroma hue. 0 preserves the original colors."
-msgstr ""
+msgstr "채도 색조를 회전합니다. 0으로 설정하면 원래 색상이 유지됩니다."
 
 #. Setting name (Color > Picture Controls)
 #. Setting name (Shortcuts > )
 msgid "Temperature (K)"
-msgstr ""
+msgstr "색온도(K)"
 
 #. Setting description (Color > Picture Controls > Temperature (K))
 msgid ""
 "Adjust white balance from warm to neutral. 6500 K preserves the original "
 "white balance."
 msgstr ""
+"화이트 밸런스를 따뜻한 색에서 중립적인 색으로 조정하세요. 6500K는 원래의 화이"
+"트 밸런스를 유지합니다."
 
 #. Section heading (Color)
 #. Section heading (Profiles)
 #. Setting name (Profiles > Display)
 msgid "Display"
-msgstr ""
+msgstr "디스플레이"
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
 msgid "Display Gamut"
-msgstr ""
+msgstr "디스플레이 색역"
 
 #. Setting description (Color > Display > Display Gamut)
 msgid ""
 "For a wide-gamut display in its native mode, e.g. P3-D65. Keeps colours from "
 "looking oversaturated."
 msgstr ""
+"P3-D65와 같은 와이드 색역 디스플레이를 네이티브 모드로 사용할 때, 색상이 지나"
+"치게 채도가 높아 보이는 현상을 방지합니다."
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "BT.709"
-msgstr ""
+msgstr "BT.709"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "SMPTE C"
-msgstr ""
+msgstr "SMPTE C"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "EBU / PAL"
-msgstr ""
+msgstr "EBU/PAL"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "BT.2020"
-msgstr ""
+msgstr "BT.2020"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "DCI-P3 (DCI white)"
-msgstr ""
+msgstr "DCI-P3(DCI 화이트)"
 
 #. Choice (Color > Display > Display Gamut)
 #. Setting name (Shortcuts > )
 msgid "P3-D65 (Display P3)"
-msgstr ""
+msgstr "P3-D65(디스플레이 P3)"
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
 msgid "Display Gamma"
-msgstr ""
+msgstr "디스플레이 감마"
 
 #. Setting description (Color > Display > Display Gamma)
 msgid ""
 "How the display decodes the signal, e.g. 2.4 for many TVs. Used when HDR is "
 "tone mapped to SDR and by SDR Gamma Processing."
 msgstr ""
+"디스플레이가 신호를 디코딩하는 방식, 예: 많은 TV의 경우 2.4. HDR을 SDR로 톤 "
+"매핑할 때, 그리고 SDR 감마 처리 과정에서 사용됩니다."
 
 #. Choice (Color > Display > Display Gamma)
 #. Setting name (Shortcuts > )
 msgid "Auto"
-msgstr ""
+msgstr "자동"
 
 #. Choice (Color > Display > Display Gamma)
 #. Setting name (Shortcuts > )
 msgid "BT.1886"
-msgstr ""
+msgstr "BT.1886"
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
 msgid "Display Contrast"
-msgstr ""
+msgstr "디스플레이 명암"
 
 #. Setting description (Color > Display > Display Contrast)
 msgid ""
 "For BT.1886: the display's measured contrast, e.g. 1000 for 1000:1. 0 means "
 "infinite (OLED), where BT.1886 equals 2.40."
 msgstr ""
+"BT.1886의 경우: 디스플레이의 측정된 명암비, 예: 1000:1이라면 1000. 0은 무한대"
+"(OLED)를 의미하며, 이 경우 BT.1886은 2.40이 됩니다."
 
 #. Setting name (Color > Display)
 #. Setting name (Shortcuts > )
 msgid "SDR Gamma Processing"
-msgstr ""
+msgstr "SDR 감마 처리"
 
 #. Setting description (Color > Display > SDR Gamma Processing)
 msgid ""
 "Off leaves SDR as it is. Otherwise SDR looks like this gamma on the display."
 msgstr ""
+"끔으로 설정하면 SDR은 그대로 유지됩니다. 그렇지 않은 경우, SDR은 디스플레이상"
+"에서 이와 같은 감마 특성을 보이게 됩니다."
+
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr "HDR에서 SDR로의 감마 처리"
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+"SDR 디스플레이에서의 HDR 설정 : 끔으로 두면 톤 매핑이 적용된 상태로 "
+"유지되지만, 그렇지 않은 경우에는 이런 감마 특성을 보이게 됩니다."
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr "SDR처럼"
 
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"
-msgstr ""
+msgstr "ICC 프로필"
 
 #. Setting name (Color > ICC Profile)
 msgid "ICC Profile File"
-msgstr ""
+msgstr "ICC 프로필 파일"
 
 #. Setting description (Color > ICC Profile > ICC Profile File)
 msgid ""
 "Select the display's ICC or ICM color profile before enabling ICC correction."
 msgstr ""
+"ICC 보정을 활성화하기 전에 디스플레이의 ICC 또는 ICM 색상 프로필을 선택하십시"
+"오."
 
 #. Button (Color > ICC Profile > ICC Profile File)
 #. Button (Color > 3D LUT > LUT File)
 msgid "Browse…"
-msgstr ""
+msgstr "살펴보기…"
 
 #. Setting name (Color > ICC Profile)
 #. Setting name (Shortcuts > )
 msgid "Enable ICC Profile"
-msgstr ""
+msgstr "ICC 프로필 활성화"
 
 #. Setting description (Color > ICC Profile > Enable ICC Profile)
 msgid "Apply color correction from the selected display profile."
-msgstr ""
+msgstr "선택한 디스플레이 프로필을 사용하여 색상 보정을 적용합니다."
 
 #. Setting name (Color > ICC Profile)
 #. Setting name (Shortcuts > )
 msgid "ICC Rendering Intent"
-msgstr ""
+msgstr "ICC 렌더링 의도"
 
 #. Setting description (Color > ICC Profile > ICC Rendering Intent)
 msgid "Choose how the ICC profile maps colors into the display's gamut."
-msgstr ""
+msgstr "ICC 프로필이 색상을 디스플레이의 색역에 어떻게 매핑할지 선택하십시오."
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Relative Colorimetric"
-msgstr ""
+msgstr "상대적 색차"
 
 #. Choice (Color > ICC Profile > ICC Rendering Intent)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Perceptual"
-msgstr ""
+msgstr "지각적"
 
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "3D LUT"
-msgstr ""
+msgstr "3D LUT"
 
 #. Setting name (Color > 3D LUT)
 msgid "LUT File"
-msgstr ""
+msgstr "LUT 파일"
 
 #. Setting description (Color > 3D LUT > LUT File)
 msgid "Select a .cube 3D LUT before enabling LUT processing."
-msgstr ""
+msgstr "LUT 처리를 활성화하기 전에 .cube 3D LUT를 선택하십시오."
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
 msgid "Enable 3D LUT"
-msgstr ""
+msgstr "3D LUT 활성화"
 
 #. Setting description (Color > 3D LUT > Enable 3D LUT)
 msgid "Apply the selected 3D LUT at the stage selected by LUT Type."
-msgstr ""
+msgstr "선택한 3D LUT를 LUT 유형에서 선택한 단계에 적용합니다."
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
 msgid "LUT from Video Folder"
-msgstr ""
+msgstr "영상 폴더에서 가져온 LUT"
 
 #. Setting description (Color > 3D LUT > LUT from Video Folder)
 msgid ""
 "Uses a .cube file next to the video: first one named like the video, else "
 "the folder's only one. Otherwise the LUT above."
 msgstr ""
+"영상 파일 옆에 있는 .cube 파일을 사용합니다. 영상 파일과 이름이 같은 파일을 "
+"우선적으로 선택하며, 그런 파일이 없다면 해당 폴더 내에 유일하게 존재하"
+"는 .cube 파일을 사용합니다. 그마저도 없다면 위쪽에 지정된 LUT를 사용합니다."
 
 #. Setting name (Color > 3D LUT)
 #. Setting name (Shortcuts > )
 msgid "LUT Type"
-msgstr ""
+msgstr "LUT 유형"
 
 #. Setting description (Color > 3D LUT > LUT Type)
 msgid ""
@@ -1652,757 +1773,811 @@ msgid ""
 "Conversion replaces color conversion, tone mapping and ICC. Must match the "
 "LUT."
 msgstr ""
+"기본 설정은 SDR 캘리브레이션 LUT를 유지합니다. 정규화는 선형 RGB를 사용합니"
+"다. 변환은 색상 변환, 톤 매핑 및 ICC를 대체합니다. 이때 사용하는 LUT는 해당 "
+"설정과 일치해야 합니다."
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Default (SDR Calibration)"
-msgstr ""
+msgstr "기본값(SDR 보정)"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Unknown"
-msgstr ""
+msgstr "알 수 없음"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Native"
-msgstr ""
+msgstr "네이티브"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Normalized"
-msgstr ""
+msgstr "정규화"
 
 #. Choice (Color > 3D LUT > LUT Type)
 #. Setting name (Shortcuts > )
 msgid "Conversion"
-msgstr ""
+msgstr "변환"
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "HDR"
-msgstr ""
+msgstr "HDR"
 
 #. Category description
 msgid "HDR output, tone mapping, gamut mapping and tonal zones."
-msgstr ""
+msgstr "HDR 출력, 톤 매핑, 색역 매핑 및 톤 영역입니다."
 
 #. Tab (HDR)
 msgid "Output & Peak Detection"
-msgstr ""
+msgstr "출력 및 피크 감지"
 
 #. Tab (HDR)
 msgid "Tone Mapping"
-msgstr ""
+msgstr "톤 매핑"
 
 #. Tab (HDR)
 msgid "Gamut Mapping"
-msgstr ""
+msgstr "색역 매핑"
 
 #. Tab (HDR)
 msgid "Tone Controls"
-msgstr ""
+msgstr "톤 조절"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Output"
-msgstr ""
+msgstr "HDR 출력"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "HDR Mode"
-msgstr ""
+msgstr "HDR 모드"
 
 #. Setting description (HDR > HDR Output > HDR Mode)
 msgid ""
 "Pass HDR to the display; keep HDR but roll off highlights above the "
 "display's peak, for screens without own tone mapping; or tone map to SDR."
 msgstr ""
+"HDR 신호를 디스플레이로 그대로 전송하거나, 자체 톤 매핑 기능이 없는 디스플레"
+"이의 경우 HDR을 유지하되 디스플레이의 피크 값을 초과하는 하이라이트 영역은 부"
+"드럽게 줄이거나, SDR로 톤 매핑합니다."
 
 #. Choice (HDR > HDR Output > HDR Mode)
 #. Setting name (Shortcuts > )
 msgid "Passthrough HDR to Display"
-msgstr ""
+msgstr "디스플레이로 HDR 신호 전달"
 
 #. Choice (HDR > HDR Output > HDR Mode)
 #. Setting name (Shortcuts > )
 msgid "Tone Map HDR to Display Peak"
-msgstr ""
+msgstr "HDR을 디스플레이 최대 밝기에 맞춰 톤 매핑"
 
 #. Choice (HDR > HDR Output > HDR Mode)
 #. Setting name (Shortcuts > )
 msgid "Tone Map HDR to SDR"
-msgstr ""
+msgstr "HDR을 SDR로 톤 매핑"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "Switch Windows HDR"
-msgstr ""
+msgstr "윈도 HDR 전환"
 
 #. Setting description (HDR > HDR Output > Switch Windows HDR)
 msgid "Turns Windows HDR on or off for playback and restores it afterwards."
 msgstr ""
+"재생을 위해 윈도 HDR을 켜거나 끄고, 재생이 끝나면 원래 상태로 되돌립니다."
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
 msgid "Do Not Change"
-msgstr ""
+msgstr "변경 안 함"
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
 msgid "Turn On in Fullscreen"
-msgstr ""
+msgstr "전체 화면에서 켜기"
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
 msgid "Turn On"
-msgstr ""
+msgstr "켜기"
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
 msgid "Turn On/Off in Fullscreen"
-msgstr ""
+msgstr "전체 화면에서 켬/끔"
 
 #. Choice (HDR > HDR Output > Switch Windows HDR)
 #. Setting name (Shortcuts > )
 msgid "Turn On/Off"
-msgstr ""
+msgstr "켬/끔"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "HDR Target Peak (0 = Auto)"
-msgstr ""
+msgstr "HDR 목표 최대 밝기(0=자동)"
 
 #. Setting description (HDR > HDR Output > HDR Target Peak (0 = Auto))
 msgid ""
 "Peak for Tone Map HDR to Display Peak, in nits. 0 uses the value Windows "
 "reports; on some laptops it follows brightness."
-msgstr ""
+msgstr "'HDR을 디스플레이 최대 밝기에 맞춰 톤 매핑'에 사용하는 최대 밝기(니트)입니다. 0은 윈도가 보고하는 값을 사용하며, 일부 노트북에서는 밝기 설정을 따릅니다."
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "SDR Target Brightness (nits)"
-msgstr ""
+msgstr "SDR 목표 밝기(니트)"
 
 #. Setting description (HDR > HDR Output > SDR Target Brightness (nits))
 msgid ""
 "Target luminance for HDR-to-SDR tone mapping and the SDR reference white in "
 "HDR output."
 msgstr ""
+"HDR-to-SDR 톤 매핑을 위한 목표 휘도와 HDR 출력에서 SDR 기준 백색입니다."
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping Function"
-msgstr ""
+msgstr "톤 매핑 함수"
 
 #. Setting description (HDR > HDR Output > Tone Mapping Function)
 msgid ""
 "Compress source luminance into the output range. Algorithm-specific controls "
 "appear below."
 msgstr ""
+"소스 휘도를 출력 범위 내로 압축합니다. 알고리즘별 제어 옵션은 아래에 표시됩니"
+"다."
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 msgid "Auto (Metadata)"
-msgstr ""
+msgstr "자동(메타데이터)"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Spline"
-msgstr ""
+msgstr "스플라인"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "BT.2390"
-msgstr ""
+msgstr "BT.2390"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "BT.2446A"
-msgstr ""
+msgstr "BT.2446A"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Reinhard"
-msgstr ""
+msgstr "라인하르트"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Mobius"
-msgstr ""
+msgstr "뫼비우스"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Hable"
-msgstr ""
+msgstr "하블"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "ST 2094-40 (HDR10+)"
-msgstr ""
+msgstr "ST 2094-40 (HDR10+)"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "ST 2094-10"
-msgstr ""
+msgstr "ST 2094-10"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Clip"
-msgstr ""
+msgstr "클립"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Linear"
-msgstr ""
+msgstr "선형"
 
 #. Choice (HDR > HDR Output > Tone Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Linear Light"
-msgstr ""
+msgstr "선형 광"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "Gamut Mapping Function"
-msgstr ""
+msgstr "색역 매핑 함수"
 
 #. Setting description (HDR > HDR Output > Gamut Mapping Function)
 msgid "Map source colors into the output display's supported color gamut."
-msgstr ""
+msgstr "소스 색상을 출력 디스플레이가 지원하는 색 영역으로 매핑합니다."
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Default (libplacebo)"
-msgstr ""
+msgstr "기본값(libplacebo)"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Softclip"
-msgstr ""
+msgstr "소프트클립"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Desaturate"
-msgstr ""
+msgstr "채도 낮추기"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Darken"
-msgstr ""
+msgstr "어둡게"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Absolute Colorimetric"
-msgstr ""
+msgstr "절대 색도법"
 
 #. Choice (HDR > HDR Output > Gamut Mapping Function)
 #. Setting name (Shortcuts > )
 msgid "Highlight Out-of-Gamut"
-msgstr ""
+msgstr "색역 외 영역 강조 표시"
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "RTX Video HDR"
-msgstr ""
+msgstr "RTX Video HDR"
 
 #. Setting description (HDR > HDR Output > RTX Video HDR)
 msgid ""
 "AI conversion of SDR to HDR by the NVIDIA driver. Needs Windows HDR, an RTX "
 "GPU and RTX Video HDR in the NVIDIA app."
-msgstr ""
+msgstr "엔비디아 드라이버를 통한 AI 기반 SDR-HDR 변환입니다. 윈도 HDR, RTX GPU, 그리고 엔비디아 앱의 RTX Video HDR이 필요합니다."
 
 #. Setting name (HDR > HDR Output)
 #. Setting name (Shortcuts > )
 msgid "Use Dolby Vision"
-msgstr ""
+msgstr "돌비 비전 사용"
 
 #. Setting description (HDR > HDR Output > Use Dolby Vision)
 msgid ""
 "Off plays Dolby Vision Profile 7 and 8 as HDR10 or HLG. Profile 5 always "
 "uses Dolby Vision."
 msgstr ""
+"끔 설정 시 돌비 비전 프로필 7 및 8은 HDR10이나 HLG로 재생됩니다. 프로필 5는 "
+"항상 돌비 비전을 사용합니다."
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr "HDR10+ 사용"
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr ""
+"끔으로 설정하면 동적 HDR10+ 메타데이터를 무시하고, 선택된 HDR 출력 모드를 유"
+"지합니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "HDR Peak Detection"
-msgstr ""
+msgstr "HDR 피크 감지"
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Enable Peak Detection"
-msgstr ""
+msgstr "피크 감지 활성화"
 
 #. Setting description (HDR > HDR Peak Detection > Enable Peak Detection)
 msgid "Measure scene brightness to adapt HDR tone mapping to the video."
-msgstr ""
+msgstr "장면 밝기를 측정하여 HDR 톤 매핑을 영상에 맞게 조정합니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Allow Delayed Peak Detection"
-msgstr ""
+msgstr "지연된 피크 감지 허용"
 
 #. Setting description (HDR > HDR Peak Detection > Allow Delayed Peak Detection)
 msgid ""
 "Use a delayed brightness measurement to reduce synchronization overhead."
-msgstr ""
+msgstr "동기화 오버헤드를 줄이려면 지연된 밝기 측정값을 사용하십시오."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Show Clipping"
-msgstr ""
+msgstr "클리핑 표시"
 
 #. Setting description (HDR > HDR Peak Detection > Show Clipping)
 msgid ""
 "Highlight values outside the target range to help evaluate mapping settings."
 msgstr ""
+"매핑 설정을 평가하는 데 도움이 되도록 대상 범위를 벗어나는 값을 강조 표시합니"
+"다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Smoothing Period"
-msgstr ""
+msgstr "평활화 기간"
 
 #. Setting description (HDR > HDR Peak Detection > Smoothing Period)
 msgid ""
 "Smooth peak measurements over time. Higher values make adaptation slower."
 msgstr ""
+"시간에 따른 피크 측정값을 평활화합니다. 값이 클수록 적응 속도가 느려집니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Scene Threshold Low"
-msgstr ""
+msgstr "장면 임계값 낮음"
 
 #. Setting description (HDR > HDR Peak Detection > Scene Threshold Low)
 msgid ""
 "Lower scene-change threshold. Together with High, controls how quickly peak "
 "detection reacts."
-msgstr ""
+msgstr "장면 전환 임계값의 하한입니다. 높음과 함께 피크 감지의 반응 속도를 제어합니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Scene Threshold High"
-msgstr ""
+msgstr "장면 임계값 높음"
 
 #. Setting description (HDR > HDR Peak Detection > Scene Threshold High)
 msgid "Upper scene-change threshold. Must not be below the Low threshold."
-msgstr ""
+msgstr "상한 장면 전환 임계값입니다. 하한 임계값보다 낮아서는 안 됩니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Percentile"
-msgstr ""
+msgstr "백분위수"
 
 #. Setting description (HDR > HDR Peak Detection > Percentile)
 msgid ""
 "Use a brightness percentile instead of the brightest individual pixel. 100 "
 "uses the maximum."
 msgstr ""
+"가장 밝은 개별 픽셀 대신 밝기 백분위수를 사용하세요. 100으로 설정하면 최댓값"
+"이 적용됩니다."
 
 #. Setting name (HDR > HDR Peak Detection)
 #. Setting name (Shortcuts > )
 msgid "Black Cutoff"
-msgstr ""
+msgstr "블랙 컷오프"
 
 #. Setting description (HDR > HDR Peak Detection > Black Cutoff)
 msgid "Exclude very dark pixels from HDR peak-detection statistics."
-msgstr ""
+msgstr "HDR 피크 검출 통계에서 매우 어두운 픽셀을 제외합니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping Knee"
-msgstr ""
+msgstr "톤 매핑 니(knee)"
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
 msgid "Knee Adaptation"
-msgstr ""
+msgstr "니(knee) 적응"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Adaptation)
 msgid "Adapt the knee to scene brightness. Used by ST 2094 and Spline."
 msgstr ""
+"장면 밝기에 맞춰 니(knee)를 조절하세요. ST 2094 및 스플라인에서 사용됩니다."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
 msgid "Knee Minimum"
-msgstr ""
+msgstr "니(knee) 하한값"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Minimum)
 msgid "Lower bound for the adaptive knee, in PQ-normalized space."
-msgstr ""
+msgstr "PQ 정규화 공간에서 적응형 니(knee)의 하한값입니다."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
 msgid "Knee Maximum"
-msgstr ""
+msgstr "니(knee) 상한값"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Maximum)
 msgid "Upper bound for the adaptive knee, in PQ-normalized space."
-msgstr ""
+msgstr "PQ 정규화 공간에서 적응형 니(knee)의 상한값입니다."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
 msgid "Knee Default"
-msgstr ""
+msgstr "니(knee) 기본값"
 
 #. Setting description (HDR > Tone Mapping Knee > Knee Default)
 msgid ""
 "Knee used when average scene brightness is unavailable. Keep within "
 "Minimum / Maximum."
 msgstr ""
+"평균 장면 밝기를 사용할 수 없을 때 니(knee) 기능을 사용합니다. 최소값과 최대"
+"값 범위 내로 설정하십시오."
 
 #. Setting name (HDR > Tone Mapping Knee)
 #. Setting name (Shortcuts > )
 msgid "BT.2390 Knee Offset"
-msgstr ""
+msgstr "BT.2390 니(knee) 오프셋"
 
 #. Setting description (HDR > Tone Mapping Knee > BT.2390 Knee Offset)
 msgid ""
 "BT.2390 shoulder offset. The specification uses 0.5; libplacebo defaults to "
 "1."
 msgstr ""
+"BT.2390 숄더 오프셋입니다. 사양에서는 0.5를 사용하지만 libplacebo의 기본값은 "
+"1입니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping Constants"
-msgstr ""
+msgstr "톤 매핑 상수"
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Spline Slope Tuning"
-msgstr ""
+msgstr "스플라인 기울기 조정"
 
 #. Setting description (HDR > Tone Mapping Constants > Spline Slope Tuning)
 msgid "Strength of scene-dependent Spline slope adjustment."
-msgstr ""
+msgstr "장면에 따른 스플라인 기울기 조정의 강도입니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Spline Slope Offset"
-msgstr ""
+msgstr "스플라인 기울기 오프셋"
 
 #. Setting description (HDR > Tone Mapping Constants > Spline Slope Offset)
 msgid "Offset for Spline slope adjustment."
-msgstr ""
+msgstr "스플라인 기울기 조정을 위한 오프셋입니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Spline Contrast"
-msgstr ""
+msgstr "스플라인 명암"
 
 #. Setting description (HDR > Tone Mapping Constants > Spline Contrast)
 msgid "Spline contrast around the knee. Only affects the Spline function."
 msgstr ""
+"니(knee) 주변의 스플라인 명암입니다. 스플라인 기능에만 영향을 미칩니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Reinhard Contrast"
-msgstr ""
+msgstr "라인하르트 명암"
 
 #. Setting description (HDR > Tone Mapping Constants > Reinhard Contrast)
 msgid "Contrast for Reinhard. Larger values increase contrast."
-msgstr ""
+msgstr "라인하르트 방식의 명암입니다. 값이 클수록 명암이 증가합니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Mobius / Gamma Knee"
-msgstr ""
+msgstr "뫼비우스/감마 니(knee)"
 
 #. Setting description (HDR > Tone Mapping Constants > Mobius / Gamma Knee)
 msgid "Transition point for Mobius and Gamma tone mapping."
-msgstr ""
+msgstr "뫼비우스 및 감마 톤 매핑의 전환점입니다."
 
 #. Setting name (HDR > Tone Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Linear Exposure"
-msgstr ""
+msgstr "선형 노출"
 
 #. Setting description (HDR > Tone Mapping Constants > Linear Exposure)
 msgid ""
 "Exposure multiplier for Linear and Linear Light tone mapping. 1 is unchanged."
 msgstr ""
+"선형 및 선형 라이트 톤 매핑을 위한 노출 배수입니다. 1은 변경 없음을 의미합니"
+"다."
 
 #. Section heading (HDR)
 #. Setting name (HDR > Contrast Recovery)
 #. Setting name (Shortcuts > )
 msgid "Contrast Recovery"
-msgstr ""
+msgstr "명암 복원"
 
 #. Setting description (HDR > Contrast Recovery > Contrast Recovery)
 msgid "Recover local contrast lost in tone mapping. 0 disables recovery."
 msgstr ""
+"톤 매핑 과정에서 손실된 로컬 대비를 복구합니다. 0으로 설정하면 복구 기능을 비"
+"활성화합니다."
 
 #. Setting name (HDR > Contrast Recovery)
 #. Setting name (Shortcuts > )
 msgid "Contrast Smoothness"
-msgstr ""
+msgstr "명암 부드러움"
 
 #. Setting description (HDR > Contrast Recovery > Contrast Smoothness)
 msgid ""
 "Spatial scale for contrast recovery. Used only when recovery is above 0."
 msgstr ""
+"명암 복구를 위한 공간 스케일입니다. 복구 값이 0보다 클 때만 사용됩니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Gamut Mapping Constants"
-msgstr ""
+msgstr "색역 매핑 상수"
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Perceptual Deadzone"
-msgstr ""
+msgstr "지각 데드존"
 
 #. Setting description (HDR > Gamut Mapping Constants > Perceptual Deadzone)
 msgid ""
 "Protect colors already inside the target gamut from perceptual remapping."
 msgstr ""
+"대상 색역 내에 이미 포함된 색상들이 지각 재매핑의 영향을 받지 않도록 보호하십"
+"시오."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Perceptual Strength"
-msgstr ""
+msgstr "지각적 강도"
 
 #. Setting description (HDR > Gamut Mapping Constants > Perceptual Strength)
 msgid "Balance perceptual gamut compression and colorimetric mapping."
-msgstr ""
+msgstr "지각적 색역 압축과 측색적 매핑 간의 균형을 맞추십시오."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Colorimetric Gamma"
-msgstr ""
+msgstr "색도계 감마"
 
 #. Setting description (HDR > Gamut Mapping Constants > Colorimetric Gamma)
 msgid ""
 "Gamma used for colorimetric clipping; affects Relative and related mapping."
 msgstr ""
+"색도 클리핑에 사용되는 감마는 상대 매핑 및 관련 매핑에 영향을 미칩니다."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Softclip Knee"
-msgstr ""
+msgstr "소프트클립 니(knee)"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Knee)
 msgid "Saturation threshold where soft clipping starts."
-msgstr ""
+msgstr "소프트 클리핑이 시작되는 포화 임계값입니다."
 
 #. Setting name (HDR > Gamut Mapping Constants)
 #. Setting name (Shortcuts > )
 msgid "Softclip Desaturation"
-msgstr ""
+msgstr "소프트클립 채도 감소"
 
 #. Setting description (HDR > Gamut Mapping Constants > Softclip Desaturation)
 msgid "Desaturation near the gamut boundary when using Softclip."
-msgstr ""
+msgstr "소프트클립을 사용할 때, 색역 경계 부근에서 채도가 감소합니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Mapping LUT Quality"
-msgstr ""
+msgstr "매핑 LUT 품질"
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
 msgid "Gamut LUT Intensity Size"
-msgstr ""
+msgstr "색역 LUT 강도 크기"
 
 #. Setting description (HDR > Mapping LUT Quality > Gamut LUT Intensity Size)
 msgid ""
 "Internal gamut LUT resolution along intensity. 0 selects the library size."
 msgstr ""
+"강도 축을 따른 내부 색역 LUT 해상도입니다. 0으로 설정하면 라이브러리 크기가 "
+"선택됩니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
 msgid "Gamut LUT Chroma Size"
-msgstr ""
+msgstr "색역 LUT 채도 크기"
 
 #. Setting description (HDR > Mapping LUT Quality > Gamut LUT Chroma Size)
 msgid "Internal gamut LUT resolution along chroma. 0 selects the library size."
-msgstr ""
+msgstr "채도에 따른 내부 색역 LUT 해상도. 0은 라이브러리 크기를 선택합니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
 msgid "Gamut LUT Hue Size"
-msgstr ""
+msgstr "색역 LUT 색조 크기"
 
 #. Setting description (HDR > Mapping LUT Quality > Gamut LUT Hue Size)
 msgid "Internal gamut LUT resolution along hue. 0 selects the library size."
 msgstr ""
+"색조에 따른 내부 색역 LUT 해상도입니다. 0으로 설정하면 라이브러리 크기가 적용"
+"됩니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
 msgid "Tricubic Gamut Interpolation"
-msgstr ""
+msgstr "삼차원 입방 색역 보간"
 
 #. Setting description (HDR > Mapping LUT Quality > Tricubic Gamut Interpolation)
 msgid ""
 "Use tricubic interpolation for the internal gamut LUT; costs additional GPU "
 "work."
 msgstr ""
+"내부 색역 LUT에 삼차 보간을 사용합니다. 이 과정에서 추가적인 GPU 작업이 소요"
+"됩니다."
 
 #. Setting name (HDR > Mapping LUT Quality)
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping LUT Size"
-msgstr ""
+msgstr "톤 매핑 LUT 크기"
 
 #. Setting description (HDR > Mapping LUT Quality > Tone Mapping LUT Size)
 msgid "Internal tone curve lookup resolution. 0 selects the library size."
 msgstr ""
+"내부 톤 커브 조회 해상도입니다. 0을 선택하면 라이브러리 크기가 적용됩니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Mapping Visualization"
-msgstr ""
+msgstr "매핑 시각화"
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Force Tone Mapping LUT"
-msgstr ""
+msgstr "톤 매핑 LUT 강제 적용"
 
 #. Setting description (HDR > Mapping Visualization > Force Tone Mapping LUT)
 msgid ""
 "Use a lookup table even for tone curves that could be evaluated directly."
-msgstr ""
+msgstr "직접 계산할 수 있는 톤 커브의 경우에도 룩업 테이블을 사용하십시오."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualize Mapping LUT"
-msgstr ""
+msgstr "매핑 LUT 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualize Mapping LUT)
 msgid "Draw a diagnostic visualization over the video."
-msgstr ""
+msgstr "영상 위에 진단용 시각화 요소를 그려 넣으세요."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Left"
-msgstr ""
+msgstr "좌측 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Left)
 msgid ""
 "Left edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr ""
+msgstr "시각화의 왼쪽 가장자리를 정규화된 출력 좌표(0~1)로 나타낸 것입니다."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Top"
-msgstr ""
+msgstr "상단 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Top)
 msgid ""
 "Top edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr ""
+msgstr "시각화의 상단 가장자리를 정규화된 출력 좌표(0~1)로 나타낸 것입니다."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Right"
-msgstr ""
+msgstr "우측 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Right)
 msgid ""
 "Right edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr ""
+msgstr "시각화의 오른쪽 가장자리를 정규화된 출력 좌표(0~1)로 나타낸 것입니다."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Bottom"
-msgstr ""
+msgstr "하단 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Bottom)
 msgid ""
 "Bottom edge of the visualization in normalized output coordinates (0 to 1)."
-msgstr ""
+msgstr "시각화의 하단 가장자리를 정규화된 출력 좌표(0~1)로 나타낸 것입니다."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Hue (radians)"
-msgstr ""
+msgstr "색상(라디안) 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Hue (radians))
 msgid "Gamut visualization hue slice, from -pi to pi."
-msgstr ""
+msgstr "-π부터 π까지의 색역 시각화입니다."
 
 #. Setting name (HDR > Mapping Visualization)
 #. Setting name (Shortcuts > )
 msgid "Visualization Rotation (radians)"
-msgstr ""
+msgstr "회전(라디안) 시각화"
 
 #. Setting description (HDR > Mapping Visualization > Visualization Rotation (radians))
 msgid "Gamut visualization angle, from 0 to pi/2."
-msgstr ""
+msgstr "색역 시각화 각도, 0에서 pi/2까지."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Expansion & Metadata"
-msgstr ""
+msgstr "확장 및 메타데이터"
 
 #. Setting name (HDR > Expansion & Metadata)
 #. Setting name (Shortcuts > )
 msgid "Inverse Tone Mapping"
-msgstr ""
+msgstr "역 톤 매핑"
 
 #. Setting description (HDR > Expansion & Metadata > Inverse Tone Mapping)
 msgid ""
 "Allow expansion of SDR brightness into HDR. Requires a supporting tone curve."
 msgstr ""
+"SDR 밝기를 HDR 영역으로 확장할 수 있도록 합니다. 이를 위해서는 지원되는 톤 커"
+"브가 필요합니다."
 
 #. Setting name (HDR > Expansion & Metadata)
 #. Setting name (Shortcuts > )
 msgid "Gamut Expansion"
-msgstr ""
+msgstr "색역 확장"
 
 #. Setting description (HDR > Expansion & Metadata > Gamut Expansion)
 msgid "Allow expansion into a wider display gamut."
-msgstr ""
+msgstr "더 넓은 디스플레이 색역으로 확장할 수 있도록 지원합니다."
 
 #. Setting name (HDR > Expansion & Metadata)
 #. Setting name (Shortcuts > )
 msgid "Tone Mapping Metadata"
-msgstr ""
+msgstr "톤 매핑 메타데이터"
 
 #. Setting description (HDR > Expansion & Metadata > Tone Mapping Metadata)
 msgid ""
 "Default retains automatic Dolby Vision / HDR10+ metadata selection. A manual "
 "choice overrides it."
 msgstr ""
+"기본 설정은 돌비 비전/HDR10+ 메타데이터 자동 선택을 유지합니다. 수동으로 선택"
+"할 경우 해당 설정이 우선 적용됩니다."
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "None"
-msgstr ""
+msgstr "없음"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 msgid "HDR10"
-msgstr ""
+msgstr "HDR10"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 msgid "HDR10+"
-msgstr ""
+msgstr "HDR10+"
 
 #. Choice (HDR > Expansion & Metadata > Tone Mapping Metadata)
 #. Setting name (Shortcuts > )
 msgid "CIE Y"
-msgstr ""
+msgstr "CIE Y"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Shadows"
-msgstr ""
+msgstr "음영"
 
 #. Section description (HDR > Shadows)
 #. Section description (HDR > Midtones)
 #. Section description (HDR > Highlights)
 msgid "HDR tonal adjustment; 0 is neutral. Exposure is measured in stops."
-msgstr ""
+msgstr "HDR 톤 조정; 0은 중립 상태입니다. 노출은 스톱 단위로 측정됩니다."
 
 #. Setting name (HDR > Shadows)
 #. Setting name (HDR > Midtones)
 #. Setting name (HDR > Highlights)
 msgid "Exposure"
-msgstr ""
+msgstr "노출"
 
 #. Setting description (HDR > Shadows > Exposure)
 #. Setting description (HDR > Midtones > Exposure)
@@ -2411,199 +2586,203 @@ msgid ""
 "Adjust brightness within this HDR zone in stops. Positive values brighten; "
 "negative values darken."
 msgstr ""
+"이 HDR 영역 내에서 밝기를 스톱 단위로 조정합니다. 양수 값은 화면을 밝게 하"
+"고, 음수 값은 어둡게 합니다."
 
 #. Setting description (HDR > Shadows > Contrast)
 #. Setting description (HDR > Midtones > Contrast)
 #. Setting description (HDR > Highlights > Contrast)
 msgid "Change contrast within this HDR zone. 0 is neutral."
-msgstr ""
+msgstr "이 HDR 영역 내의 대비를 변경합니다. 0은 중립 상태입니다."
 
 #. Setting description (HDR > Shadows > Saturation)
 #. Setting description (HDR > Midtones > Saturation)
 #. Setting description (HDR > Highlights > Saturation)
 msgid "Change color intensity within this HDR zone. 0 is neutral."
-msgstr ""
+msgstr "이 HDR 영역 내의 색상 강도를 변경하세요. 0은 중립 상태입니다."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Midtones"
-msgstr ""
+msgstr "중간 톤"
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
 msgid "Highlights"
-msgstr ""
+msgstr "하이라이트"
 
 #. Category
 #. Category heading
 #. Setting name (Shortcuts > )
 msgid "Shaders"
-msgstr ""
+msgstr "셰이더"
 
 #. Category description
 msgid "User shader chain."
-msgstr ""
+msgstr "사용자 셰이더 체인."
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 msgid "Chain Controls"
-msgstr ""
+msgstr "체인 제어"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "AMD CAS"
-msgstr ""
+msgstr "AMD CAS"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "FineDehalo"
-msgstr ""
+msgstr "FineDehalo"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "PixelClipper"
-msgstr ""
+msgstr "PixelClipper"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "KrigBilateral"
-msgstr ""
+msgstr "KrigBilateral"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "CfL Prediction"
-msgstr ""
+msgstr "CfL 예측"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "NLMeans"
-msgstr ""
+msgstr "NLMeans"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "Bilateral Denoise"
-msgstr ""
+msgstr "양방향 노이즈 제거"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "Chroma Denoise"
-msgstr ""
+msgstr "채도 노이즈 제거"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "Guided Detail Enhance"
-msgstr ""
+msgstr "가이드 디테일 향상"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "Clarity"
-msgstr ""
+msgstr "명료성"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "FSRCNNX 2x"
-msgstr ""
+msgstr "FSRCNNX 2배"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "AiUpscale Photo 2x"
-msgstr ""
+msgstr "AiUpscale Photo 2배"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R2"
-msgstr ""
+msgstr "RAVU 줌 AR R2"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "RAVU Zoom R3"
-msgstr ""
+msgstr "RAVU 줌 R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "RAVU Zoom AR R3"
-msgstr ""
+msgstr "RAVU 줌 AR R3"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "Anime4K CNN 2x M"
-msgstr ""
+msgstr "Anime4K CNN 2배 M"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "ArtCNN C4F16"
-msgstr ""
+msgstr "ArtCNN C4F16"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "CuNNy 2x12 DS"
-msgstr ""
+msgstr "CuNNy 2x12 DS"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "SSimDownscaler"
-msgstr ""
+msgstr "SSimDownscaler"
 
 #. Tab (Shaders)
 #. Section heading (Shaders)
 #. Setting name (Shortcuts > )
 msgid "DPID"
-msgstr ""
+msgstr "DPID"
 
 #. Setting name (Shaders > Chain Controls)
 msgid "Disable All Shaders"
-msgstr ""
+msgstr "모든 셰이더 비활성화"
 
 #. Setting description (Shaders > Chain Controls > Disable All Shaders)
 msgid ""
 "Turn off the shader chain while retaining its parameter values and order."
 msgstr ""
+"셰이더 체인의 매개변수 값과 순서는 그대로 유지한 채, 해당 셰이더 체인을 끕니"
+"다."
 
 #. Button (Shaders > Chain Controls > Disable All Shaders)
 #. Menu text; keep %d and %s placeholders
 msgid "All Off"
-msgstr ""
+msgstr "모두 끔"
 
 #. Section description (Shaders > AMD CAS)
 msgid "Contrast-adaptive sharpening after scaling."
-msgstr ""
+msgstr "크기 조정 후 대비 적응형 선명도 향상."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shaders > Anti-Ringing)
 msgid "On/Off"
-msgstr ""
+msgstr "켬/끔"
 
 #. Setting description (Shaders > AMD CAS > On/Off)
 #. Setting description (Shaders > FineDehalo > On/Off)
 #. Setting description (Shaders > Anti-Ringing > On/Off)
 msgid "Switches this shader on or off."
-msgstr ""
+msgstr "이 셰이더를 켜거나 끕니다."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Guided Detail Enhance)
 msgid "Strength (STR)"
-msgstr ""
+msgstr "강도(STR)"
 
 #. Setting description (Shaders > AMD CAS > Strength (STR))
 #. Setting description (Shaders > Anti-Ringing > Strength (STR))
@@ -2612,12 +2791,14 @@ msgid ""
 "Adjust Strength for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 그대로 유"
+"지합니다."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shaders > Anti-Ringing)
 msgid "Automatic Order"
-msgstr ""
+msgstr "자동 순서"
 
 #. Setting description (Shaders > AMD CAS > Automatic Order)
 #. Setting description (Shaders > FineDehalo > Automatic Order)
@@ -2625,12 +2806,14 @@ msgstr ""
 msgid ""
 "Runs cleanup first, then scaling, then sharpening. Turn off to set positions."
 msgstr ""
+"먼저 정리 작업을 실행한 다음 크기 조정, 마지막으로 선명도 조정을 실행합니다. "
+"위치를 설정하려면 이 기능을 끄십시오."
 
 #. Setting name (Shaders > AMD CAS)
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shaders > Anti-Ringing)
 msgid "Chain Position"
-msgstr ""
+msgstr "체인 위치"
 
 #. Setting description (Shaders > AMD CAS > Chain Position)
 #. Setting description (Shaders > FineDehalo > Chain Position)
@@ -2639,126 +2822,148 @@ msgid ""
 "Processing order within the shader chain. Moving a shader shifts the "
 "intervening entries."
 msgstr ""
+"셰이더 체인 내에서의 처리 순서입니다. 셰이더를 이동하면 중간에 있는 항목들이 "
+"이동합니다."
 
 #. Section description (Shaders > FineDehalo)
 msgid "Reduce bright and dark halos around edges."
-msgstr ""
+msgstr "가장자리 주변의 밝고 어두운 후광을 줄입니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Horizontal Radius (RX)"
-msgstr ""
+msgstr "수평 반경(RX)"
 
 #. Setting description (Shaders > FineDehalo > Horizontal Radius (RX))
 msgid ""
 "Adjust Horizontal Radius for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 가로 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Vertical Radius (RY)"
-msgstr ""
+msgstr "수직 반경(RY)"
 
 #. Setting description (Shaders > FineDehalo > Vertical Radius (RY))
 msgid ""
 "Adjust Vertical Radius for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 수직 반경을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Strong Edge Low (THMI)"
-msgstr ""
+msgstr "강한 경계 하한(THMI)"
 
 #. Setting description (Shaders > FineDehalo > Strong Edge Low (THMI))
 msgid ""
 "Adjust Strong Edge Low for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더에 대해 강한 경계 하한을 조정하십시오. 기본값은 셰이더 제작자가 설정"
+"한 값을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Strong Edge High (THMA)"
-msgstr ""
+msgstr "강한 경계 상한(THMA)"
 
 #. Setting description (Shaders > FineDehalo > Strong Edge High (THMA))
 msgid ""
 "Adjust Strong Edge High for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더에 대해 강한 경계 상한값을 조정하십시오. 기본값은 셰이더 제작자가 설"
+"정한 값을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Light Edge Low (THLIMI)"
-msgstr ""
+msgstr "가벼운 경계 하한(THLIMI)"
 
 #. Setting description (Shaders > FineDehalo > Light Edge Low (THLIMI))
 msgid ""
 "Adjust Light Edge Low for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 가벼운 경계 하한값을 조정합니다. 기본값은 셰이더 작성자의 설정을 "
+"유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Light Edge High (THLIMA)"
-msgstr ""
+msgstr "가벼운 경계 상한(THLIMA)"
 
 #. Setting description (Shaders > FineDehalo > Light Edge High (THLIMA))
 msgid ""
 "Adjust Light Edge High for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 가벼운 경계 상한값을 조정하세요. 기본값은 셰이더 제작자가 설정한 "
+"값을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Dark Halo Strength (STR_D)"
-msgstr ""
+msgstr "어두운 후광 강도(STR_D)"
 
 #. Setting description (Shaders > FineDehalo > Dark Halo Strength (STR_D))
 msgid ""
 "Adjust Dark Halo Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 어두운 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Bright Halo Strength (STR_B)"
-msgstr ""
+msgstr "밝은 후광 강도(STR_B)"
 
 #. Setting description (Shaders > FineDehalo > Bright Halo Strength (STR_B))
 msgid ""
 "Adjust Bright Halo Strength for this shader. The default preserves the "
 "shader author's setting."
 msgstr ""
+"이 셰이더의 밝은 후광 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "Low Sensitivity (SENS_L)"
-msgstr ""
+msgstr "저감도(SENS_L)"
 
 #. Setting description (Shaders > FineDehalo > Low Sensitivity (SENS_L))
 msgid ""
 "Adjust Low Sensitivity for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 저감도를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shortcuts > )
 msgid "High Sensitivity (SENS_H)"
-msgstr ""
+msgstr "고감도(SENS_H)"
 
 #. Setting description (Shaders > FineDehalo > High Sensitivity (SENS_H))
 msgid ""
 "Adjust High Sensitivity for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 고감도를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > FineDehalo)
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shaders > SSimDownscaler)
 msgid "Debug View (DEBUG)"
-msgstr ""
+msgstr "디버그 보기(DEBUG)"
 
 #. Setting description (Shaders > FineDehalo > Debug View (DEBUG))
 #. Setting description (Shaders > Clarity > Debug View (DEBUG))
@@ -2767,16 +2972,18 @@ msgid ""
 "Adjust Debug View for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 디버그 뷰를 조정합니다. 기본값은 셰이더 작성자가 설정한 내용을 그"
+"대로 유지합니다."
 
 #. Section description (Shaders > Anti-Ringing)
 msgid "Limit ringing introduced by image upscaling."
-msgstr ""
+msgstr "이미지 업스케일링으로 인해 발생하는 링잉 현상을 제한합니다."
 
 #. Setting name (Shaders > Anti-Ringing)
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shortcuts > )
 msgid "Sample Taps (TAP)"
-msgstr ""
+msgstr "샘플 탭(TAP)"
 
 #. Setting description (Shaders > Anti-Ringing > Sample Taps (TAP))
 #. Setting description (Shaders > Bilateral Denoise > Sample Taps (TAP))
@@ -2784,212 +2991,247 @@ msgid ""
 "Adjust Sample Taps for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 샘플 탭을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Section description (Shaders > PixelClipper)
 msgid "Limit overshoot during image and chroma scaling."
-msgstr ""
+msgstr "이미지 및 채도 스케일링 중 오버슈트를 제한합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
 msgid "Image Sampling Mode (TAPS_scale)"
-msgstr ""
+msgstr "이미지 샘플링 모드(TAPS_scale)"
 
 #. Setting description (Shaders > PixelClipper > Image Sampling Mode (TAPS_scale))
 msgid ""
 "Adjust Image Sampling Mode for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 이미지 샘플링 모드를 조정하세요. 기본값은 셰이더 작성자가 지정한 "
+"설정을 그대로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
 msgid "Chroma Sampling Mode (TAPS_cscale)"
-msgstr ""
+msgstr "채도 샘플링 모드(TAPS_cscale)"
 
 #. Setting description (Shaders > PixelClipper > Chroma Sampling Mode (TAPS_cscale))
 msgid ""
 "Adjust Chroma Sampling Mode for this shader. The default preserves the "
 "shader author's setting."
 msgstr ""
+"이 셰이더의 채도 샘플링 모드를 조정하세요. 기본값은 셰이더 작성자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
 msgid "Upscaling Limit (CLIP_scale)"
-msgstr ""
+msgstr "업스케일링 제한(CLIP_scale)"
 
 #. Setting description (Shaders > PixelClipper > Upscaling Limit (CLIP_scale))
 msgid ""
 "Adjust Upscaling Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 업스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
 msgid "Chroma Limit (CLIP_cscale)"
-msgstr ""
+msgstr "채도 제한(CLIP_cscale)"
 
 #. Setting description (Shaders > PixelClipper > Chroma Limit (CLIP_cscale))
 msgid ""
 "Adjust Chroma Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 채도 제한을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > PixelClipper)
 #. Setting name (Shortcuts > )
 msgid "Downscaling Limit (CLIP_dscale)"
-msgstr ""
+msgstr "다운스케일링 제한(CLIP_dscale)"
 
 #. Setting description (Shaders > PixelClipper > Downscaling Limit (CLIP_dscale))
 msgid ""
 "Adjust Downscaling Limit for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더에 대한 다운스케일링 제한을 조정합니다. 기본값은 셰이더 제작자가 설"
+"정한 값을 그대로 유지합니다."
 
 #. Section description (Shaders > KrigBilateral)
 msgid "Reconstruct chroma guided by luma. Requires subsampled YUV input."
 msgstr ""
+"휘도에 따라 채도를 다시 구성합니다. 서브샘플링된 YUV 입력이 필요합니다."
 
 #. Section description (Shaders > CfL Prediction)
 msgid "Predict chroma from luma. Requires subsampled YUV input."
-msgstr ""
+msgstr "휘도로부터 채도를 예측합니다. 서브샘플링된 YUV 입력이 필요합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
 msgid "chroma offset x (chroma_offset_x)"
-msgstr ""
+msgstr "채도 오프셋 x(chroma_offset_x)"
 
 #. Setting description (Shaders > CfL Prediction > chroma offset x (chroma_offset_x))
 msgid ""
 "Adjust chroma offset x for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 채도 오프셋 x 값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값"
+"을 그대로 유지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
 msgid "chroma offset y (chroma_offset_y)"
-msgstr ""
+msgstr "채도 오프셋 y(chroma_offset_y)"
 
 #. Setting description (Shaders > CfL Prediction > chroma offset y (chroma_offset_y))
 msgid ""
 "Adjust chroma offset y for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 채도 오프셋 y 값을 조정하세요. 기본값은 셰이더 제작자의 설정을 유"
+"지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
 msgid "distance coeff (distance_coeff)"
-msgstr ""
+msgstr "거리 계수(distance_coeff)"
 
 #. Setting description (Shaders > CfL Prediction > distance coeff (distance_coeff))
 msgid ""
 "Adjust distance coeff for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 거리 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Setting name (Shaders > CfL Prediction)
 #. Setting name (Shortcuts > )
 msgid "intensity coeff (intensity_coeff)"
-msgstr ""
+msgstr "강도 계수(intensity_coeff)"
 
 #. Setting description (Shaders > CfL Prediction > intensity coeff (intensity_coeff))
 msgid ""
 "Adjust intensity coeff for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 강도 계수를 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대"
+"로 유지합니다."
 
 #. Section description (Shaders > NLMeans)
 msgid "Reduce luma noise using similar image patches."
-msgstr ""
+msgstr "유사한 이미지 패치를 사용하여 휘도 노이즈를 줄입니다."
 
 #. Setting name (Shaders > NLMeans)
 #. Setting name (Shortcuts > )
 msgid "Reference Mode (REF)"
-msgstr ""
+msgstr "참조 모드(REF)"
 
 #. Setting description (Shaders > NLMeans > Reference Mode (REF))
 msgid ""
 "Adjust Reference Mode for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 참조 모드를 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Bilateral Denoise)
 msgid "Edge-aware luma noise reduction."
-msgstr ""
+msgstr "가장자리 정보를 고려한 휘도 노이즈 저감."
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shortcuts > )
 msgid "SS (SS)"
-msgstr ""
+msgstr "SS(SS)"
 
 #. Setting description (Shaders > Bilateral Denoise > SS (SS))
 msgid ""
 "Adjust SS for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대해 SS를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Bilateral Denoise)
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SR (SR)"
-msgstr ""
+msgstr "SR(SR)"
 
 #. Setting description (Shaders > Bilateral Denoise > SR (SR))
 #. Setting description (Shaders > hdeband > SR (SR))
 msgid ""
 "Adjust SR for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 SR을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Chroma Denoise)
 msgid "Reduce color noise."
-msgstr ""
+msgstr "색 노이즈를 줄이세요."
 
 #. Setting name (Shaders > Chroma Denoise)
 #. Setting name (Shortcuts > )
 msgid "Threshold (THR)"
-msgstr ""
+msgstr "임계값(THR)"
 
 #. Setting description (Shaders > Chroma Denoise > Threshold (THR))
 msgid ""
 "Adjust Threshold for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Section description (Shaders > hdeband)
 msgid "Reduce banding in smooth gradients."
-msgstr ""
+msgstr "부드러운 그라데이션에서 밴딩 현상을 줄입니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "S (S)"
-msgstr ""
+msgstr "S(S)"
 
 #. Setting description (Shaders > hdeband > S (S))
 msgid ""
 "Adjust S for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 S 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SI (SI)"
-msgstr ""
+msgstr "SI(SI)"
 
 #. Setting description (Shaders > hdeband > SI (SI))
 msgid ""
 "Adjust SI for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 SI 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SW (SW)"
-msgstr ""
+msgstr "SW(SW)"
 
 #. Setting description (Shaders > hdeband > SW (SW))
 msgid ""
 "Adjust SW for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 대한 SW를 조정하십시오. 기본값은 셰이더 작성자의 설정을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "Radius (RADIUS)"
-msgstr ""
+msgstr "라디우스(RADIUS)"
 
 #. Setting description (Shaders > hdeband > Radius (RADIUS))
 #. Setting description (Shaders > Guided Detail Enhance > Radius (RAD))
@@ -2998,934 +3240,1004 @@ msgid ""
 "Adjust Radius for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 라디우스(Radius)을 조정합니다. 기본값은 셰이더 제작자가 설정한 "
+"값을 그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "SPARSITY (SPARSITY)"
-msgstr ""
+msgstr "스파시티(SPARSITY)"
 
 #. Setting description (Shaders > hdeband > SPARSITY (SPARSITY))
 msgid ""
 "Adjust SPARSITY for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 스파시티 값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "DIRECTIONS (DIRECTIONS)"
-msgstr ""
+msgstr "방향(DIRECTIONS)"
 
 #. Setting description (Shaders > hdeband > DIRECTIONS (DIRECTIONS))
 msgid ""
 "Adjust DIRECTIONS for this shader. The default preserves the shader author's "
 "setting."
-msgstr ""
+msgstr "이 셰이더의 방향 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "RUN START (RUN_START)"
-msgstr ""
+msgstr "실행 시작(RUN_START)"
 
 #. Setting description (Shaders > hdeband > RUN START (RUN_START))
 msgid ""
 "Adjust RUN START for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 실행 시작 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > hdeband)
 #. Setting name (Shortcuts > )
 msgid "TOLERANCE (TOLERANCE)"
-msgstr ""
+msgstr "허용 오차(TOLERANCE)"
 
 #. Setting description (Shaders > hdeband > TOLERANCE (TOLERANCE))
 msgid ""
 "Adjust TOLERANCE for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 허용 오차를 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > neo-f3kdb)
 msgid "Reduce gradient banding with adjustable thresholds and grain."
-msgstr ""
+msgstr "조절 가능한 임계값과 그레인을 사용하여 그라데이션 밴딩을 줄이세요."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "RANGE (RANGE)"
-msgstr ""
+msgstr "범위(RANGE)"
 
 #. Setting description (Shaders > neo-f3kdb > RANGE (RANGE))
 msgid ""
 "Adjust RANGE for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 범위 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Grain (GRAIN)"
-msgstr ""
+msgstr "그레인(GRAIN)"
 
 #. Setting description (Shaders > neo-f3kdb > Grain (GRAIN))
 msgid ""
 "Adjust Grain for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 그레인을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "GRAD (GRAD)"
-msgstr ""
+msgstr "GRAD(GRAD)"
 
 #. Setting description (Shaders > neo-f3kdb > GRAD (GRAD))
 msgid ""
 "Adjust GRAD for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 대한 GRAD를 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Average Threshold (THR_AVG)"
-msgstr ""
+msgstr "평균 임계값(THR_AVG)"
 
 #. Setting description (Shaders > neo-f3kdb > Average Threshold (THR_AVG))
 msgid ""
 "Adjust Average Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 평균 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Maximum Threshold (THR_MAX)"
-msgstr ""
+msgstr "최대 임계값(THR_MAX)"
 
 #. Setting description (Shaders > neo-f3kdb > Maximum Threshold (THR_MAX))
 msgid ""
 "Adjust Maximum Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 최대 임계값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Middle Threshold (THR_MID)"
-msgstr ""
+msgstr "중간 임계값(THR_MID)"
 
 #. Setting description (Shaders > neo-f3kdb > Middle Threshold (THR_MID))
 msgid ""
 "Adjust Middle Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 중간 임계값을 조정합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "Combined Threshold (THR_ALL)"
-msgstr ""
+msgstr "통합 임계값(THR_ALL)"
 
 #. Setting description (Shaders > neo-f3kdb > Combined Threshold (THR_ALL))
 msgid ""
 "Adjust Combined Threshold for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 통합 임계값을 조정합니다. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "AB (AB)"
-msgstr ""
+msgstr "AB(AB)"
 
 #. Setting description (Shaders > neo-f3kdb > AB (AB))
 msgid ""
 "Adjust AB for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 AB 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > neo-f3kdb)
 #. Setting name (Shortcuts > )
 msgid "AM (AM)"
-msgstr ""
+msgstr "AM(AM)"
 
 #. Setting description (Shaders > neo-f3kdb > AM (AM))
 msgid ""
 "Adjust AM for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 AM 값을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > Guided Detail Enhance)
 msgid "Enhance detail with guided filtering."
-msgstr ""
+msgstr "가이드 필터링으로 디테일을 향상시키세요."
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Radius (RAD)"
-msgstr ""
+msgstr "라디우스(RAD)"
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shortcuts > )
 msgid "Regularization (EPS)"
-msgstr ""
+msgstr "정규화(EPS)"
 
 #. Setting description (Shaders > Guided Detail Enhance > Regularization (EPS))
 msgid ""
 "Adjust Regularization for this shader. The default preserves the shader "
 "author's setting."
-msgstr ""
+msgstr "이 셰이더의 정규화를 조정합니다. 기본값은 셰이더 작성자의 설정을 유지합니다."
 
 #. Setting name (Shaders > Guided Detail Enhance)
 #. Setting name (Shortcuts > )
 msgid "Subsampling (SUBSAM)"
-msgstr ""
+msgstr "하위 표본 추출(SUBSAM)"
 
 #. Setting description (Shaders > Guided Detail Enhance > Subsampling (SUBSAM))
 msgid ""
 "Adjust Subsampling for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더에 대한 하위 표본 추출을 조정합니다. 기본값은 셰이더 작성자가 "
+"설정한 값을 그대로 유지합니다."
 
 #. Section description (Shaders > Clarity)
 msgid "Adjust local contrast in dark and bright areas."
-msgstr ""
+msgstr "어두운 영역과 밝은 영역의 국부 대비를 조정합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "SHIFT (SHIFT)"
-msgstr ""
+msgstr "시프트(SHIFT)"
 
 #. Setting description (Shaders > Clarity > SHIFT (SHIFT))
 msgid ""
 "Adjust SHIFT for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더의 시프트 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Shadow Strength (STRD)"
-msgstr ""
+msgstr "음영 강도(STRD)"
 
 #. Setting description (Shaders > Clarity > Shadow Strength (STRD))
 msgid ""
 "Adjust Shadow Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 음영 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "Highlight Strength (STRL)"
-msgstr ""
+msgstr "강조 강도(STRL)"
 
 #. Setting description (Shaders > Clarity > Highlight Strength (STRL))
 msgid ""
 "Adjust Highlight Strength for this shader. The default preserves the shader "
 "author's setting."
 msgstr ""
+"이 셰이더의 강조 강도를 조절합니다. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "BM (BM)"
-msgstr ""
+msgstr "BM(BM)"
 
 #. Setting description (Shaders > Clarity > BM (BM))
 msgid ""
 "Adjust BM for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞게 BM 값을 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "CD (CD)"
-msgstr ""
+msgstr "CD(CD)"
 
 #. Setting description (Shaders > Clarity > CD (CD))
 msgid ""
 "Adjust CD for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더에 맞춰 CD를 조정하십시오. 기본값은 셰이더 작성자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Setting name (Shaders > Clarity)
 #. Setting name (Shortcuts > )
 msgid "CL (CL)"
-msgstr ""
+msgstr "CL(CL)"
 
 #. Setting description (Shaders > Clarity > CL (CL))
 msgid ""
 "Adjust CL for this shader. The default preserves the shader author's setting."
 msgstr ""
+"이 셰이더의 CL을 조정하세요. 기본값은 셰이더 작성자가 설정한 값을 그대로 "
+"유지합니다."
 
 #. Section description (Shaders > FSRCNNX 2x)
 msgid "Neural 2x upscaling. Activates only when enlargement is sufficient."
-msgstr ""
+msgstr "신경망 기반 2배 업스케일링입니다. 충분한 확대가 필요한 경우에만 활성화됩니다."
 
 #. Section description (Shaders > AiUpscale Photo 2x)
 msgid "Photo-oriented neural 2x upscaling."
-msgstr ""
+msgstr "사진 중심의 신경망 기반 2배 업스케일링입니다."
 
 #. Setting name (Shaders > AiUpscale Photo 2x)
 #. Setting name (Shortcuts > )
 msgid "Sharpen (SHARP)"
-msgstr ""
+msgstr "선명도(SHARP)"
 
 #. Setting description (Shaders > AiUpscale Photo 2x > Sharpen (SHARP))
 msgid ""
 "Adjust Sharpen for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 대한 선명도를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Section description (Shaders > RAVU Zoom AR R2)
 msgid "Adaptive upscaling with anti-ringing. Radius 2, the fastest RAVU Zoom."
-msgstr ""
+msgstr "링잉 방지 기능을 갖춘 적응형 업스케일링입니다. 라디우스 2, 가장 빠른 RAVU 줌."
 
 #. Section description (Shaders > RAVU Zoom R3)
 msgid "Adaptive upscaling with radius 3. More detail than R2, slower."
 msgstr ""
+"라디우스 3를 사용한 적응형 업스케일링입니다. R2보다 더 자세한 정보를 "
+"제공하지만 속도는 느립니다."
 
 #. Section description (Shaders > RAVU Zoom AR R3)
 msgid "Radius 3 with anti-ringing. Highest RAVU quality, slowest."
 msgstr ""
+"링잉 방지 기능이 적용된 라디우스 3입니다. 최고 수준의 RAVU 품질을 "
+"제공하지만, 속도는 가장 느립니다."
 
 #. Section description (Shaders > Anime4K CNN 2x M)
 msgid "For 2D animation. Neural 2x upscaling."
-msgstr ""
+msgstr "2D 애니메이션용입니다. 신경망 기반 2배 업스케일링입니다."
 
 #. Section description (Shaders > ArtCNN C4F16)
 msgid "For 2D animation. Initial shader compilation can take several seconds."
-msgstr ""
+msgstr "2D 애니메이션의 경우, 초기 셰이더 컴파일에 수 초 걸릴 수 있습니다."
 
 #. Section description (Shaders > CuNNy 2x12 DS)
 msgid "For 2D animation. Neural 2x upscaling with denoising."
 msgstr ""
+"2D 애니메이션용입니다. 노이즈 제거 기능이 포함된 신경망 기반 2배 "
+"업스케일링입니다."
 
 #. Section description (Shaders > SSimDownscaler)
 msgid ""
 "Refine image downscaling. Requires a smaller output size; works best with "
 "Mitchell as downscaler."
 msgstr ""
+"이미지 다운스케일링을 개선합니다. 더 작은 출력 크기가 필요하며, "
+"다운스케일러로 미첼을 사용할 때 가장 효과적입니다."
 
 #. Setting name (Shaders > SSimDownscaler)
 #. Setting name (Shortcuts > )
 msgid "Oversharp (THR)"
-msgstr ""
+msgstr "오버샤프(THR)"
 
 #. Setting description (Shaders > SSimDownscaler > Oversharp (THR))
 msgid "Extra sharpening on top of SSIM. 0 is the author's default."
 msgstr ""
+"SSIM에 더해 추가적인 선명도 향상을 적용합니다. 0은 제작자가 설정한 "
+"기본값입니다."
 
 #. Section description (Shaders > DPID)
 msgid "Detail-preserving downscaling. Requires a smaller output size."
-msgstr ""
+msgstr "세부 정보를 보존하는 축소입니다. 더 작은 출력 크기가 필요합니다."
 
 #. Setting name (Shaders > DPID)
 #. Setting name (Shortcuts > )
 msgid "LBD (LBD)"
-msgstr ""
+msgstr "LBD(LBD)"
 
 #. Setting description (Shaders > DPID > LBD (LBD))
 msgid ""
 "Adjust LBD for this shader. The default preserves the shader author's "
 "setting."
 msgstr ""
+"이 셰이더에 맞춰 LBD를 조정하세요. 기본값은 셰이더 제작자가 설정한 값을 "
+"그대로 유지합니다."
 
 #. Category
 #. Category heading
 msgid "Profiles"
-msgstr ""
+msgstr "프로필"
 
 #. Category description
 msgid "Different settings for videos from chosen folders."
-msgstr ""
+msgstr "선택한 폴더 내의 영상들에 대해 서로 다른 설정을 적용합니다."
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
-msgstr ""
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "메인"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 #. Menu text; keep %d and %s placeholders
 msgid "Profile"
-msgstr ""
+msgstr "프로필"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Folders"
-msgstr ""
+msgstr "폴더"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
 msgid "Displays"
-msgstr ""
+msgstr "디스플레이"
 
 #. Setting name (Profiles > Display)
 msgid "Same Settings on All Displays"
-msgstr ""
+msgstr "모든 디스플레이에 동일한 설정 적용"
 
 #. Setting description (Profiles > Display > Same Settings on All Displays)
 msgid ""
 "Changes apply to every display. Off: each keeps them and can be changed "
 "alone."
 msgstr ""
+"변경 사항이 모든 디스플레이에 적용됩니다. 끔 : 각자 설정을 유지하며 "
+"개별적으로 변경할 수 있습니다."
 
 #. Setting description (Profiles > Display > Display)
 msgid "Normal settings for videos without a profile. Each display has its own."
 msgstr ""
+"프로필이 없는 영상에 대한 기본 설정입니다. 디스플레이마다 각각 별도의 설정이 "
+"있습니다."
 
 #. Setting name (Profiles > Display)
 msgid "Display Name"
-msgstr ""
+msgstr "디스플레이 이름"
 
 #. Input error (Profiles > Display > Display Name)
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a display name (1 to 80 characters)."
-msgstr ""
+msgstr "표시 이름을 입력하세요. (1~80자)"
 
 #. Section heading (Profiles)
 msgid "Settings File"
-msgstr ""
+msgstr "설정 파일"
 
 #. Setting name (Profiles > Settings File)
 msgid "Settings Folder"
-msgstr ""
+msgstr "설정 폴더"
 
 #. Setting description (Profiles > Settings File > Settings Folder)
 msgid "Opens the folder with Settings.ini."
-msgstr ""
+msgstr "Settings.ini 파일이 들어 있는 폴더를 엽니다."
 
 #. Button (Profiles > Settings File > Settings Folder)
 msgid "Open"
-msgstr ""
+msgstr "열기"
 
 #. Setting name (Profiles > Settings File)
 msgid "Import Settings"
-msgstr ""
+msgstr "설정 가져오기"
 
 #. Setting description (Profiles > Settings File > Import Settings)
 msgid "Loads settings from an INI file."
-msgstr ""
+msgstr "INI 파일에서 설정을 불러옵니다."
 
 #. Button (Profiles > Settings File > Import Settings)
 msgid "Import"
-msgstr ""
+msgstr "가져오기"
 
 #. Setting name (Profiles > Settings File)
 msgid "Export Settings"
-msgstr ""
+msgstr "설정 내보내기"
 
 #. Setting description (Profiles > Settings File > Export Settings)
 msgid "Saves settings to an INI file."
-msgstr ""
+msgstr "설정을 INI 파일에 저장합니다."
 
 #. Button (Profiles > Settings File > Export Settings)
 msgid "Export"
-msgstr ""
+msgstr "내보내기"
 
 #. Setting name (Profiles > Profile)
 msgid "Name"
-msgstr ""
+msgstr "이름"
 
 #. Setting description (Profiles > Profile > Name)
 msgid "Up to 60 characters."
-msgstr ""
+msgstr "최대 60자까지 입력 가능합니다."
 
 #. Input error (Profiles > Profile > Name)
 msgid "Enter a profile name that is not in use (1 to 60 characters)."
-msgstr ""
+msgstr "사용 중이지 않은 프로필 이름을 입력하세요. (1~60자)"
 
 #. Setting name (Profiles > Folders)
 msgid "Add Folder"
-msgstr ""
+msgstr "폴더 추가"
 
 #. Setting description (Profiles > Folders > Add Folder)
 msgid ""
 "Videos in these folders and their subfolders use this profile; when folders "
 "are nested, the closest one wins."
 msgstr ""
+"이 폴더와 하위 폴더에 있는 영상들은 이 프로필을 사용합니다. 폴더가 중첩된 "
+"경우, 가장 가까운 폴더의 설정이 적용됩니다."
 
 #. Button (Profiles > Folders > Add Folder)
 msgid "Choose…"
-msgstr ""
+msgstr "선택…"
 
 #. Setting name (Profiles > Displays)
 msgid "All Displays"
-msgstr ""
+msgstr "모든 디스플레이"
 
 #. Setting description (Profiles > Displays > All Displays)
 msgid "Off: only on the displays switched on below."
-msgstr ""
+msgstr "끔 : 아래에서 켜진 디스플레이에만 적용됩니다."
 
 #. Section heading (Profiles)
 #. Setting name (Profiles > New Profile)
 msgid "New Profile"
-msgstr ""
+msgstr "새 프로필"
 
 #. Section description (Profiles > New Profile)
 msgid ""
 "Own settings for videos from chosen folders, e.g. other scaling for anime."
 msgstr ""
+"선택한 폴더 내의 영상에 대해 개별 설정을 지정할 수 있음, 예 : 애니메이션의 "
+"경우 다른 스케일링 방식 적용"
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr ""
+msgid "Adds a profile with neutral settings in its own tab."
+msgstr "중립적인 설정이 적용된 프로필을 별도의 탭에 추가합니다."
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
-msgstr ""
+msgstr "만들기"
 
 #. Category
 #. Category heading
 msgid "Shortcuts"
-msgstr ""
+msgstr "바로 가기"
 
 #. Category description
 msgid ""
 "Keys for the playing video. Open a group, click a field and press the keys."
-msgstr ""
+msgstr "영상 재생 관련 키입니다. 그룹을 열고 필드를 클릭한 다음, 해당 키를 누르세요."
 
 #. Setting name (Shortcuts > )
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shortcuts"
-msgstr ""
+msgstr "바로 가기 초기화"
 
 #. Setting name (Shortcuts > )
 msgid "Renderer"
-msgstr ""
+msgstr "렌더러"
 
 #. Setting name (Shortcuts > )
 msgid "Statistics"
-msgstr ""
+msgstr "통계"
 
 #. Setting description (Shortcuts >  > Statistics)
 msgid "Shows or hides the statistics."
-msgstr ""
+msgstr "통계 정보를 표시하거나 숨깁니다."
 
 #. Setting name (Shortcuts > )
 msgid "All Shaders Off / Back On"
-msgstr ""
+msgstr "모든 셰이더 끔/ 다시 켬"
 
 #. Setting description (Shortcuts >  > All Shaders Off / Back On)
 msgid "Turns all shaders off; pressed again, back on."
-msgstr ""
+msgstr "모든 셰이더를 끕니다. 다시 누르면 다시 켜집니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next Quality Preset"
-msgstr ""
+msgstr "다음 품질 사전 설정"
 
 #. Setting description (Shortcuts >  > Next Quality Preset)
 msgid "Switches to the next quality preset."
-msgstr ""
+msgstr "다음 품질 사전 설정으로 전환합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next Profile"
-msgstr ""
+msgstr "다음 프로필"
 
 #. Setting description (Shortcuts >  > Next Profile)
 msgid "Switches this file to the next profile."
-msgstr ""
+msgstr "이 파일을 다음 프로필로 전환합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Reset Picture Controls"
-msgstr ""
+msgstr "화면 설정 초기화"
 
 #. Setting description (Shortcuts >  > Reset Picture Controls)
 msgid "Sets brightness, contrast, saturation and gamma back to neutral."
-msgstr ""
+msgstr "밝기, 대비, 채도 및 감마 값을 기본값으로 되돌립니다."
 
 #. Setting name (Shortcuts > )
 msgid "Reset Statistics"
-msgstr ""
+msgstr "통계 초기화"
 
 #. Setting description (Shortcuts >  > Reset Statistics)
 msgid "Counters, averages and peaks start from zero."
-msgstr ""
+msgstr "카운터, 평균 및 최고값은 모두 0에서 시작합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Next"
-msgstr ""
+msgstr "다음"
 
 #. Setting description (Shortcuts >  > Next)
 msgid "Next value; after the last one, the first again."
-msgstr ""
+msgstr "다음 값으로 바꿉니다. 마지막 값 다음에는 다시 첫 번째 값으로 돌아갑니다."
 
-#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
-msgstr ""
+msgstr "정확히 이 값을 설정합니다."
 
 #. Setting name (Shortcuts > )
 msgid "Increase"
-msgstr ""
+msgstr "증가"
 
 #. Setting description (Shortcuts >  > Increase)
 msgid "Raises the value by %s."
-msgstr ""
+msgstr "값을 %s만큼 높입니다."
 
 #. Setting name (Shortcuts > )
 msgid "Decrease"
-msgstr ""
+msgstr "감소"
 
 #. Setting description (Shortcuts >  > Decrease)
 msgid "Lowers the value by %s."
-msgstr ""
+msgstr "값을 %s만큼 낮춥니다."
 
 #. Setting description (Shortcuts >  > Image Analysis)
 #. Setting description (Shortcuts >  > Switch Display Mode in Fullscreen)
 #. Setting description (Shortcuts >  > Diagnostics)
 msgid "Switches on or off; each press changes it."
-msgstr ""
+msgstr "켜거나 끕니다. 누를 때마다 상태가 바뀝니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Ctrl"
-msgstr ""
+msgstr "Ctrl"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Alt"
-msgstr ""
+msgstr "Alt"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Shift"
-msgstr ""
+msgstr "Shift"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Space"
-msgstr ""
+msgstr "Space"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Enter"
-msgstr ""
+msgstr "Enter"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Tab"
-msgstr ""
+msgstr "Tab"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Backspace"
-msgstr ""
+msgstr "Backspace"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Left"
-msgstr ""
+msgstr "Left"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Right"
-msgstr ""
+msgstr "Right"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Up"
-msgstr ""
+msgstr "Up"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Down"
-msgstr ""
+msgstr "Down"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Page Up"
-msgstr ""
+msgstr "Page Up"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Page Down"
-msgstr ""
+msgstr "Page Down"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Home"
-msgstr ""
+msgstr "Home"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: End"
-msgstr ""
+msgstr "End"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Insert"
-msgstr ""
+msgstr "Insert"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Key name: Delete"
-msgstr ""
+msgstr "Delete"
 
 #. Menu text; keep %d and %s placeholders
 msgid "not available"
-msgstr ""
+msgstr "사용할 수 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Press the keys…"
-msgstr ""
+msgstr "키를 누르세요…"
 
 #. Menu text; keep %d and %s placeholders
 msgid "%s is already used by \"%s\"."
-msgstr ""
+msgstr "%s은(는) 이미 \"%s\"에서 사용 중입니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Quality"
-msgstr ""
+msgstr "품질"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Custom"
-msgstr ""
+msgstr "커스텀"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset"
-msgstr ""
+msgstr "초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Smooth Motion"
-msgstr ""
+msgstr "부드러운 모션"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Black Bar Detection"
-msgstr ""
+msgstr "검은 막대 감지"
 
 #. Menu text; keep %d and %s placeholders
 msgid "LUT"
-msgstr ""
+msgstr "LUT"
 
 #. Menu text; keep %d and %s placeholders
 msgid "No LUT in the video folder"
-msgstr ""
+msgstr "영상 폴더에 LUT 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Several LUTs in the video folder"
-msgstr ""
+msgstr "영상 폴더 내의 여러 LUT"
 
 #. Menu text; keep %d and %s placeholders
 msgid "LUT in the video folder unreadable"
-msgstr ""
+msgstr "영상 폴더 내의 LUT를 읽을 수 없음"
 
 #. Menu text; keep %d and %s placeholders
 msgid "At %sp this display offers %s Hz."
-msgstr ""
+msgstr "%sp에서 이 디스플레이는 %s Hz를 제공합니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "No 23 or 24 Hz mode, so films cannot switch here."
-msgstr ""
+msgstr "23Hz나 24Hz 모드가 없기 때문에 영상 재생 시, 해당 모드로 전환할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Other resolutions: %s."
-msgstr ""
+msgstr "기타 해상도 : %s."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Delete profile?"
-msgstr ""
+msgstr "프로필을 삭제하시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "\"%s\" and its settings will be removed."
-msgstr ""
+msgstr "\"%s\" 및 해당 설정이 제거됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Cancel"
-msgstr ""
+msgstr "취소"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Delete"
-msgstr ""
+msgstr "삭제"
 
 #. Menu text; keep %d and %s placeholders
 msgid "The menu now shows \"%s\". Changes on all pages go into the profile."
 msgstr ""
+"메뉴에 이제 \"%s\"가 표시됩니다. 모든 페이지의 변경 사항은 프로필에 "
+"반영됩니다."
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr ""
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
+msgstr "프로필 \"%s\"의 모든 설정을 중립적인 값으로 초기화하시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr ""
+msgid "The profile has neutral settings again."
+msgstr "프로필 설정이 다시 중립으로 돌아왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
-msgstr ""
+msgstr "이 폴더는 이미 “%s” 프로필에 속해 있습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not save the profile."
-msgstr ""
+msgstr "프로필을 저장할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Your own settings."
-msgstr ""
+msgstr "사용자 본인의 설정입니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "None saved yet."
-msgstr ""
+msgstr "아직 저장된 항목이 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Rename"
-msgstr ""
+msgstr "이름 변경"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Page"
-msgstr ""
+msgstr "페이지 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset Shader"
-msgstr ""
+msgstr "셰이더 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Input"
-msgstr ""
+msgstr "입력"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Luma"
-msgstr ""
+msgstr "루마"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Chroma"
-msgstr ""
+msgstr "채도"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Image"
-msgstr ""
+msgstr "이미지"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Before Scaling"
-msgstr ""
+msgstr "스케일링 전"
 
 #. Menu text; keep %d and %s placeholders
 msgid "After Scaling"
-msgstr ""
+msgstr "스케일링 후"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Saved"
-msgstr ""
+msgstr "저장됨"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Save (%d)"
-msgstr ""
+msgstr "저장(%d)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search settings"
-msgstr ""
+msgstr "검색 설정"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Search Results"
-msgstr ""
+msgstr "검색 결과"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Matching settings for: \"%s\""
-msgstr ""
+msgstr "다음 항목에 대한 설정 일치 : \"%s\""
 
 #. Menu text; keep %d and %s placeholders
 msgid "No settings matching this term found."
-msgstr ""
+msgstr "이 용어와 일치하는 설정을 찾을 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Settings saved."
-msgstr ""
+msgstr "설정이 저장되었습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not save settings."
-msgstr ""
+msgstr "설정을 저장할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Select an ICC profile file first."
-msgstr ""
+msgstr "먼저 ICC 프로파일 파일을 선택하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Select a 3D LUT file first."
-msgstr ""
+msgstr "먼저 3D LUT 파일을 선택하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Value or combination is outside the supported range."
-msgstr ""
+msgstr "값 또는 조합이 지원되는 범위를 벗어났습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not open the INI file dialog."
-msgstr ""
+msgstr "INI 파일 대화 상자를 열 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings exported."
-msgstr ""
+msgstr "모든 설정이 내보내졌습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings imported."
-msgstr ""
+msgstr "모든 설정을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Replace all settings with the ones in this file?"
-msgstr ""
+msgstr "모든 설정을 이 파일에 있는 설정으로 바꾸시겠습니까?"
 
 #. Menu text; keep %d and %s placeholders
 msgid "All display profiles imported."
-msgstr ""
+msgstr "모든 디스플레이 프로필을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "INI imported. Select Save to keep it."
-msgstr ""
+msgstr "INI를 가져왔습니다. 저장하여 보관하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "INI settings imported."
-msgstr ""
+msgstr "INI 설정을 가져왔습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not apply INI settings. Check external ICC and LUT files."
-msgstr ""
+msgstr "INI 설정을 적용할 수 없습니다. 외부 ICC 및 LUT 파일을 확인하십시오."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not read display profiles."
-msgstr ""
+msgstr "디스플레이 프로필을 읽을 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Enter a number within the supported range."
-msgstr ""
+msgstr "지원되는 범위 내의 숫자를 입력하세요."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured"
-msgstr ""
+msgstr "측정"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measuring…"
-msgstr ""
+msgstr "측정 중…"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measure this PC"
-msgstr ""
+msgstr "이 PC 측정하기"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Picks the best settings for this PC."
-msgstr ""
+msgstr "이 PC에 가장 적합한 설정을 선택합니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "측정값 : %s(%.1f / %.1f ms)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measured: same as %s (%.1f of %.1f ms)"
-msgstr ""
+msgstr "측정값 : %s와 동일(%.1f / %.1f ms)"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Could not measure this display."
-msgstr ""
+msgstr "이 디스플레이는 측정할 수 없습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Measurement failed."
-msgstr ""
+msgstr "측정에 실패했습니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "Reset All"
-msgstr ""
+msgstr "모두 초기화"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Range"
-msgstr ""
+msgstr "범위"
 
 #. Menu text; keep %d and %s placeholders
 msgid "Remove all shortcuts? Ctrl+J stays for the statistics."
-msgstr ""
+msgstr "바로 가기를 모두 제거하시겠습니까? 통계용 Ctrl+J는 그대로 유지됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid ""
 "Reset all settings for this display to their defaults? Theme and language "
 "stay."
 msgstr ""
+"이 디스플레이의 모든 설정을 기본값으로 다시 설정하시겠습니까? 테마와 언어는 "
+"그대로 유지됩니다."
 
 #. Menu text; keep %d and %s placeholders
 msgid "All settings reset to defaults."
-msgstr ""
+msgstr "모든 설정이 기본값으로 다시 설정되었습니다."
 
 #. Quality preset (header)
 msgid "Fast"
-msgstr ""
+msgstr "빠름"
 
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
-msgstr ""
+msgstr "내장 그래픽 성능이 약한 경우."
+
+#. Quality preset (header)
+msgid "Default"
+msgstr "기본값"
 
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
-msgstr ""
+msgstr "균형 잡힌 설정입니다. 대부분의 PC에서 문제없이 작동합니다."
 
 #. Quality preset (header)
 msgid "High Quality"
-msgstr ""
+msgstr "고품질"
 
 #. Quality preset description (header)
 msgid "Sharpest picture. For dedicated GPUs."
-msgstr ""
+msgstr "가장 화질이 선명합니다. 외장 그래픽용입니다."

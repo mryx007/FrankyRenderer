@@ -30,6 +30,11 @@ constexpr UINT ModeCheckMessage = WM_APP + 0x4b4;
 constexpr UINT ApplyPausedDisplayModeMessage = WM_APP + 0x4b5;
 constexpr UINT_PTR ModeTimer = 0x46524d44;
 constexpr UINT_PTR ShortcutMessageTimer = 0x4652534d;
+constexpr UINT_PTR StillPictureTimer = 0x46525350;
+// A repaint during playback waits this long for the next frame.
+constexpr uint64_t StillPictureMs = 250;
+// The statistics of a still picture during playback refresh at this interval.
+constexpr UINT StillStatisticsMs = 500;
 }
 
 // Pauses the graph while the display resynchronises after a mode change and
@@ -204,7 +209,26 @@ STDMETHODIMP DecoderPin::NonDelegatingQueryInterface(REFIID id, void** out)
             Trace("Decoder queried D3D11 texture flags: supported");
         return GetInterface(static_cast<ID3D11DecoderTextureConfiguration*>(this), out);
     }
+    // Copy protection can be set on the renderer's input pin as well.
+    if (id == IID_IKsPropertySet)
+        return GetInterface(static_cast<IKsPropertySet*>(this), out);
     return CRendererInputPin::NonDelegatingQueryInterface(id, out);
+}
+
+STDMETHODIMP DecoderPin::Set(REFGUID set, DWORD id, LPVOID instance, DWORD instanceBytes, LPVOID data, DWORD bytes)
+{
+    return owner->Set(set, id, instance, instanceBytes, data, bytes);
+}
+
+STDMETHODIMP
+DecoderPin::Get(REFGUID set, DWORD id, LPVOID instance, DWORD instanceBytes, LPVOID data, DWORD bytes, DWORD* returned)
+{
+    return owner->Get(set, id, instance, instanceBytes, data, bytes, returned);
+}
+
+STDMETHODIMP DecoderPin::QuerySupported(REFGUID set, DWORD id, DWORD* support)
+{
+    return owner->QuerySupported(set, id, support);
 }
 
 STDMETHODIMP DecoderPin::ActivateD3D11Decoding(ID3D11Device* device, ID3D11DeviceContext* context, HANDLE mutex, UINT)
@@ -556,8 +580,8 @@ STDMETHODIMP VideoWindow::SetWindowPosition(long left, long top, long width, lon
     // Prepare newly exposed parent space before the GPU child grows over it.
     if (GetOwnerWindow())
         VideoBackground::Resize(GetOwnerWindow());
-    if (owner->windowState.load() == State_Running)
-        Trace("Host SetWindowPosition while running %ld,%ld %ldx%ld", left, top, width, height);
+    Trace("Host SetWindowPosition state=%d %ld,%ld %ldx%ld", int(owner->windowState.load()), left, top, width, height);
+    owner->backend.SetHostWindowSize(width, height);
     // MPC-BE applies this size to its subtitle buffer right after this call.
     owner->AttachSubtitleDevice();
     return CBaseControlWindow::SetWindowPosition(left, top, width, height);
@@ -599,9 +623,13 @@ STDMETHODIMP VideoWindow::put_Owner(OAHWND next)
             return hr;
         }
         StatisticsKey::Detach(video);
+        const HWND previousOwner = m_hwndOwner;
         const auto result = DoneWithWindow();
         if (SUCCEEDED(result))
+        {
+            VideoBackground::Release(previousOwner);
             m_hwndOwner = nullptr;
+        }
         return result;
     }
     SetLastError(ERROR_SUCCESS);
@@ -641,6 +669,14 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     {
         KillTimer(hwnd, repaintTimer);
         owner->Repaint("retry timer");
+        return 0;
+    }
+    if (msg == WM_TIMER && w == StillPictureTimer)
+    {
+        KillTimer(hwnd, StillPictureTimer);
+        // A frame presented since then already shows the change.
+        if (owner->lastTimedPresent.load() == owner->stillDeferredAt.load())
+            owner->Repaint("still picture");
         return 0;
     }
     if (msg == ModeCheckMessage)
@@ -709,9 +745,9 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == WM_TIMER && w == ShortcutMessageTimer)
     {
         KillTimer(hwnd, ShortcutMessageTimer);
-        // Clear the shortcut message from a paused picture.
-        if (owner->windowState.load() != State_Running)
-            owner->Repaint("shortcut message");
+        // Clear the shortcut message; during playback Repaint leaves this to
+        // the next frame unless that is far away.
+        owner->Repaint("shortcut message");
         return 0;
     }
     if (msg == WM_TIMER && w == ImageAnalysis::Timer)
@@ -730,10 +766,13 @@ INT_PTR VideoWindow::OnReceiveMessage(HWND hwnd, UINT msg, WPARAM w, LPARAM l)
     if (msg == StatisticsRasterizer::ReadyMessage || msg == ImageAnalysis::ReadyMessage)
     {
         const auto state = owner->windowState.load();
-        // Running playback consumes the bitmap on its next scheduled frame.
-        // Only a paused image needs an additional repaint after text is ready.
+        // Running playback consumes the bitmap on its next scheduled frame;
+        // Repaint redraws it only when that frame is far away.
         if (state == State_Paused && (owner->backend.StatisticsVisible() || owner->settings.imageAnalysis))
             owner->Repaint();
+        else if (state == State_Running && msg == StatisticsRasterizer::ReadyMessage &&
+                 owner->backend.StatisticsVisible())
+            owner->Repaint("statistics");
         return 0;
     }
     if (msg == WM_ERASEBKGND)
@@ -782,6 +821,7 @@ HRESULT VideoControl::SetTargetRect(RECT* r)
     if (!r)
         return E_POINTER;
     owner->target = *r;
+    Trace("Host destination %ld,%ld,%ld,%ld", r->left, r->top, r->right, r->bottom);
     owner->backend.SetGeometry(owner->source, owner->target);
     return S_OK;
 }
@@ -827,7 +867,12 @@ HRESULT VideoControl::GetSourceRect(RECT* r)
 
 VIDEOINFOHEADER* VideoControl::GetVideoFormat()
 {
-    return &owner->format.basic;
+    // MPC-HC sizes the video frame from IBasicVideo::GetVideoSize. A negative
+    // height (top-down RGB such as screen recordings) made it skip every
+    // destination rectangle after the first one (issue 54).
+    reported = owner->format.basic;
+    reported.bmiHeader.biHeight = std::abs(reported.bmiHeader.biHeight);
+    return &reported;
 }
 
 STDMETHODIMP VideoControl::GetPreferredAspectRatio(long* width, long* height)
@@ -1002,8 +1047,8 @@ Renderer::~Renderer()
     backend.SetWindow(nullptr);
     if (window)
         window->DoneWithWindow();
-    VideoBackground::Repaint(videoParent);
-    Trace("Renderer window released; owner background refreshed");
+    VideoBackground::Release(videoParent);
+    Trace("Renderer window released; owner background painted and hidden");
 }
 
 CBasePin* Renderer::GetPin(int index)
@@ -1437,6 +1482,18 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         interlaced = true;
         top = fieldOverride == 1;
     }
+    // Some broadcast streams mark every picture with the wrong field order
+    // (GitHub issue 53); with Field Order on Auto the picture decides once
+    // the renderer has measured it.
+    int corrected = 0;
+    if (!reconstructed && interlaced && !fieldOverride)
+        if (const int detected = backend.DetectedFieldOrder())
+        {
+            if ((detected == 1) != top)
+                corrected = detected;
+            top = detected == 1;
+        }
+    backend.SetFieldOrderCorrected(corrected);
     if (!fieldDecisionLogged)
     {
         fieldDecisionLogged = true;
@@ -1497,6 +1554,27 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                                          (fields && (!motionQueue.empty() || pending.id) &&
                                           bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)));
     }
+    // A gap forward in the timeline (screen recordings leave unchanged
+    // pictures out, GitHub issue 54) also shows the buffered pictures first.
+    // Discarding them never showed a picture at all: MPC-BE waited paused
+    // for its first one and stayed black. A seek (discontinuity or a step
+    // back) still starts over without them.
+    if (!structureChanged && sample->IsDiscontinuity() != S_OK)
+    {
+        CAutoLock render(&m_RendererLock);
+        const bool buffered = !motionQueue.empty() || followingQueued.id || pending.id;
+        if (buffered)
+        {
+            const auto expected = !motionQueue.empty() ? motionQueue.back().stop
+                                  : followingQueued.id ? followingQueued.stop
+                                                       : pending.stop;
+            const auto previousStart = !motionQueue.empty() ? motionQueue.back().start
+                                       : followingQueued.id ? followingQueued.start
+                                                            : pending.start;
+            structureChanged = start > previousStart &&
+                               !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration);
+        }
+    }
     if (structureChanged)
     {
         HRESULT hr = DrainFields();
@@ -1519,10 +1597,13 @@ HRESULT Renderer::Receive(IMediaSample* sample)
                                                         : pending.start;
         // Smooth Motion keeps its queue across irregular timestamps; emptying
         // it means rendering several frames at once, a visible stutter.
+        // Deinterlacing alone follows the start times too: a stream with one
+        // sample per field (an MP4 copied from broadcast TV) gives each frame
+        // the duration of one field, so its end never meets the next start.
+        // Starting over on that gap stopped the picture (GitHub issue 53).
         const bool timelineReset =
             sample->IsDiscontinuity() == S_OK ||
-            (buffered && (smooth ? !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration)
-                                 : std::abs(start - expected) > 20000));
+            (buffered && !MotionTimelineContinuous(previousStart, expected, start, current.averageDuration));
         if (timelineReset || !buffering || bool(deinterlacingActive) != fields ||
             (fields && (!motionQueue.empty() || pending.id) && bufferedFirst != (top ? PL_FIELD_TOP : PL_FIELD_BOTTOM)))
             ResetFields(true, !timelineReset);
@@ -1580,6 +1661,28 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         }
         if (FAILED(hr))
             return hr;
+        // While the field order is unknown, this frame is measured against the
+        // one before it at once, so a wrong order is put right before the
+        // first frames are shown; frames still waiting take it too.
+        if (fields && !fieldOverride && !backend.DetectedFieldOrder())
+        {
+            const uint64_t before = !motionQueue.empty() ? motionQueue.back().id : pending.id;
+            if (before)
+                backend.MeasureFieldOrder(before, input.id);
+            if (const int detected = backend.DetectedFieldOrder())
+            {
+                const auto first = detected == 1 ? PL_FIELD_TOP : PL_FIELD_BOTTOM;
+                for (auto& queued : motionQueue)
+                    if (queued.first != PL_FIELD_NONE)
+                        queued.first = first;
+                for (auto* queued : {&pending, &followingQueued})
+                    if (queued->id && queued->first != PL_FIELD_NONE)
+                        queued->first = first;
+                input.first = first;
+                corrected = (detected == 1) != top ? detected : 0;
+                backend.SetFieldOrderCorrected(corrected);
+            }
+        }
         buffering = true;
         smoothBuffering = smooth;
         if (deinterlacingActive.exchange(fields) != fields)
@@ -1600,6 +1703,10 @@ HRESULT Renderer::Receive(IMediaSample* sample)
         else
         {
             output = pending;
+            // Its fields share the time up to this frame: a frame that claims
+            // only one field's duration would show its second field early.
+            if (output.id)
+                output.stop = MotionIntervalEnd(output.start, output.stop, input.start, output.nominalDuration);
             past = previous;
             previous = pending;
             pending = input;
@@ -2392,9 +2499,9 @@ void Renderer::ToggleStatistics()
 {
     backend.ShowStatistics(!backend.StatisticsVisible());
     // Running playback shows or hides the overlay with its next scheduled
-    // frame. An extra untimed present here would repeat the current frame,
-    // delay the next one and count as repeats, glitches and drops.
-    if (windowState.load() != State_Running && window && window->WindowExists())
+    // frame (Repaint redraws only when that frame is far away). An extra
+    // untimed present would delay the next frame and count as repeats.
+    if (window && window->WindowExists())
         PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
 }
 
@@ -2440,7 +2547,7 @@ void Renderer::RunShortcut(int index)
     }
     else if (action == Action::Profile)
     {
-        // By folder -> Default -> each profile -> by folder, for this file only.
+        // By folder -> Main -> each profile -> by folder, for this file only.
         const auto profiles = ContentProfiles::Load();
         std::vector<std::wstring> order{L"", ContentProfiles::DefaultName};
         for (const auto& profile : profiles)
@@ -2454,7 +2561,7 @@ void Renderer::RunShortcut(int index)
             current = settings;
         }
         backend.SetSettings(BackendSettings(Effective(current)));
-        const auto shown = contentProfile.name.empty() ? Tr(L"Default") : contentProfile.name;
+        const auto shown = contentProfile.name.empty() ? Tr(L"Main") : contentProfile.name;
         message = Tr(L"Profile") + L": " + (forcedProfile.empty() ? Tr(L"Automatic") + L" (" + shown + L")" : shown);
     }
     else
@@ -2533,8 +2640,7 @@ void Renderer::RunShortcut(int index)
     if (window && window->WindowExists())
     {
         SetTimer(window->GetWindowHWND(), ShortcutMessageTimer, 2100, nullptr);
-        if (windowState.load() != State_Running)
-            Repaint("shortcut");
+        Repaint("shortcut");
     }
 }
 
@@ -2545,10 +2651,22 @@ void Renderer::Repaint(const char* source)
     // extra untimed present here repeats the current frame, takes a vsync from
     // the schedule and makes the following frames late (repeats and drops).
     // After the end of the stream nothing follows, so keep repainting there.
-    if (windowState.load() == State_Running && GetTickCount64() - lastTimedPresent.load() < 250)
+    // Sources that leave unchanged pictures out (screen recordings) can also
+    // go seconds without a frame: the timer then redraws the current one.
+    const bool running = windowState.load() == State_Running;
+    if (running)
     {
-        Trace("Repaint during playback left to the next frame: %s", source);
-        return;
+        const auto now = GetTickCount64(), last = lastTimedPresent.load();
+        const auto since = now - std::max(last, lastStillRepaint.load());
+        if (since < StillPictureMs)
+        {
+            if (strcmp(source, "statistics"))
+                Trace("Repaint during playback left to the next frame: %s", source);
+            stillDeferredAt = last;
+            if (window && window->WindowExists())
+                SetTimer(window->GetWindowHWND(), StillPictureTimer, UINT(StillPictureMs - since) + 16, nullptr);
+            return;
+        }
     }
     // The host can synchronously resize the video while holding this lock.
     // Never block its window thread behind that call; retry the repaint later.
@@ -2578,6 +2696,17 @@ void Renderer::Repaint(const char* source)
         SetTimer(window->GetWindowHWND(), 0x46525950, 16, nullptr);
     if (result != S_OK)
         Trace("Repaint not presented result=%08lX", static_cast<unsigned long>(result));
+    else if (running)
+    {
+        // A still picture during playback: keep its statistics current
+        // until the next frame arrives.
+        lastStillRepaint = GetTickCount64();
+        if (backend.StatisticsVisible() && window && window->WindowExists())
+        {
+            stillDeferredAt = lastTimedPresent.load();
+            SetTimer(window->GetWindowHWND(), StillPictureTimer, StillStatisticsMs, nullptr);
+        }
+    }
 }
 
 void Renderer::NewSegment(REFERENCE_TIME start, double rate)
@@ -2731,8 +2860,24 @@ void Renderer::CountStep(const FieldSample* field, bool running)
     }
 }
 
+// The DVD Navigator sets the disc's Macrovision level and digital copy
+// protection on the renderer and reports "Macrovision Error" when the renderer
+// refuses. Both only concern analogue and protected outputs, so the renderer
+// accepts them without acting on them, as madVR and MPC Video Renderer do.
+static bool IsCopyProtection(REFGUID set, DWORD id)
+{
+    return set == AM_KSPROPSETID_CopyProt && (id == AM_PROPERTY_COPY_MACROVISION || id == AM_PROPERTY_COPY_DIGITAL_CP);
+}
+
 STDMETHODIMP Renderer::Set(REFGUID set, DWORD id, LPVOID, DWORD, LPVOID data, DWORD bytes)
 {
+    if (IsCopyProtection(set, id))
+    {
+        Trace("Copy protection property %lu accepted", static_cast<unsigned long>(id));
+        return S_OK;
+    }
+    if (set == AM_KSPROPSETID_CopyProt)
+        return E_PROP_ID_UNSUPPORTED;
     if (set != AM_KSPROPSETID_FrameStep)
         return E_PROP_SET_UNSUPPORTED;
     switch (id)
@@ -2760,13 +2905,21 @@ STDMETHODIMP Renderer::Set(REFGUID set, DWORD id, LPVOID, DWORD, LPVOID data, DW
 
 STDMETHODIMP Renderer::Get(REFGUID set, DWORD, LPVOID, DWORD, LPVOID, DWORD, DWORD*)
 {
-    return set == AM_KSPROPSETID_FrameStep ? E_PROP_ID_UNSUPPORTED : E_PROP_SET_UNSUPPORTED;
+    return set == AM_KSPROPSETID_FrameStep || set == AM_KSPROPSETID_CopyProt ? E_PROP_ID_UNSUPPORTED
+                                                                             : E_PROP_SET_UNSUPPORTED;
 }
 
 STDMETHODIMP Renderer::QuerySupported(REFGUID set, DWORD id, DWORD* support)
 {
     if (!support)
         return E_POINTER;
+    if (IsCopyProtection(set, id))
+    {
+        *support = KSPROPERTY_SUPPORT_SET;
+        return S_OK;
+    }
+    if (set == AM_KSPROPSETID_CopyProt)
+        return E_PROP_ID_UNSUPPORTED;
     if (set != AM_KSPROPSETID_FrameStep)
         return E_PROP_SET_UNSUPPORTED;
     if (id < AM_PROPERTY_FRAMESTEP_STEP || id > AM_PROPERTY_FRAMESTEP_CANSTEPMULTIPLE)
@@ -3542,11 +3695,11 @@ bool Renderer::SelectContentProfile(const wchar_t* display)
         preview = forcedProfile;
     const auto* match = ContentProfiles::Resolve(profiles, preview, contentPath, display);
     auto next = match ? *match : ContentProfiles::Profile{};
-    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Default")) +
+    backend.SetContentProfile(!preview.empty() ? (match ? next.name : std::wstring(L"Main")) +
                                                      (forced ? L" (shortcut)" : L" (menu preview)")
-                              : match                                    ? next.name
-                              : !profiles.empty() && contentPath.empty() ? L"Default (file path unknown)"
-                                                                         : L"Default");
+                              : match          ? next.name
+                              : !profiles.empty() && contentPath.empty() ? L"Main (file path unknown)"
+                                                                         : L"Main");
     if (next.name == contentProfile.name && next.overrides == contentProfile.overrides)
         return false;
     contentProfile = std::move(next);
@@ -3785,6 +3938,18 @@ STDMETHODIMP Renderer::Flt_GetInt64(LPCSTR field, __int64* value)
         *value = frameStart.load();
         return S_OK;
     }
+    // Field order measured from the picture and whether it overrode the flags
+    // (tests of GitHub issue 53): 0 none, 1 top field first, 2 bottom field first.
+    if (!strcmp(field, "placeboFieldOrderDetected"))
+    {
+        *value = backend.DetectedFieldOrder();
+        return S_OK;
+    }
+    if (!strcmp(field, "placeboFieldOrderCorrected"))
+    {
+        *value = backend.FieldOrderCorrected();
+        return S_OK;
+    }
     Trace("Host Flt_GetInt64 %s", field);
     if (!strncmp(field, "placeboStats", 12))
     {
@@ -3879,7 +4044,7 @@ STDMETHODIMP Renderer::Flt_SetBool(LPCSTR field, bool value)
     {
         backend.ShowStatistics(value);
         // As with Ctrl+J: running playback picks up the change on its next frame.
-        if (windowState.load() != State_Running && window && window->WindowExists())
+        if (window && window->WindowExists())
             PostMessageW(window->GetWindowHWND(), WM_PAINT, 0, 0);
         return S_OK;
     }

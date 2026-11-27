@@ -21,10 +21,14 @@ def package_release(output, channel="stable", build_id=None):
         raise ValueError(f"Use a new output directory: {output}")
     output.mkdir(parents=True)
     result = []
-    version = "nightly-" + build_id if channel == "nightly" else "1.2.2"
+    version = "nightly-" + build_id if channel == "nightly" else "1.2.3"
     name = f"FrankyRenderer-{version}-x64"
     stage = output / name
     main(stage)
+    # The settings window shows a build label; a stable package shows the version alone.
+    test_label = re.compile(rb"T\x00e\x00s\x00t\x00 \x00[0-9]\x00")
+    if channel == "stable" and test_label.search((stage / "FrankyRenderer.ax").read_bytes()):
+        raise ValueError("FrankyRenderer.ax was built as a test build; build it with FRANKY_CHANNEL=stable")
     if channel == "nightly":
         instructions = stage / "INSTALL.txt"
         with instructions.open("a", encoding="utf-8") as stream:

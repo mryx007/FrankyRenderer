@@ -93,8 +93,9 @@ static constexpr const wchar_t* MenuTexts[] = {L"Key name: Ctrl",
                                                L"Delete",
                                                L"Profile",
                                                L"The menu now shows \"%s\". Changes on all pages go into the profile.",
-                                               L"Remove all settings of the profile \"%s\"? It then matches Default.",
-                                               L"The profile matches Default again.",
+                                               L"Main",
+                                               L"Reset all settings of the profile \"%s\" to neutral values?",
+                                               L"The profile has neutral settings again.",
                                                L"This folder already belongs to the profile \"%s\".",
                                                L"Could not save the profile.",
                                                L"Your own settings.",
@@ -389,10 +390,8 @@ class Direct2DHostWindow
     std::unordered_map<std::wstring, ComPtr<IDWriteTextLayout>> m_layouts;
 
     // Which controls a profile changes, and for which settings that was read.
-    std::unordered_map<const D2DControl*, bool> m_profileChanged;
-    PlaceboSettings m_profileChangedSettings, m_profileChangedBase;
     // Counts edits and rebuilt pages; either can change what controls show.
-    unsigned m_generation = 0, m_profileChangedGeneration = ~0u;
+    unsigned m_generation = 0;
 
     // Each card's measured rows, for the width, title and controls they were measured with.
     struct CardLayout
@@ -573,7 +572,7 @@ class Direct2DHostWindow
     PlaceboSettings m_accepted, m_applied;
     // The choice at the top of the menu: ContentProfiles::DefaultName or a
     // profile, at first the one of the playing video. The menu edits m_editing
-    // (empty: Default); m_base holds the display's normal settings and
+    // (empty: Main); m_base holds the display's normal settings and
     // *m_pSettings them with that profile on top. Another choice is previewed
     // on the playing video until the menu closes.
     std::wstring m_selection, m_editing;
@@ -1399,8 +1398,7 @@ void Direct2DHostWindow::Render()
         presetName = Tr(L"Measuring…") + L" " + std::to_wstring(int(m_measurement->progress * 100)) + L"%";
     auto presetLabel = Tr(L"Quality") + L": " + presetName;
     // The profile the menu shows: at first the one of the playing video.
-    const auto profileName =
-        !_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName) ? Tr(L"Default") : m_selection;
+    const auto profileName = !_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName) ? Tr(L"Main") : m_selection;
     auto profileLabel = Tr(L"Profile") + L": " + profileName;
     const float saveWidth = m_standalone ? 114.f : 0.f, titleRoom = 200.f;
     float searchWidth = std::min(260.f, contentW);
@@ -1859,55 +1857,10 @@ void Direct2DHostWindow::Render()
             m_hitRegions.push_back(hit);
         }
     };
-    // In a profile, a setting is changed when it differs from Default: read
-    // every control once with the profile and once with the normal settings.
-    // Only again after an edit or other settings, not on every paint.
-    auto& profileChanged = m_profileChanged;
-    const bool profileCurrent = m_profileChangedGeneration == m_generation &&
-                                !memcmp(&m_profileChangedSettings, m_pSettings, sizeof(PlaceboSettings)) &&
-                                !memcmp(&m_profileChangedBase, &m_base, sizeof(PlaceboSettings));
-    if (m_editing.empty())
-        profileChanged.clear();
-    else if (!profileCurrent)
-    {
-        profileChanged.clear();
-        m_profileChangedGeneration = m_generation;
-        memcpy(&m_profileChangedSettings, m_pSettings, sizeof(PlaceboSettings));
-        memcpy(&m_profileChangedBase, &m_base, sizeof(PlaceboSettings));
-        const auto read = [&]
-        {
-            std::vector<std::wstring> values;
-            for (const auto& page : m_pages)
-                for (const auto& card : page.cards)
-                    for (const auto& c : card.controls)
-                        values.push_back(c.kind == ControlKind::Text ? (c.getText ? c.getText() : std::wstring())
-                                         : c.get                     ? std::to_wstring(c.Value())
-                                                                     : std::wstring());
-            return values;
-        };
-        const auto now = read();
-        const auto current = *m_pSettings;
-        *m_pSettings = m_base;
-        const auto normal = read();
-        *m_pSettings = current;
-        size_t i = 0;
-        for (const auto& page : m_pages)
-            for (const auto& card : page.cards)
-                for (const auto& c : card.controls)
-                {
-                    profileChanged[&c] = page.name != L"Profiles" && now[i] != normal[i];
-                    ++i;
-                }
-    }
-    // A setting is changed when it differs from its default (in a profile:
-    // from Default); only then its reset button is shown, and its name gets a dot.
+    // A setting is changed when it differs from its built-in value, in Main and
+    // in a profile alike; only then its reset button is shown, and its name gets a dot.
     const auto modifiedFor = [&](const D2DControl& ctrl)
     {
-        if (!m_editing.empty())
-        {
-            const auto found = profileChanged.find(&ctrl);
-            return found != profileChanged.end() && found->second;
-        }
         if (ctrl.kind == ControlKind::SliderInt || ctrl.kind == ControlKind::SliderFloat)
             return std::abs(ctrl.Value() - ctrl.Default()) > std::max(1e-6f, ctrl.stepVal * .5f);
         if (ctrl.kind == ControlKind::Toggle || ctrl.kind == ControlKind::Choice)
@@ -2866,7 +2819,7 @@ void Direct2DHostWindow::DrawScrollbar(D2D1_RECT_F track, float offset, float ex
 void Direct2DHostWindow::Preview()
 {
     m_pending = false;
-    // A profile keeps what differs from Default; the renderer gets the normal
+    // A profile keeps what differs from Main; the renderer gets the normal
     // settings and reads the profile from disk.
     if (!m_editing.empty())
     {
@@ -3189,19 +3142,21 @@ void Direct2DHostWindow::ResetAll()
     {
         const int answer = MessageBoxW(
             m_hwnd,
-            ProfilePage::Fill(Tr(L"Remove all settings of the profile \"%s\"? It then matches Default."), m_editing)
-                .c_str(),
+            ProfilePage::Fill(Tr(L"Reset all settings of the profile \"%s\" to neutral values?"), m_editing).c_str(),
             Tr(L"Reset All").c_str(),
             MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
         if (!*alive || answer != IDYES)
             return;
-        *m_pSettings = m_base;
+        // As when the profile was created: neutral video settings, the display's from Main.
+        ContentProfiles::Profile neutral;
+        neutral.overrides = ContentProfiles::Neutral(m_base);
+        *m_pSettings = ContentProfiles::Apply(m_base, neutral);
         m_pDraggingSlider = nullptr;
         m_keyboardIndex = -1;
         m_hitRegions.clear();
         InitPages();
         Changed();
-        ShowToast(Tr(L"The profile matches Default again."));
+        ShowToast(Tr(L"The profile has neutral settings again."));
         return;
     }
     const int answer =
@@ -3332,7 +3287,7 @@ void Direct2DHostWindow::CloseDeleteDialog(bool confirm)
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
-// The profile the menu edits; empty for Default or a profile that is gone.
+// The profile the menu edits; empty for Main or a profile that is gone.
 std::wstring Direct2DHostWindow::EditTarget() const
 {
     if (m_selection.empty() || !_wcsicmp(m_selection.c_str(), ContentProfiles::DefaultName))
@@ -3362,7 +3317,7 @@ void Direct2DHostWindow::LoadEditTarget()
         InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
-// Chooses Default or a profile for the menu; the playing video previews it
+// Chooses Main or a profile for the menu; the playing video previews it
 // while the menu is open.
 void Direct2DHostWindow::SelectProfile(const std::wstring& selection)
 {
@@ -3384,7 +3339,7 @@ void Direct2DHostWindow::SelectProfileMenu(const D2D1_RECT_F& rect)
     const auto profiles = ContentProfiles::Load();
     std::vector<std::wstring> choices = {ContentProfiles::DefaultName};
     ChoicePopup popup;
-    popup.labels = {Tr(L"Default")};
+    popup.labels = {Tr(L"Main")};
     for (const auto& profile : profiles)
     {
         choices.push_back(profile.name);
@@ -3429,27 +3384,11 @@ void Direct2DHostWindow::SyncProfiles()
         m_preview(m_base);
 }
 
-// In a profile a reset returns to the value in Default, not the built-in one.
+// A reset returns to the built-in value, in Main and in a profile alike.
 void Direct2DHostWindow::ResetControl(D2DControl& c)
 {
-    if (m_editing.empty() || (!c.get && !c.getText) || (c.kind != ControlKind::Text && !c.set))
-    {
-        if (c.reset)
-            c.reset();
-        return;
-    }
-    const auto current = *m_pSettings;
-    *m_pSettings = m_base;
-    const float value = c.Value();
-    const auto text = c.getText ? c.getText() : std::wstring();
-    *m_pSettings = current;
-    if (c.kind == ControlKind::Text)
-    {
-        if (c.setText)
-            c.setText(text);
-    }
-    else
-        c.set(value);
+    if (c.reset)
+        c.reset();
 }
 
 // Carries out what a Profiles page control asked for; true when the settings
@@ -3490,6 +3429,20 @@ bool Direct2DHostWindow::HandleProfileRequests()
     {
         ProfilePage::g_selectionRequested = false;
         const auto name = ProfilePage::g_requestSelection;
+        // A new profile starts as after a fresh install, except for the display.
+        if (std::exchange(ProfilePage::g_selectionCreated, false))
+        {
+            if (m_pending)
+                Preview();
+            const auto profiles = ContentProfiles::Load();
+            if (const auto* found = ContentProfiles::Find(profiles, name))
+            {
+                auto created = *found;
+                created.overrides = ContentProfiles::Neutral(m_base);
+                if (!ContentProfiles::Save(created))
+                    m_error = L"Could not save the profile.";
+            }
+        }
         SelectProfile(name);
         ShowToast(ProfilePage::Fill(Tr(L"The menu now shows \"%s\". Changes on all pages go into the profile."), name));
         return true;
@@ -4819,7 +4772,10 @@ std::vector<std::pair<std::wstring, std::wstring>> Direct2DSettingsHost::Transla
         }
     }
     for (const auto* text : MenuTexts)
-        add(text, L"Menu text; keep %d and %s placeholders");
+        add(text,
+            std::wstring_view(text).starts_with(L"Key name: ")
+                ? L"Keyboard key: translate only the key's name, without \"Key name:\" (German \"Strg\" for Ctrl)"
+                : L"Menu text; keep %d and %s placeholders");
     for (size_t i = 0; i < std::size(QualityPresetNames); ++i)
     {
         add(QualityPresetNames[i], L"Quality preset (header)");

@@ -51,6 +51,22 @@ inline void Repaint(HWND parent)
         RedrawWindow(child, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_NOCHILDREN);
 }
 
+// The renderer leaves the owner: the next renderer may be another one, whose
+// own child window this background must not cover (issue #48: MPC Video
+// Renderer stayed black in PotPlayer). Paint the area black once, then hide
+// the background; it shows again when this renderer returns (Resize).
+// Hidden asynchronously by the owner's UI thread: no wait from a graph thread.
+// Owners without a background (MPC-HC, MPC-BE: graph-thread owners) only get
+// their exposed area painted black, as before.
+inline void Release(HWND parent)
+{
+    if (!parent || !IsWindow(parent))
+        return;
+    Repaint(parent);
+    if (const HWND child = Find(parent))
+        ShowWindowAsync(child, SW_HIDE);
+}
+
 inline bool Resize(HWND parent)
 {
     HWND child = Find(parent);

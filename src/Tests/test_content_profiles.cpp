@@ -161,6 +161,27 @@ int wmain()
             puts("PASS LUT from Video Folder: named LUT wins, only LUT, several choose none, no LUT, no path, "
                  "missing folder, profile override, validation");
         }
+        {
+            // A new profile starts with all built-in settings, as after a fresh install.
+            PlaceboSettings main;
+            main.brightness = .5f;
+            main.smoothMotion = !PlaceboSettings{}.smoothMotion;
+            main.outputLevels = PlaceboSettings{}.outputLevels ? 0 : 1;
+            main.hdrNits = 1000;
+            Profile fresh;
+            fresh.overrides = Neutral(main);
+            const auto shown = Apply(main, fresh);
+            Require(shown.brightness == PlaceboSettings{}.brightness &&
+                        shown.smoothMotion == PlaceboSettings{}.smoothMotion,
+                    "A new profile did not start with built-in video settings");
+            Require(shown.outputLevels == PlaceboSettings{}.outputLevels && shown.hdrNits == PlaceboSettings{}.hdrNits,
+                    "A new profile took display settings from Main");
+            main.brightness = 0;
+            Require(Apply(main, fresh).brightness == PlaceboSettings{}.brightness,
+                    "Resetting Main changed the new profile");
+            Require(Neutral(PlaceboSettings{}).empty(), "Built-in settings need no profile values");
+            puts("PASS new profile: all built-in settings, independent of Main's changes");
+        }
         return 0;
     }
     catch (const std::exception& error)

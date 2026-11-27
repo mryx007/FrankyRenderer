@@ -1,5 +1,5 @@
 #pragma once
-// The Profiles page: the Default tab chooses the display whose normal settings
+// The Profiles page: the Main tab chooses the display whose normal settings
 // the menu shows, every profile has a tab with its name, folders and displays,
 // and "+" adds one. A profile's settings are edited on the other pages after
 // choosing it at the top of the menu (see the host). Included by
@@ -28,6 +28,8 @@ inline bool g_template = false;
 inline std::wstring g_requestDisplay;
 inline bool g_selectionRequested = false;
 inline std::wstring g_requestSelection;
+// The selection is a profile just created: the host gives it neutral settings.
+inline bool g_selectionCreated = false;
 // A short notice the host shows, e.g. why a folder was not added.
 inline std::wstring g_notice;
 // Import (1) or export (2) an INI file with the host's file dialog.
@@ -147,8 +149,8 @@ inline std::wstring PickFolder(HWND owner)
     return result;
 }
 
-// Adds an empty profile, selects its tab and asks the host to choose it at
-// the top, so the other pages change it right away.
+// Adds a profile, selects its tab and asks the host to choose it at the top,
+// so the other pages change it right away. The host gives it neutral settings.
 inline void Create()
 {
     ContentProfiles::Profile created;
@@ -158,6 +160,7 @@ inline void Create()
         g_selectTab = created.name;
         g_requestSelection = created.name;
         g_selectionRequested = true;
+        g_selectionCreated = true;
     }
     ++g_version;
 }
@@ -216,7 +219,7 @@ inline void SettingsFileCard(D2DPage& page)
     page.cards.push_back(std::move(card));
 }
 
-// The Default tab: which display's normal settings the menu shows.
+// The Main tab: which display's normal settings the menu shows.
 inline void
 DefaultCards(D2DPage& page, const std::wstring& display, const std::vector<DisplayProfiles::Device>& devices)
 {
@@ -410,8 +413,8 @@ inline D2DPage Build(const PlaceboSettings& settings)
 
     D2DCard create{
         L"New Profile", L"Own settings for videos from chosen folders, e.g. other scaling for anime.", {}, NewTab};
-    create.controls.push_back(
-        D2DAction(L"New Profile", L"Create", [](HWND) { Create(); }, L"Adds an empty profile in its own tab."));
+    create.controls.push_back(D2DAction(
+        L"New Profile", L"Create", [](HWND) { Create(); }, L"Adds a profile with neutral settings in its own tab."));
     page.cards.push_back(std::move(create));
     return page;
 }

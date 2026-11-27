@@ -47,16 +47,16 @@ msgstr "Ausgabe-Texturformat"
 
 #. Setting description (General > Output > Output Texture Format)
 msgid ""
-"Precision of the final output texture. Auto follows the renderer's output "
-"selection."
+"Precision of the final output texture. Auto: 8-bit when the display receives "
+"8 bits, otherwise 10-bit."
 msgstr ""
-"Präzision der endgültigen Ausgabe-Textur. 'Auto' folgt der Ausgabeauswahl "
-"des Renderers."
+"Präzision der endgültigen Ausgabe-Textur. 'Auto': 8 Bit, wenn der Bildschirm "
+"8 Bit erhält, sonst 10 Bit."
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
-msgid "Auto (libplacebo)"
-msgstr "Auto (libplacebo)"
+msgid "Auto (Display)"
+msgstr "Auto (Bildschirm)"
 
 #. Choice (General > Output > Output Texture Format)
 #. Setting name (Shortcuts > )
@@ -1721,6 +1721,24 @@ msgstr ""
 "Aus lässt SDR unverändert. Sonst sieht SDR auf dem Bildschirm wie diese "
 "Gamma aus."
 
+#. Setting name (Color > Display)
+#. Setting name (Shortcuts > )
+msgid "HDR to SDR Gamma Processing"
+msgstr "HDR-zu-SDR-Gamma-Verarbeitung"
+
+#. Setting description (Color > Display > HDR to SDR Gamma Processing)
+msgid ""
+"HDR on an SDR display: Off leaves it as tone mapped, otherwise it looks like "
+"this gamma."
+msgstr ""
+"HDR auf einem SDR-Bildschirm: Aus lässt es wie tongemappt, sonst sieht es "
+"wie diese Gamma aus."
+
+#. Choice (Color > Display > HDR to SDR Gamma Processing)
+#. Setting name (Shortcuts > )
+msgid "Like SDR"
+msgstr "Wie SDR"
+
 #. Section heading (Color)
 #. Setting name (Shortcuts > )
 msgid "ICC Profile"
@@ -2117,6 +2135,18 @@ msgid ""
 msgstr ""
 "Aus spielt Dolby Vision Profil 7 und 8 als HDR10 oder HLG ab. Profil 5 nutzt "
 "immer Dolby Vision."
+
+#. Setting name (HDR > HDR Output)
+#. Setting name (Shortcuts > )
+msgid "Use HDR10+"
+msgstr "HDR10+ verwenden"
+
+#. Setting description (HDR > HDR Output > Use HDR10+)
+msgid ""
+"Off ignores dynamic HDR10+ metadata and keeps the selected HDR output mode."
+msgstr ""
+"Aus ignoriert dynamische HDR10+-Metadaten und behält den gewählten HDR-"
+"Ausgabemodus bei."
 
 #. Section heading (HDR)
 #. Setting name (Shortcuts > )
@@ -3716,9 +3746,9 @@ msgid "Different settings for videos from chosen folders."
 msgstr "Eigene Einstellungen für Videos aus ausgewählten Ordnern."
 
 #. Tab (Profiles)
-#. Quality preset (header)
-msgid "Default"
-msgstr "Standard"
+#. Menu text; keep %d and %s placeholders
+msgid "Main"
+msgstr "Haupt"
 
 #. Tab (Profiles)
 #. Section heading (Profiles)
@@ -3851,8 +3881,9 @@ msgstr ""
 "Skalierung für Anime."
 
 #. Setting description (Profiles > New Profile > New Profile)
-msgid "Adds an empty profile in its own tab."
-msgstr "Legt ein leeres Profil in einem eigenen Reiter an."
+msgid "Adds a profile with neutral settings in its own tab."
+msgstr ""
+"Legt ein Profil mit neutralen Einstellungen in einem eigenen Reiter an."
 
 #. Button (Profiles > New Profile > New Profile)
 msgid "Create"
@@ -3935,7 +3966,7 @@ msgstr "Nächster Wert"
 msgid "Next value; after the last one, the first again."
 msgstr "Nächster Wert, nach dem letzten wieder der erste."
 
-#. Setting description (Shortcuts >  > Auto (libplacebo))
+#. Setting description (Shortcuts >  > Auto (Display))
 #. Setting description (Shortcuts >  > 8-bit Integer (SDR))
 #. Setting description (Shortcuts >  > Prefer 10-bit Integer)
 msgid "Sets exactly this value."
@@ -4113,13 +4144,12 @@ msgstr ""
 "Das Menü zeigt jetzt „%s“. Änderungen auf allen Seiten gehen ins Profil."
 
 #. Menu text; keep %d and %s placeholders
-msgid "Remove all settings of the profile \"%s\"? It then matches Default."
-msgstr ""
-"Alle Einstellungen des Profils „%s“ entfernen? Es entspricht dann Standard."
+msgid "Reset all settings of the profile \"%s\" to neutral values?"
+msgstr "Alle Einstellungen des Profils „%s“ auf neutrale Werte zurücksetzen?"
 
 #. Menu text; keep %d and %s placeholders
-msgid "The profile matches Default again."
-msgstr "Das Profil entspricht wieder Standard."
+msgid "The profile has neutral settings again."
+msgstr "Das Profil hat wieder neutrale Einstellungen."
 
 #. Menu text; keep %d and %s placeholders
 msgid "This folder already belongs to the profile \"%s\"."
@@ -4323,6 +4353,10 @@ msgstr "Schnell"
 #. Quality preset description (header)
 msgid "For weak integrated GPUs."
 msgstr "Für leistungsschwache integrierte GPUs."
+
+#. Quality preset (header)
+msgid "Default"
+msgstr "Standard"
 
 #. Quality preset description (header)
 msgid "Balanced. Fine for most PCs."
