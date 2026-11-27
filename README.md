@@ -153,7 +153,6 @@ Keep the installation folder in place. To remove the renderer, run `Uninstall.cm
 - **[MPC-HC](https://github.com/clsid2/mpc-hc/releases/)** — official release with native FrankyRenderer selection.
 - **[PotPlayer Beta 64-bit](https://t1.daumcdn.net/potplayer/beta/PotPlayerSetup64.exe)** — player build with native FrankyRenderer selection.
 
-The same x64 ZIP supports both MPC-BE and PotPlayer builds with native FrankyRenderer selection.
 
 ## Wiki
 
